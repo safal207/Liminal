@@ -1,147 +1,750 @@
-
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LIMINAL — твой путь к внутренней мудрости</title>
+    <title>LIMINAL - Journey Through Consciousness</title>
     <style>
-        body {
+        * {
             margin: 0;
             padding: 0;
-            font-family: 'Segoe UI', sans-serif;
-            background: linear-gradient(to bottom right, #e8f0ff, #f9fcff);
-            color: #1d2d44;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #5B47FB;
+            --primary-glow: #7B67FF;
+            --accent: #FF6B6B;
+            --dark: #0A0A0F;
+            --light: #FFFFFF;
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: var(--dark);
+            color: var(--light);
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        /* Custom Cursor */
+        .cursor {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--primary-glow);
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            transition: all 0.1s ease;
+            z-index: 9999;
+            mix-blend-mode: difference;
+        }
+
+        .cursor-dot {
+            width: 4px;
+            height: 4px;
+            background: var(--primary-glow);
+            border-radius: 50%;
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Particle Background */
+        #particles-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        /* Navigation */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 40px;
+            background: rgba(10, 10, 15, 0.8);
+            backdrop-filter: blur(20px);
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        nav.scrolled {
+            padding: 15px 40px;
+            background: rgba(10, 10, 15, 0.95);
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 0.05em;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 40px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--light);
+            text-decoration: none;
+            font-weight: 500;
+            position: relative;
+            transition: all 0.3s ease;
+            opacity: 0.8;
+        }
+
+        .nav-links a:hover {
+            opacity: 1;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--gradient);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-content {
+            text-align: center;
+            z-index: 1;
+            max-width: 1200px;
+            padding: 0 20px;
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 8vw, 7rem);
+            font-weight: 900;
+            line-height: 1;
+            margin-bottom: 30px;
+            letter-spacing: -0.02em;
+        }
+
+        .hero h1 span {
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: inline-block;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1.2rem, 3vw, 1.8rem);
+            opacity: 0.8;
+            margin-bottom: 50px;
+            font-weight: 300;
+            letter-spacing: 0.02em;
+        }
+
+        .cta-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 18px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: var(--gradient);
+            color: var(--light);
+            box-shadow: 0 10px 30px rgba(91, 71, 251, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(91, 71, 251, 0.4);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--light);
+            border: 2px solid var(--primary);
+            backdrop-filter: blur(10px);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            transform: translateY(-3px);
+        }
+
+        /* Scroll Indicator */
+        .scroll-indicator {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateX(-50%) translateY(0); }
+            40% { transform: translateX(-50%) translateY(-20px); }
+            60% { transform: translateX(-50%) translateY(-10px); }
+        }
+
+        /* Features Section */
+        .features {
+            padding: 120px 20px;
+            position: relative;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 80px;
+        }
+
+        .section-title {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 800;
+            margin-bottom: 20px;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .section-subtitle {
+            font-size: 1.3rem;
+            opacity: 0.7;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+            margin-top: 80px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--gradient);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary);
+        }
+
+        .feature-card:hover::before {
+            opacity: 0.1;
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--gradient);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 20px;
+        }
+
+        .feature-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .feature-description {
+            opacity: 0.8;
             line-height: 1.6;
         }
 
-        main {
-            padding: 2rem;
-            max-width: 960px;
-            margin: auto;
+        /* Journey Section */
+        .journey {
+            padding: 120px 20px;
+            position: relative;
+            overflow: hidden;
         }
 
-        h1 {
-            font-size: 2.4em;
-            color: #2e3a59;
+        .journey-timeline {
+            position: relative;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 60px;
+            opacity: 0;
+            transform: translateX(-50px);
+            transition: all 0.6s ease;
+        }
+
+        .timeline-item.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .timeline-item:nth-child(even) {
+            flex-direction: row-reverse;
+            transform: translateX(50px);
+        }
+
+        .timeline-item:nth-child(even).visible {
+            transform: translateX(0);
+        }
+
+        .timeline-number {
+            width: 80px;
+            height: 80px;
+            background: var(--gradient);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 800;
+            flex-shrink: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .timeline-content {
+            flex: 1;
+            padding: 0 40px;
+        }
+
+        .timeline-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .timeline-description {
+            opacity: 0.8;
+            line-height: 1.6;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            padding: 120px 20px;
+            background: rgba(91, 71, 251, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-content {
             text-align: center;
-            margin-top: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
         }
 
-        h2 {
-            font-size: 1.6em;
-            color: #36506c;
-            margin-top: 1.5em;
+        .cta-title {
+            font-size: clamp(2rem, 4vw, 3rem);
+            font-weight: 800;
+            margin-bottom: 20px;
         }
 
-        blockquote {
-            background: #eef5ff;
-            border-left: 5px solid #6ca0dc;
-            margin: 1rem 0;
-            padding: 0.5rem 1rem;
-            font-style: italic;
-            color: #3e4c63;
+        .email-form {
+            display: flex;
+            gap: 20px;
+            max-width: 500px;
+            margin: 40px auto;
         }
 
-        ul {
-            list-style: none;
-            padding-left: 0;
-        }
-
-        ul li::before {
-            content: "🌱 ";
-        }
-
-        section {
-            margin-bottom: 2rem;
-        }
-
-        .email-signup {
-            background: #dff7e0;
-            padding: 1.5rem;
-            border-left: 6px solid #47b27c;
-            border-radius: 8px;
-            box-shadow: 0 0 12px rgba(72, 130, 108, 0.1);
-        }
-
-        input[type="email"] {
-            padding: 0.5rem;
+        .email-input {
+            flex: 1;
+            padding: 18px 30px;
             font-size: 1rem;
-            width: 60%;
-            max-width: 300px;
-            margin-right: 0.5rem;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--light);
+            transition: all 0.3s ease;
         }
 
-        button {
-            background-color: #47b27c;
-            color: white;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 4px;
-            font-size: 1rem;
-            cursor: pointer;
+        .email-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.1);
         }
 
-        button:hover {
-            background-color: #3b9c69;
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+
+            .hero h1 {
+                font-size: 3rem;
+            }
+
+            .cta-group {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .timeline-item,
+            .timeline-item:nth-child(even) {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .timeline-content {
+                padding: 20px 0;
+            }
+
+            .email-form {
+                flex-direction: column;
+            }
         }
 
-        footer {
-            text-align: center;
-            padding: 1rem;
-            font-size: 0.85rem;
-            color: #777;
+        /* Glow Effects */
+        .glow {
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, var(--primary-glow) 0%, transparent 70%);
+            border-radius: 50%;
+            opacity: 0.3;
+            filter: blur(100px);
+            pointer-events: none;
+        }
+
+        .glow-1 {
+            top: -200px;
+            left: -200px;
+            animation: glow-move-1 20s ease-in-out infinite;
+        }
+
+        .glow-2 {
+            bottom: -200px;
+            right: -200px;
+            animation: glow-move-2 15s ease-in-out infinite;
+        }
+
+        @keyframes glow-move-1 {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(100px, 100px); }
+        }
+
+        @keyframes glow-move-2 {
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(-100px, -100px); }
         }
     </style>
 </head>
 <body>
-    <main>
-        <h1>🌌 LIMINAL — твой путь к внутренней мудрости</h1>
+    <!-- Custom Cursor -->
+    <div class="cursor"></div>
+    <div class="cursor-dot"></div>
 
-        <blockquote>«Это не просто приложение, а как внутренний компас. Спасибо, что помогли услышать себя.» — Катя, продукт-менеджер</blockquote>
-        <blockquote>«Я впервые почувствовал, что у меня внутри есть опора.» — Андрей, отец двух детей</blockquote>
-        <blockquote>«LIMINAL — как поговорить с мудрым другом, который не навязывает, но рядом.» — Дарья, 28 лет</blockquote>
+    <!-- Particle Background -->
+    <canvas id="particles-canvas"></canvas>
 
-        <section>
-            <h2>💬 Что даст тебе LIMINAL?</h2>
-            <ul>
-                <li>Понимание себя и своих эмоций</li>
-                <li>Способность принимать осознанные решения</li>
-                <li>Уверенность в своих силах и самостоятельность</li>
-                <li>Внутреннюю поддержку, когда она тебе нужна</li>
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <div class="logo">LIMINAL</div>
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#journey">Journey</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#contact">Contact</a></li>
             </ul>
-        </section>
-
-        <section>
-            <h2>🌱 Как это работает?</h2>
-            <ul>
-                <li>🩜 Постепенное взросление — путь из четырёх стадий</li>
-                <li>🎧 Интеграция нейроволн и голосовой поддержки</li>
-                <li>🧠 Внутренний совет — развитие внутренней мудрости</li>
-                <li>📈 Прозрачность и забота — контроль и прогресс</li>
-            </ul>
-        </section>
-
-        <section>
-            <h2>✨ LIMINAL только начинает свой путь</h2>
-            <p>Сейчас LIMINAL рождается — и ты можешь повлиять на его форму.</p>
-            <p>Ты не просто подписываешься — ты помогаешь создавать.</p>
-            <p>Если тебе откликается наша идея — просто оставь свой email. Мы пригласим тебя в закрытый диалог 🌿</p>
-        </section>
-
-        <div class="email-signup">
-            <h3>🚀 Начни свой путь прямо сейчас!</h3>
-            <p><strong>Введи свой email</strong>, чтобы получить PDF-гайд и узнать о старте LIMINAL:</p>
-            <form>
-                <input type="email" placeholder="you@email.com" required>
-                <button type="submit">Хочу участвовать в рождении LIMINAL</button>
-            </form>
-            <small>* Мы не шлём спам. Только то, что питает.</small>
         </div>
-    </main>
+    </nav>
 
-    <footer>
-        © 2025 LIMINAL. Все права защищены.
-    </footer>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+        
+        <div class="hero-content">
+            <h1>Journey Through <span>Consciousness</span></h1>
+            <p class="hero-subtitle">From anxiety to trust. From chaos to clarity.<br>LIMINAL guides you to inner freedom.</p>
+            
+            <div class="cta-group">
+                <a href="#" class="btn btn-primary">Start Your Journey</a>
+                <a href="#" class="btn btn-secondary">Learn More</a>
+            </div>
+        </div>
+        
+        <div class="scroll-indicator">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M7 13l5 5 5-5M7 6l5 5 5-5"/>
+            </svg>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">What LIMINAL Offers</h2>
+                <p class="section-subtitle">A revolutionary approach to emotional autonomy and self-mastery</p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🧠</div>
+                    <h3 class="feature-title">Neural Harmony</h3>
+                    <p class="feature-description">Synchronize your brainwaves with personalized frequencies for optimal mental states</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">💫</div>
+                    <h3 class="feature-title">Inner Council</h3>
+                    <p class="feature-description">Develop a wise internal support system that's always available when you need it</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🌊</div>
+                    <h3 class="feature-title">Emotional Flow</h3>
+                    <p class="feature-description">Learn to navigate emotions as allies rather than obstacles in your journey</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Journey Section -->
+    <section class="journey" id="journey">
+        <div class="container">
+            <div class="section-header">
+                <h2 class="section-title">Your Evolution Path</h2>
+                <p class="section-subtitle">Four stages of transformation to complete autonomy</p>
+            </div>
+            
+            <div class="journey-timeline">
+                <div class="timeline-item">
+                    <div class="timeline-number">1</div>
+                    <div class="timeline-content">
+                        <h3 class="timeline-title">Guidance</h3>
+                        <p class="timeline-description">LIMINAL acts as your guide, helping you understand your patterns and emotions</p>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-number">2</div>
+                    <div class="timeline-content">
+                        <h3 class="timeline-title">Co-Navigation</h3>
+                        <p class="timeline-description">You start recognizing patterns yourself, discovering your own wisdom</p>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-number">3</div>
+                    <div class="timeline-content">
+                        <h3 class="timeline-title">Inner Council</h3>
+                        <p class="timeline-description">Your emotions become advisors while LIMINAL observes</p>
+                    </div>
+                </div>
+                
+                <div class="timeline-item">
+                    <div class="timeline-number">4</div>
+                    <div class="timeline-content">
+                        <h3 class="timeline-title">Sovereignty</h3>
+                        <p class="timeline-description">Full autonomy achieved. You are your own best guide</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="cta-content">
+            <h2 class="cta-title">Ready to Begin Your Journey?</h2>
+            <p class="section-subtitle">Join the early access list and receive our free guide</p>
+            
+            <form class="email-form">
+                <input type="email" class="email-input" placeholder="Enter your email" required>
+                <button type="submit" class="btn btn-primary">Get Early Access</button>
+            </form>
+        </div>
+    </section>
+
+    <script>
+        // Custom Cursor
+        const cursor = document.querySelector('.cursor');
+        const cursorDot = document.querySelector('.cursor-dot');
+
+        document.addEventListener('mousemove', (e) => {
+            cursor.style.left = e.clientX - 10 + 'px';
+            cursor.style.top = e.clientY - 10 + 'px';
+            cursorDot.style.left = e.clientX + 'px';
+            cursorDot.style.top = e.clientY + 'px';
+        });
+
+        // Particle Background
+        const canvas = document.getElementById('particles-canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 0.5;
+                this.speedX = Math.random() * 0.5 - 0.25;
+                this.speedY = Math.random() * 0.5 - 0.25;
+                this.opacity = Math.random() * 0.5 + 0.2;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                if (this.x > canvas.width) this.x = 0;
+                if (this.x < 0) this.x = canvas.width;
+                if (this.y > canvas.height) this.y = 0;
+                if (this.y < 0) this.y = canvas.height;
+            }
+
+            draw() {
+                ctx.fillStyle = `rgba(123, 103, 255, ${this.opacity})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        const particles = [];
+        for (let i = 0; i < 100; i++) {
+            particles.push(new Particle());
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+            
+            // Draw connections
+            particles.forEach((p1, index) => {
+                particles.slice(index + 1).forEach(p2 => {
+                    const distance = Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+                    if (distance < 100) {
+                        ctx.strokeStyle = `rgba(123, 103, 255, ${0.1 * (1 - distance / 100)})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.beginPath();
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                });
+            });
+            
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+
+        // Scroll Effects
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('scrolled');
+            } else {
+                nav.classList.remove('scrolled');
+            }
+
+            // Animate timeline items
+            const timelineItems = document.querySelectorAll('.timeline-item');
+            timelineItems.forEach(item => {
+                const rect = item.getBoundingClientRect();
+                if (rect.top < window.innerHeight * 0.8) {
+                    item.classList.add('visible');
+                }
+            });
+        });
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
 </body>
 </html>
