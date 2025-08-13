@@ -1,0 +1,33 @@
+name: Python Integration (WS)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'  # daily at 03:00 UTC
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        # optional client libs for ws tests
+        pip install websockets requests pytest-asyncio
+
+    - name: Run WebSocket integration tests
+      env:
+        WS_API_URL: http://localhost:8080
+        WS_URL: ws://localhost:8080/ws
+      run: |
+        # These tests are smoke-level and skip themselves if server is down
+        python -m pytest -v -m integration --maxfail=1 --durations=10
