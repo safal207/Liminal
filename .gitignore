@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.venv/
+venv/
+.env
+.env.*
+backend/.env
+pip-wheel-metadata/
+dist/
+build/
+.eggs/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Logs
+logs/
+*.log
+
+# Node / Frontend
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.cache/
+
+# IDE
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker local overrides
+# Uncomment if you keep local-only overrides
+# docker-compose.override.yml
+
+# Misc
+coverage/
