@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  kenning-automl:
+    image: kenning/kenning:latest
+    container_name: resonance-kenning
+    volumes:
+      - ./:/workspace
+      - ./ml/models:/models
+      - ./ml/configs:/configs
+    working_dir: /workspace
+    environment:
+      - PYTHONPATH=/workspace
+    networks:
+      - resonance-network
+    depends_on:
+      - redis
+    command: ["tail", "-f", "/dev/null"]  # Держим контейнер запущенным
+
+  jupyter-ml:
+    image: jupyter/tensorflow-notebook:latest
+    container_name: resonance-jupyter
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./ml:/home/jovyan/work
+      - ./data:/home/jovyan/data
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    networks:
+      - resonance-network
+
+networks:
+  resonance-network:
+    external: true

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Карта состояний сознания | MIT-подход</title>
+    <meta name="description" content="Интерактивная карта состояний сознания с использованием философских концепций">
+    
+    <!-- MIT-подход: загрузка основных библиотек -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Стили -->
+    <link rel="stylesheet" href="css/main.css">
+    
+    <!-- Шрифты MIT Media Lab -->
+    <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Accessibility: заголовок для скринридеров -->
+    <h1 class="sr-only">Интерактивная карта состояний сознания</h1>
+    
+    <!-- MIT-подход: минималистичный интерфейс с фокусом на данных -->
+    <header class="mit-header">
+        <div class="container">
+            <h1>Карта состояний сознания</h1>
+            <p class="subtitle">Навигация по эмоциональным и философским переходам</p>
+        </div>
+    </header>
+    
+    <main class="container">
+        <section class="controls">
+            <div class="filter-panel">
+                <h3>Фильтры состояний</h3>
+                <div class="state-filters">
+                    <!-- Динамически генерируемые фильтры -->
+                </div>
+            </div>
+            
+            <div class="insight-panel">
+                <h3>Текущий инсайт</h3>
+                <div id="current-insight">
+                    <p>Выберите состояние или переход для просмотра инсайта</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- MIT-подход: визуализация как центральный элемент -->
+        <section class="visualization">
+            <div id="consciousness-graph"></div>
+        </section>
+        
+        <!-- MIT-подход: панель состояний с метриками -->
+        <section class="state-details">
+            <h3>Детали состояния</h3>
+            <div id="state-metrics">
+                <div class="metric">
+                    <span class="metric-name">Уровень присутствия:</span>
+                    <div class="metric-bar-container">
+                        <div class="metric-bar" id="presence-level" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="metric">
+                    <span class="metric-name">Гармония:</span>
+                    <div class="metric-bar-container">
+                        <div class="metric-bar" id="harmony-index" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="metric">
+                    <span class="metric-name">Аутентичность:</span>
+                    <div class="metric-bar-container">
+                        <div class="metric-bar" id="authenticity-score" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="metric">
+                    <span class="metric-name">Эмоциональный заряд:</span>
+                    <div class="metric-bar-container">
+                        <div class="metric-bar" id="emotional-charge" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer class="mit-footer">
+        <div class="container">
+            <p>Resonance Liminal Project &copy; 2025</p>
+        </div>
+    </footer>
+    
+    <!-- MIT-подход: модульная архитектура JavaScript -->
+    <!-- Подключаем клиенты для работы с API -->
+  <script src="js/graphql-subscription-client.js"></script>
+  <script src="js/graphql-client.js"></script>
+  <script src="js/neo4j-client.js"></script>
+  <script src="js/data-service.js"></script>
+    <script src="js/graph-renderer.js"></script>
+    <script src="js/state-controller.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

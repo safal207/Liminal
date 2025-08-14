@@ -1,0 +1,37 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Rule files for anomaly alerts
+rule_files:
+  - "rules/ml_alerts.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+  
+  - job_name: 'backend'
+    static_configs:
+      - targets: ['backend:8000']
+      
+  - job_name: 'kenning'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['kenning:5000']
+
+  - job_name: 'ml-feature-extractor'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['ml-feature-extractor:8000']
+
+  - job_name: 'ml-predictor'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['ml-predictor:8002']

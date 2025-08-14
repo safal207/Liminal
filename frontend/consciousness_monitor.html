@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consciousness States WebSocket Test</title>
+    <style>
+        /* Oxford-style минималистичный дизайн с четкой структурой */
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            margin: 2rem;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .state-card {
+            border: 1px solid #ddd;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+        .state-card.highlight {
+            box-shadow: 0 0 10px rgba(0,100,255,0.5);
+            border-color: #0066ff;
+        }
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        .metric {
+            background: #f5f5f5;
+            padding: 0.5rem;
+            border-radius: 3px;
+            font-size: 0.9rem;
+        }
+        .node-liminal { border-left: 4px solid #9c27b0; }
+        .node-presence { border-left: 4px solid #2196f3; }
+        .node-harmony { border-left: 4px solid #4caf50; }
+        .node-home { border-left: 4px solid #ff9800; }
+        .node-question { border-left: 4px solid #f44336; }
+        
+        .event-log {
+            margin-top: 2rem;
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 1rem;
+            background: #fafafa;
+        }
+        
+        /* MIT Media Lab стиль интерфейса - понятные действия */
+        .controls {
+            margin: 2rem 0;
+            display: flex;
+            gap: 1rem;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            background: #0066ff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #0055dd;
+        }
+        h1, h2 {
+            font-weight: 300;
+            color: #222;
+        }
+        .status {
+            padding: 0.5rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        .status.connected {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .status.disconnected {
+            background: #ffebee;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+    <h1>Consciousness States Real-time Monitor</h1>
+    <div class="status disconnected" id="connection-status">WebSocket: Disconnected</div>
+    
+    <div class="controls">
+        <button id="connect-btn">Connect</button>
+        <button id="disconnect-btn" disabled>Disconnect</button>
+        <button id="simulate-btn">Simulate Transition</button>
+    </div>
+    
+    <h2>Current Consciousness States</h2>
+    <div id="states-container"></div>
+    
+    <h2>Event Log</h2>
+    <div class="event-log" id="event-log"></div>
+    
+    <script>
+        // MIT-style модульность и разделение ответственности
+        const ConsciousnessMonitor = (function() {
+            // Приватные переменные
+            let ws = null;
+            let states = {};
+            
+            // Oxford-style формальное определение состояний сознания
+            const stateDefinitions = {
+                "TRANSITION_LIMINAL": {
+                    label: "Лиминальное переходное",
+                    description: "Между мирами, в процессе становления",
+                    colorClass: "node-liminal"
+                },
+                "PRESENCE_NOW": {
+                    label: "Осознанное присутствие",
+                    description: "Полное присутствие в настоящем моменте",
+                    colorClass: "node-presence"
+                },
+                "HARMONY_BALANCE": {
+                    label: "Гармония и баланс",
+                    description: "Состояние внутреннего равновесия и целостности",
+                    colorClass: "node-harmony"
+                },
+                "HOME_AUTHENTIC": {
+                    label: "Аутентичный дом",
+                    description: "Дом - это ты, когда искренен с собой",
+                    colorClass: "node-home"
+                },
+                "QUESTION_SPACE": {
+                    label: "Пространство вопросов",
+                    description: "Мы научились задавать правильные вопросы",
+                    colorClass: "node-question"
+                }
+            };
+            
+            // Oxford-style чистые функции для работы с данными
+            function renderStates() {
+                const container = document.getElementById('states-container');
+                container.innerHTML = '';
+                
+                Object.values(states).forEach(state => {
+                    const stateDefinition = stateDefinitions[state.id] || {
+                        label: state.id,
+                        description: "Undefined state",
+                        colorClass: ""
+                    };
+                    
+                    const stateEl = document.createElement('div');
+                    stateEl.className = `state-card ${stateDefinition.colorClass}`;
+                    stateEl.id = `state-${state.id}`;
+                    
+                    stateEl.innerHTML = `
+                        <h3>${stateDefinition.label}</h3>
+                        <p>${stateDefinition.description}</p>
+                        <div class="metrics">
+                            <div class="metric">Presence: ${state.presenceLevel || 0}</div>
+                            <div class="metric">Harmony: ${state.harmonyIndex || 0}</div>
+                            <div class="metric">Authenticity: ${state.authenticityScore || 0}</div>
+                            <div class="metric">Emotional: ${state.emotionalCharge || 0}</div>
+                        </div>
+                    `;
+                    
+                    container.appendChild(stateEl);
+                });
+            }
+            
+            function logEvent(message, type = 'info') {
+                const logEl = document.getElementById('event-log');
+                const entry = document.createElement('div');
+                entry.className = `log-entry ${type}`;
+                entry.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+                logEl.appendChild(entry);
+                logEl.scrollTop = logEl.scrollHeight;
+            }
+            
+            function highlightState(stateId) {
+                // Сначала уберем все выделения
+                document.querySelectorAll('.state-card').forEach(el => {
+                    el.classList.remove('highlight');
+                });
+                
+                // Теперь выделим нужное состояние
+                const stateEl = document.getElementById(`state-${stateId}`);
+                if (stateEl) {
+                    stateEl.classList.add('highlight');
+                    setTimeout(() => stateEl.classList.remove('highlight'), 2000);
+                }
+            }
+            
+            // MIT-style публичное API с чёткими контрактами
+            return {
+                connect: function() {
+                    if (ws) return;
+                    
+                    try {
+                        ws = new WebSocket('ws://localhost:8080/graphql/subscriptions');
+                        
+                        ws.onopen = () => {
+                            document.getElementById('connection-status').className = 'status connected';
+                            document.getElementById('connection-status').textContent = 'WebSocket: Connected';
+                            document.getElementById('connect-btn').disabled = true;
+                            document.getElementById('disconnect-btn').disabled = false;
+                            logEvent('WebSocket соединение установлено');
+                            
+                            // Запрашиваем начальное состояние
+                            fetch('http://localhost:8080/api/consciousness/graph')
+                                .then(response => response.json())
+                                .then(data => {
+                                    data.nodes.forEach(node => {
+                                        states[node.id] = node;
+                                    });
+                                    renderStates();
+                                    logEvent(`Загружено ${data.nodes.length} состояний сознания`);
+                                })
+                                .catch(err => {
+                                    logEvent(`Ошибка получения данных: ${err.message}`, 'error');
+                                    console.error('Ошибка:', err);
+                                });
+                        };
+                        
+                        ws.onmessage = (event) => {
+                            try {
+                                const data = JSON.parse(event.data);
+                                logEvent(`Получено событие: ${data.type} (${data.source} → ${data.target})`);
+                                highlightState(data.target);
+                            } catch (e) {
+                                logEvent(`Ошибка обработки сообщения: ${e.message}`, 'error');
+                            }
+                        };
+                        
+                        ws.onerror = (error) => {
+                            logEvent(`Ошибка WebSocket: ${error.message}`, 'error');
+                        };
+                        
+                        ws.onclose = () => {
+                            document.getElementById('connection-status').className = 'status disconnected';
+                            document.getElementById('connection-status').textContent = 'WebSocket: Disconnected';
+                            document.getElementById('connect-btn').disabled = false;
+                            document.getElementById('disconnect-btn').disabled = true;
+                            logEvent('WebSocket соединение закрыто');
+                            ws = null;
+                        };
+                    } catch (e) {
+                        logEvent(`Ошибка создания WebSocket: ${e.message}`, 'error');
+                    }
+                },
+                
+                disconnect: function() {
+                    if (ws) {
+                        ws.close();
+                        ws = null;
+                    }
+                },
+                
+                simulateTransition: function() {
+                    const stateKeys = Object.keys(stateDefinitions);
+                    if (stateKeys.length < 2) return;
+                    
+                    const source = stateKeys[Math.floor(Math.random() * stateKeys.length)];
+                    let target;
+                    do {
+                        target = stateKeys[Math.floor(Math.random() * stateKeys.length)];
+                    } while (target === source);
+                    
+                    const triggers = ['DEEP_BREATH', 'MEDITATION', 'AUTHENTICITY_INSIGHT', 'CURIOSITY', 'UNCERTAINTY'];
+                    const trigger = triggers[Math.floor(Math.random() * triggers.length)];
+                    
+                    const event = {
+                        source: source,
+                        target: target,
+                        type: 'CONSCIOUSNESS_TRANSITION',
+                        trigger: trigger,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    // Отправляем событие на сервер
+                    fetch('http://localhost:8080/api/events', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(event)
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Network response was not ok');
+                        return response.json();
+                    })
+                    .then(data => {
+                        logEvent(`Событие отправлено: ${source} → ${target} (${trigger})`);
+                    })
+                    .catch(error => {
+                        logEvent(`Ошибка отправки события: ${error.message}`, 'error');
+                    });
+                }
+            };
+        })();
+        
+        // MIT-style обработка событий
+        document.getElementById('connect-btn').addEventListener('click', () => {
+            ConsciousnessMonitor.connect();
+        });
+        
+        document.getElementById('disconnect-btn').addEventListener('click', () => {
+            ConsciousnessMonitor.disconnect();
+        });
+        
+        document.getElementById('simulate-btn').addEventListener('click', () => {
+            ConsciousnessMonitor.simulateTransition();
+        });
+        
+        // Автоматическое подключение при загрузке страницы
+        window.addEventListener('load', () => {
+            ConsciousnessMonitor.connect();
+        });
+    </script>
+</body>
+</html>

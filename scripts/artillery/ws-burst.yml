@@ -1,0 +1,16 @@
+# Artillery WS burst template (ASCII-only)
+# Replace placeholders via scripts/ws-burst.ps1 before running.
+
+config:
+  target: "__TARGET____PATH__?token=__TOKEN__"
+  phases:
+    - duration: __DURATION__
+      arrivalRate: __ARRIVAL__
+scenarios:
+  - engine: "ws"
+    flow:
+      - loop:
+          - send:
+              text: "ping-{{ $randomNumber }}"
+          - think: __THINK__
+        count: __MESSAGES__

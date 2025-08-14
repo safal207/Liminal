@@ -1,0 +1,36 @@
+FROM python:3.11-slim
+
+# Установка необходимых системных зависимостей
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    g++ \
+    git \
+    libopenblas-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Создание рабочей директории
+WORKDIR /app
+
+# Копирование только requirements-kenning.txt сначала для лучшего кэширования
+COPY requirements-kenning.txt .
+
+# Установка базовых ML-зависимостей
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel && \
+    pip install --no-cache-dir kenning && \
+    pip install --no-cache-dir -r requirements-kenning.txt
+
+# Копирование исходного кода ML-сервисов
+COPY . /app/ml
+
+# Установка переменных среды для оптимизации ML-библиотек
+ENV OPENBLAS_NUM_THREADS=1 \
+    OMP_NUM_THREADS=1 \
+    MKL_NUM_THREADS=1 \
+    PYTHONUNBUFFERED=1
+
+# Установка директории для моделей Kenning
+ENV KENNING_MODEL_DIR=/app/ml/models
+
+# Запуск Kenning ML-сервиса
+CMD ["python", "-m", "kenning_service", "--server", "--host", "0.0.0.0", "--port", "5000"]

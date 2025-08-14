@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # Neo4j для графовых данных
+  neo4j:
+    image: neo4j:5.11
+    container_name: pythia-neo4j
+    restart: unless-stopped
+    ports:
+      - "7474:7474"
+      - "7473:7473"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD}
+      - NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+      - NEO4J_dbms_connector_bolt_listen__address=:7687
+      - NEO4J_dbms_connector_http_listen__address=:7474
+      - NEO4J_dbms_connector_https_listen__address=:7473
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*,gds.*
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+      - NEO4J_dbms_security_procedures_allowlist=apoc.coll.*,apoc.load.*,gds.*
+    volumes:
+      - neo4j_data:/data
+      - ./neo4j/import:/var/lib/neo4j/import
+
+    networks:
+      - pythia-network
+
+  # Redis для кэширования и очередей
+  redis:
+    image: redis:7.0-alpine
+    container_name: pythia-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - pythia-network
+
+  # Prometheus для мониторинга
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: pythia-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - pythia-network
+
+  # Grafana для визуализации
+  grafana:
+    image: grafana/grafana:latest
+    container_name: pythia-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - pythia-network
+      
+  # Liminal Backend (FastAPI + WebSocket)
+  liminal-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: liminal-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    networks:
+      - pythia-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - neo4j
+      - redis
+
+networks:
+  pythia-network:
+    driver: bridge
+
+volumes:
+  neo4j_data:
+  redis_data:
+  grafana_data:

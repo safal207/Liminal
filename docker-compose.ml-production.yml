@@ -1,0 +1,262 @@
+version: '3.8'
+
+services:
+  # Основной backend с ML интеграцией
+  resonance-backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: resonance-backend-ml
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - PROMETHEUS_URL=http://prometheus:9090
+      - ML_SERVICE_URL=http://kenning-ml:5000
+      - KENNING_SERVICE_URL=http://kenning-ml:5000
+      # XAI and OpenAI configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - XAI_CACHE_SIZE=1000
+      - XAI_ENABLE_SHAP=true
+      - XAI_ENABLE_LIME=true
+      - OPENAI_MODEL=gpt-4-turbo-preview
+      - OPENAI_MAX_TOKENS=2000
+      - OPENAI_TEMPERATURE=0.3
+      # Anthropic Claude configuration
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CLAUDE_MODEL=claude-3-sonnet-20240229
+      - CLAUDE_MAX_TOKENS=4000
+      - CLAUDE_TEMPERATURE=0.1
+      # Multi-LLM configuration
+      - MULTI_LLM_FALLBACK_ENABLED=true
+      - MULTI_LLM_CONSENSUS_THRESHOLD=0.7
+      - MULTI_LLM_COST_OPTIMIZATION=true
+    volumes:
+      - ./backend:/app
+      - ml_models:/app/ml/models
+      - ml_data:/app/ml/data
+    depends_on:
+      - redis
+      - prometheus
+      - kenning-ml
+    networks:
+      - resonance-network
+    restart: unless-stopped
+
+  # Kenning ML Service для обучения и inference
+  kenning-ml:
+    image: kenning/kenning:latest
+    container_name: resonance-kenning-ml
+    ports:
+      - "5000:5000"
+    environment:
+      - PYTHONPATH=/workspace
+      - REDIS_HOST=redis
+      - PROMETHEUS_URL=http://prometheus:9090
+      - MODEL_STORAGE=/models
+      - DATA_STORAGE=/data
+    volumes:
+      - ./backend/ml:/workspace/ml
+      - ml_models:/models
+      - ml_data:/data
+      - ./backend/ml/kenning_service.py:/workspace/kenning_service.py
+    working_dir: /workspace
+    command: ["python", "kenning_service.py"]
+    depends_on:
+      - redis
+      - minio
+    networks:
+      - resonance-network
+    restart: unless-stopped
+
+  # Jupyter для ML экспериментов и анализа
+  jupyter-ml:
+    image: jupyter/tensorflow-notebook:latest
+    container_name: resonance-jupyter-ml
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - JUPYTER_TOKEN=resonance_ml_token
+      - GRANT_SUDO=yes
+    volumes:
+      - ./backend/ml:/home/jovyan/work
+      - ml_data:/home/jovyan/data
+      - ml_models:/home/jovyan/models
+      - ./notebooks:/home/jovyan/notebooks
+    user: root
+    networks:
+      - resonance-network
+    restart: unless-stopped
+
+  # MinIO для хранения моделей и данных
+  minio:
+    image: minio/minio:latest
+    container_name: resonance-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=resonance
+      - MINIO_ROOT_PASSWORD=resonance_ml_storage
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - resonance-network
+    restart: unless-stopped
+
+  # Redis для кэширования и очередей
+  redis:
+    image: redis:7-alpine
+    container_name: resonance-redis-ml
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
+    networks:
+      - resonance-network
+    restart: unless-stopped
+
+  # Prometheus для метрик
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: resonance-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - resonance-network
+    restart: unless-stopped
+
+  # Grafana для визуализации
+  grafana:
+    image: grafana/grafana:latest
+    container_name: resonance-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=resonance_admin
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+    networks:
+      - resonance-network
+    restart: unless-stopped
+
+  # ML Training Scheduler
+  ml-scheduler:
+    build:
+      context: ./backend/ml
+      dockerfile: Dockerfile.scheduler
+    container_name: resonance-ml-scheduler
+    environment:
+      - REDIS_HOST=redis
+      - KENNING_ML_URL=http://kenning-ml:5000
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=resonance
+      - MINIO_SECRET_KEY=resonance_ml_storage
+    volumes:
+      - ml_models:/models
+      - ml_data:/data
+    depends_on:
+      - redis
+      - kenning-ml
+      - minio
+    networks:
+      - resonance-network
+    restart: unless-stopped
+
+  # Feature Store (для хранения фичей)
+  feature-store:
+    image: feast-dev/feature-server:latest
+    container_name: resonance-feature-store
+    ports:
+      - "6566:6566"
+    environment:
+      - FEAST_REDIS_HOST=redis
+      - FEAST_REDIS_PORT=6379
+    volumes:
+      - ./backend/ml/feature_store:/feature_repo
+    depends_on:
+      - redis
+    networks:
+      - resonance-network
+    restart: unless-stopped
+
+  # XAI Intelligence Service
+  xai-intelligence:
+    build:
+      context: ./backend/ml
+      dockerfile: Dockerfile.xai
+    container_name: resonance-xai-intelligence
+    ports:
+      - "8003:8000"
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - XAI_CACHE_SIZE=1000
+      - XAI_ENABLE_SHAP=true
+      - XAI_ENABLE_LIME=true
+      - OPENAI_MODEL=gpt-4-turbo-preview
+      - OPENAI_MAX_TOKENS=2000
+      - OPENAI_TEMPERATURE=0.3
+      - CLAUDE_MODEL=claude-3-sonnet-20240229
+      - CLAUDE_MAX_TOKENS=4000
+      - CLAUDE_TEMPERATURE=0.1
+      - MULTI_LLM_FALLBACK_ENABLED=true
+      - ML_MODELS_PATH=/models
+    volumes:
+      - ml_models:/models
+      - ml_data:/data
+      - ./backend/ml:/app
+    depends_on:
+      - redis
+      - kenning-ml
+    networks:
+      - resonance-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  ml_models:
+    driver: local
+  ml_data:
+    driver: local
+  minio_data:
+    driver: local
+  redis_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  resonance-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

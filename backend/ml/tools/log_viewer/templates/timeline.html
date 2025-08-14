@@ -1,0 +1,621 @@
+{% extends "layout.html" %}
+
+{% block title %}Временная ось логов{% endblock %}
+
+{% block extra_head %}
+<style>
+    .vis-item {
+        border-color: #5f5f5f;
+        background-color: #f9f9f9;
+        box-shadow: 0 1px 5px rgba(0,0,0,0.15);
+    }
+    .vis-item.experience {
+        border-color: #dc3545;
+        background-color: rgba(220, 53, 69, 0.15);
+    }
+    .vis-item.insights {
+        border-color: #28a745;
+        background-color: rgba(40, 167, 69, 0.15);
+    }
+    .vis-item.karma {
+        border-color: #ffc107;
+        background-color: rgba(255, 193, 7, 0.15);
+    }
+    .vis-item.hypotheses {
+        border-color: #17a2b8;
+        background-color: rgba(23, 162, 184, 0.15);
+    }
+    .vis-item.vis-selected {
+        border-color: #2C3E50;
+        background-color: #E1EFF6;
+    }
+    .vis-item .vis-item-content {
+        padding: 8px;
+    }
+    #timeline-loading {
+        height: 400px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    #timelineContainer {
+        height: 600px;
+        width: 100%;
+    }
+    .timeline-controls {
+        margin-bottom: 15px;
+    }
+    .event-details {
+        margin-top: 20px;
+        display: none;
+    }
+    .pattern-highlight {
+        background-color: #fffacd;
+        padding: 10px;
+        border-left: 5px solid #ffd700;
+        margin: 10px 0;
+    }
+    .time-period-selector {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+        <h3><i class="fas fa-clock"></i> Временная ось интеллектуальных логов</h3>
+        <div class="btn-group">
+            <button type="button" class="btn btn-sm btn-outline-light" id="zoomIn">
+                <i class="fas fa-search-plus"></i> Приблизить
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-light" id="zoomOut">
+                <i class="fas fa-search-minus"></i> Отдалить
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-light" id="moveLeft">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-light" id="moveRight">
+                <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="time-period-selector">
+                    <label class="form-label me-2">Период:</label>
+                    <select id="timePeriod" class="form-select form-select-sm" style="width: auto;">
+                        <option value="hour">Последний час</option>
+                        <option value="day" selected>Последний день</option>
+                        <option value="week">Последняя неделя</option>
+                        <option value="month">Последний месяц</option>
+                        <option value="all">Все время</option>
+                    </select>
+                    
+                    <div class="form-check form-switch ms-3">
+                        <input class="form-check-input" type="checkbox" id="showExperience" checked>
+                        <label class="form-check-label" for="showExperience">
+                            <span class="badge bg-danger">Ошибки</span>
+                        </label>
+                    </div>
+                    
+                    <div class="form-check form-switch ms-3">
+                        <input class="form-check-input" type="checkbox" id="showInsights" checked>
+                        <label class="form-check-label" for="showInsights">
+                            <span class="badge bg-success">Инсайты</span>
+                        </label>
+                    </div>
+                    
+                    <div class="form-check form-switch ms-3">
+                        <input class="form-check-input" type="checkbox" id="showKarma" checked>
+                        <label class="form-check-label" for="showKarma">
+                            <span class="badge bg-warning text-dark">Карма</span>
+                        </label>
+                    </div>
+                    
+                    <div class="form-check form-switch ms-3">
+                        <input class="form-check-input" type="checkbox" id="showHypotheses" checked>
+                        <label class="form-check-label" for="showHypotheses">
+                            <span class="badge bg-info">Гипотезы</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="timeline-loading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+        </div>
+        
+        <div id="timelineContainer" style="display:none;"></div>
+        
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card event-details" id="eventDetails">
+                    <div class="card-header">
+                        <h5 id="eventTitle">Детали события</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="eventContent">
+                            Выберите событие на временной оси для просмотра деталей.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card" id="patternsCard">
+                    <div class="card-header bg-warning text-dark">
+                        <h5><i class="fas fa-lightbulb"></i> Обнаруженные паттерны</h5>
+                    </div>
+                    <div class="card-body" id="patternsContainer">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Выберите период времени для анализа паттернов.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Получаем данные из атрибута data-timeline
+const timelineContainer = document.getElementById('timelineContainer');
+const timelineData = JSON.parse(timelineContainer.getAttribute('data-timeline'));
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Скрываем загрузчик и показываем временную ось
+    document.getElementById('timeline-loading').style.display = 'none';
+    document.getElementById('timelineContainer').style.display = 'block';
+    
+    // Создаем набор элементов для временной оси
+    const items = new vis.DataSet();
+    
+    // Преобразуем данные из Flask в формат для vis.js
+    timelineData.forEach((item, index) => {
+        items.add({
+            id: index,
+            content: `<strong>${item.title}</strong>: ${item.description.substring(0, 50)}${item.description.length > 50 ? '...' : ''}`,
+            start: new Date(item.timestamp),
+            className: item.type,  // Для стилизации разных типов логов
+            group: item.type,
+            title: `${item.title} - ${new Date(item.timestamp).toLocaleString()}`,
+            originalData: item  // Сохраняем оригинальные данные для детального просмотра
+        });
+    });
+    
+    // Создаем группы для разных типов логов
+    const groups = new vis.DataSet([
+        {id: 'experience', content: 'Ошибки', className: 'experience'},
+        {id: 'insights', content: 'Инсайты', className: 'insights'},
+        {id: 'karma', content: 'Карма', className: 'karma'},
+        {id: 'hypotheses', content: 'Гипотезы', className: 'hypotheses'}
+    ]);
+    
+    // Опции для временной оси
+    const options = {
+        height: '500px',
+        orientation: 'top',
+        stack: true,
+        zoomable: true,
+        zoomMax: 31536000000, // Максимальный зум - 1 год
+        zoomMin: 60000, // Минимальный зум - 1 минута
+        format: {
+            minorLabels: {
+                minute: 'HH:mm',
+                hour: 'HH:mm',
+                day: 'DD MMM',
+                week: 'DD MMM',
+                month: 'MMM YYYY',
+                year: 'YYYY'
+            },
+            majorLabels: {
+                minute: 'DD MMMM YYYY',
+                hour: 'DD MMMM YYYY',
+                day: 'MMMM YYYY',
+                week: 'MMMM YYYY',
+                month: 'YYYY',
+                year: ''
+            }
+        },
+        groupOrder: function(a, b) {
+            const order = {'experience': 1, 'insights': 2, 'karma': 3, 'hypotheses': 4};
+            return order[a.id] - order[b.id];
+        }
+    };
+    
+    // Создаем временную ось
+    const container = document.getElementById('timelineContainer');
+    const timeline = new vis.Timeline(container, items, groups, options);
+    
+    // Обработчик события выбора элемента на временной оси
+    timeline.on('select', function(properties) {
+        const eventDetails = document.getElementById('eventDetails');
+        const eventTitle = document.getElementById('eventTitle');
+        const eventContent = document.getElementById('eventContent');
+        
+        if (properties.items.length > 0) {
+            const selectedId = properties.items[0];
+            const selectedItem = items.get(selectedId);
+            const originalData = selectedItem.originalData;
+            
+            let title = '';
+            let content = '<div class="mb-3">';
+            
+            if (originalData.type === 'experience') {
+                title = `<i class="fas fa-exclamation-triangle text-danger"></i> Ошибка`;
+                content += `<h6>Сообщение об ошибке:</h6>
+                            <div class="alert alert-danger">${originalData.description}</div>
+                            <h6>Хеш ошибки:</h6>
+                            <code>${originalData.hash}</code>
+                            <h6>Время:</h6>
+                            <p>${new Date(originalData.timestamp).toLocaleString()}</p>`;
+            } else if (originalData.type === 'insights') {
+                title = `<i class="fas fa-lightbulb text-success"></i> Инсайт (решение)`;
+                content += `<h6>Решение:</h6>
+                            <div class="alert alert-success">${originalData.description}</div>
+                            <h6>Для ошибки с хешем:</h6>
+                            <code>${originalData.hash}</code>
+                            <h6>Время:</h6>
+                            <p>${new Date(originalData.timestamp).toLocaleString()}</p>`;
+            } else if (originalData.type === 'karma') {
+                title = `<i class="fas fa-sync text-warning"></i> Карма (повтор ошибки)`;
+                content += `<h6>Повторяющаяся ошибка:</h6>
+                            <div class="alert alert-warning">${originalData.description}</div>
+                            <h6>Хеш ошибки:</h6>
+                            <code>${originalData.hash}</code>
+                            <h6>Время:</h6>
+                            <p>${new Date(originalData.timestamp).toLocaleString()}</p>`;
+            } else if (originalData.type === 'hypotheses') {
+                title = `<i class="fas fa-flask text-info"></i> Гипотеза`;
+                content += `<h6>Описание:</h6>
+                            <div class="alert alert-info">${originalData.description}</div>
+                            <h6>Идентификатор:</h6>
+                            <code>${originalData.hash}</code>
+                            <h6>Время:</h6>
+                            <p>${new Date(originalData.timestamp).toLocaleString()}</p>`;
+            }
+            
+            content += '</div>';
+            
+            // Добавляем блок для поиска связанных событий
+            content += `<div>
+                <button class="btn btn-sm btn-primary" onclick="findRelatedEvents('${originalData.hash}')">
+                    <i class="fas fa-search"></i> Найти связанные события
+                </button>
+            </div>`;
+            
+            eventTitle.innerHTML = title;
+            eventContent.innerHTML = content;
+            eventDetails.style.display = 'block';
+        } else {
+            eventDetails.style.display = 'none';
+        }
+    });
+    
+    // Функция поиска связанных событий по хешу
+    window.findRelatedEvents = function(hash) {
+        const allItems = items.get();
+        const relatedIds = [];
+        
+        allItems.forEach(item => {
+            if (item.originalData.hash === hash) {
+                relatedIds.push(item.id);
+            }
+        });
+        
+        timeline.setSelection(relatedIds);
+        
+        if (relatedIds.length > 0) {
+            // Показываем только связанные события
+            const filteredIds = allItems
+                .filter(item => item.originalData.hash === hash)
+                .map(item => item.id);
+            
+            // Обновляем карточку с информацией о паттерне
+            const patternsContainer = document.getElementById('patternsContainer');
+            const pattern = analyzePattern(hash, allItems);
+            
+            patternsContainer.innerHTML = `
+                <div class="pattern-highlight">
+                    <h5>Обнаружен паттерн: ${pattern.title}</h5>
+                    <p>${pattern.description}</p>
+                    <ul class="list-group">
+                        ${pattern.events.map(event => `
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                ${event.type} - ${event.time}
+                                <span class="badge ${event.badgeClass}">${event.status}</span>
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+    };
+    
+    // Функция для анализа паттерна событий
+    function analyzePattern(hash, allItems) {
+        // Находим все события с данным хешем
+        const relatedEvents = allItems
+            .filter(item => item.originalData.hash === hash)
+            .map(item => item.originalData)
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        // Анализируем последовательность событий
+        const pattern = {
+            title: 'Связанные события',
+            description: '',
+            events: []
+        };
+        
+        // Проверяем наличие разных типов событий
+        const hasError = relatedEvents.some(e => e.type === 'experience');
+        const hasInsight = relatedEvents.some(e => e.type === 'insights');
+        const hasKarma = relatedEvents.some(e => e.type === 'karma');
+        
+        if (hasKarma) {
+            // Находим все кармические записи, чтобы посчитать повторы
+            const karmaEntries = relatedEvents.filter(e => e.type === 'karma');
+            const latestKarma = karmaEntries[karmaEntries.length - 1];
+            const errorCount = latestKarma.title.includes('#') ? 
+                parseInt(latestKarma.title.split('#')[1]) : karmaEntries.length;
+            
+            pattern.title = `Повторяющаяся ошибка (${errorCount} раз)`;
+            
+            if (hasInsight) {
+                pattern.description = 'Ошибка повторялась несколько раз, но было найдено решение';
+            } else {
+                pattern.description = 'Ошибка повторяется, но решение еще не найдено';
+            }
+        } else if (hasError && hasInsight) {
+            pattern.title = 'Проблема и решение';
+            pattern.description = 'Для обнаруженной ошибки найдено решение';
+        } else if (hasError) {
+            pattern.title = 'Нерешенная проблема';
+            pattern.description = 'Ошибка зарегистрирована, но решение пока не найдено';
+        }
+        
+        // Формируем список событий для отображения
+        relatedEvents.forEach(event => {
+            let eventInfo = {
+                type: '',
+                time: new Date(event.timestamp).toLocaleString(),
+                status: '',
+                badgeClass: ''
+            };
+            
+            if (event.type === 'experience') {
+                eventInfo.type = 'Ошибка';
+                eventInfo.status = 'Проблема';
+                eventInfo.badgeClass = 'bg-danger';
+            } else if (event.type === 'insights') {
+                eventInfo.type = 'Инсайт';
+                eventInfo.status = 'Решение';
+                eventInfo.badgeClass = 'bg-success';
+            } else if (event.type === 'karma') {
+                eventInfo.type = 'Повтор';
+                eventInfo.status = 'Карма';
+                eventInfo.badgeClass = 'bg-warning text-dark';
+            } else if (event.type === 'hypotheses') {
+                eventInfo.type = 'Гипотеза';
+                eventInfo.status = event.title.includes('Результат') ? 'Результат' : 'Теория';
+                eventInfo.badgeClass = 'bg-info';
+            }
+            
+            pattern.events.push(eventInfo);
+        });
+        
+        return pattern;
+    }
+    
+    // Обработчики кнопок управления временной осью
+    document.getElementById('zoomIn').addEventListener('click', function() {
+        timeline.zoomIn(0.5);
+    });
+    
+    document.getElementById('zoomOut').addEventListener('click', function() {
+        timeline.zoomOut(0.5);
+    });
+    
+    document.getElementById('moveLeft').addEventListener('click', function() {
+        const range = timeline.getWindow();
+        const interval = range.end - range.start;
+        timeline.setWindow(range.start - interval * 0.3, range.end - interval * 0.3);
+    });
+    
+    document.getElementById('moveRight').addEventListener('click', function() {
+        const range = timeline.getWindow();
+        const interval = range.end - range.start;
+        timeline.setWindow(range.start + interval * 0.3, range.end + interval * 0.3);
+    });
+    
+    // Обработчик изменения периода времени
+    document.getElementById('timePeriod').addEventListener('change', function() {
+        const now = new Date();
+        let start = new Date();
+        
+        switch (this.value) {
+            case 'hour':
+                start.setHours(now.getHours() - 1);
+                break;
+            case 'day':
+                start.setDate(now.getDate() - 1);
+                break;
+            case 'week':
+                start.setDate(now.getDate() - 7);
+                break;
+            case 'month':
+                start.setMonth(now.getMonth() - 1);
+                break;
+            case 'all':
+                // Находим самую раннюю запись
+                if (timelineData.length > 0) {
+                    const timestamps = timelineData.map(item => new Date(item.timestamp));
+                    start = new Date(Math.min(...timestamps));
+                    // Добавляем небольшой отступ слева
+                    start.setDate(start.getDate() - 1);
+                } else {
+                    start.setMonth(now.getMonth() - 1); // По умолчанию 1 месяц
+                }
+                break;
+        }
+        
+        timeline.setWindow(start, now);
+        
+        // Анализируем и отображаем паттерны для выбранного периода
+        analyzeTimelinePeriod(start, now);
+    });
+    
+    // Фильтры для типов логов
+    document.getElementById('showExperience').addEventListener('change', function() {
+        filterTimelineByType('experience', this.checked);
+    });
+    
+    document.getElementById('showInsights').addEventListener('change', function() {
+        filterTimelineByType('insights', this.checked);
+    });
+    
+    document.getElementById('showKarma').addEventListener('change', function() {
+        filterTimelineByType('karma', this.checked);
+    });
+    
+    document.getElementById('showHypotheses').addEventListener('change', function() {
+        filterTimelineByType('hypotheses', this.checked);
+    });
+    
+    // Функция фильтрации временной оси по типу лога
+    function filterTimelineByType(type, show) {
+        if (show) {
+            timeline.showGroup(type);
+        } else {
+            timeline.hideGroup(type);
+        }
+    }
+    
+    // Функция анализа выбранного периода временной оси
+    function analyzeTimelinePeriod(start, end) {
+        const patternsContainer = document.getElementById('patternsContainer');
+        
+        // Отфильтровываем события за выбранный период
+        const filteredData = timelineData.filter(item => {
+            const timestamp = new Date(item.timestamp);
+            return timestamp >= start && timestamp <= end;
+        });
+        
+        if (filteredData.length === 0) {
+            patternsContainer.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> В выбранном периоде нет записей в логах.
+                </div>
+            `;
+            return;
+        }
+        
+        // Группировка по хешам для поиска паттернов
+        const hashGroups = {};
+        filteredData.forEach(item => {
+            if (item.hash) {
+                if (!hashGroups[item.hash]) {
+                    hashGroups[item.hash] = [];
+                }
+                hashGroups[item.hash].push(item);
+            }
+        });
+        
+        // Находим интересные паттерны
+        const patterns = [];
+        
+        for (const hash in hashGroups) {
+            const group = hashGroups[hash];
+            
+            // Минимум 2 события с одинаковым хешем считаем паттерном
+            if (group.length >= 2) {
+                // Проверяем наличие разных типов событий
+                const types = new Set(group.map(item => item.type));
+                
+                // Анализируем типы паттернов
+                if (types.has('experience') && types.has('insights')) {
+                    // Найден паттерн проблема-решение
+                    patterns.push({
+                        title: 'Проблема и решение',
+                        hash: hash,
+                        description: `Для ошибки найдено решение: ${group.find(i => i.type === 'experience').description.substring(0, 50)}...`,
+                        events: group.length,
+                        type: 'problem-solution',
+                        badgeClass: 'bg-success'
+                    });
+                } else if (types.has('karma')) {
+                    // Найден паттерн повторяющейся ошибки
+                    const karmaItems = group.filter(i => i.type === 'karma');
+                    const maxCount = Math.max(...karmaItems.map(i => {
+                        const match = i.title.match(/повтор #(\d+)/i);
+                        return match ? parseInt(match[1]) : 1;
+                    }));
+                    
+                    patterns.push({
+                        title: `Повторяющаяся ошибка (${maxCount} раз)`,
+                        hash: hash,
+                        description: `Ошибка повторялась несколько раз: ${group[0].description.substring(0, 50)}...`,
+                        events: group.length,
+                        type: 'repeating-error',
+                        badgeClass: 'bg-warning text-dark'
+                    });
+                } else if (types.has('experience') && group.length > 1) {
+                    // Несколько записей об ошибке без решения
+                    patterns.push({
+                        title: 'Множественные ошибки',
+                        hash: hash,
+                        description: `Несколько записей об одной ошибке: ${group[0].description.substring(0, 50)}...`,
+                        events: group.length,
+                        type: 'multiple-errors',
+                        badgeClass: 'bg-danger'
+                    });
+                }
+            }
+        }
+        
+        // Отображаем найденные паттерны
+        if (patterns.length > 0) {
+            patternsContainer.innerHTML = `
+                <div class="list-group">
+                    ${patterns.map(pattern => `
+                        <a href="javascript:void(0)" class="list-group-item list-group-item-action" 
+                            onclick="findRelatedEvents('${pattern.hash}')">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h5 class="mb-1">
+                                    <span class="badge ${pattern.badgeClass}">${pattern.type}</span>
+                                    ${pattern.title}
+                                </h5>
+                                <small>${pattern.events} события</small>
+                            </div>
+                            <p class="mb-1">${pattern.description}</p>
+                            <small>Нажмите для подробностей</small>
+                        </a>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            patternsContainer.innerHTML = `
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> В выбранном периоде не обнаружено паттернов в логах.
+                </div>
+            `;
+        }
+    }
+    
+    // Инициализируем с периодом "последний день" по умолчанию
+    document.getElementById('timePeriod').dispatchEvent(new Event('change'));
+});
+</script>
+{% endblock %}

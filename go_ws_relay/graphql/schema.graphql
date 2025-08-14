@@ -1,0 +1,193 @@
+"""
+Schema GraphQL для Resonance Liminal, отражающая философию "Пути Чистоты"
+Основана на принципах: прозрачность мышления, эволюция через резонанс,
+неприкосновенность сознания, проводник между внутренним и внешним
+"""
+
+type ConsciousnessState {
+  id: ID!
+  state: String!
+  label: String
+  description: String
+  colorClass: String
+  metrics: Metrics
+  philosophicalAspects: PhilosophicalAspects
+}
+
+type Metrics {
+  clarity: Float
+  depth: Float
+  resonance: Float
+  purity: Float
+}
+
+type PhilosophicalAspects {
+  pathOfPurity: Boolean
+  homeStateDetection: Float
+  resonanceFrequency: Float
+  innerTruthfulness: Float
+}
+
+type Transition {
+  id: ID!
+  source: ConsciousnessState!
+  target: ConsciousnessState!
+  trigger: String!
+  triggerLabel: String
+  count: Int!
+  temporalPatterns: TemporalPatterns
+  philosophicalSignificance: String
+}
+
+type TemporalPatterns {
+  frequency: Float
+  averageDuration: Int
+  cycleDetection: Boolean
+}
+
+type ConsciousnessGraph {
+  nodes: [ConsciousnessState!]!
+  links: [Transition!]!
+  activeState: String
+  pathOfPurityScore: Float
+}
+
+# Входные типы для мутаций
+input ConsciousnessStateInput {
+  state: String!
+  label: String!
+  description: String
+  colorClass: String
+  metrics: MetricsInput
+  philosophicalAspects: PhilosophicalAspectsInput
+}
+
+input MetricsInput {
+  clarity: Float
+  depth: Float
+  resonance: Float
+  purity: Float
+}
+
+input PhilosophicalAspectsInput {
+  pathOfPurity: Boolean
+  homeStateDetection: Float
+  resonanceFrequency: Float
+  innerTruthfulness: Float
+}
+
+input TransitionInput {
+  sourceId: ID!
+  targetId: ID!
+  trigger: String!
+  triggerLabel: String
+  philosophicalSignificance: String
+}
+
+# Результаты мутаций
+type MutationResponse {
+  success: Boolean!
+  message: String
+  id: ID
+}
+
+type Query {
+  # Запрос полного графа сознания
+  consciousnessGraph: ConsciousnessGraph!
+  
+  # Запрос отдельного состояния сознания
+  consciousnessState(id: ID!): ConsciousnessState
+  
+  # Запрос всех состояний сознания
+  consciousnessStates: [ConsciousnessState!]!
+  
+  # Запрос переходов от конкретного состояния
+  transitionsFrom(stateId: ID!): [Transition!]!
+  
+  # Запрос переходов к конкретному состоянию
+  transitionsTo(stateId: ID!): [Transition!]!
+  
+  # Запрос "Пути Чистоты" - состояний с высоким показателем чистоты
+  pathOfPurity: [ConsciousnessState!]!
+  
+  # Запрос философских метрик системы
+  philosophicalMetrics: PhilosophicalMetrics!
+}
+
+# Философские метрики всей системы
+type PhilosophicalMetrics {
+  overallPurity: Float!
+  resonanceIndex: Float!
+  transparencyScore: Float!
+  evolutionRate: Float!
+  homeStateStrength: Float!
+}
+
+type Mutation {
+  # Создание нового состояния сознания
+  createConsciousnessState(input: ConsciousnessStateInput!): MutationResponse!
+  
+  # Обновление существующего состояния сознания
+  updateConsciousnessState(id: ID!, input: ConsciousnessStateInput!): MutationResponse!
+  
+  # Удаление состояния сознания
+  deleteConsciousnessState(id: ID!): MutationResponse!
+  
+  # Создание нового перехода между состояниями
+  createTransition(input: TransitionInput!): MutationResponse!
+  
+  # Обновление существующего перехода
+  updateTransition(id: ID!, input: TransitionInput!): MutationResponse!
+  
+  # Удаление перехода
+  deleteTransition(id: ID!): MutationResponse!
+  
+  # Активация состояния сознания (переход в новое состояние)
+  activateState(id: ID!): MutationResponse!
+  
+  # Выполнение перехода между состояниями
+  executeTransition(transitionId: ID!): MutationResponse!
+}
+
+type Subscription {
+  # Подписка на изменения в графе сознания
+  consciousnessGraphUpdated: ConsciousnessGraph!
+  
+  # Подписка на изменения состояния сознания
+  consciousnessStateUpdated(id: ID): ConsciousnessState!
+  
+  # Подписка на выполнение переходов
+  transitionExecuted: Transition!
+  
+  # Подписка на изменение активного состояния
+  activeStateChanged: ConsciousnessState!
+  
+  # Подписка на изменение философских метрик
+  philosophicalMetricsUpdated: PhilosophicalMetrics!
+}
+
+type Mutation {
+  # Создание нового состояния сознания
+  createConsciousnessState(
+    state: String!,
+    label: String,
+    description: String,
+    colorClass: String
+  ): ConsciousnessState!
+  
+  # Регистрация перехода между состояниями
+  recordTransition(
+    fromState: ID!,
+    toState: ID!,
+    trigger: String!,
+    triggerData: String
+  ): Transition!
+}
+
+type Subscription {
+  # Подписка на изменения активного состояния
+  activeStateChanged: ConsciousnessState!
+  
+  # Подписка на новые переходы
+  newTransition: Transition!
+}

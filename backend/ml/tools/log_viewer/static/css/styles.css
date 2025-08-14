@@ -1,0 +1,215 @@
+/* 
+ * Styles for Intelligent Log Analysis Dashboard
+ * Resonance Liminal ML Backend - 2025
+ */
+
+/* General Styles */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.footer {
+    border-top: 1px solid #dee2e6;
+}
+
+/* Card Shadows and Styling */
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    margin-bottom: 1.5rem;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.card-header {
+    border-bottom: 0;
+    padding: 1rem 1.25rem;
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+/* Log Type Badges and Colors */
+.badge {
+    padding: 0.4em 0.6em;
+    font-weight: 500;
+    border-radius: 0.25rem;
+}
+
+/* Timeline Styles */
+.timeline-wrapper {
+    padding: 20px;
+    border-radius: 5px;
+}
+
+/* Dashboard Statistics Cards */
+.stat-card {
+    transition: transform 0.3s ease-in-out;
+    cursor: pointer;
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+/* Table Enhancements */
+.table {
+    font-size: 0.95rem;
+}
+
+.table thead th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    border-top: none;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* Log Entry Details */
+.log-details pre {
+    font-size: 0.85rem;
+    border-radius: 0.25rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.log-entry-highlight {
+    animation: highlight-pulse 1.5s ease-in-out;
+}
+
+@keyframes highlight-pulse {
+    0% { background-color: rgba(0, 123, 255, 0.1); }
+    50% { background-color: rgba(0, 123, 255, 0.2); }
+    100% { background-color: transparent; }
+}
+
+/* Pattern Detection Highlighting */
+.pattern-container {
+    border-left: 5px solid #ffc107;
+    padding-left: 15px;
+    margin: 15px 0;
+}
+
+.pattern-title {
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.pattern-description {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* Search Bar Enhancements */
+.search-container {
+    margin-bottom: 20px;
+}
+
+.search-container .form-control:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    border-color: #80bdff;
+}
+
+/* Responsive Timeline Adjustments */
+@media (max-width: 768px) {
+    #timelineContainer {
+        height: 400px !important;
+    }
+    
+    .time-period-selector {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .time-period-selector > * {
+        margin-bottom: 10px;
+    }
+}
+
+/* Status Indicators */
+.status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.status-error {
+    background-color: #dc3545;
+}
+
+.status-success {
+    background-color: #28a745;
+}
+
+.status-warning {
+    background-color: #ffc107;
+}
+
+.status-info {
+    background-color: #17a2b8;
+}
+
+/* JSON Formatting */
+.json-key {
+    color: #7952b3;
+}
+
+.json-string {
+    color: #28a745;
+}
+
+.json-number {
+    color: #fd7e14;
+}
+
+.json-boolean {
+    color: #dc3545;
+}
+
+.json-null {
+    color: #6c757d;
+}
+
+/* Animations */
+.fade-in {
+    animation: fadeIn 0.5s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Error hash code formatting */
+code {
+    background-color: #f8f9fa;
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 85%;
+}

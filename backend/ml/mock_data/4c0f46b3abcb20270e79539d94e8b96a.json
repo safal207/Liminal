@@ -1,0 +1,26 @@
+{
+  "request": {
+    "model": "gpt-4",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Третий тестовый запрос"
+      }
+    ],
+    "max_tokens": 100,
+    "temperature": 0.7
+  },
+  "response": {
+    "content": "{\"analysis\": \"Анализ запроса: Третий тестовый запрос... Обнаружены стандартные паттерны поведения пользователя без значительных отклонений от нормы.\", \"recommendations\": [\"Продолжить мониторинг активности\", \"Обновить базовые показатели для данного типа поведения\", \"Собрать дополнительные данные для улучшения точности модели\"], \"severity\": \"low\", \"confidence\": 0.75, \"action_items\": [\"Обновить профиль пользователя\", \"Пересмотреть пороговые значения для триггеров оповещений\", \"Добавить дополнительные метрики мониторинга\"], \"summary\": \"Активность пользователя находится в пределах нормы, существенных отклонений не выявлено\", \"technical_details\": {\"model_confidence\": 0.75, \"baseline_deviation\": 0.15, \"detection_method\": \"statistical_analysis\", \"features_analyzed\": [\"user_activity\", \"session_length\", \"error_rate\", \"request_pattern\"], \"timestamp\": 1754219056.837589}}",
+    "model": "mock-gpt-4",
+    "usage": {
+      "prompt_tokens": 5,
+      "completion_tokens": 769,
+      "total_tokens": 774
+    },
+    "finish_reason": "stop",
+    "created_at": 1754219056.837589,
+    "is_mock": true,
+    "cached": false
+  }
+}

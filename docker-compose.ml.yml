@@ -1,0 +1,228 @@
+version: '3.8'
+
+services:
+  # Оптимизированный Multi-LLM backend с ML-функциями
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.ml.opt  # Используем оптимизированный ML Dockerfile
+    volumes:
+      - ./backend:/app
+      - pip_cache:/root/.cache/pip
+      - model_cache:/app/ml/models
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-demo_key}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-demo_key}
+      - XAI_CACHE_SIZE=${XAI_CACHE_SIZE:-1000}
+      - XAI_ENABLE_SHAP=${XAI_ENABLE_SHAP:-true}
+      - XAI_ENABLE_LIME=${XAI_ENABLE_LIME:-true}
+      - REDIS_HOST=redis
+      - PROMETHEUS_URL=http://prometheus:9090
+      - ML_ENABLED=true
+      - OPENBLAS_NUM_THREADS=1
+      - OMP_NUM_THREADS=1
+      - MULTI_LLM_FALLBACK_ENABLED=${MULTI_LLM_FALLBACK_ENABLED:-true}
+      - MULTI_LLM_CONSENSUS_THRESHOLD=${MULTI_LLM_CONSENSUS_THRESHOLD:-0.7}
+      - MULTI_LLM_MODE=${MULTI_LLM_MODE:-demo}
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - redis
+      - prometheus
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--workers", "4"]
+
+  # Redis для кэширования, PubSub и Rate Limiting
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Prometheus для мониторинга и ML-метрик
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: always
+
+  # Grafana для визуализации ML-метрик и алертов
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./grafana:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: always
+
+  # MinIO для хранения ML-моделей
+  minio:
+    image: minio/minio:latest
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # Kenning ML-сервис для автоматизации ML-задач и обучения моделей
+  kenning:
+    build:
+      context: ./backend/ml
+      dockerfile: Dockerfile.kenning
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./backend/ml:/app/ml
+      - ./backend/ml/configs:/app/configs
+      - model_cache:/app/ml/models
+      - kenning_data:/root/.kenning
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MINIO_HOST=minio
+      - REDIS_HOST=redis
+      - PROMETHEUS_URL=http://prometheus:9090
+      - KENNING_MODEL_DIR=/app/ml/models
+      - KENNING_CONFIG_DIR=/app/configs
+      - OPENBLAS_NUM_THREADS=1
+      - OMP_NUM_THREADS=1
+    depends_on:
+      - redis
+      - minio
+      - prometheus
+    command: ["python", "-m", "kenning.service", "--server", "--host", "0.0.0.0", "--port", "5000"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Jupyter для анализа ML-данных и экспериментов
+  jupyter:
+    image: jupyter/datascience-notebook:latest
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - model_cache:/home/jovyan/models
+    ports:
+      - "8888:8888"
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    command: ["start-notebook.sh", "--NotebookApp.token=''", "--NotebookApp.password=''"]
+
+  # ML Feature Extractor для извлечения ML-признаков из бэкенда
+  ml-feature-extractor:
+    build:
+      context: ./backend/ml/extractors
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend/ml/extractors:/app
+      - model_cache:/app/models
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_HOST=redis
+      - BACKEND_URL=http://backend:8000
+      - KENNING_URL=http://kenning:5000
+      - EXTRACT_INTERVAL=30
+    depends_on:
+      - redis
+      - backend
+      - kenning
+    command: ["python", "feature_extractor.py"]
+    restart: unless-stopped
+
+  # ML Predictor для предсказания аномалий
+  ml-predictor:
+    build:
+      context: ./backend/ml/predictors
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./backend/ml/predictors:/app
+      - model_cache:/app/models
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_HOST=redis
+      - KENNING_URL=http://kenning:5000
+      - UPDATE_INTERVAL=30
+      - HOST=0.0.0.0
+      - PORT=8002
+    depends_on:
+      - redis
+      - kenning
+    command: ["python", "anomaly_predictor.py"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Auto-Retrainer для автоматического переобучения моделей
+  ml-retrainer:
+    build:
+      context: ./backend/ml
+      dockerfile: Dockerfile.kenning
+    volumes:
+      - ./backend/ml:/app/ml
+      - ./backend/ml/configs:/app/configs
+      - model_cache:/app/ml/models
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_HOST=redis
+      - PROMETHEUS_URL=http://prometheus:9090
+      - KENNING_MODEL_DIR=/app/ml/models
+      - KENNING_CONFIG_DIR=/app/configs
+      - OPENBLAS_NUM_THREADS=1
+      - OMP_NUM_THREADS=1
+    depends_on:
+      - redis
+      - prometheus
+      - kenning
+    command: ["python", "/app/ml/auto_retrain.py", "--interval", "3600"]
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+  pip_cache:
+  model_cache:
+  minio_data:
+  kenning_data:

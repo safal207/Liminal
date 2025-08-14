@@ -1,0 +1,15 @@
+{
+  "name": "resonance-liminal-frontend-tests",
+  "version": "1.0.0",
+  "description": "Playwright tests for organic AI monitoring dashboard",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "install-browsers": "playwright install"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  },
+  "keywords": ["playwright", "testing", "ui", "organic-ai", "thyroid", "endocrine"]
+}

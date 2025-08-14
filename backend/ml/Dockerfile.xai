@@ -1,0 +1,53 @@
+# XAI Intelligence Service Dockerfile
+FROM python:3.11-slim
+
+LABEL maintainer="Resonance Liminal Team"
+LABEL description="XAI Intelligence Service with SHAP, LIME, and OpenAI integration"
+
+# Устанавливаем системные зависимости
+RUN apt-get update && apt-get install -y \
+    curl \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Создаем рабочую директорию
+WORKDIR /app
+
+# Копируем requirements
+COPY ../requirements.txt .
+
+# Устанавливаем Python зависимости
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Устанавливаем дополнительные XAI зависимости
+RUN pip install --no-cache-dir \
+    shap>=0.42.0 \
+    lime>=0.2.0 \
+    openai>=1.3.0 \
+    scikit-learn>=1.3.0 \
+    numpy>=1.24.0 \
+    pandas>=2.0.0 \
+    joblib>=1.3.0 \
+    onnx>=1.14.0 \
+    onnxruntime>=1.15.0
+
+# Копируем ML модули
+COPY . .
+
+# Создаем директории для моделей и данных
+RUN mkdir -p /models /data /app/logs
+
+# Устанавливаем переменные окружения
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Экспонируем порт
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Запускаем XAI сервис
+CMD ["python", "-m", "uvicorn", "xai_main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

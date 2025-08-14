@@ -1,0 +1,33 @@
+version: 1
+formatters:
+  default:
+    format: "%(asctime)s %(levelname)s %(name)s %(message)s"
+handlers:
+  file:
+    class: logging.FileHandler
+    formatter: default
+    filename: test_websocket.log
+    encoding: utf-8
+  console:
+    class: logging.StreamHandler
+    formatter: default
+loggers:
+  uvicorn:
+    handlers: [file, console]
+    level: INFO
+  websocket.connection_manager:
+    handlers: [file, console]
+    level: DEBUG
+    propagate: yes
+  uvicorn.error:
+    handlers: [file, console]
+    level: INFO
+  uvicorn.access:
+    handlers: [file, console]
+    level: INFO
+  websocket.connection_manager:
+    handlers: [file, console]
+    level: INFO
+root:
+  handlers: [file, console]
+  level: INFO

@@ -1,0 +1,72 @@
+FROM python:3.11-slim
+
+# Установка необходимых системных зависимостей
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    curl \
+    libopenblas-base \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Установка базовых Python-пакетов
+RUN pip install --no-cache-dir --upgrade pip wheel setuptools
+
+# Установка основных зависимостей с явным указанием версий
+RUN pip install --no-cache-dir \
+    pyyaml==6.0 \
+    prometheus-client==0.17.1 \
+    redis==4.5.5 \
+    fastapi==0.100.0 \
+    uvicorn==0.22.0 \
+    python-dotenv==1.0.0 \
+    bcrypt==4.0.1 \
+    passlib==1.7.4 \
+    python-jose==3.3.0 \
+    websockets==11.0.3
+
+# Установка ML-зависимостей
+RUN pip install --no-cache-dir \
+    numpy==1.24.3 \
+    pandas==2.0.3 \
+    scikit-learn==1.3.0 \
+    joblib==1.3.1
+
+# Опционально: поддержка XAI и моделей согласно ML Architecture документации
+RUN pip install --no-cache-dir \
+    shap==0.42.1 \
+    lime==0.2.0.1 \
+    onnxruntime==1.15.1
+
+# Установка рабочей директории
+WORKDIR /app
+
+# Копирование файлов приложения
+COPY . .
+
+# Установка переменных окружения для ML
+ENV ML_ENABLED=true \
+    REDIS_HOST=ml-redis \
+    PROMETHEUS_URL=http://ml-prometheus:9090 \
+    PYTHONUNBUFFERED=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    OMP_NUM_THREADS=1
+
+# Проверка корректности установки ключевых зависимостей
+RUN python -c "import yaml; print('PyYAML - OK')" && \
+    python -c "import prometheus_client; print('Prometheus Client - OK')" && \
+    python -c "import redis; print('Redis - OK')" && \
+    python -c "import bcrypt; print('Bcrypt - OK')" && \
+    python -c "import numpy; print('NumPy - OK')" && \
+    python -c "import pandas; print('Pandas - OK')" && \
+    python -c "import sklearn; print('Scikit-learn - OK')"
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+# Экспозиция порта
+EXPOSE 8000
+
+# Запуск приложения
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

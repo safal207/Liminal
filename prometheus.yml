@@ -1,0 +1,52 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+scrape_configs:
+  # Основной backend с WebSocket
+  - job_name: 'resonance-backend'
+    static_configs:
+      - targets: ['resonance-backend:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # ML метрики (расширенные фичи)
+  - job_name: 'resonance-ml-metrics'
+    static_configs:
+      - targets: ['resonance-backend:8000']
+    metrics_path: '/ml_metrics/prometheus'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+
+  # Kenning ML Service
+  - job_name: 'kenning-ml-service'
+    static_configs:
+      - targets: ['kenning-ml:5000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Redis метрики
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    metrics_path: '/metrics'
+
+  # Node Exporter (если используется)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Prometheus самомониторинг
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093

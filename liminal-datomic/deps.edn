@@ -1,0 +1,2 @@
+{:paths ["src"]
+ :deps {com.datomic/local {:mvn/version "1.0.291"}}}

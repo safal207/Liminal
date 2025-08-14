@@ -1,0 +1,33 @@
+FROM python:3.11-slim AS builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y build-essential gcc
+
+# Create virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install pip tools
+RUN pip install --no-cache-dir --upgrade pip wheel setuptools
+
+# Copy requirements
+WORKDIR /app
+COPY requirements.txt .
+
+# Split requirements installation for better visibility and caching
+RUN echo "Installing Python packages - this may take several minutes..."
+RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
+
+# Final stage
+FROM python:3.11-slim
+
+# Copy virtual environment
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copy application
+WORKDIR /app
+COPY . .
+
+# Run application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]

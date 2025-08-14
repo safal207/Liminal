@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LIMINAL Memory Timeline</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #timeline {
+            border: 1px solid #ddd;
+            padding: 15px;
+            height: 500px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .memory {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 4px solid #4CAF50;
+            background-color: #f9f9f9;
+        }
+        .memory .time {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .memory .content {
+            margin: 5px 0;
+        }
+        .memory .type {
+            display: inline-block;
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        input, textarea, button {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>LIMINAL Memory Timeline</h1>
+    
+    <div id="timeline">
+        <p>Подключение к временной шкале...</p>
+    </div>
+    
+    <h2>Добавить воспоминание</h2>
+    <form id="memoryForm">
+        <div>
+            <label for="memoryType">Тип:</label>
+            <input type="text" id="memoryType" required>
+        </div>
+        <div>
+            <label for="memoryContent">Содержимое:</label>
+            <textarea id="memoryContent" rows="3" required></textarea>
+        </div>
+        <button type="submit">Добавить</button>
+    </form>
+    
+    <script>
+        const timeline = document.getElementById('timeline');
+        const memoryForm = document.getElementById('memoryForm');
+        
+        // Подключаемся к WebSocket
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws/timeline`;
+        const socket = new WebSocket(wsUrl);
+        
+        // Обработчики WebSocket
+        socket.onopen = () => {
+            console.log('Connected to WebSocket');
+            timeline.innerHTML = '<p>Подключено к временной шкале. Ожидание данных...</p>';
+        };
+        
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log('Received:', data);
+            
+            if (data.event === 'initial_state') {
+                timeline.innerHTML = '';
+                if (data.data && data.data.length > 0) {
+                    data.data.forEach(memory => addMemoryToTimeline(memory));
+                } else {
+                    timeline.innerHTML = '<p>Нет данных в таймлайне.</p>';
+                }
+            } 
+            else if (data.event === 'memory_added') {
+                addMemoryToTimeline(data.data);
+            }
+        };
+        
+        socket.onclose = () => {
+            timeline.innerHTML += '<p>Соединение с сервером разорвано. Перезагрузите страницу для повторного подключения.</p>';
+        };
+        
+        // Функция для добавления воспоминания в интерфейс
+        function addMemoryToTimeline(memory) {
+            const memoryElement = document.createElement('div');
+            memoryElement.className = 'memory';
+            memoryElement.innerHTML = `
+                <div class="time">${new Date(memory.timestamp).toLocaleString()}</div>
+                <div class="type">${memory.type}</div>
+                <div class="content">${memory.content}</div>
+            `;
+            
+            // Вставляем новое сообщение в начало
+            if (timeline.firstChild) {
+                timeline.insertBefore(memoryElement, timeline.firstChild);
+            } else {
+                timeline.appendChild(memoryElement);
+            }
+        }
+        
+        // Обработка отправки формы
+        memoryForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const memoryType = document.getElementById('memoryType').value;
+            const memoryContent = document.getElementById('memoryContent').value;
+            
+            try {
+                const response = await fetch('/timeline/memories/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        content: memoryContent,
+                        memory_type: memoryType,
+                        metadata: {}
+                    })
+                });
+                
+                if (response.ok) {
+                    // Форма очистится после успешной отправки
+                    memoryForm.reset();
+                } else {
+                    console.error('Ошибка при добавлении воспоминания:', await response.text());
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+            }
+        });
+    </script>
+</body>
+</html>

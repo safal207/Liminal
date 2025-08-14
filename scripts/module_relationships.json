@@ -1,0 +1,55 @@
+{
+  "bonds": [
+    {
+      "module_a": "consciousness_cell",
+      "module_b": "learning_module",
+      "bond_strength": 0.4,
+      "bond_type": "friendship",
+      "shared_memories": [
+        {
+          "timestamp": "2025-08-07T16:33:37.098663",
+          "event": "consciousness_cell сказал: Привет! Давай дружить!",
+          "emotion": "радость"
+        }
+      ],
+      "current_emotion": "радость",
+      "trust_level": 0.55,
+      "last_interaction": "2025-08-07T16:33:37.098663",
+      "relationship_age": 3
+    },
+    {
+      "module_a": "learning_module",
+      "module_b": "websocket_relay",
+      "bond_strength": 0.4,
+      "bond_type": "friendship",
+      "shared_memories": [
+        {
+          "timestamp": "2025-08-07T16:41:37.510533",
+          "event": "learning_module сказал: Привет! Давай дружить!",
+          "emotion": "радость"
+        }
+      ],
+      "current_emotion": "радость",
+      "trust_level": 0.55,
+      "last_interaction": "2025-08-07T16:41:37.510533",
+      "relationship_age": 2
+    },
+    {
+      "module_a": "protection_module",
+      "module_b": "neo4j_connector",
+      "bond_strength": 0.4,
+      "bond_type": "friendship",
+      "shared_memories": [
+        {
+          "timestamp": "2025-08-07T16:50:21.455574",
+          "event": "protection_module сказал: Привет! Давай дружить!",
+          "emotion": "радость"
+        }
+      ],
+      "current_emotion": "радость",
+      "trust_level": 0.55,
+      "last_interaction": "2025-08-07T16:50:21.455574",
+      "relationship_age": 1
+    }
+  ]
+}

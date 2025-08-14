@@ -1,0 +1,81 @@
+# MIT Practices: Multi-Stage Build с Dependencies Decoupling
+FROM python:3.11-slim as dependencies
+
+# MIT Practice: Explicit System Dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    gcc \
+    wget \
+    curl \
+    git \
+    libopenblas-dev \
+    liblapack-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# MIT Practice: Isolated Environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# MIT Practice: Dependencies Staging и Local Caching
+WORKDIR /deps
+COPY pip.conf /etc/pip.conf
+COPY requirements.txt .
+
+# MIT Practice: Explicit Critical Dependencies Installation (Reliability First)
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir wheel pip-tools && \
+    pip install --no-cache-dir -U pyyaml prometheus-client redis requests
+
+# MIT Practice: Dependency Isolation (Tier-Based Installation)
+RUN pip install --no-cache-dir -U fastapi uvicorn[standard] python-jose pydantic
+
+# MIT Practice: Explicit Versioning & Recording
+RUN pip freeze > /opt/venv/installed-dependencies.txt
+
+# MIT Practice: Test-Only Dependencies в отдельном stage
+FROM dependencies as test-deps
+RUN pip install --no-cache-dir pytest pytest-cov hypothesis
+
+# Основной runtime stage
+FROM python:3.11-slim as runtime
+
+# MIT Practice: Minimal Runtime Dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libopenblas-base \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# MIT Practice: Dependency Transfer без build artifacts
+COPY --from=dependencies /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# MIT Practice: Configuration Injection через environment variables
+ENV OPENBLAS_NUM_THREADS=1 \
+    OMP_NUM_THREADS=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    ML_ENABLED=true
+
+# MIT Practice: Explicit Application Versioning
+LABEL maintainer="resonance-liminal-team" \
+      version="1.0" \
+      description="ML-enabled backend with Prometheus and Redis integration"
+
+# MIT Practice: Explicit Directory Structure
+WORKDIR /app
+RUN mkdir -p /app/logs /app/data /app/metrics
+
+# MIT Practice: Clear Ownership и Permission Management
+COPY --chown=nobody:nogroup . .
+
+# MIT Practice: Health Monitoring
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
+
+# MIT Practice: Explicit Port Exposure
+EXPOSE 8000
+
+# MIT Practice: Explicit Runtime Configuration
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4", "--log-config", "logging.yaml"]

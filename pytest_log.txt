@@ -1,0 +1,6 @@
+2025-08-13 17:44:46 [   DEBUG] Starting new HTTP connection (1): 127.0.0.1:8000 (connectionpool.py:241)
+2025-08-13 17:44:48 [   DEBUG] Starting new HTTP connection (1): 127.0.0.1:8000 (connectionpool.py:241)
+2025-08-13 17:44:50 [   DEBUG] Starting new HTTP connection (1): 127.0.0.1:8000 (connectionpool.py:241)
+2025-08-13 17:44:52 [   DEBUG] Starting new HTTP connection (1): 127.0.0.1:8000 (connectionpool.py:241)
+2025-08-13 17:44:54 [   DEBUG] Starting new HTTP connection (1): 127.0.0.1:8000 (connectionpool.py:241)
+2025-08-13 17:44:56 [   DEBUG] Starting new HTTP connection (1): 127.0.0.1:8000 (connectionpool.py:241)

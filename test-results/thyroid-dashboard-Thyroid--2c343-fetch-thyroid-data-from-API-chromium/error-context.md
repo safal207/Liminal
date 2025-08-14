@@ -1,0 +1,130 @@
+# Page snapshot
+
+```yaml
+- heading "UndefinedError" [level=1]
+- paragraph: "jinja2.exceptions.UndefinedError: 'dict object' has no attribute 'dialogs'"
+- heading "Traceback (most recent call last)" [level=2]:
+  - text: Traceback
+  - emphasis: (most recent call last)
+- heading [level=3]
+- list:
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\flask\\app.py\", line 1536, in __call__" [level=4]:
+      - text: File "C:\Users\safal\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\flask\app.py", line
+      - emphasis: "1536"
+      - text: ", in"
+      - code: __call__
+    - text: return self.wsgi_app(environ, start_response) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\flask\\app.py\", line 1514, in wsgi_app" [level=4]:
+      - text: File "C:\Users\safal\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\flask\app.py", line
+      - emphasis: "1514"
+      - text: ", in"
+      - code: wsgi_app
+    - text: response = self.handle_exception(e) ^^^^^^^^^^^^^^^^^^^^^^^^
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\flask\\app.py\", line 1511, in wsgi_app" [level=4]:
+      - text: File "C:\Users\safal\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\flask\app.py", line
+      - emphasis: "1511"
+      - text: ", in"
+      - code: wsgi_app
+    - text: response = self.full_dispatch_request() ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\flask\\app.py\", line 919, in full_dispatch_request" [level=4]:
+      - text: File "C:\Users\safal\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\flask\app.py", line
+      - emphasis: "919"
+      - text: ", in"
+      - code: full_dispatch_request
+    - text: rv = self.handle_user_exception(e) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\flask\\app.py\", line 917, in full_dispatch_request" [level=4]:
+      - text: File "C:\Users\safal\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\flask\app.py", line
+      - emphasis: "917"
+      - text: ", in"
+      - code: full_dispatch_request
+    - text: rv = self.dispatch_request() ^^^^^^^^^^^^^^^^^^^^^^^
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\flask\\app.py\", line 902, in dispatch_request" [level=4]:
+      - text: File "C:\Users\safal\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\flask\app.py", line
+      - emphasis: "902"
+      - text: ", in"
+      - code: dispatch_request
+    - text: "return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args) # type: ignore[no-any-return] ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\OneDrive\\Documente\\GitHub\\resonance-liminal\\backend\\ml\\tools\\log_viewer\\app.py\", line 358, in index" [level=4]:
+      - text: File "C:\Users\safal\OneDrive\Documente\GitHub\resonance-liminal\backend\ml\tools\log_viewer\app.py", line
+      - emphasis: "358"
+      - text: ", in"
+      - code: index
+    - text: return render_template('index.html', stats=stats, patterns=patterns) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\flask\\templating.py\", line 150, in render_template" [level=4]:
+      - text: File "C:\Users\safal\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\flask\templating.py", line
+      - emphasis: "150"
+      - text: ", in"
+      - code: render_template
+    - text: return _render(app, template, context) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\flask\\templating.py\", line 131, in _render" [level=4]:
+      - text: File "C:\Users\safal\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\flask\templating.py", line
+      - emphasis: "131"
+      - text: ", in"
+      - code: _render
+    - text: rv = template.render(context) ^^^^^^^^^^^^^^^^^^^^^^^^
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\jinja2\\environment.py\", line 1295, in render" [level=4]:
+      - text: File "C:\Users\safal\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\jinja2\environment.py", line
+      - emphasis: "1295"
+      - text: ", in"
+      - code: render
+    - text: self.environment.handle_exception() ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\jinja2\\environment.py\", line 942, in handle_exception" [level=4]:
+      - text: File "C:\Users\safal\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\jinja2\environment.py", line
+      - emphasis: "942"
+      - text: ", in"
+      - code: handle_exception
+    - text: raise rewrite_traceback_stack(source=source) ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\OneDrive\\Documente\\GitHub\\resonance-liminal\\backend\\ml\\tools\\log_viewer\\templates\\index.html\", line 1, in top-level template code" [level=4]:
+      - text: File "C:\Users\safal\OneDrive\Documente\GitHub\resonance-liminal\backend\ml\tools\log_viewer\templates\index.html", line
+      - emphasis: "1"
+      - text: ", in"
+      - code: top-level template code
+    - text: "{% extends \"layout.html\" %}"
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\OneDrive\\Documente\\GitHub\\resonance-liminal\\backend\\ml\\tools\\log_viewer\\templates\\layout.html\", line 97, in top-level template code" [level=4]:
+      - text: File "C:\Users\safal\OneDrive\Documente\GitHub\resonance-liminal\backend\ml\tools\log_viewer\templates\layout.html", line
+      - emphasis: "97"
+      - text: ", in"
+      - code: top-level template code
+    - text: "{% block content %}{% endblock %}"
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\OneDrive\\Documente\\GitHub\\resonance-liminal\\backend\\ml\\tools\\log_viewer\\templates\\index.html\", line 15, in block 'content'" [level=4]:
+      - text: File "C:\Users\safal\OneDrive\Documente\GitHub\resonance-liminal\backend\ml\tools\log_viewer\templates\index.html", line
+      - emphasis: "15"
+      - text: ", in"
+      - code: block 'content'
+    - text: "<div class=\"card text-white {% if stats.dialogs.exists %}bg-info{% else %}bg-secondary{% endif %} h-100\">"
+  - listitem:
+    - heading "File \"C:\\Users\\safal\\AppData\\Local\\Packages\\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\\LocalCache\\local-packages\\Python311\\site-packages\\jinja2\\environment.py\", line 490, in getattr" [level=4]:
+      - text: File "C:\Users\safal\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\LocalCache\local-packages\Python311\site-packages\jinja2\environment.py", line
+      - emphasis: "490"
+      - text: ", in"
+      - code: getattr
+    - text: return getattr(obj, attribute) ^^^^^^^^^^^^^^^^^^^^^^^
+- blockquote: "jinja2.exceptions.UndefinedError: 'dict object' has no attribute 'dialogs'"
+- text: The debugger caught an exception in your WSGI application. You can now look at the traceback which led to the error.
+- paragraph: To switch between the interactive traceback and the plaintext one, you can click on the "Traceback" headline. From the text traceback you can also create a paste of it. For code execution mouse-over the frame you want to debug and click on the console icon on the right side.
+- paragraph: "You can execute arbitrary Python code in the stack frames and there are some extra helpers available for introspection:"
+- list:
+  - listitem:
+    - code: dump()
+    - text: shows all variables in the frame
+  - listitem:
+    - code: dump(obj)
+    - text: dumps all that's known about the object
+- text: Brought to you by
+- strong: DON'T PANIC
+- text: ", your friendly Werkzeug powered traceback interpreter."
+```

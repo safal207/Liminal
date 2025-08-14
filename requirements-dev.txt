@@ -15,3 +15,4 @@ pre-commit>=3.7
 flake8-bugbear>=24.4
 strawberry-graphql>=0.205
 uvicorn>=0.30
+pre-commit black isort flake8 mypy pytest

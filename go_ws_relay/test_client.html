@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 Consciousness State Transitions Viewer</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .connecting {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        #events {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            background-color: #f9f9f9;
+        }
+        .event-card {
+            background-color: white;
+            border-left: 4px solid #3498db;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            animation: fadeIn 0.5s;
+            transition: all 0.3s;
+        }
+        .event-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .event-header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+        .event-type {
+            font-weight: bold;
+            color: #3498db;
+        }
+        .transition-states {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        .transition-icon {
+            margin: 0 10px;
+        }
+        .event-meta {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .delta-positive {
+            color: #27ae60;
+        }
+        .delta-negative {
+            color: #e74c3c;
+        }
+        .delta-neutral {
+            color: #7f8c8d;
+        }
+        .trigger-tag {
+            display: inline-block;
+            background-color: #3498db;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            margin-right: 5px;
+        }
+        .buttons {
+            margin-top: 20px;
+            text-align: center;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 0 5px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button.disconnect {
+            background-color: #e74c3c;
+        }
+        button.disconnect:hover {
+            background-color: #c0392b;
+        }
+        button.disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .timestamp {
+            color: #95a5a6;
+            font-size: 0.8em;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .no-events {
+            text-align: center;
+            color: #7f8c8d;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 Consciousness State Transitions</h1>
+        
+        <div id="status" class="status disconnected">Отключено</div>
+        
+        <div id="events">
+            <div class="no-events">
+                <p>Ждем события переходов состояний сознания...</p>
+                <p>Подключитесь к WebSocket и запустите тестовый скрипт</p>
+            </div>
+        </div>
+        
+        <div class="buttons">
+            <button id="connect">Подключиться к WebSocket</button>
+            <button id="disconnect" class="disconnect disabled">Отключиться</button>
+            <button id="clear">Очистить события</button>
+        </div>
+    </div>
+
+    <script>
+        let socket;
+        const statusEl = document.getElementById('status');
+        const eventsEl = document.getElementById('events');
+        const connectBtn = document.getElementById('connect');
+        const disconnectBtn = document.getElementById('disconnect');
+        const clearBtn = document.getElementById('clear');
+        
+        // Обработчик кнопки подключения
+        connectBtn.addEventListener('click', connectWebSocket);
+        
+        // Обработчик кнопки отключения
+        disconnectBtn.addEventListener('click', () => {
+            if (socket) {
+                socket.close();
+                updateConnectionStatus('disconnected');
+            }
+        });
+        
+        // Обработчик кнопки очистки
+        clearBtn.addEventListener('click', () => {
+            eventsEl.innerHTML = '<div class="no-events"><p>Ждем события переходов состояний сознания...</p></div>';
+        });
+        
+        function connectWebSocket() {
+            // Очищаем предыдущее подключение
+            if (socket) {
+                socket.close();
+            }
+            
+            updateConnectionStatus('connecting');
+            
+            // Создаем WebSocket подключение
+            socket = new WebSocket('ws://localhost:8080/ws');
+            
+            // Обработчик открытия соединения
+            socket.onopen = function(e) {
+                updateConnectionStatus('connected');
+                console.log('WebSocket подключен!');
+            };
+            
+            // Обработчик получения сообщений
+            socket.onmessage = function(event) {
+                console.log('Получено сообщение:', event.data);
+                try {
+                    const eventData = JSON.parse(event.data);
+                    addEventCard(eventData);
+                } catch (e) {
+                    console.error('Ошибка разбора данных:', e);
+                }
+            };
+            
+            // Обработчик ошибок
+            socket.onerror = function(error) {
+                console.error('WebSocket ошибка:', error);
+                updateConnectionStatus('disconnected');
+            };
+            
+            // Обработчик закрытия соединения
+            socket.onclose = function(event) {
+                updateConnectionStatus('disconnected');
+                console.log('WebSocket закрыт');
+            };
+        }
+        
+        function updateConnectionStatus(status) {
+            statusEl.className = 'status ' + status;
+            
+            if (status === 'connected') {
+                statusEl.textContent = 'Подключено ✅';
+                connectBtn.classList.add('disabled');
+                disconnectBtn.classList.remove('disabled');
+            } else if (status === 'disconnected') {
+                statusEl.textContent = 'Отключено ❌';
+                connectBtn.classList.remove('disabled');
+                disconnectBtn.classList.add('disabled');
+            } else if (status === 'connecting') {
+                statusEl.textContent = 'Подключение... ⏳';
+                connectBtn.classList.add('disabled');
+                disconnectBtn.classList.add('disabled');
+            }
+        }
+        
+        function addEventCard(event) {
+            // Удаляем сообщение "нет событий" если оно есть
+            const noEvents = eventsEl.querySelector('.no-events');
+            if (noEvents) {
+                eventsEl.removeChild(noEvents);
+            }
+            
+            // Форматируем временную метку
+            const timestamp = new Date(event.timestamp);
+            const formattedTime = timestamp.toLocaleTimeString();
+            
+            // Создаем карточку события
+            const card = document.createElement('div');
+            card.className = 'event-card';
+            
+            let deltaPresenceClass = event.presence_delta > 0 ? 'delta-positive' : (event.presence_delta < 0 ? 'delta-negative' : 'delta-neutral');
+            let deltaHarmonyClass = event.harmony_delta > 0 ? 'delta-positive' : (event.harmony_delta < 0 ? 'delta-negative' : 'delta-neutral');
+            
+            // Контент карточки
+            card.innerHTML = `
+                <div class="event-header">
+                    <span class="event-type">${event.type}</span>
+                    <span class="timestamp">${formattedTime}</span>
+                </div>
+                <div class="transition-states">
+                    <strong>${event.from_state}</strong>
+                    <span class="transition-icon">→</span>
+                    <strong>${event.to_state}</strong>
+                </div>
+                <div class="event-meta">
+                    <span class="trigger-tag">${event.trigger}</span>
+                    <span class="${deltaPresenceClass}">Presence: ${event.presence_delta > 0 ? '+' : ''}${event.presence_delta.toFixed(2)}</span> | 
+                    <span class="${deltaHarmonyClass}">Harmony: ${event.harmony_delta > 0 ? '+' : ''}${event.harmony_delta.toFixed(2)}</span>
+                </div>
+            `;
+            
+            // Добавляем карточку в начало списка
+            eventsEl.insertBefore(card, eventsEl.firstChild);
+            
+            // Прокручиваем к новой карточке
+            card.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>

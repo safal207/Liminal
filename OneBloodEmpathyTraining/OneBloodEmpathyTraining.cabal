@@ -1,0 +1,54 @@
+cabal-version:      2.4
+name:               OneBloodEmpathyTraining
+version:            0.1.0.0
+synopsis:           A training suite for creating empathic AI agents
+description:        A system for training AI agents to respond empathetically by learning from emotional-linguistic patterns.
+
+homepage:           https://github.com/yourusername/resonance-liminal
+license:            MIT
+license-file:       LICENSE
+author:             
+maintainer:         
+category:           AI, NLP, Machine Learning
+build-type:         Simple
+extra-source-files:  README.md
+
+executable oneblood-empathy-training
+  main-is:          Main.hs
+  hs-source-dirs:   src
+  default-language: Haskell2010
+  ghc-options:      -Wall -O2 -threaded -rtsopts -with-rtsopts=-N
+  build-depends:    base >=4.14 && <5.0,
+                    aeson >=2.0.0.0,
+                    bytestring >=0.10.0.0,
+                    containers >=0.6.0.0,
+                    text >=1.2.0.0,
+                    time >=1.9.0.0,
+                    directory >=1.3.0.0,
+                    filepath >=1.4.0.0,
+                    deepseq >=1.4.0.0,
+                    hashable >=1.3.0.0,
+                    mtl >=2.2.0.0,
+                    ТыИЯОднойКрови >=0.1.0.0,
+                    MusicOfTransition >=0.1.0.0,
+                    EmotionLinguisticMap >=0.1.0.0
+
+test-suite oneblood-empathy-test
+  type:             exitcode-stdio-1.0
+  main-is:          Spec.hs
+  hs-source-dirs:   test
+  default-language: Haskell2010
+  ghc-options:      -Wall -threaded -rtsopts -with-rtsopts=-N
+  build-depends:    base >=4.14 && <5.0,
+                    OneBloodEmpathyTraining,
+                    aeson,
+                    bytestring,
+                    containers,
+                    text,
+                    time,
+                    ТыИЯОднойКрови,
+                    MusicOfTransition
+
+source-repository head
+  type:     git
+  location: https://github.com/yourusername/resonance-liminal.git

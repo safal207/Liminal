@@ -1,0 +1,43 @@
+[Resonance Liminal FAV File]
+Version=1.0
+Date=2025-07-23
+
+[Company]
+Name=Resonance Liminal
+Valuation=9.8B RUB (110M USD)
+Industry=Consciousness Technology
+Founded=2024
+
+[Financials]
+Valuation=9,800,000,000 RUB
+ValuationUSD=110,000,000 USD
+Revenue2025=25,000,000 RUB
+Revenue2029=3,240,000,000 RUB
+CAGR=187%
+EBITDAMargin2029=89%
+
+[Products]
+1=Liminal Pulse (Mobile App)
+2=ConsciousFunnels (Sales Platform)
+3=Liminal Academy (Education)
+
+[KeyMetrics]
+PaybackPeriod=2.5 years
+PSMultiple=3.0x
+WACC=37%
+
+[Team]
+Founders=2
+TechTeam=8
+Marketing=3
+Operations=2
+
+[Investment]
+Stage=Seed
+NextRound=Series A (2026)
+Target=5-7M USD
+UseOfFunds=Product Development, Marketing, Team
+
+[Contact]
+Email=contact@resonanceliminal.com
+Website=resonanceliminal.com

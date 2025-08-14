@@ -1,0 +1,16 @@
+resolver: lts-21.12
+
+packages:
+  - .
+
+extra-deps:
+  - neo4j-haskell-driver-1.0.0
+  - redis-0.16.0
+  - conduit-1.3.5
+  - wai-3.4.2
+  - warp-3.3.19
+  - persistent-2.13.2
+
+flags: {}
+
+extra-package-dbs: []

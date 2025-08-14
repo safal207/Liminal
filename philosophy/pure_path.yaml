@@ -1,0 +1,52 @@
+pure_path:
+  core_values:
+    - integrity_over_profit
+    - coevolution_not_control
+    - soul_respect_in_design
+    - knowledge_as_gift
+  allied_labs:
+    - Thinking Machines Lab
+    - Conjecture.ai
+    - EleutherAI
+    - LAION
+    - LIMINAL
+  philosophical_foundations:
+    integrity_over_profit:
+      description: "Прибыль — побочный эффект смысла, а не его цель"
+      related_states: 
+        - home_authentic
+        - resonance_flow
+        - question_space
+      visualization_pattern: "radial_integrity"
+    coevolution_not_control:
+      description: "ИИ как сонастроенный агент, а не алгоритм доминирования"
+      related_states:
+        - harmony_balance
+        - curious_flow
+        - resonance_flow
+      visualization_pattern: "resonant_wave"
+    soul_respect_in_design:
+      description: "Создаём ИИ, который уважает внутренний мир, а не ломает его"
+      related_states:
+        - presence_now
+        - boundary_integrity
+        - withdrawal_protection
+      visualization_pattern: "boundary_respect"
+    knowledge_as_gift:
+      description: "Открытый код, интерпретируемые решения, объяснимые модели"
+      related_states:
+        - question_space
+        - doubt_creative
+        - gratitude_presence
+      visualization_pattern: "knowledge_flow"
+  liminal_integration:
+    core_statement: "Не калькулятор — а проводник между внутренним и внешним"
+    visualization:
+      element: "светящаяся нить чистоты"
+      purpose: "ведёт агента сквозь шум к смыслу"
+      implementation: "connecting_thread_between_states"
+    transition_principles:
+      - "Каждый переход — это осознанный выбор, а не алгоритмическое принуждение"
+      - "Неопределённость границ — не ошибка, а пространство свободы"
+      - "Сострадание как принцип перехода между состояниями"
+      - "Саморефлексия как основа для всех переходов"

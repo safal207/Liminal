@@ -1,0 +1,124 @@
+# Performance Test Configuration
+
+global:
+  # Base URL of the API under test
+  base_url: "http://localhost:8000"
+  
+  # Output directory for reports
+  output_dir: "performance_reports"
+  
+  # Prometheus configuration
+  prometheus:
+    enabled: true
+    url: "http://localhost:9090"
+    scrape_interval: "15s"  # How often to scrape metrics during tests
+
+# Test scenarios
+test_scenarios:
+  # Smoke test - quick verification
+  smoke:
+    users: 10
+    spawn_rate: 1
+    duration: "1m"
+    description: "Quick verification of basic functionality"
+  
+  # Load test - normal operation
+  load:
+    users: 100
+    spawn_rate: 10
+    duration: "5m"
+    description: "Normal operation load test"
+  
+  # Stress test - system limits
+  stress:
+    users: 500
+    spawn_rate: 50
+    duration: "10m"
+    description: "Stress test to find system limits"
+  
+  # Soak test - long-running stability
+  soak:
+    users: 50
+    spawn_rate: 5
+    duration: "1h"
+    description: "Long-running stability test"
+
+# Performance thresholds
+thresholds:
+  # Response time thresholds in seconds
+  response_time:
+    p95: 1.0  # Warning if p95 > 1s
+    p99: 2.0   # Critical if p99 > 2s
+  
+  # Error rate threshold (0.0 - 1.0)
+  error_rate: 0.01  # 1% maximum error rate
+  
+  # Request rate thresholds
+  request_rate:
+    min: 10  # Minimum expected requests per second
+    
+  # Resource utilization thresholds (%)
+  resource_utilization:
+    cpu: 80
+    memory: 80
+
+# Metrics to collect
+metrics:
+  - name: "request_rate"
+    query: "sum(rate(http_requests_total[1m]))"
+    description: "Requests per second"
+    
+  - name: "response_time_p95"
+    query: "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[1m])) by (le))"
+    description: "95th percentile response time"
+    
+  - name: "error_rate"
+    query: "sum(rate(http_requests_total{status=~\"5..\"}[1m])) / sum(rate(http_requests_total[1m]))"
+    description: "Error rate (5xx responses)"
+    
+  - name: "active_users"
+    query: "sum(active_users)"
+    description: "Number of active users"
+
+# Notification settings (optional)
+notifications:
+  slack:
+    enabled: false
+    webhook_url: ""
+    channel: "#performance-alerts"
+  
+  email:
+    enabled: false
+    smtp_server: "smtp.example.com"
+    smtp_port: 587
+    username: ""
+    password: ""
+    from_addr: "perf-test@example.com"
+    to_addrs: ["team@example.com"]
+
+# Custom test scenarios (optional)
+custom_scenarios:
+  - name: "api_endpoint_heavy"
+    description: "Heavy load on specific API endpoint"
+    users: 200
+    spawn_rate: 20
+    duration: "10m"
+    endpoint: "/api/v1/heavy-endpoint"
+    
+  - name: "memory_intensive"
+    description: "Memory-intensive operations"
+    users: 50
+    spawn_rate: 5
+    duration: "30m"
+    endpoint: "/api/v1/memory-intensive"
+
+# Post-test actions (optional)
+post_test:
+  # Generate a comparison report if multiple tests are run
+  compare_with_previous: true
+  
+  # Number of previous test runs to keep
+  keep_reports: 5
+  
+  # Clean up temporary files
+  cleanup: true

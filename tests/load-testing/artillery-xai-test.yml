@@ -1,0 +1,438 @@
+# Artillery.io Load Testing для XAI + OpenAI интеграции
+# Тестирует производительность ML, XAI и OpenAI сервисов под нагрузкой
+
+config:
+  target: 'http://localhost:8000'
+  phases:
+    # Warm-up phase
+    - duration: 30
+      arrivalRate: 5
+      name: "Warm-up"
+    
+    # Ramp-up phase
+    - duration: 60
+      arrivalRate: 10
+      rampTo: 25
+      name: "Ramp-up"
+    
+    # Sustained load
+    - duration: 120
+      arrivalRate: 25
+      name: "Sustained Load"
+    
+    # Peak load
+    - duration: 60
+      arrivalRate: 50
+      name: "Peak Load"
+    
+    # Cool-down
+    - duration: 30
+      arrivalRate: 10
+      name: "Cool-down"
+
+  # Переменные для тестирования
+  variables:
+    user_ids:
+      - "test_user_1"
+      - "test_user_2" 
+      - "test_user_3"
+      - "test_user_4"
+      - "test_user_5"
+    
+    model_names:
+      - "anomaly_detection"
+      - "user_behavior"
+      - "rate_limiting"
+    
+    alert_types:
+      - "high_error_rate"
+      - "unusual_traffic_pattern"
+      - "rate_limit_violation"
+      - "connection_anomaly"
+
+  # Метрики для отслеживания
+  metrics:
+    - name: "ml_prediction_latency"
+      unit: "ms"
+    - name: "xai_explanation_latency"
+      unit: "ms"
+    - name: "openai_analysis_latency"
+      unit: "ms"
+
+scenarios:
+  # =============================================================================
+  # Основные ML операции
+  # =============================================================================
+  
+  - name: "ML Status Check"
+    weight: 10
+    flow:
+      - get:
+          url: "/ml/status"
+          capture:
+            - json: "$.feature_extractor.active_sessions"
+              as: "active_sessions"
+          expect:
+            - statusCode: 200
+            - hasProperty: "feature_extractor"
+
+  - name: "Get Recent Features"
+    weight: 15
+    flow:
+      - get:
+          url: "/ml/features/recent?limit=50"
+          expect:
+            - statusCode: 200
+            - hasProperty: "features"
+
+  - name: "Anomaly Detection"
+    weight: 20
+    flow:
+      - post:
+          url: "/ml/anomalies/analyze"
+          json:
+            user_id: "{{ $randomString() }}"
+          capture:
+            - json: "$.anomalies_detected"
+              as: "anomalies_count"
+          expect:
+            - statusCode: 200
+
+  # =============================================================================
+  # XAI Explainable AI тестирование
+  # =============================================================================
+  
+  - name: "XAI Prediction Explanation"
+    weight: 25
+    flow:
+      - post:
+          url: "/ml/explain/prediction"
+          json:
+            model_name: "{{ model_names[$randomInt(0, 2)] }}"
+            features:
+              messages_per_minute: "{{ $randomInt(1, 100) }}"
+              error_rate: "{{ $randomFloat(0, 0.5) }}"
+              connection_duration: "{{ $randomInt(10, 3600) }}"
+              burstiness_score: "{{ $randomFloat(0, 1) }}"
+              ip_entropy: "{{ $randomFloat(0, 5) }}"
+            prediction: "{{ $randomInt(0, 1) > 0.5 ? 'anomaly' : 'normal' }}"
+            confidence: "{{ $randomFloat(0.5, 1.0) }}"
+          beforeRequest: "captureStartTime"
+          afterResponse: "captureXAILatency"
+          expect:
+            - statusCode: 200
+            - hasProperty: "feature_importance"
+            - hasProperty: "natural_explanation"
+            - hasProperty: "technical_explanation"
+
+  - name: "XAI Anomaly Explanation"
+    weight: 20
+    flow:
+      - post:
+          url: "/ml/explain/anomaly"
+          json:
+            user_id: "{{ user_ids[$randomInt(0, 4)] }}"
+          beforeRequest: "captureStartTime"
+          afterResponse: "captureXAILatency"
+          expect:
+            - statusCode: 200
+
+  # =============================================================================
+  # Anthropic Claude тестирование
+  # =============================================================================
+  
+  - name: "Claude Safety Analysis"
+    weight: 15
+    flow:
+      - post:
+          url: "/ml/claude/safety-analysis"
+          json:
+            ml_decision:
+              model_name: "anomaly_detection"
+              prediction: "{{ $randomInt(0, 1) > 0.5 ? 'anomaly' : 'normal' }}"
+              confidence: "{{ $randomFloat(0.5, 1.0) }}"
+              features:
+                messages_per_minute: "{{ $randomInt(1, 100) }}"
+                error_rate: "{{ $randomFloat(0, 0.5) }}"
+                user_count: "{{ $randomInt(1, 1000) }}"
+            context:
+              system_load: "{{ $randomFloat(0.1, 1.0) }}"
+              time_of_day: "{{ ['morning', 'afternoon', 'evening', 'night'][$randomInt(0, 3)] }}"
+          beforeRequest: "captureStartTime"
+          afterResponse: "captureClaudeLatency"
+          expect:
+            - statusCode: 200
+            - hasProperty: "safety_assessment"
+            - hasProperty: "constitutional_ai_notes"
+
+  - name: "Claude Ethics Analysis"
+    weight: 10
+    flow:
+      - post:
+          url: "/ml/claude/ethics-analysis"
+          json:
+            automated_action:
+              type: "rate_limit_block"
+              target_user: "user_{{ $randomInt(1, 1000) }}"
+              duration: "{{ $randomInt(60, 3600) }} seconds"
+              reason: "{{ ['suspicious_activity', 'rate_limit_violation', 'anomaly_detected'][$randomInt(0, 2)] }}"
+            affected_users: 
+              - "user_{{ $randomInt(1, 100) }}"
+              - "user_{{ $randomInt(101, 200) }}"
+            context:
+              severity: "{{ ['low', 'medium', 'high'][$randomInt(0, 2)] }}"
+              automated: true
+          beforeRequest: "captureStartTime"
+          afterResponse: "captureClaudeLatency"
+          expect:
+            - statusCode: 200
+            - hasProperty: "ethical_considerations"
+            - hasProperty: "harm_assessment"
+
+  - name: "Claude Security Analysis"
+    weight: 12
+    flow:
+      - post:
+          url: "/ml/claude/security-analysis"
+          json:
+            threat_indicators:
+              suspicious_ips: ["{{ $randomInt(1, 255) }}.{{ $randomInt(1, 255) }}.{{ $randomInt(1, 255) }}.{{ $randomInt(1, 255) }}"]
+              failed_auth_attempts: "{{ $randomInt(5, 50) }}"
+              unusual_patterns: ["rapid_reconnects", "high_message_rate"]
+              geographic_anomalies: "{{ $randomInt(0, 1) > 0.5 }}"
+            system_state:
+              current_load: "{{ $randomFloat(0.1, 1.0) }}"
+              active_connections: "{{ $randomInt(100, 10000) }}"
+              error_rate: "{{ $randomFloat(0.01, 0.3) }}"
+            historical_data:
+              - incident_type: "ddos_attempt"
+                timestamp: "2024-07-29T10:00:00Z"
+                severity: "high"
+          beforeRequest: "captureStartTime"
+          afterResponse: "captureClaudeLatency"
+          expect:
+            - statusCode: 200
+            - hasProperty: "reasoning"
+            - hasProperty: "recommendations"
+
+  # =============================================================================
+  # Multi-LLM Orchestrator тестирование
+  # =============================================================================
+  
+  - name: "Multi-LLM Auto Analysis"
+    weight: 20
+    flow:
+      - post:
+          url: "/ml/multi-llm/analyze"
+          json:
+            task_type: "{{ ['general', 'safety', 'ethics', 'security', 'logs'][$randomInt(0, 4)] }}"
+            data:
+              problem_description: "{{ ['High error rate detected', 'Unusual user behavior', 'Security threat identified', 'Performance degradation'][$randomInt(0, 3)] }}"
+              metrics:
+                error_rate: "{{ $randomFloat(0.1, 0.5) }}"
+                response_time: "{{ $randomInt(100, 2000) }}"
+                concurrent_users: "{{ $randomInt(50, 1000) }}"
+              context:
+                environment: "load_test"
+                severity: "{{ ['low', 'medium', 'high'][$randomInt(0, 2)] }}"
+            preferred_provider: "{{ ['auto', 'openai', 'claude'][$randomInt(0, 2)] }}"
+            require_consensus: "{{ $randomInt(0, 1) > 0.8 }}"
+            priority: "{{ ['normal', 'high'][$randomInt(0, 1)] }}"
+          beforeRequest: "captureStartTime"
+          afterResponse: "captureMultiLLMLatency"
+          expect:
+            - statusCode: 200
+            - hasProperty: "provider_used"
+            - hasProperty: "primary_analysis"
+            - hasProperty: "confidence"
+
+  - name: "Multi-LLM Consensus Analysis"
+    weight: 8
+    flow:
+      - post:
+          url: "/ml/multi-llm/consensus"
+          json:
+            task_type: "safety"
+            data:
+              critical_decision:
+                type: "automated_user_block"
+                affected_users: "{{ $randomInt(10, 100) }}"
+                duration: "{{ $randomInt(3600, 86400) }} seconds"
+                reason: "security_threat_detected"
+              evidence:
+                anomaly_score: "{{ $randomFloat(0.8, 1.0) }}"
+                threat_indicators: ["multiple_failed_auth", "suspicious_patterns"]
+                confidence: "{{ $randomFloat(0.7, 0.95) }}"
+            context:
+              criticality: "high"
+              requires_human_review: true
+            priority: "high"
+          beforeRequest: "captureStartTime"
+          afterResponse: "captureConsensusLatency"
+          expect:
+            - statusCode: 200
+            - hasProperty: "consensus_analysis"
+            - hasProperty: "agreement_score"
+            - hasProperty: "openai_available"
+            - hasProperty: "claude_available"
+
+  # =============================================================================
+  # OpenAI Intelligence тестирование
+  # =============================================================================
+  
+  - name: "OpenAI Log Analysis"
+    weight: 15
+    flow:
+      - post:
+          url: "/ml/analyze/logs"
+          json:
+            log_entries:
+              - "ERROR: WebSocket connection failed for user {{ $randomString() }}"
+              - "WARNING: High latency detected: {{ $randomInt(100, 2000) }}ms"
+              - "INFO: Rate limit triggered for IP {{ $randomInt(1, 255) }}.{{ $randomInt(1, 255) }}.{{ $randomInt(1, 255) }}.{{ $randomInt(1, 255) }}"
+              - "ERROR: Authentication failed for token {{ $randomString() }}"
+              - "DEBUG: Processing message batch of {{ $randomInt(10, 1000) }} messages"
+            time_range: "last_hour"
+            error_patterns: ["ERROR", "WARNING", "FAILED"]
+          beforeRequest: "captureStartTime"
+          afterResponse: "captureOpenAILatency"
+          expect:
+            - statusCode: 200
+            - hasProperty: "analysis"
+            - hasProperty: "recommendations"
+
+  - name: "Smart Alert Generation"
+    weight: 10
+    flow:
+      - post:
+          url: "/ml/alerts/smart"
+          json:
+            alert_data:
+              message: "{{ alert_types[$randomInt(0, 3)] }} detected"
+              metric: "error_rate"
+              value: "{{ $randomFloat(0.1, 0.9) }}"
+              threshold: 0.1
+              duration: "{{ $randomInt(60, 3600) }} seconds"
+            context:
+              service: "websocket"
+              environment: "load_test"
+              affected_users: "{{ $randomInt(1, 1000) }}"
+              server_load: "{{ $randomFloat(0.1, 1.0) }}"
+            recipient_role: "{{ ['devops', 'developer', 'manager'][$randomInt(0, 2)] }}"
+          beforeRequest: "captureStartTime"
+          afterResponse: "captureOpenAILatency"
+          expect:
+            - statusCode: 200
+            - hasProperty: "smart_alert"
+
+  # =============================================================================
+  # Health Checks и мониторинг
+  # =============================================================================
+  
+  - name: "XAI Health Check"
+    weight: 5
+    flow:
+      - get:
+          url: "/ml/health/xai"
+          expect:
+            - statusCode: 200
+            - hasProperty: "status"
+
+  - name: "OpenAI Health Check"
+    weight: 5
+    flow:
+      - get:
+          url: "/ml/health/openai"
+          expect:
+            - statusCode: 200
+
+  - name: "Intelligence Status"
+    weight: 5
+    flow:
+      - get:
+          url: "/ml/intelligence/status"
+          expect:
+            - statusCode: 200
+            - hasProperty: "overall_status"
+            - hasProperty: "features"
+
+  # =============================================================================
+  # Стресс-тестирование WebSocket + ML
+  # =============================================================================
+  
+  - name: "Combined WebSocket + ML Flow"
+    weight: 10
+    flow:
+      # 1. Получаем JWT токен
+      - post:
+          url: "/token"
+          json:
+            username: "test_user_{{ $randomInt(1, 100) }}"
+            password: "test_password"
+          capture:
+            - json: "$.access_token"
+              as: "jwt_token"
+          expect:
+            - statusCode: 200
+      
+      # 2. Симулируем WebSocket активность через ML метрики
+      - get:
+          url: "/ml_metrics/"
+          expect:
+            - statusCode: 200
+      
+      # 3. Анализируем аномалии
+      - post:
+          url: "/ml/anomalies/analyze"
+          json:
+            user_id: "test_user_{{ $randomInt(1, 100) }}"
+          expect:
+            - statusCode: 200
+      
+      # 4. Получаем объяснение если есть аномалии
+      - post:
+          url: "/ml/explain/anomaly"
+          json:
+            user_id: "test_user_{{ $randomInt(1, 100) }}"
+          expect:
+            - statusCode: 200
+
+# =============================================================================
+# Custom JavaScript функции
+# =============================================================================
+config:
+  processor: "./artillery-functions.js"
+
+# Функции для измерения латентности
+functions:
+  captureStartTime: |
+    function(requestParams, context, ee, next) {
+      context.vars.startTime = Date.now();
+      return next();
+    }
+  
+  captureXAILatency: |
+    function(requestParams, response, context, ee, next) {
+      const latency = Date.now() - context.vars.startTime;
+      ee.emit('histogram', 'xai_explanation_latency', latency);
+      return next();
+    }
+  
+  captureOpenAILatency: |
+    function(requestParams, response, context, ee, next) {
+      const latency = Date.now() - context.vars.startTime;
+      ee.emit('histogram', 'openai_analysis_latency', latency);
+      return next();
+    }
+
+# =============================================================================
+# Ожидаемые результаты производительности
+# =============================================================================
+
+# Целевые метрики:
+# - ML API: < 100ms для простых операций
+# - XAI объяснения: < 2000ms
+# - OpenAI анализ: < 5000ms (зависит от API)
+# - WebSocket + ML: < 500ms end-to-end
+# - Успешность: > 95%
+# - Concurrent users: 50+

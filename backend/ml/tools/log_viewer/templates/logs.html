@@ -1,0 +1,310 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="card shadow mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h3>
+            {% if log_type == 'experience' %}
+            <i class="fas fa-exclamation-triangle"></i>
+            {% elif log_type == 'insights' %}
+            <i class="fas fa-lightbulb"></i>
+            {% elif log_type == 'karma' %}
+            <i class="fas fa-sync"></i>
+            {% elif log_type == 'hypotheses' %}
+            <i class="fas fa-flask"></i>
+            {% else %}
+            <i class="fas fa-file-alt"></i>
+            {% endif %}
+            {{ title }}
+        </h3>
+        <div class="btn-group">
+            <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-light">
+                <i class="fas fa-home"></i> К обзору
+            </a>
+            <a href="{{ url_for('timeline') }}" class="btn btn-sm btn-outline-light">
+                <i class="fas fa-clock"></i> К временной оси
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <div class="input-group">
+                <input type="text" id="searchInput" class="form-control" placeholder="Поиск в логах...">
+                <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+            <div class="form-text">
+                Поиск работает по содержимому сообщений и хешам ошибок
+            </div>
+        </div>
+
+        {% if logs %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover" id="logsTable">
+                <thead>
+                    <tr>
+                        <th>Время</th>
+                        <th>Тип</th>
+                        <th>Сообщение</th>
+                        <th>Хеш</th>
+                        <th>Действия</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr class="log-entry" data-hash="{{ log.error_hash if log.error_hash else '' }}">
+                        <td>{{ log.timestamp }}</td>
+                        <td>
+                            {% if log.log_type == 'experience' %}
+                            <span class="badge bg-danger">Ошибка</span>
+                            {% elif log.log_type == 'insights' %}
+                            <span class="badge bg-success">Инсайт</span>
+                            {% elif log.log_type == 'karma' %}
+                            <span class="badge bg-warning text-dark">Карма</span>
+                            {% elif log.log_type == 'hypotheses' %}
+                            <span class="badge bg-info">Гипотеза</span>
+                            {% else %}
+                            <span class="badge bg-secondary">{{ log.log_type }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.log_type == 'experience' %}
+                            {{ log.error_message }}
+                            {% elif log.log_type == 'insights' %}
+                            {{ log.solution }}
+                            {% elif log.log_type == 'karma' %}
+                            {{ log.error_message }}
+                            <span class="badge bg-warning text-dark">Повтор #{{ log.count }}</span>
+                            {% elif log.log_type == 'hypotheses' %}
+                            {% if log.hypothesis %}
+                            <strong>Гипотеза:</strong> {{ log.hypothesis }}
+                            {% elif log.result %}
+                            <strong>Результат:</strong> {{ log.result }}
+                            {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if log.error_hash %}
+                            <code>{{ log.error_hash[:8] }}...</code>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-primary view-details" data-log-id="{{ loop.index0 }}">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            {% if log.error_hash %}
+                            <button class="btn btn-sm btn-warning find-related" data-hash="{{ log.error_hash }}">
+                                <i class="fas fa-link"></i>
+                            </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Модальное окно для деталей лога -->
+        <div class="modal fade" id="logDetailsModal" tabindex="-1" aria-labelledby="logDetailsModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="logDetailsModalLabel">Детали записи лога</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="logDetailsContent">
+                        <!-- Содержимое будет заполнено через JavaScript -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> В данном логе нет записей
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Данные логов из Flask
+    const logs = {{ logs | tojson }};
+    
+    // Поиск по таблице
+    document.getElementById('searchInput').addEventListener('keyup', filterLogs);
+    document.getElementById('searchButton').addEventListener('click', filterLogs);
+    
+    function filterLogs() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('#logsTable tbody tr');
+        
+        rows.forEach(row => {
+            const text = row.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+    
+    // Просмотр деталей лога
+    document.querySelectorAll('.view-details').forEach(button => {
+        button.addEventListener('click', function() {
+            const logId = parseInt(this.getAttribute('data-log-id'));
+            const log = logs[logId];
+            
+            // Формируем HTML для модального окна
+            let content = '<div class="log-details">';
+            
+            // Заголовок в зависимости от типа лога
+            if (log.log_type === 'experience') {
+                content += `<h5 class="text-danger"><i class="fas fa-exclamation-triangle"></i> Запись об ошибке</h5>`;
+            } else if (log.log_type === 'insights') {
+                content += `<h5 class="text-success"><i class="fas fa-lightbulb"></i> Запись об инсайте (решении)</h5>`;
+            } else if (log.log_type === 'karma') {
+                content += `<h5 class="text-warning"><i class="fas fa-sync"></i> Запись кармы (повтор ошибки)</h5>`;
+            } else if (log.log_type === 'hypotheses') {
+                content += `<h5 class="text-info"><i class="fas fa-flask"></i> Запись гипотезы</h5>`;
+            }
+            
+            // Основное содержимое
+            content += `<div class="mb-3">
+                <strong>Время записи:</strong> ${log.timestamp}
+            </div>`;
+            
+            // Специфичные для типа лога данные
+            if (log.log_type === 'experience') {
+                content += `<div class="mb-3">
+                    <strong>Сообщение об ошибке:</strong>
+                    <div class="alert alert-danger">${log.error_message}</div>
+                </div>`;
+                
+                if (log.error_hash) {
+                    content += `<div class="mb-3">
+                        <strong>Хеш ошибки:</strong> <code>${log.error_hash}</code>
+                    </div>`;
+                }
+                
+                if (log.context) {
+                    content += `<div class="mb-3">
+                        <strong>Контекст ошибки:</strong>
+                        <pre class="bg-light p-2">${JSON.stringify(log.context, null, 2)}</pre>
+                    </div>`;
+                }
+            } else if (log.log_type === 'insights') {
+                content += `<div class="mb-3">
+                    <strong>Решение:</strong>
+                    <div class="alert alert-success">${log.solution}</div>
+                </div>`;
+                
+                if (log.error_hash) {
+                    content += `<div class="mb-3">
+                        <strong>Хеш связанной ошибки:</strong> <code>${log.error_hash}</code>
+                    </div>`;
+                }
+            } else if (log.log_type === 'karma') {
+                content += `<div class="mb-3">
+                    <strong>Сообщение об ошибке:</strong>
+                    <div class="alert alert-warning">${log.error_message}</div>
+                </div>
+                <div class="mb-3">
+                    <strong>Количество повторений:</strong> ${log.count}
+                </div>`;
+                
+                if (log.error_hash) {
+                    content += `<div class="mb-3">
+                        <strong>Хеш ошибки:</strong> <code>${log.error_hash}</code>
+                    </div>`;
+                }
+                
+                if (log.has_insight !== undefined) {
+                    content += `<div class="mb-3">
+                        <strong>Статус решения:</strong> 
+                        ${log.has_insight ? 
+                            '<span class="badge bg-success">Есть решение</span>' : 
+                            '<span class="badge bg-secondary">Нет решения</span>'}
+                    </div>`;
+                }
+            } else if (log.log_type === 'hypotheses') {
+                if (log.hypothesis) {
+                    content += `<div class="mb-3">
+                        <strong>Гипотеза:</strong>
+                        <div class="alert alert-info">${log.hypothesis}</div>
+                    </div>`;
+                }
+                
+                if (log.issue) {
+                    content += `<div class="mb-3">
+                        <strong>Проблема:</strong> ${log.issue}
+                    </div>`;
+                }
+                
+                if (log.status) {
+                    let statusClass = 'bg-warning';
+                    if (log.status === 'confirmed') {
+                        statusClass = 'bg-success';
+                    } else if (log.status === 'rejected') {
+                        statusClass = 'bg-danger';
+                    }
+                    
+                    content += `<div class="mb-3">
+                        <strong>Статус:</strong> <span class="badge ${statusClass}">${log.status}</span>
+                    </div>`;
+                }
+                
+                if (log.result) {
+                    content += `<div class="mb-3">
+                        <strong>Результат:</strong>
+                        <div class="alert alert-light">${log.result}</div>
+                    </div>`;
+                }
+            }
+            
+            // JSON представление всей записи
+            content += `<div class="mt-4">
+                <strong>Полное JSON представление:</strong>
+                <pre class="bg-light p-2 mt-2">${JSON.stringify(log, null, 2)}</pre>
+            </div>`;
+            
+            content += '</div>';
+            
+            // Обновляем модальное окно и отображаем его
+            document.getElementById('logDetailsContent').innerHTML = content;
+            const modal = new bootstrap.Modal(document.getElementById('logDetailsModal'));
+            modal.show();
+        });
+    });
+    
+    // Поиск связанных записей
+    document.querySelectorAll('.find-related').forEach(button => {
+        button.addEventListener('click', function() {
+            const hash = this.getAttribute('data-hash');
+            const searchInput = document.getElementById('searchInput');
+            
+            // Устанавливаем хеш в поле поиска и запускаем фильтрацию
+            searchInput.value = hash;
+            filterLogs();
+            
+            // Подсвечиваем найденные строки
+            document.querySelectorAll(`tr[data-hash="${hash}"]`).forEach(row => {
+                row.classList.add('table-primary');
+                setTimeout(() => row.classList.remove('table-primary'), 2000);
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

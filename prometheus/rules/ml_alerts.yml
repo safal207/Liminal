@@ -1,0 +1,78 @@
+groups:
+  - name: ml_anomaly_detection
+    rules:
+      - alert: HighAnomalyScore
+        expr: max by (model) (ml_anomaly_score) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Высокий уровень аномалий в системе"
+          description: "Модель {{ $labels.model }} обнаружила аномальную активность с оценкой {{ $value }}"
+
+      - alert: SustainedAnomalyDetection
+        expr: max by (model) (ml_anomaly_score) > 0.6
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Продолжительная аномальная активность"
+          description: "Модель {{ $labels.model }} обнаружила устойчивую аномальную активность в течение 15 минут"
+
+      - alert: CriticalAnomalyScore
+        expr: max by (model) (ml_anomaly_score) > 0.95
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Критический уровень аномалий"
+          description: "Модель {{ $labels.model }} обнаружила критическую аномальную активность с оценкой {{ $value }}"
+
+  - name: ml_feature_health
+    rules:
+      - alert: MLFeatureExtractorDown
+        expr: up{job="ml-feature-extractor"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ML Feature Extractor недоступен"
+          description: "Сервис ML Feature Extractor не отвечает в течение 5 минут"
+
+      - alert: MLPredictorDown
+        expr: up{job="ml-predictor"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ML Predictor недоступен"
+          description: "Сервис ML Predictor не отвечает в течение 5 минут"
+
+      - alert: KenningServiceDown
+        expr: up{job="kenning"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Kenning ML Service недоступен"
+          description: "Сервис Kenning ML не отвечает в течение 5 минут"
+
+  - name: ml_model_performance
+    rules:
+      - alert: ModelDriftDetected
+        expr: ml_model_drift > 0.2
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Обнаружен дрейф модели"
+          description: "Обнаружен значительный дрейф модели ({{ $value }}), требуется переобучение"
+
+      - alert: HighFeatureExtractorLatency
+        expr: rate(ml_feature_extraction_duration_seconds_sum[5m]) / rate(ml_feature_extraction_duration_seconds_count[5m]) > 2
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Высокая задержка при извлечении ML-признаков"
+          description: "Средняя задержка извлечения ML-признаков превышает 2 секунды"

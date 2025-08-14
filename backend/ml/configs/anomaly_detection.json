@@ -1,0 +1,36 @@
+{
+    "model": {
+        "type": "isolation_forest",
+        "params": {
+            "n_estimators": 100,
+            "contamination": 0.05,
+            "bootstrap": true
+        },
+        "metrics": ["accuracy", "precision", "recall", "f1_score"],
+        "export_formats": ["onnx", "json"]
+    },
+    "training": {
+        "batch_size": 64,
+        "epochs": 10,
+        "validation_split": 0.2,
+        "features": [
+            "burstiness_score",
+            "ip_entropy",
+            "avg_request_rate",
+            "requests_per_user"
+        ],
+        "target": "anomaly"
+    },
+    "optimization": {
+        "quantization": true,
+        "pruning": true
+    },
+    "deployment": {
+        "target": "onnx_runtime",
+        "device": "cpu"
+    },
+    "monitoring": {
+        "drift_detection": true,
+        "metrics_export": "prometheus"
+    }
+}

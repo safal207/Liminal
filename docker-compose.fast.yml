@@ -1,0 +1,101 @@
+version: '3.8'
+
+services:
+  # Оптимизированный Multi-LLM бэкенд с интегрированными сервисами
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.optimized
+    volumes:
+      - ./backend:/app
+      - pip_cache:/root/.cache/pip
+      - model_cache:/app/models
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-demo_key}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-demo_key}
+      - XAI_CACHE_SIZE=1000
+      - XAI_ENABLE_SHAP=true
+      - XAI_ENABLE_LIME=true
+      - REDIS_HOST=redis
+      - MULTI_LLM_FALLBACK_ENABLED=true
+      - MULTI_LLM_CONSENSUS_THRESHOLD=0.7
+      - MULTI_LLM_MODE=${MULTI_LLM_MODE:-demo}
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  # Redis для кеширования и обмена данными
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Prometheus для мониторинга
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    restart: always
+
+  # Grafana для визуализации
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./grafana:/etc/grafana/provisioning
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: always
+
+  # Демо-сервер для тестов без API ключей
+  demo-server:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.optimized
+    volumes:
+      - ./backend:/app
+      - pip_cache:/root/.cache/pip
+    ports:
+      - "8080:8080"
+    environment:
+      - DEMO_MODE=true
+      - PYTHONUNBUFFERED=1
+    command: ["python", "scripts/demo-server.py"]
+
+volumes:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+  pip_cache:  # Кеш для pip
+  model_cache:  # Кеш для ML-моделей

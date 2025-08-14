@@ -1,0 +1,20 @@
+# Основные зависимости
+-r requirements.txt
+
+# Тестирование
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-asyncio>=0.18.0
+pytest-mock>=3.10.0
+pytest-benchmark>=4.0.0
+httpx>=0.23.0
+
+# Линтинг
+black>=22.0.0
+isort>=5.10.0
+flake8>=4.0.0
+mypy>=0.910
+
+# Документация
+mkdocs>=1.3.0
+mkdocs-material>=8.0.0
