@@ -1,0 +1,30 @@
+config:
+  target: "http://127.0.0.1:8000"
+  phases:
+    - duration: 10  # короткий smoke-тест
+      arrivalRate: 3
+  engines:
+    ws: {}
+
+scenarios:
+  - name: WS burst connect & ping
+    flow:
+      - get:
+          url: "/health/ready"
+          expect:
+            - statusCode: 200
+      - post:
+          url: "/token"
+          json:
+            sub: "artillery-ci"
+          capture:
+            json: "$.token"
+            as: token
+      - ws:
+          connect: "ws://127.0.0.1:8000/ws?token={{ token }}"
+      - think: 1
+      - ws:
+          send: '{ "type": "ping", "data": "ci" }'
+      - think: 1
+      - ws:
+          close: true
