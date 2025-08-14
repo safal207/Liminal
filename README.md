@@ -50,6 +50,7 @@
 - [WebSocket Tests Documentation](backend/tests/README_TESTS.md) - описание тестов
 - [Legacy Backlog](BACKLOG.md) - старый беклог с обновлённым статусом
 - [SPRINT 4: Resilient Scale‑Out & Observability](SPRINT_4_PLAN.md)
+- [Load Testing (Artillery) Guide](docs/LOAD_TESTING.md)
 - [WebSocket burst‑тест (Artillery)](#ws-burst-artillery-ru)
 - [WebSocket burst test (Artillery) — English](#ws-burst-artillery-en)
 
