@@ -2,54 +2,74 @@ name: Python CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 jobs:
-  test:
+  lint:
+    name: Linting & Static Analysis
     runs-on: ubuntu-latest
-    
-    # Unit tests do not require external services by default
-    
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Show requirements files
-      run: |
-        echo "requirements.txt:"
-        cat -n requirements.txt || true
-        echo "requirements-dev.txt:"
-        if [ -f requirements-dev.txt ]; then cat -n requirements-dev.txt; else echo "requirements-dev.txt not found"; fi
+      - uses: actions/checkout@v3
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
 
-    - name: Pre-commit (all files)
-      run: |
-        pre-commit run --all-files --show-diff-on-failure || true
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-    
-    - name: Lint and format (black, isort, flake8)
-      run: |
-        black --check .
-        isort --check-only --profile black .
-        flake8
-    
-    - name: Type check (mypy)
-      run: |
-        mypy src tests
-    
-    - name: Run unit tests (skip integration)
-      run: |
-        python -m pytest -v --maxfail=1 --durations=10 -m "not integration"
-    
-    # Optional: add coverage in future when structure is stable
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Pre-commit (all files)
+        run: |
+          pre-commit run --all-files --show-diff-on-failure || true
+
+      - name: Lint and format (black, isort, flake8)
+        run: |
+          black --check .
+          isort --check-only --profile black .
+          flake8
+
+      - name: Type check (mypy)
+        run: |
+          mypy src tests
+
+  test:
+    name: Unit Tests & Coverage
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run unit tests with coverage
+        run: |
+          pytest -v --maxfail=1 --durations=10 -m "not integration" --cov=src --cov-report=xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
