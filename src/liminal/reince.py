@@ -48,11 +48,8 @@ class InMemoryREINCE(REINCEInterface):
         self._now_fn: Callable[[], float] = now_fn or (
             lambda: _dt.datetime.now().timestamp()
         )
-        # Precompile a simple, unicode-friendly tokenizer: split on non-letters
-        self._tokenizer = re.compile(r"[^\p{L}]+", flags=re.UNICODE)
-        # Python's re does not support \p{L} natively; fallback using a simpler pattern
-        # that keeps letters (Cyrillic/Latin) and splits on other symbols.
-        # We'll replace the pattern on init to a working alternative.
+        # Precompile a unicode-friendly tokenizer (Python re has no \p{L}):
+        # split on any non-letter. We cover Latin + Cyrillic (including Ё/ё).
         self._tokenizer = re.compile(r"[^A-Za-zА-Яа-яЁё]+")
         # Minimal sentiment lexicon (Russian stems → tags)
         self._sent_lex: List[Tuple[str, str]] = [

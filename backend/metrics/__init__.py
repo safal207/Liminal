@@ -12,10 +12,10 @@ from .collectors import (
     websocket_auth_total,
     websocket_broadcast_duration_seconds,
     websocket_connections,
-    websocket_messages_total,
-    websocket_rate_limit_total,
     websocket_heartbeat_total,
     websocket_idle_disconnects_total,
+    websocket_messages_total,
+    websocket_rate_limit_total,
 )
 
 # Импортируем Redis метрики

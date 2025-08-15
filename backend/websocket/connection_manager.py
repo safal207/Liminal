@@ -23,15 +23,17 @@ except Exception:
         def __init__(self, *args, **kwargs):
             self.redis = None
 
+
 # Условный импорт метрик Prometheus
 try:
     from metrics import websocket_rate_limit_total  # Новая метрика
-    from metrics import websocket_heartbeat_total, websocket_idle_disconnects_total
     from metrics import (
         connection_limits,
         connection_rejections,
         websocket_broadcast_duration_seconds,
         websocket_connections,
+        websocket_heartbeat_total,
+        websocket_idle_disconnects_total,
         websocket_messages_total,
     )
 
@@ -327,7 +329,9 @@ class ConnectionManager:
                 await asyncio.sleep(self.heartbeat_interval)
                 # Отправляем application-level ping
                 try:
-                    await websocket.send_json({"type": "ping", "ts": datetime.utcnow().isoformat()})
+                    await websocket.send_json(
+                        {"type": "ping", "ts": datetime.utcnow().isoformat()}
+                    )
                     if METRICS_ENABLED:
                         websocket_heartbeat_total.labels(event="ping_sent").inc()
                 except Exception as e:
@@ -342,12 +346,18 @@ class ConnectionManager:
                 if now - last_pong > self.heartbeat_timeout:
                     reason = "Missing pong"
                     if METRICS_ENABLED:
-                        websocket_heartbeat_total.labels(event="timeout_disconnect").inc()
-                        websocket_idle_disconnects_total.labels(reason="missing_pong").inc()
+                        websocket_heartbeat_total.labels(
+                            event="timeout_disconnect"
+                        ).inc()
+                        websocket_idle_disconnects_total.labels(
+                            reason="missing_pong"
+                        ).inc()
                     try:
                         await websocket.close(code=1001, reason=reason)
                     finally:
-                        user_id = self.get_user_id_from_websocket(websocket) or "unknown"
+                        user_id = (
+                            self.get_user_id_from_websocket(websocket) or "unknown"
+                        )
                         await self.disconnect(websocket, user_id)
                     break
 
@@ -355,12 +365,18 @@ class ConnectionManager:
                 if now - last_act > self.idle_timeout:
                     reason = "Idle timeout"
                     if METRICS_ENABLED:
-                        websocket_heartbeat_total.labels(event="timeout_disconnect").inc()
-                        websocket_idle_disconnects_total.labels(reason="idle_timeout").inc()
+                        websocket_heartbeat_total.labels(
+                            event="timeout_disconnect"
+                        ).inc()
+                        websocket_idle_disconnects_total.labels(
+                            reason="idle_timeout"
+                        ).inc()
                     try:
                         await websocket.close(code=1001, reason=reason)
                     finally:
-                        user_id = self.get_user_id_from_websocket(websocket) or "unknown"
+                        user_id = (
+                            self.get_user_id_from_websocket(websocket) or "unknown"
+                        )
                         await self.disconnect(websocket, user_id)
                     break
         except asyncio.CancelledError:
@@ -591,7 +607,9 @@ class ConnectionManager:
         Если скрипт не загружен или Redis недоступен, возвращает False (лимитирование отключено).
         """
         # Если скрипт не загружен, не ограничиваем
-        if not self.rate_limit_script_sha or not getattr(self.redis_client, "redis", None):
+        if not self.rate_limit_script_sha or not getattr(
+            self.redis_client, "redis", None
+        ):
             return False
 
         keys: List[str] = []
@@ -696,8 +714,6 @@ class ConnectionManager:
                 f"Lua-скрипт для Rate Limiting успешно загружен. SHA: {self.rate_limit_script_sha}"
             )
         except Exception as e:
-            logger.error(
-                f"Не удалось загрузить Lua-скрипт для Rate Limiting: {e}"
-            )
+            logger.error(f"Не удалось загрузить Lua-скрипт для Rate Limiting: {e}")
             # В случае ошибки, Rate Limiting будет отключен
             self.rate_limit_script_sha = None

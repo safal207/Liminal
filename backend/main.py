@@ -374,7 +374,9 @@ async def startup_event():
         logger.info("Успешное подключение к Redis.")
     except Exception as e:
         # Переходим в деградированный режим (DummyRedis уже настроен внутри RedisClient)
-        logger.warning(f"Redis недоступен на старте: {e}. Продолжаем в degraded режиме.")
+        logger.warning(
+            f"Redis недоступен на старте: {e}. Продолжаем в degraded режиме."
+        )
 
     # 2. Явное ожидание загрузки Lua-скрипта
     # Это гарантирует, что Rate Limiting будет работать с самого начала.

@@ -29,7 +29,9 @@ def _clip01(x: float) -> float:
     return 0.0 if x < 0.0 else 1.0 if x > 1.0 else x
 
 
-def compute_relationship_health(a_traits: dict[str, float], b_traits: dict[str, float]) -> tuple[float, list[str]]:
+def compute_relationship_health(
+    a_traits: dict[str, float], b_traits: dict[str, float]
+) -> tuple[float, list[str]]:
     """Mirror GraphQL logic without requiring strawberry.
 
     Returns (score, rationale).
@@ -42,8 +44,16 @@ def compute_relationship_health(a_traits: dict[str, float], b_traits: dict[str, 
         )
     )
 
-    POS_KEYS = getattr(SystemBreath, "SOFT_KEYS_POS", ("любовь", "спокойствие", "нежность", "мягкость", "calm", "love", "tenderness"))
-    NEG_KEYS = getattr(SystemBreath, "SOFT_KEYS_NEG", ("страх", "гнев", "злость", "тревога", "anger", "fear"))
+    POS_KEYS = getattr(
+        SystemBreath,
+        "SOFT_KEYS_POS",
+        ("любовь", "спокойствие", "нежность", "мягкость", "calm", "love", "tenderness"),
+    )
+    NEG_KEYS = getattr(
+        SystemBreath,
+        "SOFT_KEYS_NEG",
+        ("страх", "гнев", "злость", "тревога", "anger", "fear"),
+    )
 
     def avg(keys: tuple[str, ...]) -> float:
         vals: List[float] = []
@@ -92,13 +102,15 @@ def _compute_top_at_risk(limit: int) -> List[dict[str, Any]]:
                 advice: List[str] = []
                 if score < threshold:
                     advice = ["breathStep", "consider_linkParent", "consider_merge"]
-                edges.append({
-                    "sourceId": a.id,
-                    "targetId": b.id,
-                    "score": score,
-                    "advice": advice,
-                    "rationale": rationale,
-                })
+                edges.append(
+                    {
+                        "sourceId": a.id,
+                        "targetId": b.id,
+                        "score": score,
+                        "advice": advice,
+                        "rationale": rationale,
+                    }
+                )
 
     # lowest first
     edges.sort(key=lambda e: e["score"])  # type: ignore[index]
@@ -118,7 +130,9 @@ async def at_risk(request) -> HTMLResponse:
         return HTMLResponse(f"<h1>Error</h1><pre>{e}</pre>", status_code=500)
 
     # Dynamic HTML UI with controls and JS-powered rendering
-    html = f"""
+    # NOTE: avoid f-string here to prevent parser issues with backslashes inside expressions.
+    # Use simple placeholders (__LIMIT__, __THRESH__) and replace them below.
+    html = """
     <!doctype html>
     <html>
       <head>
@@ -160,11 +174,11 @@ async def at_risk(request) -> HTMLResponse:
           <div class="controls">
             <div class="group">
               <label for="limit">limit</label>
-              <input id="limit" type="number" min="1" value="{limit}" />
+              <input id="limit" type="number" min="1" value="__LIMIT__" />
             </div>
             <div class="group">
               <label for="threshold">threshold</label>
-              <input id="threshold" type="number" step="0.01" min="0" max="1" value="{os.getenv('LIMINAL_HEALTH_THRESHOLD', '0.4')}" />
+              <input id="threshold" type="number" step="0.01" min="0" max="1" value="__THRESH__" />
             </div>
             <div class="group">
               <label for="sort">sort</label>
@@ -322,6 +336,9 @@ async def at_risk(request) -> HTMLResponse:
       </body>
     </html>
     """
+    # Substitute placeholders
+    html = html.replace("__LIMIT__", str(limit))
+    html = html.replace("__THRESH__", os.getenv("LIMINAL_HEALTH_THRESHOLD", "0.4"))
     return HTMLResponse(html)
 
 
@@ -335,7 +352,7 @@ async def api_top_at_risk(request) -> JSONResponse:
 
 
 async def api_add_node(request) -> JSONResponse:
-    """Add a node: POST JSON {"kind":"module_state","traits": {..}, "notes": [..], "id": "optional"} """
+    """Add a node: POST JSON {"kind":"module_state","traits": {..}, "notes": [..], "id": "optional"}"""
     try:
         payload = await request.json()
     except Exception:
@@ -345,12 +362,15 @@ async def api_add_node(request) -> JSONResponse:
     notes = payload.get("notes") or []
     node_id = payload.get("id")
     n = WEB.add_node(kind=kind, traits=traits, notes=notes, id=node_id)
-    return JSONResponse({"id": n.id, "kind": n.kind, "traits": n.traits, "notes": n.notes})
+    return JSONResponse(
+        {"id": n.id, "kind": n.kind, "traits": n.traits, "notes": n.notes}
+    )
 
 
 async def api_seed_demo(request) -> JSONResponse:
     """Create a tiny deterministic demo: love vs fear vs calm nodes."""
-    WEB._nodes.clear(); WEB._edges.clear()  # reset demo space only
+    WEB._nodes.clear()
+    WEB._edges.clear()  # reset demo space only
     a = WEB.add_node(kind="module_state", traits={"любовь": 0.8})
     b = WEB.add_node(kind="module_state", traits={"страх": 0.9})
     c = WEB.add_node(kind="module_state", traits={"спокойствие": 0.7})
@@ -364,10 +384,13 @@ routes = [
     Route("/api/top-at-risk", api_top_at_risk),
     Route("/api/add-node", api_add_node, methods=["POST"]),
     Route("/api/seed-demo", api_seed_demo, methods=["POST"]),
-    Mount("/graphql", app=_graphql_app) if _graphql_app is not None else Route(
-        
-        "/graphql",
-        lambda req: PlainTextResponse("GraphQL app not available", status_code=503),
+    (
+        Mount("/graphql", app=_graphql_app)
+        if _graphql_app is not None
+        else Route(
+            "/graphql",
+            lambda req: PlainTextResponse("GraphQL app not available", status_code=503),
+        )
     ),
 ]
 
