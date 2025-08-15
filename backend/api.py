@@ -190,7 +190,7 @@ try:
     # Проверяем, нужно ли использовать Redis для масштабирования
     use_redis = os.environ.get("USE_REDIS", "false").lower() == "true"
     if use_redis:
-        from websocket.redis_connection_manager import RedisConnectionManager
+        from backend.websocket.redis_connection_manager import RedisConnectionManager
 
         redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         connection_manager = RedisConnectionManager(
@@ -201,7 +201,7 @@ try:
         )
         print(f"DEBUG: Using Redis ConnectionManager with URL: {redis_url}")
     else:
-        from websocket.connection_manager import ConnectionManager
+        from backend.websocket.connection_manager import ConnectionManager
 
         connection_manager = ConnectionManager(
             max_connections=100, max_connections_per_ip=10

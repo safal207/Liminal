@@ -14,7 +14,14 @@ from typing import Callable, Dict, List, Optional, Set
 from fastapi import WebSocket
 from loguru import logger
 
-from .redis_client import RedisClient
+try:
+    from .redis_client import RedisClient
+except Exception:
+    # Redis может отсутствовать в среде; предоставляем минимальную заглушку,
+    # чтобы базовый функционал WebSocket и readiness не падал на импорте.
+    class RedisClient:  # type: ignore
+        def __init__(self, *args, **kwargs):
+            self.redis = None
 
 # Условный импорт метрик Prometheus
 try:
@@ -70,7 +77,7 @@ class ConnectionManager:
 
     def __init__(
         self,
-        redis_client: RedisClient,
+        redis_client: Optional[RedisClient] = None,
         max_connections: int = 100,
         max_connections_per_ip: int = 10,
         rate_limit_messages_per_second: int = 10,
@@ -81,6 +88,8 @@ class ConnectionManager:
     ):
         # Зависимости
         self.redis_client = redis_client
+        # Совместимость с health/ready: наличие атрибута redis
+        self.redis = getattr(redis_client, "redis", None) if redis_client else None
 
         # Хранилище активных подключений: {user_id: {websocket1, websocket2, ...}}
         self.active_connections: Dict[str, Set[WebSocket]] = {}
@@ -117,8 +126,9 @@ class ConnectionManager:
             connection_limits.labels(type="max_total").set(self.max_connections)
             connection_limits.labels(type="max_per_ip").set(self.max_connections_per_ip)
 
-        # Загружаем Lua-скрипт для Rate Limiting
-        asyncio.create_task(self._load_rate_limit_script())
+        # Загружаем Lua-скрипт для Rate Limiting (только если доступен Redis)
+        if self.redis_client is not None:
+            asyncio.create_task(self._load_rate_limit_script())
 
     async def connect(self, websocket: WebSocket, user_id: str):
         """Регистрирует новое подключение пользователя."""
