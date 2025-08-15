@@ -782,6 +782,41 @@ async def health_check():
     }
 
 
+@app.get("/ready")
+async def readiness_check():
+    """Readiness probe: проверка готовности приложения обрабатывать запросы.
+
+    Не требует внешних сетевых зависимостей; учитывает только наличие цикла событий
+    и базовую инициализацию компонентов. Полезно для Kubernetes/Compose readinessProbe.
+    """
+    try:
+        # Внутри обработчика запроса цикл событий должен быть доступен
+        asyncio.get_running_loop()
+        loop_ok = True
+    except RuntimeError:
+        loop_ok = False
+
+    redis_cfg = hasattr(connection_manager, "redis")
+    redis_ok = connection_manager.redis is not None if redis_cfg else True
+
+    checks = {
+        "app_loaded": True,
+        "event_loop": loop_ok,
+        "redis_configured": redis_cfg,
+        "redis_connected": redis_ok,
+        "ml_enabled": ML_ENABLED,
+    }
+
+    # Готовность определяем по базовым условиям; внешние сервисы опциональны
+    ready = checks["app_loaded"] and checks["event_loop"]
+
+    return {
+        "ready": ready,
+        "checks": checks,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+
+
 # Middleware для сбора ML-данных
 @app.middleware("http")
 async def ml_data_collector(request, call_next):

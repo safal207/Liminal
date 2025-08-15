@@ -48,3 +48,11 @@ Thumbs.db
 
 # Misc
 coverage/
+
+# Temp and backup files
+*.tmp
+.tmp*
+tmp/
+*.bak
+*.swp
+*.orig

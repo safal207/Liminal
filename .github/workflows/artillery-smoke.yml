@@ -35,9 +35,7 @@ jobs:
         run: |
           uvicorn backend.main:app --host 127.0.0.1 --port 8000 &
           echo $! > uvicorn.pid
-          for i in {1..60}; do
-            if curl -fsS http://127.0.0.1:8000/health/ready > /dev/null; then
-              echo "Backend is ready"; break; fi; sleep 1; done
+          bash scripts/check-health.sh --url http://127.0.0.1:8000 --retries 60 --delay 1 --fail-on-not-ready
 
       - name: Run Artillery smoke test
         run: |

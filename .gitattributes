@@ -1,0 +1,19 @@
+# Normalize text files
+* text=auto
+
+# Shell scripts must be LF for Linux/CI
+*.sh text eol=lf
+
+# PowerShell and batch stay CRLF on Windows
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+
+# Python sources as LF (safer cross‑platform)
+*.py text eol=lf
+
+# Markdown keep default normalization
+*.md text=auto
+
+# Ensure YAML is normalized
+*.yml text eol=lf
+*.yaml text eol=lf

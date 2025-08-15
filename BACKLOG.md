@@ -57,7 +57,7 @@
    - [x] Настроить логирование в файл (test_websocket.log)
    - [x] Добавить debug эндпоинты (/debug/connections/stats)
    - [ ] Добавить метрики Prometheus
-   - [ ] Добавить health-check эндпоинты (/health, /ready)
+   - [x] Добавить health-check эндпоинты (/health, /ready)
 
 ### Средний приоритет
 4. **Документация** ⚠️ ЧАСТИЧНО

@@ -24,6 +24,12 @@ jobs:
         # optional client libs for ws tests
         pip install websockets requests pytest-asyncio
 
+    - name: Start backend (uvicorn on 8080) and wait readiness
+      run: |
+        uvicorn backend.main:app --host 127.0.0.1 --port 8080 &
+        echo $! > uvicorn.pid
+        bash scripts/check-health.sh --url http://127.0.0.1:8080 --retries 60 --delay 1 --fail-on-not-ready
+
     - name: Run WebSocket integration tests
       env:
         WS_API_URL: http://localhost:8080
@@ -31,3 +37,8 @@ jobs:
       run: |
         # These tests are smoke-level and skip themselves if server is down
         python -m pytest -v -m integration --maxfail=1 --durations=10
+
+    - name: Stop backend
+      if: always()
+      run: |
+        if [ -f uvicorn.pid ]; then kill $(cat uvicorn.pid) || true; fi

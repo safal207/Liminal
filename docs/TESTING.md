@@ -66,3 +66,95 @@ Think of tests as daily diagnostics of a living system:
 
 - Use `-vv -rA` for more verbose output while debugging.
 - Use `--maxfail=1 --lf` to iterate quickly on failures.
+
+## API Health/Readiness Quick Checks
+
+- Start server:
+  - `python -m uvicorn backend.api:app --reload --port 8000`
+- PowerShell:
+  - `Invoke-RestMethod http://127.0.0.1:8000/health | ConvertTo-Json -Depth 5`
+  - `Invoke-RestMethod http://127.0.0.1:8000/ready  | ConvertTo-Json -Depth 5`
+  - Windows helper script:
+    - `./scripts/check-health.ps1 [-BaseUrl http://127.0.0.1:8000] [-Retries 10] [-DelaySec 2] [-FailOnNotReady]`
+- curl:
+  - `curl http://127.0.0.1:8000/health`
+  - `curl http://127.0.0.1:8000/ready`
+- Linux/macOS helper script:
+  - `bash ./scripts/check-health.sh [--url http://127.0.0.1:8000] [--retries 30] [--delay 2] [--fail-on-not-ready]`
+
+Expected:
+
+```json
+{
+  "status": "ok",
+  "timestamp": "2025-01-01T12:00:00Z",
+  "ml_enabled": true,
+  "redis_connected": false
+}
+```
+
+```json
+{
+  "ready": true,
+  "checks": {
+    "app_loaded": true,
+    "event_loop": true,
+    "redis_configured": false,
+    "redis_connected": true,
+    "ml_enabled": true
+  },
+  "timestamp": "2025-01-01T12:00:00Z"
+}
+```
+
+Notes:
+- `USE_REDIS=false` (default): Redis not required; readiness is true if app and event‑loop are ok.
+- `USE_REDIS=true`: connects to Redis; if down, readiness stays true (base conditions only) and details are shown in `checks`.
+- Prometheus metrics at `/metrics` (soft import).
+
+### Mini‑FAQ (health/readiness)
+
+- Q: `/ready` is `false`.
+  A: Ensure server is running and the host/port are correct; event‑loop must be accessible inside the request.
+- Q: `redis_connected=false` — is it an error?
+  A: Not if `USE_REDIS=false`. External services are optional for readiness.
+- Q: Startup fails due to `metrics` import.
+  A: Install dev deps from `requirements-dev.txt` or disable metrics; check Python version and working directory.
+- Q: Port busy.
+  A: Change port: `python -m uvicorn backend.api:app --port 8080`.
+
+## Уверенный коммит на Windows
+
+Иногда pre-commit на Windows падает при создании служебных окружений (virtualenv seed/setuptools). Это лечится очисткой кэша и обновлением инструментов. Случайности не случайны — как учит мастер Угвей: каждая «неожиданность» показывает слабое место процесса и ведёт к устойчивости.
+
+Протокол (корень репозитория, PowerShell):
+
+1) `pre-commit clean`
+2) `Remove-Item -Recurse -Force "$env:LOCALAPPDATA\pypa\virtualenv" -ErrorAction SilentlyContinue`
+3) `.\.venv\Scripts\python -m pip install -U pip setuptools virtualenv`
+4) `.\.venv\Scripts\pre-commit install`
+5) `.\.venv\Scripts\pre-commit run --all-files`
+6) `git add -A; git commit -m "chore: <кратко>"; git push`
+
+План Б, если всё ещё падает:
+
+- Установить переменную на сессию: `$env:VIRTUALENV_DOWNLOAD = "1"`
+- Повторить шаг 5: `.\.venv\Scripts\pre-commit run --all-files`
+
+Локальные хуки упрощены: тяжёлые проверки (black, isort, flake8, mypy) переведены в `stages: [manual]` — запускайте при необходимости:
+
+- `pre-commit run black -a`
+- `pre-commit run isort -a`
+- `pre-commit run flake8 -a`
+- `pre-commit run mypy -a`
+
+А в CI эти проверки выполняются автоматически (как «гигиена» перед тестами).
+
+Нормализация окончаний строк (EOL): после добавления `.gitattributes` возможна миграция EOL. При странных диффах выполните:
+
+```bash
+git add --renormalize .
+git commit -m "chore: renormalize line endings"
+```
+
+Аффирмация: «Я действую спокойно и ровно. Случайности не случайны — они ведут к чистоте процесса».
