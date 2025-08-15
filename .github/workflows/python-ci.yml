@@ -35,7 +35,9 @@ jobs:
 
     - name: Pre-commit (all files)
       run: |
-          pre-commit run --all-files --show-diff-on-failure || true
+        pre-commit run --all-files --show-diff-on-failure || true
+
+    
     - name: Lint and format (black, isort, flake8)
       run: |
         black --check .
