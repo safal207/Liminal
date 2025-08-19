@@ -56,3 +56,4 @@ tmp/
 *.bak
 *.swp
 *.orig
+temp_packages/

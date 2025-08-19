@@ -5,7 +5,12 @@ from typing import Any, List
 
 try:
     from starlette.applications import Starlette
-    from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
+    from starlette.responses import (
+        HTMLResponse,
+        JSONResponse,
+        PlainTextResponse,
+        RedirectResponse,
+    )
     from starlette.routing import Mount, Route
 except Exception as e:  # pragma: no cover
     raise SystemExit(f"Starlette is required for this server: {e}")
@@ -136,36 +141,212 @@ async def at_risk(request) -> HTMLResponse:
     <!doctype html>
     <html>
       <head>
-        <meta charset='utf-8'/>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Top At-Risk Edges</title>
+         <meta charset='utf-8'/>
+         <meta name="viewport" content="width=device-width, initial-scale=1" />
+         <title>Top At-Risk Edges</title>
         <style>
-          :root {{ --accent: #5b7cff; --danger: #d32f2f; --bg: #0b1020; --card: #121a2e; --muted: #94a3b8; }}
-          * {{ box-sizing: border-box; }}
-          body {{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }}
-          .wrap {{ max-width: 1080px; margin: 24px auto; padding: 0 16px; }}
-          h1 {{ margin: 8px 0 16px; font-weight: 700; letter-spacing: 0.3px; }}
-          .controls {{ display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }}
-          .controls .group {{ display: flex; gap: 8px; align-items: center; background: #0b1224; padding: 8px 10px; border-radius: 8px; border: 1px solid #1f2a44; }}
-          label {{ color: var(--muted); font-size: 14px; }}
-          input[type=number] {{ width: 90px; background: #0a1326; color: #e2e8f0; border: 1px solid #1f2a44; padding: 6px 8px; border-radius: 6px; }}
-          input[type=text] {{ width: 220px; background: #0a1326; color: #e2e8f0; border: 1px solid #1f2a44; padding: 6px 8px; border-radius: 6px; }}
-          button {{ background: linear-gradient(135deg, #3b82f6, #6366f1); border: 0; color: white; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 14px rgba(59,130,246,0.35); }}
-          button.secondary {{ background: #15213b; border: 1px solid #243b64; color: #cbd5e1; box-shadow: none; }}
-          button.danger {{ background: linear-gradient(135deg, #ef4444, #dc2626); box-shadow: 0 4px 14px rgba(239,68,68,0.35); }}
-          .row {{ display: grid; grid-template-columns: 1fr; gap: 14px; }}
-          .card {{ background: #0b1224; border: 1px solid #1f2a44; border-radius: 12px; overflow: hidden; }}
-          .card h3 {{ margin: 0; padding: 12px 14px; background: #0d1731; border-bottom: 1px solid #1f2a44; font-size: 15px; color: #cbd5e1; }}
-          table {{ border-collapse: collapse; width: 100%; }}
-          th, td {{ border-bottom: 1px solid #1e293b; padding: 10px 12px; font-size: 14px; }}
-          th {{ text-align: left; color: #94a3b8; background: #0b1224; position: sticky; top: 0; }}
-          tr:hover td {{ background: #0d1731; }}
-          .score {{ font-variant-numeric: tabular-nums; }}
-          .risk td {{ background: rgba(211,47,47,0.10); }}
-          .risk .score {{ color: #ff6b6b; font-weight: 700; }}
-          .muted {{ color: #94a3b8; font-size: 13px; }}
-          .form-inline {{ display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; }}
+          /* Zen-inspired harmonious palette */
+          :root {
+            --sage: #a7c957;      /* мудрый зелёный */
+            --lotus: #f2e9e4;     /* нежный лотос */
+            --stone: #4a4e69;     /* камень */
+            --water: #9a8c98;     /* вода */
+            --earth: #22223b;     /* земля */
+            --sky: #f8f5f0;       /* небо */
+            --shadow: 0 8px 25px rgba(34, 34, 59, 0.15);
+            --glow: 0 0 20px rgba(167, 201, 87, 0.2);
+          }
+          
+          * { box-sizing: border-box; }
+          
+          body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            background: linear-gradient(135deg, #f8f5f0 0%, #f2e9e4 100%);
+            color: var(--earth);
+            line-height: 1.6;
+            min-height: 100vh;
+          }
+          
+          .wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem;
+          }
+          
+          h1 {
+            font-size: 2.5rem;
+            font-weight: 300;
+            margin: 0 0 2rem;
+            color: var(--stone);
+            text-align: center;
+            letter-spacing: 0.5px;
+          }
+          
+          .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(167, 201, 87, 0.1);
+          }
+          
+          .controls .group {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+          }
+          
+          label {
+            color: var(--water);
+            font-size: 0.9rem;
+            font-weight: 500;
+          }
+          
+          input, select {
+            padding: 0.6rem 0.8rem;
+            border: 2px solid rgba(167, 201, 87, 0.2);
+            border-radius: 8px;
+            background: white;
+            color: var(--earth);
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+          }
+          
+          input:focus, select:focus {
+            outline: none;
+            border-color: var(--sage);
+            box-shadow: var(--glow);
+          }
+          
+          input[type=number] { width: 80px; }
+          input[type=text] { width: 240px; }
+          
+          button {
+            padding: 0.7rem 1.2rem;
+            border: none;
+            border-radius: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+          }
+          
+          button {
+            background: linear-gradient(135deg, var(--sage), #8fb339);
+            color: white;
+            box-shadow: var(--shadow);
+          }
+          
+          button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 35px rgba(167, 201, 87, 0.3);
+          }
+          
+          button.secondary {
+            background: white;
+            color: var(--stone);
+            border: 2px solid rgba(167, 201, 87, 0.3);
+            box-shadow: none;
+          }
+          
+          button.secondary:hover {
+            background: rgba(167, 201, 87, 0.1);
+            border-color: var(--sage);
+          }
+          
+          .card {
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(167, 201, 87, 0.1);
+          }
+          
+          .card h3 {
+            margin: 0;
+            padding: 1.2rem 1.5rem;
+            background: linear-gradient(135deg, #f8f5f0, #f2e9e4);
+            border-bottom: 1px solid rgba(167, 201, 87, 0.2);
+            color: var(--stone);
+            font-weight: 600;
+          }
+          
+          table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          
+          th, td {
+            padding: 1rem 1.2rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(167, 201, 87, 0.1);
+          }
+          
+          th {
+            background: rgba(248, 245, 240, 0.8);
+            color: var(--water);
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          
+          tbody tr:hover td {
+            background: rgba(167, 201, 87, 0.05);
+          }
+          
+          .risk td {
+            background: linear-gradient(90deg, rgba(231, 111, 81, 0.1), transparent);
+          }
+          
+          .risk .score {
+            color: #e76f51;
+            font-weight: 700;
+          }
+          
+          .score {
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+          }
+          
+          .muted {
+            color: var(--water);
+            font-size: 0.85rem;
+          }
+          
+          .form-inline {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+            padding: 1.5rem;
+            background: rgba(248, 245, 240, 0.5);
+          }
+          
+          /* Медитативные тени */
+          .card, .controls {
+            position: relative;
+          }
+          
+          .card::before {
+            content: '';
+            position: absolute;
+            top: -1px;
+            left: -1px;
+            right: -1px;
+            bottom: -1px;
+            background: linear-gradient(45deg, transparent, rgba(167, 201, 87, 0.1), transparent);
+            border-radius: 20px;
+            z-index: -1;
+          }
         </style>
+          </style>
       </head>
       <body>
         <div class="wrap">
@@ -211,7 +392,7 @@ async def at_risk(request) -> HTMLResponse:
             </table>
           </div>
 
-          <p class='muted'>GraphQL Playground is {('available at <a href=\'/graphql\'>/graphql</a>') if _graphql_app is not None else 'not available in offline mode'}.</p>
+          <p class='muted'>GraphQL Playground is __GRAPHQL_STATUS__.</p>
         </div>
 
         <script>
@@ -220,116 +401,124 @@ async def at_risk(request) -> HTMLResponse:
           const LS_THRESH = 'liminal_atrisk_threshold';
           const LS_SORT = 'liminal_atrisk_sort';
 
-          function savePrefs() {{
+          function savePrefs() {
             localStorage.setItem(LS_LIMIT, String($('#limit').value));
             localStorage.setItem(LS_THRESH, String($('#threshold').value));
             localStorage.setItem(LS_SORT, String($('#sort').value));
-          }}
+          }
 
-          function loadPrefs() {{
+          function loadPrefs() {
             const l = localStorage.getItem(LS_LIMIT);
             const t = localStorage.getItem(LS_THRESH);
             if (l) $('#limit').value = l;
             if (t) $('#threshold').value = t;
             const s = localStorage.getItem(LS_SORT);
             if (s) $('#sort').value = s;
-          }}
+          }
 
-          async function fetchEdges() {{
+          async function fetchEdges() {
             const limit = parseInt($('#limit').value || '5');
-            const res = await fetch(`/api/top-at-risk?limit=${{limit}}`);
+            const res = await fetch('/api/top-at-risk?limit=' + limit);
             const js = await res.json();
             return js.topAtRiskEdges || [];
-          }}
+          }
 
-          function renderRows(rows) {{
+          function renderRows(rows) {
             const tb = $('#tbody');
             const thr = parseFloat($('#threshold').value || '0.4');
             const sort = ($('#sort').value || 'asc');
             const sorted = [...rows].sort((a,b)=> (a.score||0)-(b.score||0));
             if (sort === 'desc') sorted.reverse();
-            if (!sorted.length) {{
+            if (!sorted.length) {
               tb.innerHTML = '<tr><td colspan="4" class="muted">No pairs found. Add nodes or seed demo.</td></tr>';
               return;
-            }}
-            tb.innerHTML = sorted.map(r => {{
-              const isRisk = (r.score || 0) < thr;
-              const advice = (r.advice || []).join(', ');
-              return `<tr class="${{isRisk ? 'risk' : ''}}"><td>${{r.sourceId}}</td><td>${{r.targetId}}</td><td class="score">${{(r.score||0).toFixed(3)}}</td><td>${{advice}}</td></tr>`;
-            }}).join('');
-          }}
+            }
+            tb.innerHTML = sorted.map(function(r) {
+              var isRisk = (r.score || 0) < thr;
+              var advice = (r.advice || []).join(', ');
+              var riskClass = isRisk ? 'risk' : '';
+              var score = (r.score || 0).toFixed(3);
+              return '<tr class="' + riskClass + '"><td>' + r.sourceId + '</td><td>' + r.targetId + '</td><td class="score">' + score + '</td><td>' + advice + '</td></tr>';
+            }).join('');
+          }
 
-          async function refresh() {{
+          async function refresh() {
             savePrefs();
             const rows = await fetchEdges();
             renderRows(rows);
-          }}
+          }
 
-          async function seedDemo() {{
-            await fetch('/api/seed-demo', {{ method: 'POST' }});
+          async function seedDemo() {
+            await fetch('/api/seed-demo', { method: 'POST' });
             await refresh();
-          }}
+          }
 
-          function parseTraits(str) {{
-            const obj = {{}};
-            const parts = (str || '').split(',');
-            for (const p of parts) {{
-              const [k0, v0] = p.split(':');
+          function parseTraits(str) {
+            var obj = {};
+            var parts = (str || '').split(',');
+            for (var i = 0; i < parts.length; i++) {
+              var p = parts[i];
+              var colonIndex = p.indexOf(':');
+              if (colonIndex === -1) continue;
+              var k0 = p.substring(0, colonIndex);
+              var v0 = p.substring(colonIndex + 1);
               if (!k0) continue;
-              const k = k0.trim();
-              const v = parseFloat((v0||'').trim());
+              var k = k0.trim();
+              var v = parseFloat((v0 || '').trim());
               if (!isNaN(v)) obj[k] = v;
-            }}
+            }
             return obj;
-          }}
+          }
 
-          async function addNode() {{
+          async function addNode() {
             const traits = parseTraits($('#traits').value);
-            await fetch('/api/add-node', {{
+            await fetch('/api/add-node', {
               method: 'POST',
-              headers: {{ 'Content-Type': 'application/json' }},
-              body: JSON.stringify({{ kind: 'module_state', traits }})
-            }});
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ kind: 'module_state', traits })
+            });
             $('#traits').value = '';
             await refresh();
-          }}
+          }
 
-          function download(filename, text) {{
-            const blob = new Blob([text], {{type: 'text/plain;charset=utf-8'}});
+          function download(filename, text) {
+            const blob = new Blob([text], {type: 'text/plain;charset=utf-8'});
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url; a.download = filename; a.click();
             URL.revokeObjectURL(url);
-          }}
+          }
 
-          async function exportJson() {{
+          async function exportJson() {
             const rows = await fetchEdges();
             download('top-at-risk.json', JSON.stringify(rows, null, 2));
-          }}
+          }
 
-          function toCsv(rows) {{
+          function toCsv(rows) {
             const header = ['sourceId','targetId','score','advice'];
             const lines = [header.join(',')];
-            for (const r of rows) {{
-              const adv = (r.advice||[]).join(' ');
-              lines.push([r.sourceId, r.targetId, (r.score||0).toFixed(3), '"'+adv.replaceAll('"','""')+'"'].join(','));
-            }}
+            for (var i = 0; i < rows.length; i++) {
+              var r = rows[i];
+              var adv = (r.advice || []).join(' ');
+              var advEscaped = adv.replace(/"/g, '""');
+              lines.push([r.sourceId, r.targetId, (r.score || 0).toFixed(3), '"' + advEscaped + '"'].join(','));
+            }
             return lines.join('\n');
-          }}
+          }
 
-          async function exportCsv() {{
+          async function exportCsv() {
             const rows = await fetchEdges();
             download('top-at-risk.csv', toCsv(rows));
-          }}
+          }
 
           // Events
-          window.addEventListener('DOMContentLoaded', async () => {{
+          window.addEventListener('DOMContentLoaded', async () => {
             loadPrefs();
             $('#refresh').addEventListener('click', refresh);
             $('#seed').addEventListener('click', seedDemo);
             $('#addnode').addEventListener('click', addNode);
             await refresh();
-          }});
+          });
           $('#exportJson').addEventListener('click', exportJson);
           $('#exportCsv').addEventListener('click', exportCsv);
         </script>
@@ -339,6 +528,13 @@ async def at_risk(request) -> HTMLResponse:
     # Substitute placeholders
     html = html.replace("__LIMIT__", str(limit))
     html = html.replace("__THRESH__", os.getenv("LIMINAL_HEALTH_THRESHOLD", "0.4"))
+    
+    # GraphQL status message
+    if _graphql_app is not None:
+        graphql_status = 'available at <a href="/graphql">/graphql</a>'
+    else:
+        graphql_status = 'not available in offline mode'
+    html = html.replace("__GRAPHQL_STATUS__", graphql_status)
     return HTMLResponse(html)
 
 
@@ -379,7 +575,17 @@ async def api_seed_demo(request) -> JSONResponse:
     return JSONResponse({"created": [a.id, b.id, c.id]})
 
 
+async def favicon(request):
+    """Simple favicon response to avoid 404"""
+    # Return a simple 1x1 transparent PNG as favicon
+    import base64
+    tiny_png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+    return Response(tiny_png, media_type="image/png")
+
 routes = [
+    # Redirect root to main UI
+    Route("/", lambda req: RedirectResponse(url="/at-risk", status_code=307)),
+    Route("/favicon.ico", favicon),
     Route("/at-risk", at_risk),
     Route("/api/top-at-risk", api_top_at_risk),
     Route("/api/add-node", api_add_node, methods=["POST"]),
