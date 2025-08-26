@@ -115,9 +115,12 @@ class InMemoryDiffusion(DiffusionInterface):
 
     def similarity(self, a: ModuleState, b: ModuleState) -> float:
         # Deterministic cosine-like similarity over shared keys
-        keys = set(a.traits.keys()) | set(b.traits.keys())
+        if not a.traits and not b.traits:
+            return 1.0  # By convention, two empty modules are identical
+
+        keys = set(a.traits.keys()) & set(b.traits.keys())
         if not keys:
-            return 1.0
+            return 0.0
         dot = sum(a.traits.get(k, 0.0) * b.traits.get(k, 0.0) for k in keys)
         na = sum(a.traits.get(k, 0.0) ** 2 for k in keys) ** 0.5
         nb = sum(b.traits.get(k, 0.0) ** 2 for k in keys) ** 0.5

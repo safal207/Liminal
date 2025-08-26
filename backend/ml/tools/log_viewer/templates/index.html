@@ -12,14 +12,14 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-3 mb-3">
-                        <div class="card text-white {% if stats.dialogs.exists %}bg-info{% else %}bg-secondary{% endif %} h-100">
+                        <div class="card text-white {% if stats.dialogues.exists %}bg-info{% else %}bg-secondary{% endif %} h-100">
                             <div class="card-body">
                                 <h5 class="card-title"><i class="fas fa-comment-alt"></i> Диалоги</h5>
-                                <h6 class="card-subtitle mb-2">Количество: {{ stats.dialogs.entries }}</h6>
+                                <h6 class="card-subtitle mb-2">Количество: {{ stats.dialogues.entries }}</h6>
                                 <p class="card-text">
-                                    <small>Последнее обновление: {{ stats.dialogs.last_modified }}</small>
+                                    <small>Последнее обновление: {{ stats.dialogues.last_modified }}</small>
                                 </p>
-                                <a href="{{ url_for('view_logs', log_type='dialogs') }}" class="btn btn-light btn-sm">Просмотр</a>
+                                <a href="{{ url_for('view_logs', log_type='dialogues') }}" class="btn btn-light btn-sm">Просмотр</a>
                             </div>
                         </div>
                     </div>
