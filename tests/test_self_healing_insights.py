@@ -49,8 +49,8 @@ def test_low_health_writes_insight(
         }
         """
     )
-    ids = exec_gql("query { nodes { id } }")
-    a_id, b_id = ids["nodes"][0]["id"], ids["nodes"][1]["id"]
+    ids = exec_gql("query { realityWebNodes { id } }")
+    a_id, b_id = ids["realityWebNodes"][0]["id"], ids["realityWebNodes"][1]["id"]
 
     # Act
     exec_gql(
