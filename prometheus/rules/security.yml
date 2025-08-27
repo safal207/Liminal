@@ -1,0 +1,71 @@
+groups:
+- name: SecurityMonitoring
+  rules:
+  # Аутентификация
+  - record: auth_failure_rate
+    expr: sum(rate(auth_failures_total[5m])) by (service)
+
+  - record: token_usage_rate
+    expr: sum(rate(token_requests_total[5m])) by (service)
+
+  # API доступ
+  - record: api_error_rate
+    expr: sum(rate(http_requests_total{status=~"4..|5.."}[5m])) by (service, status)
+
+  - record: rate_limit_violations
+    expr: sum(rate(rate_limit_exceeded_total[5m])) by (service)
+
+  # Алерты для безопасности
+  - alert: HighAuthFailureRate
+    expr: sum(rate(auth_failures_total[5m])) > 10
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: High authentication failure rate
+      description: "Service {{ $labels.service }} has high auth failure rate"
+
+  - alert: UnusualAPIUsage
+    expr: sum(rate(http_requests_total[5m])) by (client_ip) > 1000
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Unusual API usage pattern
+      description: "Client {{ $labels.client_ip }} is making too many requests"
+
+  - alert: SuspiciousActivity
+    expr: sum(rate(suspicious_activity_total[5m])) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: Suspicious activity detected
+      description: "Suspicious activity detected in {{ $labels.service }}"
+
+  - alert: UnauthorizedAccessAttempt
+    expr: sum(rate(unauthorized_access_total[5m])) > 5
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: Multiple unauthorized access attempts
+      description: "Multiple unauthorized access attempts detected"
+
+  - alert: VaultUnhealthy
+    expr: vault_up == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: Vault is unhealthy
+      description: "Vault instance is not responding"
+
+  - alert: RBACViolation
+    expr: sum(rate(rbac_violation_total[5m])) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: RBAC violation detected
+      description: "RBAC violation in {{ $labels.service }}"

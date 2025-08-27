@@ -1,0 +1,65 @@
+groups:
+- name: LiminalAlerts
+  rules:
+  - alert: HighErrorRate
+    expr: sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) > 0.05
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: High HTTP error rate
+      description: "Error rate is {{ $value | humanizePercentage }} over the last 5m"
+
+  - alert: HighLatency
+    expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: High latency
+      description: "95th percentile latency is {{ $value }}s"
+
+  - alert: MemoryUsage
+    expr: (sum(container_memory_usage_bytes{container!=""}) by (container) / sum(container_spec_memory_limit_bytes{container!=""}) by (container)) * 100 > 85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: High memory usage
+      description: "Container {{ $labels.container }} memory usage is {{ $value | humanizePercentage }}"
+
+  - alert: CPUUsage
+    expr: sum(rate(container_cpu_usage_seconds_total{container!=""}[5m])) by (container) / sum(container_spec_cpu_quota{container!=""}) by (container) * 100 > 85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: High CPU usage
+      description: "Container {{ $labels.container }} CPU usage is {{ $value | humanizePercentage }}"
+
+  - alert: Neo4jDown
+    expr: up{job="neo4j"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: Neo4j is down
+      description: "Neo4j instance has been down for more than 1 minute"
+
+  - alert: RedisDown
+    expr: up{job="redis"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: Redis is down
+      description: "Redis instance has been down for more than 1 minute"
+
+  - alert: MLPredictionErrors
+    expr: rate(ml_prediction_errors_total[5m]) > 0.1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: High ML prediction error rate
+      description: "ML prediction error rate is {{ $value | humanizePercentage }}"
