@@ -3,23 +3,19 @@ ML Metrics Exporter для Prometheus.
 Собирает расширенные фичи для ML-моделей из различных источников.
 """
 
-import asyncio
-import json
 import math
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 from loguru import logger
 
 # Prometheus метрики
 from prometheus_client import (
-    CONTENT_TYPE_LATEST,
     Counter,
     Gauge,
-    Histogram,
     generate_latest,
 )
 

@@ -3,7 +3,6 @@ XAI Intelligence Service Main Application.
 Standalone FastAPI сервис для XAI и OpenAI интеграции.
 """
 
-import asyncio
 import os
 import sys
 from contextlib import asynccontextmanager

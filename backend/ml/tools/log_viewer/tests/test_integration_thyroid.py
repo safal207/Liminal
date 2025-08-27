@@ -1,7 +1,6 @@
 """Integration test: 5 errors should trigger insight hormone write."""
 
 import importlib
-from pathlib import Path
 
 
 def test_hormone_trigger(tmp_path, monkeypatch):

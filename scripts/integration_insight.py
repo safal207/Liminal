@@ -4,7 +4,6 @@
 
 import os
 import sys
-from pathlib import Path
 
 # Add project paths
 script_path = os.path.dirname(os.path.abspath(__file__))

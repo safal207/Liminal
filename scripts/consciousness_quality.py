@@ -8,47 +8,41 @@ Philosophy First: "Качество - это любовь к деталям и �
 
 import ast
 import json
-import os
-import subprocess
-import sys
 import time
-import unittest
 
 # Optional quality tools - will work without them
 try:
-    import coverage
+    pass
 
     COVERAGE_AVAILABLE = True
 except ImportError:
     COVERAGE_AVAILABLE = False
 
 try:
-    import pylint.lint
+    pass
 
     PYLINT_AVAILABLE = True
 except ImportError:
     PYLINT_AVAILABLE = False
 
 try:
-    import black
+    pass
 
     BLACK_AVAILABLE = True
 except ImportError:
     BLACK_AVAILABLE = False
 
 try:
-    import isort
+    pass
 
     ISORT_AVAILABLE = True
 except ImportError:
     ISORT_AVAILABLE = False
-import shutil
-import tempfile
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 
 class QualityLevel(Enum):

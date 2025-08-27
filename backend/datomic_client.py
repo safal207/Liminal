@@ -3,11 +3,10 @@
 Обеспечивает подключение и базовые операции с данными.
 """
 
-import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
-from datomic import Client, Connection, Database
+from datomic import Client, Connection
 
 
 class DatomicClient:

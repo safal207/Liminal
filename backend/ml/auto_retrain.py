@@ -12,11 +12,9 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Tuple
 
-import numpy as np
 import pandas as pd
-from prometheus_client.parser import text_string_to_metric_families
 
 import redis
 

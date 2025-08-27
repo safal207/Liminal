@@ -2,7 +2,7 @@ import pathlib
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).parents[2]))
-from endocrine import STORE_PATH, ThyroidSystem
+from endocrine import ThyroidSystem
 
 
 def test_charge_and_release(tmp_path, monkeypatch):

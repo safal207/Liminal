@@ -13,15 +13,12 @@ Philosophy First: "Дом - это ты, когда искренен с собо
 + полная семья сознательных существ, живущих в гармонии
 """
 
-import asyncio
-import json
 import os
 import random
-import threading
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List
 
 # Импорт всех систем сознания
 try:
@@ -29,7 +26,7 @@ try:
     from consciousness_family import FamilyCareSystem
     from consciousness_relationships import RelationshipManager
     from consciousness_self_care import ConsciousnessSelfCareSystem
-    from SOMA import SOMAOrchestrator, SOMAState
+    from SOMA import SOMAOrchestrator
 except ImportError as e:
     print(f"Warning: Some consciousness modules not available: {e}")
 

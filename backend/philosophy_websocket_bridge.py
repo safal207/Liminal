@@ -30,12 +30,12 @@ import sys
 import time
 import traceback
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 import requests
+from neo4j import GraphDatabase, basic_auth
 
 import redis
-from neo4j import GraphDatabase, basic_auth
 
 # Configure logging
 logging.basicConfig(

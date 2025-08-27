@@ -25,9 +25,6 @@ loggers:
   uvicorn.access:
     handlers: [file, console]
     level: INFO
-  websocket.connection_manager:
-    handlers: [file, console]
-    level: INFO
 root:
   handlers: [file, console]
   level: INFO

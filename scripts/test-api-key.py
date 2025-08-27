@@ -3,7 +3,6 @@
 Простой тест API ключей OpenAI, Anthropic и XAI
 """
 import asyncio
-import json
 import os
 import sys
 import traceback

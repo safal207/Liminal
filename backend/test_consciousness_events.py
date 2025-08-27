@@ -12,11 +12,10 @@ following principles of functional purity and modular design.
 
 import argparse
 import datetime
-import json
 import random
 import time
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple, Union
 
 import requests
 

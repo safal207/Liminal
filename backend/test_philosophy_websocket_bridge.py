@@ -9,8 +9,6 @@ Tests the functionality of the PhilosophyWebSocketBridge component that connects
 Neo4j Temporal Data Lake with the Go WebSocket relay.
 """
 
-import datetime
-import json
 import unittest
 from unittest.mock import ANY, MagicMock, patch
 
@@ -22,8 +20,6 @@ from philosophy_websocket_bridge import (
     TRANSITION_TRIGGERS,
     PhilosophyWebSocketBridge,
 )
-
-from neo4j import GraphDatabase
 
 
 class TestPhilosophyWebSocketBridge(unittest.TestCase):

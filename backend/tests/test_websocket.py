@@ -3,7 +3,6 @@
 Проверяет создание соединений, отправку/получение сообщений и интеграцию с RINSE.
 """
 
-import asyncio
 import json
 from unittest.mock import AsyncMock, patch
 

@@ -9,16 +9,15 @@ Philosophy First: "Дом - это ты, когда искренен с собо
 Проект должен быть искренен с собой о своих паттернах и тенденциях.
 """
 
-import hashlib
 import json
 import os
 import re
 import time
-from collections import Counter, defaultdict
+from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 
 @dataclass

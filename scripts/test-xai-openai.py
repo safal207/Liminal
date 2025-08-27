@@ -99,9 +99,6 @@ else:
 # Импорт ML сервисов
 try:
     from backend.ml.openai_service import (
-        AnalysisRequest,
-        AnalysisResponse,
-        OpenAIService,
         openai_service,
     )
 
@@ -116,21 +113,21 @@ try:
     xai_components = []
 
     try:
-        import shap
+        pass
 
         xai_components.append("SHAP")
     except ImportError:
         pass
 
     try:
-        import lime
+        pass
 
         xai_components.append("LIME")
     except ImportError:
         pass
 
     try:
-        import eli5
+        pass
 
         xai_components.append("ELI5")
     except ImportError:

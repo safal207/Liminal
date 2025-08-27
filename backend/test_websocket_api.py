@@ -25,7 +25,6 @@ import time
 import unittest
 import uuid
 from contextlib import contextmanager
-from unittest.mock import MagicMock, patch
 
 import requests
 import websockets

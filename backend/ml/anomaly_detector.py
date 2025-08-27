@@ -5,7 +5,7 @@ Anomaly Detector для обнаружения аномалий в WebSocket т�
 
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 from loguru import logger
 

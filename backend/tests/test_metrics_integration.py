@@ -9,7 +9,6 @@ import argparse
 import asyncio
 import json
 import random
-import time
 import uuid
 from datetime import datetime
 

@@ -4,8 +4,6 @@
 Каждый агент наследуется от этого класса и реализует свою логику обработки сообщений.
 """
 
-import asyncio
-import json
 import logging
 import uuid
 from abc import ABC, abstractmethod

@@ -7,7 +7,6 @@ import os
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
-from fastapi import HTTPException, status
 from jose import JWTError, jwt
 
 # Безопасный импорт CryptContext с обработкой ошибок

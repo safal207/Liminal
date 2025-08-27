@@ -12,16 +12,14 @@ OpenAI API Wrapper для Resonance Liminal ML Backend
 - Статус адаптера и проверка здоровья
 - Подробная информация о конфигурации
 """
-import asyncio
 import hashlib
 import json
 import os
 import time
 import traceback
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import httpx
 
@@ -29,7 +27,7 @@ import httpx
 from loguru import logger
 
 # Интеллектуальный логгер
-from .adapter_logger import log_error, log_hypothesis, log_insight, resolve_hypothesis
+from .adapter_logger import log_error, log_hypothesis, log_insight
 
 # Конфигурация по умолчанию
 DEFAULT_CACHE_TTL = 3600  # 1 час по умолчанию

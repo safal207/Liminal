@@ -9,13 +9,9 @@ Neo4j интеграция для Philosophy First подхода
 
 import json
 import os
-import uuid
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 try:
-    from neo4j.exceptions import ServiceUnavailable
-
     from neo4j import GraphDatabase
 except ImportError:
     print("Neo4j driver не установлен. Установите: pip install neo4j")
@@ -23,9 +19,7 @@ except ImportError:
 
 from philosophy_schema import (
     ConsciousnessNode,
-    ConsciousnessState,
     StateTransition,
-    TransitionTrigger,
 )
 
 

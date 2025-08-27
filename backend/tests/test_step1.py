@@ -2,7 +2,6 @@
 Тест для проверки первого шага работы с временной шкалой.
 """
 
-import pytest
 from api import app
 from fastapi.testclient import TestClient
 

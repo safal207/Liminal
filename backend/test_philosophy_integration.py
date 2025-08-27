@@ -15,20 +15,13 @@ falling back to mocks when necessary.
 """
 
 import datetime
-import json
 import logging
-import os
 import random
-import subprocess
 import sys
-import threading
-import time
 import unittest
 import uuid
-from unittest.mock import MagicMock, patch
 
 import requests
-
 from neo4j import GraphDatabase
 
 # Configure logging for tests
@@ -44,12 +37,6 @@ logger = logging.getLogger(__name__)
 
 # Import modules to test
 try:
-    from philosophy_schema import (
-        ConsciousnessNode,
-        ConsciousnessState,
-        StateTransition,
-        TransitionTrigger,
-    )
     from philosophy_websocket_bridge import PhilosophyWebSocketBridge
 
     bridge_imported = True

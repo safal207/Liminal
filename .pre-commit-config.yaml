@@ -28,5 +28,12 @@ repos:
     rev: v4.6.0
     hooks:
       - id: end-of-file-fixer
+        types: [python, javascript, text]
       - id: trailing-whitespace
+        types: [python, javascript, text]
+        exclude: |
+          (?x)^(
+            .*\.md|
+            .*\.txt
+          )$
       - id: check-yaml

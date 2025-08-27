@@ -16,7 +16,6 @@ from datetime import datetime
 import pytest
 import requests
 import websockets
-from rich import print as rprint
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -255,7 +254,7 @@ async def run_diagnostics():
 if __name__ == "__main__":
     # Проверяем наличие rich
     try:
-        import rich
+        pass
     except ImportError:
         print("Установка пакета rich для красивого вывода...")
         import subprocess

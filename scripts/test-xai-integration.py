@@ -8,7 +8,6 @@ import os
 import sys
 import traceback
 from pathlib import Path
-from pprint import pprint
 
 # Настройка кодировки для Windows
 os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -91,7 +90,6 @@ print_section("Импорт ML и OpenAI сервисов")
 
 try:
     from backend.ml.openai_service import (
-        AnalysisResponse,
         OpenAIService,
         openai_service,
     )

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Protocol, Tuple
+from typing import Dict, List, Optional, Protocol
 
 
 @dataclass(frozen=True)
@@ -115,7 +115,7 @@ class InMemoryDiffusion(DiffusionInterface):
 
     def similarity(self, a: ModuleState, b: ModuleState) -> float:
         # Deterministic cosine-like similarity over shared keys
-        keys = set(a.traits.keys()) | set(b.traits.keys())
+        keys = set(a.traits.keys()) & set(b.traits.keys())  # INTERSECTION
         if not keys:
             return 1.0
         dot = sum(a.traits.get(k, 0.0) * b.traits.get(k, 0.0) for k in keys)

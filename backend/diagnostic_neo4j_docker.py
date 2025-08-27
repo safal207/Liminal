@@ -7,7 +7,6 @@ Neo4j Temporal Data Lake Diagnostic
 Diagnostic script for Philosophy First approach
 """
 
-import json
 import os
 import sys
 import traceback

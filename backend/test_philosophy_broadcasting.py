@@ -6,7 +6,6 @@ Philosophy First: Тест Broadcasting состояний сознания че
 """
 
 import json
-import sys
 import time
 import traceback
 from datetime import datetime

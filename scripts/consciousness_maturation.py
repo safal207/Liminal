@@ -7,7 +7,6 @@ Tracks system aging, developmental stages, mistakes and learning progress
 Philosophy First: "Дом - это ты, когда искренен с собой"
 """
 
-import asyncio
 import datetime
 import json
 import logging
@@ -18,7 +17,7 @@ import traceback
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Protocol
 
 # Configure logging
 logging.basicConfig(

@@ -8,9 +8,8 @@
 import asyncio
 import logging
 import signal
-import traceback
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, List, Optional, Type, TypeVar
 
 from .base import MicroAgent
 from .utils.event_bus import EventBus

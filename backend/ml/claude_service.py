@@ -3,19 +3,17 @@ Anthropic Claude Integration Service для Resonance Liminal.
 Интеграция Claude для безопасного AI анализа, этических решений и детального reasoning.
 """
 
-import asyncio
 import json
 import os
 import time
-from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
 # Anthropic Claude API
 try:
-    import anthropic
     from anthropic import AsyncAnthropic
 
     ANTHROPIC_AVAILABLE = True

@@ -9,7 +9,7 @@ import json
 import logging
 import uuid
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Set
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 import redis.asyncio as redis
 

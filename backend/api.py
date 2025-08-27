@@ -18,7 +18,6 @@ from fastapi import (
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -119,9 +118,6 @@ print("DEBUG: Before metrics import")
 try:
     from metrics import (
         setup_metrics,
-        websocket_auth_total,
-        websocket_connections,
-        websocket_messages_total,
     )
 
     print("DEBUG: Successfully imported metrics")
@@ -221,7 +217,7 @@ try:
         jwt_manager,
         verify_websocket_token,
     )
-    from auth.models import Token, UserLogin, WebSocketAuthMessage
+    from auth.models import Token, UserLogin
 
     print("DEBUG: Successfully imported auth modules")
 except ImportError as e:

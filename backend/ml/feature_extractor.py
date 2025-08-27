@@ -3,7 +3,6 @@ Feature Extractor для ML-моделей.
 Извлекает фичи из WebSocket метрик и логов для обучения AutoML моделей.
 """
 
-import json
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional

@@ -6,9 +6,8 @@ ML Scheduler для автоматического обучения и пере�
 import asyncio
 import json
 import time
-from datetime import datetime, timedelta
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict
 
 import requests
 import schedule

@@ -7,7 +7,7 @@ import argparse
 import random
 import time
 
-from prometheus_client import REGISTRY, Counter, Gauge, Histogram, start_http_server
+from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
 # Имитация метрик из backend/metrics/collectors.py
 # WebSocket метрики

@@ -6,12 +6,12 @@ MemoryTimeline - динамически обновляемая временна�
 print("DEBUG: Starting memory_timeline.py imports")
 import asyncio
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 print("DEBUG: Importing fastapi.WebSocket")
 import json
 
-from fastapi import Depends, HTTPException, WebSocket
+from fastapi import HTTPException, WebSocket
 from jose import JWTError, jwt
 
 print("DEBUG: All imports completed in memory_timeline.py")

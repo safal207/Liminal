@@ -1,5 +1,3 @@
-import os
-import sys
 from datetime import datetime, timedelta
 
 from datomic_client import DatomicClient

@@ -6,16 +6,13 @@
 """
 
 import argparse
-import datetime
 import json
 import logging
 import os
-import sys
 import threading
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict
 
-import numpy as np
 import requests
 from flask import Flask, jsonify, request
 

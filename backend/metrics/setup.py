@@ -11,7 +11,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response as StarletteResponse
 
-from .collectors import connection_limits, http_requests_total, websocket_connections
+from .collectors import connection_limits, http_requests_total
 
 
 def setup_metrics(app: FastAPI) -> None:

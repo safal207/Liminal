@@ -3,7 +3,6 @@
 Тестирует только отправку событий на Go WebSocket relay
 """
 
-import json
 import time
 import uuid
 from datetime import datetime

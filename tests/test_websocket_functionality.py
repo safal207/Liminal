@@ -14,11 +14,9 @@ import json
 
 # Включаем подробное логирование
 import logging
-import time
-import traceback
 import unittest
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Tuple
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import requests

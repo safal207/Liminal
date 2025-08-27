@@ -8,13 +8,13 @@ import json
 import os
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Optional, Set, Union
+from typing import Any, Callable, List, Optional, Set
 
 from loguru import logger
 
 import redis.asyncio as redis
 from redis.asyncio.client import Redis
-from redis.exceptions import ConnectionError, RedisError
+from redis.exceptions import RedisError
 
 # Условный импорт метрик Prometheus
 try:
