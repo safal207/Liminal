@@ -7,17 +7,11 @@ Philosophy First - File Output Diagnostics
 Full diagnostics with output to file for Windows compatibility
 """
 
-import json
 import os
-import random
-import sys
-import time
 import traceback
-import uuid
 from datetime import datetime
 
 import requests
-
 from neo4j import GraphDatabase
 
 # Create output file

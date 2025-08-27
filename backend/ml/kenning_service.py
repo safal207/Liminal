@@ -12,7 +12,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-import eli5
 import lime
 import lime.lime_tabular
 import matplotlib

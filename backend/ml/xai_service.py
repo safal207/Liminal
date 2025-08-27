@@ -3,19 +3,14 @@ XAI (Explainable AI) Service для Resonance Liminal.
 Интеграция SHAP, LIME и других методов интерпретации ML-моделей.
 """
 
-import asyncio
-import json
-import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
-import pandas as pd
 from loguru import logger
 
 # XAI библиотеки
 try:
-    import lime
     import shap
     from lime.lime_tabular import LimeTabularExplainer
 

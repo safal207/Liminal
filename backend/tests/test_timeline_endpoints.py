@@ -2,10 +2,8 @@
 Тесты для эндпоинтов временной шкалы памяти.
 """
 
-import asyncio
 import os
 import sys
-from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest

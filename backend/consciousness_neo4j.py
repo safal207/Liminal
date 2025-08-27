@@ -3,7 +3,6 @@
 Революционная интеграция состояний сознания с Neo4j
 """
 
-import json
 import os
 import uuid
 from datetime import datetime
@@ -18,7 +17,6 @@ from consciousness_schema import (
     StateTransition,
     TransitionTrigger,
 )
-
 from neo4j import GraphDatabase
 
 

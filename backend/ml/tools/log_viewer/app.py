@@ -15,11 +15,10 @@ import hashlib
 import json
 import os
 import re
-import time
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict
 
 from endocrine import thyroid
 from flask import (

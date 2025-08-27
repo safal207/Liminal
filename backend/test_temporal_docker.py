@@ -14,7 +14,6 @@ import sys
 import traceback
 import uuid
 from datetime import datetime
-from typing import Any, Dict
 
 # Set UTF-8 encoding for stdout
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
@@ -22,7 +21,6 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 # Import Neo4j components
 try:
     from consciousness_neo4j import (
-        ConsciousnessEventProcessor,
         ConsciousnessNeo4jWriter,
     )
     from consciousness_schema import (

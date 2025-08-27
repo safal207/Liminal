@@ -5,7 +5,6 @@ These tests require a running server. Run manually:
 2. python -m pytest tests/test_at_risk_rest.py
 """
 
-import json
 from typing import Any, Dict, List
 
 import pytest

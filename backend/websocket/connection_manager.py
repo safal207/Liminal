@@ -5,11 +5,9 @@
 
 import asyncio
 import logging
-import os
-import sys
 import time
 from datetime import datetime
-from typing import Callable, Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set
 
 from fastapi import WebSocket
 from loguru import logger

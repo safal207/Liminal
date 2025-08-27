@@ -5,7 +5,6 @@
 import os
 import sys
 import time
-from pathlib import Path
 
 
 def get_maturation_status(project_root, scripts_path):

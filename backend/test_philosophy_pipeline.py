@@ -25,7 +25,6 @@ except ImportError:
     # Fallback: use requests for simple HTTP test
     WebSocketApp = None
     ws_module = None
-import json
 import threading
 import time
 from datetime import datetime

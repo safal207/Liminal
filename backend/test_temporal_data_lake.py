@@ -11,9 +11,8 @@ import argparse
 import json
 import sys
 from datetime import datetime
-from typing import Any, Dict
 
-from consciousness_neo4j import ConsciousnessEventProcessor, ConsciousnessNeo4jWriter
+from consciousness_neo4j import ConsciousnessNeo4jWriter
 
 
 def print_styled(title, content, style="info"):

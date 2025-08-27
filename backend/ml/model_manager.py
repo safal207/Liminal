@@ -6,7 +6,6 @@ Model Manager для интеграции с AutoML for Embedded (Kenning).
 import asyncio
 import json
 import os
-import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 

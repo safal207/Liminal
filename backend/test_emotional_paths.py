@@ -3,13 +3,10 @@
 Интеграция с Neo4j и WebSocket для визуализации сложных эмоциональных паттернов
 """
 
-import json
-import os
 import time
 import uuid
 from datetime import datetime
 
-import requests
 from consciousness_neo4j import ConsciousnessNeo4jWriter
 from consciousness_schema import (
     ConsciousnessNode,

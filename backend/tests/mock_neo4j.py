@@ -46,7 +46,6 @@ class MockNeo4jWriter:
 
     def close(self):
         """Закрывает соединение (заглушка)."""
-        pass
 
 
 # Глобальный экземпляр мока

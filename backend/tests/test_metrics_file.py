@@ -3,7 +3,6 @@
 """
 
 import random
-import time
 
 from prometheus_client import Counter, Gauge, Histogram, generate_latest
 from prometheus_client.core import REGISTRY

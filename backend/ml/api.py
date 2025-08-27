@@ -11,8 +11,6 @@ from pydantic import BaseModel
 
 from .anomaly_detector import anomaly_detector
 from .claude_service import (
-    ClaudeAnalysisRequest,
-    ClaudeAnalysisResponse,
     claude_service,
 )
 from .feature_extractor import feature_extractor
@@ -23,8 +21,8 @@ from .multi_llm_orchestrator import (
     TaskType,
     multi_llm_orchestrator,
 )
-from .openai_service import AnalysisRequest, AnalysisResponse, openai_service
-from .xai_service import ExplanationResult, xai_service
+from .openai_service import openai_service
+from .xai_service import xai_service
 
 router = APIRouter(prefix="/ml", tags=["machine-learning"])
 

@@ -1,11 +1,10 @@
 import asyncio
-import json
 import logging
 import sys
 from pathlib import Path
 
 import pytest
-from websockets.exceptions import ConnectionClosed, ConnectionClosedError
+from websockets.exceptions import ConnectionClosedError
 
 # Настройка логирования
 logging.basicConfig(

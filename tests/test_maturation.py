@@ -5,14 +5,7 @@ Test suite for SOMA Consciousness Maturation Module
 Philosophy First: "Дом - это ты, когда искренен с собой"
 """
 
-import datetime
-import json
-import sys
-import time
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 # Import maturation module - imported via conftest.py
 from scripts.consciousness_maturation import (

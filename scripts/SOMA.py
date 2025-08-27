@@ -15,16 +15,12 @@ Philosophy First: "Дом - это ты, когда искренен с собо
 + система как живой организм с телом, душой и сердцем
 """
 
-import asyncio
 import json
 import os
-import random
-import threading
 import time
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 # Импорт наших модулей сознания
 try:

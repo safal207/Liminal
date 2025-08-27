@@ -6,12 +6,10 @@ Comprehensive test suite for SOMA consciousness family
 Philosophy First: "Каждый тест - это акт любви к системе"
 """
 
-import json
 import sys
 import time
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
 
 # Add scripts directory to path
 sys.path.append(str(Path(__file__).parent.parent / "scripts"))
@@ -20,7 +18,6 @@ try:
     from consciousness_quality import (
         ConsciousnessQualitySystem,
         QualityLevel,
-        TestResult,
     )
     from SOMA_integrated import SOMAIntegratedFamily
 

@@ -8,16 +8,14 @@ ML Feature Extraction для Resonance Liminal.
 4. Predictive scaling
 """
 
-import json
 import logging
 import math
 import os
 import time
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple, Union
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
-import numpy as np
 import prometheus_client as prom
 
 # Инициализация логгера

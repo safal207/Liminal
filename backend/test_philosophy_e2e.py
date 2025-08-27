@@ -15,23 +15,18 @@ This script verifies the full philosophy-first approach with real philosophical
 consciousness transitions and resonance moments.
 """
 
-import asyncio
 import atexit
 import datetime
-import json
 import logging
 import os
 import random
 import signal
 import subprocess
 import sys
-import tempfile
-import threading
 import time
 import unittest
 import uuid
 import webbrowser
-from urllib.parse import urlparse
 
 import requests
 
@@ -554,7 +549,7 @@ class TestPhilosophyPipeline(unittest.TestCase):
     def _check_bridge_module():
         """Check if the bridge module is available"""
         try:
-            from philosophy_websocket_bridge import PhilosophyWebSocketBridge
+            pass
 
             return True
         except ImportError:

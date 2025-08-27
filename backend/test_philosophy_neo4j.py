@@ -9,7 +9,6 @@ Philosophy First - Neo4j Temporal Data Lake Integration Test
 
 import argparse
 import json
-import os
 import random
 import sys
 import time
@@ -24,7 +23,6 @@ from philosophy_schema import (
     ConsciousnessState,
     StateTransition,
     TransitionTrigger,
-    create_consciousness_event,
 )
 
 

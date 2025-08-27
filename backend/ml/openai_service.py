@@ -3,14 +3,13 @@ OpenAI Integration Service для Resonance Liminal.
 Интеграция GPT-4 для intelligent analysis, automated responses и natural language explanations.
 """
 
-import asyncio
 import json
 import os
 import time
 import traceback
-from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
@@ -18,10 +17,7 @@ from loguru import logger
 try:
     from .openai_wrapper import (
         AsyncOpenAI,
-        LLMRequest,
-        LLMResponse,
         initialize_llm_client,
-        llm_client,
     )
 
     logger.success("Универсальный OpenAI адаптер успешно импортирован")

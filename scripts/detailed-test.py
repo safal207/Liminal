@@ -3,8 +3,6 @@
 Детальное тестирование Multi-LLM системы с красивым выводом
 """
 
-import json
-import time
 from datetime import datetime
 
 import requests

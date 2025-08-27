@@ -3,8 +3,6 @@
 Проверка работы полного цикла: Neo4j → Redis → Go WebSocket relay
 """
 
-import json
-import os
 import time
 import uuid
 from datetime import datetime

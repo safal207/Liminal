@@ -4,9 +4,8 @@ import json
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from neo4j.time import DateTime as Neo4jDateTime
-
 from neo4j import GraphDatabase
+from neo4j.time import DateTime as Neo4jDateTime
 
 
 # Функция для сериализации объектов Neo4j

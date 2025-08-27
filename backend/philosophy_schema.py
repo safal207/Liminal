@@ -7,10 +7,9 @@ Philosophy First - Consciousness Schema
 Enhanced consciousness schema for Philosophy First approach
 """
 
-import uuid
 from datetime import datetime
 from enum import Enum, auto
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 class ConsciousnessState(Enum):

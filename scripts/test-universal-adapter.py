@@ -14,7 +14,7 @@ import time
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 # Добавляем путь к бэкенду для импорта модулей
 sys.path.append(str(Path(__file__).parent.parent))
@@ -282,8 +282,6 @@ async def test_openai_service_integration():
     try:
         # Импортируем OpenAI сервис
         from backend.ml.openai_service import (
-            AnalysisRequest,
-            AnalysisResponse,
             openai_service,
         )
 

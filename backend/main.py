@@ -6,16 +6,13 @@
 import asyncio
 import json
 import logging
-import os
 import sys
-import time
-from typing import Dict, Optional
 
 import uvicorn
 
 # JWT Authentication imports
 from auth.jwt_utils import jwt_manager
-from fastapi import Depends, FastAPI, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
@@ -28,7 +25,6 @@ from metrics import (
     setup_metrics,
     websocket_auth_total,
     websocket_connections,
-    websocket_messages_total,
 )
 from ml.anomaly_detector import anomaly_detector
 

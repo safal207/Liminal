@@ -3,7 +3,6 @@
 """
 
 import pytest
-from fastapi.testclient import TestClient
 
 
 # Базовый тест для проверки работоспособности

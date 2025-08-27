@@ -7,8 +7,6 @@ import os
 import sys
 from pathlib import Path
 
-import pytest
-
 # Устанавливаем переменную окружения для тестового режима
 print("TEST: Setting TESTING environment variable")
 os.environ["TESTING"] = "1"

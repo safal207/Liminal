@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import os
 import sys
-from typing import Optional
 
 # Ensure `src` is on sys.path for local execution
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))

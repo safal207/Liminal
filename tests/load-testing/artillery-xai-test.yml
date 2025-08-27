@@ -59,6 +59,9 @@ config:
     - name: "openai_analysis_latency"
       unit: "ms"
 
+  # Custom JavaScript functions
+  processor: "./artillery-functions.js"
+
 scenarios:
   # =============================================================================
   # Основные ML операции
@@ -400,8 +403,6 @@ scenarios:
 # =============================================================================
 # Custom JavaScript функции
 # =============================================================================
-config:
-  processor: "./artillery-functions.js"
 
 # Функции для измерения латентности
 functions:

@@ -87,5 +87,3 @@ class Neo4jWriter:
 # Класс с поддержкой времени для обратной совместимости
 class Neo4jWriterTime(Neo4jWriter):
     """Алиас для обратной совместимости."""
-
-    pass

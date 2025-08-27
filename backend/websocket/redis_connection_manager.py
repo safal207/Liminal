@@ -3,10 +3,8 @@
 Обеспечивает синхронизацию состояния WebSocket соединений между несколькими экземплярами сервера.
 """
 
-import asyncio
-import json
 import logging
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Dict, Optional, Set
 
 from fastapi import WebSocket
 from loguru import logger
