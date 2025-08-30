@@ -3,12 +3,11 @@
 Utility script to generate sample test data for load testing.
 """
 import json
-import os
 import random
 import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 # Sample data for generating realistic test data
 MEMORY_TYPES = ["event", "fact", "preference", "reminder"]
@@ -23,7 +22,7 @@ MEMORY_CONTENT_TEMPLATES = [
 ]
 
 
-def generate_memory_content() -> Dict[str, Any]:
+def generate_memory_content() -> dict[str, Any]:
     """Generate a sample memory content."""
     template = random.choice(MEMORY_CONTENT_TEMPLATES)
 

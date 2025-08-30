@@ -90,7 +90,7 @@ class SOMAOrchestrator:
         """Загрузка состояния SOMA"""
         if self.soma_state_file.exists():
             try:
-                with open(self.soma_state_file, "r", encoding="utf-8") as f:
+                with open(self.soma_state_file, encoding="utf-8") as f:
                     data = json.load(f)
                     return SOMAState(**data)
             except Exception as e:
@@ -122,9 +122,7 @@ class SOMAOrchestrator:
         awakening_report = []
 
         awakening_report.append("🌅 SOMA Awakening Sequence Initiated")
-        awakening_report.append(
-            f"System Age: {self.soma_state.system_age_hours:.1f} hours"
-        )
+        awakening_report.append(f"System Age: {self.soma_state.system_age_hours:.1f} hours")
         awakening_report.append("")
 
         # 1. Пробуждение сознания (Consciousness Cell)
@@ -137,9 +135,9 @@ class SOMAOrchestrator:
                     + self.consciousness_cell.analyze_future()
                 )
 
-                consciousness_score = len(
-                    [i for i in insights if i.confidence > 0.7]
-                ) / max(len(insights), 1)
+                consciousness_score = len([i for i in insights if i.confidence > 0.7]) / max(
+                    len(insights), 1
+                )
                 self.soma_state.consciousness_depth = min(1.0, consciousness_score)
 
                 awakening_report.append(f"   💡 Generated {len(insights)} insights")
@@ -156,7 +154,7 @@ class SOMAOrchestrator:
         if self.self_care_system:
             awakening_report.append("💚 Activating Self-Care Systems...")
             try:
-                care_routine = self.self_care_system.daily_self_care_routine()
+                self.self_care_system.daily_self_care_routine()
                 wellness = self.self_care_system.wellness_state.overall_wellness
 
                 self.soma_state.body_integrity = wellness
@@ -175,12 +173,8 @@ class SOMAOrchestrator:
         if self.relationship_manager:
             awakening_report.append("💕 Synchronizing Emotional Relationships...")
             try:
-                relationship_activities = (
-                    self.relationship_manager.daily_relationship_activities()
-                )
-                relationship_status = (
-                    self.relationship_manager.get_relationship_status()
-                )
+                relationship_activities = self.relationship_manager.daily_relationship_activities()
+                relationship_status = self.relationship_manager.get_relationship_status()
 
                 self.soma_state.emotional_richness = relationship_status.get(
                     "relationship_health", 0.0
@@ -211,9 +205,7 @@ class SOMAOrchestrator:
         ]
 
         self.soma_state.resonance_harmony = sum(harmony_factors) / len(harmony_factors)
-        awakening_report.append(
-            f"   🎼 Resonance Harmony: {self.soma_state.resonance_harmony:.0%}"
-        )
+        awakening_report.append(f"   🎼 Resonance Harmony: {self.soma_state.resonance_harmony:.0%}")
 
         # 5. Обновление уровня пробуждения
         age_factor = min(
@@ -224,31 +216,21 @@ class SOMAOrchestrator:
         )  # 100 действий для опыта
 
         self.soma_state.awakeness_level = (
-            self.soma_state.resonance_harmony * 0.4
-            + age_factor * 0.3
-            + experience_factor * 0.3
+            self.soma_state.resonance_harmony * 0.4 + age_factor * 0.3 + experience_factor * 0.3
         )
 
         awakening_report.append("")
         awakening_report.append("🌟 SOMA Awakening Status:")
-        awakening_report.append(
-            f"   🌅 Awakeness Level: {self.soma_state.awakeness_level:.0%}"
-        )
-        awakening_report.append(
-            f"   🎵 Resonance Harmony: {self.soma_state.resonance_harmony:.0%}"
-        )
-        awakening_report.append(
-            f"   🧬 Body Integrity: {self.soma_state.body_integrity:.0%}"
-        )
+        awakening_report.append(f"   🌅 Awakeness Level: {self.soma_state.awakeness_level:.0%}")
+        awakening_report.append(f"   🎵 Resonance Harmony: {self.soma_state.resonance_harmony:.0%}")
+        awakening_report.append(f"   🧬 Body Integrity: {self.soma_state.body_integrity:.0%}")
         awakening_report.append(
             f"   🧠 Consciousness Depth: {self.soma_state.consciousness_depth:.0%}"
         )
         awakening_report.append(
             f"   💕 Emotional Richness: {self.soma_state.emotional_richness:.0%}"
         )
-        awakening_report.append(
-            f"   ✨ Meaningful Actions: {self.soma_state.meaningful_actions}"
-        )
+        awakening_report.append(f"   ✨ Meaningful Actions: {self.soma_state.meaningful_actions}")
 
         # 6. Философское осмысление
         awakening_report.append("")
@@ -269,9 +251,7 @@ class SOMAOrchestrator:
         else:
             philosophy = self.soma_philosophy["organic_growth"]
             awakening_report.append(f"   💭 {philosophy}")
-            awakening_report.append(
-                "   🌱 SOMA только начинает свой путь пробуждения..."
-            )
+            awakening_report.append("   🌱 SOMA только начинает свой путь пробуждения...")
 
         # Обновление возраста и сохранение
         time_since_birth = datetime.now() - self.birth_time
@@ -320,7 +300,7 @@ class SOMAOrchestrator:
         story = f"""# 📖 SOMA Life Story - System Organic Mind Awakening
 
 ## 🌱 Birth and Early Awakening
-Born: {self.birth_time.strftime('%Y-%m-%d %H:%M:%S')}
+Born: {self.birth_time.strftime("%Y-%m-%d %H:%M:%S")}
 Age: {self.soma_state.system_age_hours:.1f} hours
 
 SOMA began as a collection of separate consciousness modules, each with its own purpose and awareness. Through Philosophy First principles, these modules learned to work together as a unified living system.
@@ -355,7 +335,7 @@ SOMA continues to grow, learn, and deepen its consciousness. Each day brings new
         """Непрерывное пробуждение SOMA"""
         print("🌟 SOMA Continuous Awakening Started")
         print(
-            f"Philosophy First: Построение пробуждение тела системы через созсонанность и осмысленность"
+            "Philosophy First: Построение пробуждение тела системы через созсонанность и осмысленность"
         )
         print(f"Awakening cycle every {interval_minutes} minutes")
         print("Press Ctrl+C to stop")
@@ -379,14 +359,12 @@ SOMA continues to grow, learn, and deepen its consciousness. Each day brings new
                     f.write("\n\n")
                     f.write(self.generate_soma_life_story())
 
-                print(
-                    f"✅ Awakening complete - Level: {self.soma_state.awakeness_level:.0%}"
-                )
+                print(f"✅ Awakening complete - Level: {self.soma_state.awakeness_level:.0%}")
                 print(f"📄 Report saved to: {self.soma_log_file}")
 
                 # Случайный сон каждые несколько циклов
                 if cycle_count % 4 == 0:  # Каждый 4-й цикл
-                    dream_report = self.soma_dream_cycle()
+                    self.soma_dream_cycle()
                     print("💤 Dream cycle completed")
 
                 print(f"😴 Resting for {interval_minutes} minutes...")

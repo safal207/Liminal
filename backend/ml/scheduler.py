@@ -7,7 +7,7 @@ import asyncio
 import json
 import time
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 import requests
 import schedule
@@ -28,9 +28,7 @@ class MLScheduler:
         kenning_ml_url: str = "http://kenning-ml:5000",
         min_data_threshold: int = 100,
     ):
-        self.redis_client = redis.Redis(
-            host=redis_host, port=6379, decode_responses=True
-        )
+        self.redis_client = redis.Redis(host=redis_host, port=6379, decode_responses=True)
         self.kenning_ml_url = kenning_ml_url
         self.min_data_threshold = min_data_threshold
 
@@ -67,7 +65,7 @@ class MLScheduler:
 
         logger.info("ML Scheduler инициализирован")
 
-    async def check_data_availability(self, model_name: str) -> Dict[str, Any]:
+    async def check_data_availability(self, model_name: str) -> dict[str, Any]:
         """
         Проверяет доступность данных для обучения модели.
 
@@ -117,7 +115,7 @@ class MLScheduler:
                 "error": str(e),
             }
 
-    async def should_retrain_model(self, model_name: str) -> Dict[str, Any]:
+    async def should_retrain_model(self, model_name: str) -> dict[str, Any]:
         """
         Определяет, нужно ли переобучать модель.
 
@@ -171,9 +169,7 @@ class MLScheduler:
 
                 if current_accuracy < min_accuracy:
                     should_retrain = True
-                    reasons.append(
-                        f"Low accuracy: {current_accuracy:.3f} < {min_accuracy}"
-                    )
+                    reasons.append(f"Low accuracy: {current_accuracy:.3f} < {min_accuracy}")
         except Exception as e:
             logger.warning(f"Не удалось проверить метаданные модели {model_name}: {e}")
 
@@ -188,7 +184,7 @@ class MLScheduler:
             "priority": config.get("priority", "medium"),
         }
 
-    async def trigger_model_training(self, model_name: str) -> Dict[str, Any]:
+    async def trigger_model_training(self, model_name: str) -> dict[str, Any]:
         """
         Запускает обучение модели через Kenning ML Service.
 
@@ -261,7 +257,7 @@ class MLScheduler:
             key=lambda x: priority_order.get(x[1].get("priority", "medium"), 1),
         )
 
-        for model_name, config in sorted_models:
+        for model_name, _config in sorted_models:
             try:
                 # Проверяем, нужно ли переобучение
                 decision = await self.should_retrain_model(model_name)
@@ -301,9 +297,7 @@ class MLScheduler:
             ),
         )
 
-        logger.info(
-            f"Завершено запланированное обучение. Результаты: {training_results}"
-        )
+        logger.info(f"Завершено запланированное обучение. Результаты: {training_results}")
 
     async def cleanup_old_data(self) -> None:
         """
@@ -342,21 +336,17 @@ class MLScheduler:
         Настраивает расписание для автоматических задач.
         """
         # Основное обучение каждые 2 часа
-        schedule.every(2).hours.do(
-            lambda: asyncio.create_task(self.run_scheduled_training())
-        )
+        schedule.every(2).hours.do(lambda: asyncio.create_task(self.run_scheduled_training()))
 
         # Очистка данных раз в день
-        schedule.every().day.at("02:00").do(
-            lambda: asyncio.create_task(self.cleanup_old_data())
-        )
+        schedule.every().day.at("02:00").do(lambda: asyncio.create_task(self.cleanup_old_data()))
 
         # Проверка состояния каждые 30 минут
         schedule.every(30).minutes.do(lambda: asyncio.create_task(self.health_check()))
 
         logger.info("Расписание ML Scheduler настроено")
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """
         Проверяет состояние ML системы.
         """

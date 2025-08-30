@@ -5,11 +5,13 @@
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from typing import Any
 
 import redis.asyncio as redis
 
@@ -31,11 +33,11 @@ class EventBus:
             redis_url: URL для подключения к Redis.
         """
         self.redis_url = redis_url
-        self.redis: Optional[redis.Redis] = None
-        self.pubsub: Optional[redis.client.PubSub] = None
-        self.subscriptions: Dict[str, List[Callable]] = {}
+        self.redis: redis.Redis | None = None
+        self.pubsub: redis.client.PubSub | None = None
+        self.subscriptions: dict[str, list[Callable]] = {}
         self._running = False
-        self._listener_task: Optional[asyncio.Task] = None
+        self._listener_task: asyncio.Task | None = None
 
     async def connect(self):
         """Установка соединения с Redis и инициализация подписчика."""
@@ -60,10 +62,8 @@ class EventBus:
 
         if self._listener_task:
             self._listener_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._listener_task
-            except asyncio.CancelledError:
-                pass
 
         if self.pubsub:
             await self.pubsub.close()
@@ -73,7 +73,7 @@ class EventBus:
 
         logger.info("Отключение от Redis завершено")
 
-    async def publish(self, topic: str, message: Dict[str, Any]):
+    async def publish(self, topic: str, message: dict[str, Any]):
         """
         Публикация сообщения в указанную тему.
 
@@ -99,9 +99,7 @@ class EventBus:
 
             message_str = json.dumps(message_data)
             await self.redis.publish(f"liminal:{topic}", message_str)
-            logger.debug(
-                f"Опубликовано сообщение в тему '{topic}': {message_str[:200]}..."
-            )
+            logger.debug(f"Опубликовано сообщение в тему '{topic}': {message_str[:200]}...")
 
             return message_id
 
@@ -109,9 +107,7 @@ class EventBus:
             logger.error(f"Ошибка при публикации сообщения в тему '{topic}': {e}")
             raise
 
-    async def subscribe(
-        self, topic: str, callback: Callable[[Dict[str, Any]], Awaitable[None]]
-    ):
+    async def subscribe(self, topic: str, callback: Callable[[dict[str, Any]], Awaitable[None]]):
         """
         Подписка на сообщения из указанной темы.
 
@@ -142,7 +138,7 @@ class EventBus:
             logger.error(f"Ошибка при подписке на тему '{topic}': {e}")
             raise
 
-    async def unsubscribe(self, topic: str, callback: Optional[Callable] = None):
+    async def unsubscribe(self, topic: str, callback: Callable | None = None):
         """
         Отписка от сообщений из указанной темы.
 
@@ -207,13 +203,11 @@ class EventBus:
                     await asyncio.sleep(1)  # Защита от быстрого цикла ошибок
 
         except Exception as e:
-            logger.critical(
-                f"Критическая ошибка в слушателе сообщений: {e}", exc_info=True
-            )
+            logger.critical(f"Критическая ошибка в слушателе сообщений: {e}", exc_info=True)
         finally:
             logger.info("Остановка слушателя сообщений")
 
-    async def _process_incoming_message(self, message: Dict):
+    async def _process_incoming_message(self, message: dict):
         """
         Обработка входящего сообщения от Redis.
 
@@ -233,9 +227,7 @@ class EventBus:
                 return
 
             # Логируем получение сообщения (ограничиваем длину для логов)
-            msg_str = str(message_data)[:200] + (
-                "..." if len(str(message_data)) > 200 else ""
-            )
+            msg_str = str(message_data)[:200] + ("..." if len(str(message_data)) > 200 else "")
             logger.debug(f"Получено сообщение из темы '{topic}': {msg_str}")
 
             # Вызываем все зарегистрированные обработчики
@@ -251,11 +243,9 @@ class EventBus:
                         )
 
         except Exception as e:
-            logger.error(
-                f"Неожиданная ошибка при обработке сообщения: {e}", exc_info=True
-            )
+            logger.error(f"Неожиданная ошибка при обработке сообщения: {e}", exc_info=True)
 
-    async def _safe_callback(self, callback: Callable, message: Dict):
+    async def _safe_callback(self, callback: Callable, message: dict):
         """Безопасный вызов колбэка с обработкой исключений."""
         try:
             await callback(message)

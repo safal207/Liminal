@@ -18,14 +18,10 @@ def send_event_to_websocket(event_data):
         response = requests.post(url, json=event_data, headers=headers)
 
         if response.status_code == 200 or response.status_code == 202:
-            print(
-                f"✅ Событие успешно отправлено на WebSocket relay: {response.status_code}"
-            )
+            print(f"✅ Событие успешно отправлено на WebSocket relay: {response.status_code}")
             return True
         else:
-            print(
-                f"❌ Ошибка отправки события: {response.status_code}, {response.text}"
-            )
+            print(f"❌ Ошибка отправки события: {response.status_code}, {response.text}")
             return False
     except Exception as e:
         print(f"❌ Исключение при отправке события: {str(e)}")
@@ -140,9 +136,7 @@ def test_websocket_events():
     print()
     print("🏆 Тест WebSocket событий завершен!")
     print("🔌 Проверьте HTML-клиент в браузере - должны появиться карточки событий")
-    print(
-        "🧠 Полный путь сознания: LIMINAL → PRESENCE → HARMONY → HOME → QUESTION → RESONANCE"
-    )
+    print("🧠 Полный путь сознания: LIMINAL → PRESENCE → HARMONY → HOME → QUESTION → RESONANCE")
     print("🌟 Философские концепции успешно интегрированы в поток событий")
 
 

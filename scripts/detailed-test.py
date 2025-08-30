@@ -11,7 +11,7 @@ BASE_URL = "http://localhost:8000"
 
 
 def print_header(title):
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"🎯 {title}")
     print("=" * 60)
 
@@ -67,9 +67,7 @@ def test_multi_llm_demo():
     }
 
     try:
-        response = requests.post(
-            f"{BASE_URL}/ml/xai/explain-prediction", json=xai_data, timeout=15
-        )
+        response = requests.post(f"{BASE_URL}/ml/xai/explain-prediction", json=xai_data, timeout=15)
         if response.status_code == 200:
             data = response.json()
             print_test(
@@ -77,15 +75,11 @@ def test_multi_llm_demo():
                 True,
                 f"Prediction: {data['prediction']} (confidence: {data['confidence']})",
             )
-            print(
-                f"    🧠 Top feature: {list(data['explanation']['shap_values'].keys())[0]}"
-            )
-            print(
-                f"    💡 Explanation: {data['explanation']['natural_language'][:100]}..."
-            )
+            print(f"    🧠 Top feature: {list(data['explanation']['shap_values'].keys())[0]}")
+            print(f"    💡 Explanation: {data['explanation']['natural_language'][:100]}...")
 
             # Показываем SHAP values
-            print(f"    📊 SHAP Values:")
+            print("    📊 SHAP Values:")
             for feature, value in data["explanation"]["shap_values"].items():
                 print(f"       • {feature}: {value}")
         else:
@@ -112,9 +106,7 @@ def test_multi_llm_demo():
     }
 
     try:
-        response = requests.post(
-            f"{BASE_URL}/ml/openai/analyze-logs", json=openai_data, timeout=15
-        )
+        response = requests.post(f"{BASE_URL}/ml/openai/analyze-logs", json=openai_data, timeout=15)
         if response.status_code == 200:
             data = response.json()
             print_test("OpenAI Log Analysis", True, f"Severity: {data['severity']}")
@@ -123,9 +115,7 @@ def test_multi_llm_demo():
             print(f"    🎯 Confidence: {data['confidence']}")
             print(f"    🔧 Provider: {data['provider']}")
         else:
-            print_test(
-                "OpenAI Log Analysis", False, f"Status code: {response.status_code}"
-            )
+            print_test("OpenAI Log Analysis", False, f"Status code: {response.status_code}")
     except Exception as e:
         print_test("OpenAI Log Analysis", False, str(e))
 
@@ -156,18 +146,12 @@ def test_multi_llm_demo():
                 True,
                 f"Assessment: {data['safety_assessment']}",
             )
-            print(
-                f"    👼 Constitutional AI notes: {len(data['constitutional_ai_notes'])} items"
-            )
-            print(
-                f"    ⚖️ Ethical considerations: {len(data['ethical_considerations'])} items"
-            )
+            print(f"    👼 Constitutional AI notes: {len(data['constitutional_ai_notes'])} items")
+            print(f"    ⚖️ Ethical considerations: {len(data['ethical_considerations'])} items")
             print(f"    🛡️ Harm level: {data['harm_assessment']['level']}")
             print(f"    💡 Recommendations: {len(data['recommendations'])} items")
         else:
-            print_test(
-                "Claude Safety Analysis", False, f"Status code: {response.status_code}"
-            )
+            print_test("Claude Safety Analysis", False, f"Status code: {response.status_code}")
     except Exception as e:
         print_test("Claude Safety Analysis", False, str(e))
 
@@ -195,9 +179,7 @@ def test_multi_llm_demo():
     }
 
     try:
-        response = requests.post(
-            f"{BASE_URL}/ml/multi-llm/analyze", json=multi_data, timeout=15
-        )
+        response = requests.post(f"{BASE_URL}/ml/multi-llm/analyze", json=multi_data, timeout=15)
         if response.status_code == 200:
             data = response.json()
             print_test("Multi-LLM Analysis", True, f"Provider: {data['provider_used']}")
@@ -209,9 +191,7 @@ def test_multi_llm_demo():
                 f"    📊 Providers available: OpenAI={data['openai_available']}, Claude={data['claude_available']}"
             )
         else:
-            print_test(
-                "Multi-LLM Analysis", False, f"Status code: {response.status_code}"
-            )
+            print_test("Multi-LLM Analysis", False, f"Status code: {response.status_code}")
     except Exception as e:
         print_test("Multi-LLM Analysis", False, str(e))
 
@@ -240,17 +220,11 @@ def test_multi_llm_demo():
                 f"Decision: {data['consensus_analysis']['decision']}",
             )
             print(f"    🤝 Agreement score: {data['agreement_score']}")
-            print(
-                f"    🧠 OpenAI: {data['provider_consensus']['openai_recommendation']}"
-            )
-            print(
-                f"    👼 Claude: {data['provider_consensus']['claude_recommendation']}"
-            )
+            print(f"    🧠 OpenAI: {data['provider_consensus']['openai_recommendation']}")
+            print(f"    👼 Claude: {data['provider_consensus']['claude_recommendation']}")
             print(f"    ✅ Consensus reached: {data['consensus_reached']}")
         else:
-            print_test(
-                "Multi-LLM Consensus", False, f"Status code: {response.status_code}"
-            )
+            print_test("Multi-LLM Consensus", False, f"Status code: {response.status_code}")
     except Exception as e:
         print_test("Multi-LLM Consensus", False, str(e))
 
@@ -274,9 +248,7 @@ def test_multi_llm_demo():
                 f"    🎛️ Multi-LLM: {data['services']['multi_llm']['status']} ({data['services']['multi_llm']['consensus_requests']} consensus)"
             )
         else:
-            print_test(
-                "Combined AI Status", False, f"Status code: {response.status_code}"
-            )
+            print_test("Combined AI Status", False, f"Status code: {response.status_code}")
     except Exception as e:
         print_test("Combined AI Status", False, str(e))
 

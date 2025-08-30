@@ -1,16 +1,16 @@
-# -*- coding: utf-8 -*-
 """
 Интеграционные smoke‑тесты WebSocket (реальный сервер)
 Запускаются только при наличии поднятого WS/API сервера на localhost:8080.
 Помечены как @pytest.mark.integration, чтобы отделить от unit‑прогонов.
 """
+
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import os
 from datetime import datetime
-from typing import Optional
 
 import pytest
 import requests
@@ -43,12 +43,10 @@ async def test_websocket_connection_integration():
         pytest.skip("Пакет websockets недоступен")
 
     # Пару коротких ретраев на случай старта сервера
-    last_err: Optional[Exception] = None
+    last_err: Exception | None = None
     for _ in range(3):
         try:
-            ws = await asyncio.wait_for(
-                websockets.connect(WS_URL, ping_interval=None), timeout=2.0
-            )
+            ws = await asyncio.wait_for(websockets.connect(WS_URL, ping_interval=None), timeout=2.0)
             await ws.close()
             return
         except Exception as e:
@@ -76,9 +74,7 @@ async def test_event_smoke_integration():
 
     # Пробуем открыть WS
     try:
-        ws = await asyncio.wait_for(
-            websockets.connect(WS_URL, ping_interval=None), timeout=2.0
-        )
+        ws = await asyncio.wait_for(websockets.connect(WS_URL, ping_interval=None), timeout=2.0)
     except Exception as e:
         pytest.skip(f"WS недоступен: {e}")
 
@@ -109,10 +105,8 @@ async def test_event_smoke_integration():
         assert data.get("type") == "CONSCIOUSNESS_TRANSITION"
         assert data.get("source") == "TRANSITION_LIMINAL"
         assert data.get("target") == "PRESENCE_NOW"
-    except asyncio.TimeoutError:
+    except TimeoutError:
         pytest.skip("Сервер не транслировал событие в отведённое время")
     finally:
-        try:
+        with contextlib.suppress(Exception):
             await ws.close()
-        except Exception:
-            pass

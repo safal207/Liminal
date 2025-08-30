@@ -38,5 +38,7 @@ redis_pubsub_messages_total = Counter(
 
 # Счетчик ошибок Redis
 redis_errors_total = Counter(
-    "redis_errors_total", "Количество ошибок Redis", ["type"]  # connection, operation
+    "redis_errors_total",
+    "Количество ошибок Redis",
+    ["type"],  # connection, operation
 )

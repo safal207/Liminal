@@ -9,7 +9,7 @@ import asyncio
 import logging
 import signal
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Type, TypeVar
+from typing import Any, TypeVar
 
 from .base import MicroAgent
 from .utils.event_bus import EventBus
@@ -38,8 +38,8 @@ class AgentManager:
         Args:
             redis_url: URL для подключения к Redis
         """
-        self.agents: Dict[str, MicroAgent] = {}
-        self.agent_classes: Dict[str, Type[MicroAgent]] = {}
+        self.agents: dict[str, MicroAgent] = {}
+        self.agent_classes: dict[str, type[MicroAgent]] = {}
         self.event_bus = EventBus(redis_url)
         self.initialized = False
         self.running = False
@@ -51,9 +51,7 @@ class AgentManager:
             for sig in (signal.SIGINT, signal.SIGTERM):
                 loop.add_signal_handler(
                     sig,
-                    lambda s=sig: asyncio.create_task(
-                        self.shutdown(f"Получен сигнал {s.name}")
-                    ),
+                    lambda s=sig: asyncio.create_task(self.shutdown(f"Получен сигнал {s.name}")),
                 )
         except (NotImplementedError, RuntimeError):
             # Не все платформы поддерживают add_signal_handler
@@ -94,9 +92,7 @@ class AgentManager:
             try:
                 await self.start_agent(agent_id)
             except Exception as e:
-                logger.error(
-                    f"Не удалось запустить агент {agent_id}: {e}", exc_info=True
-                )
+                logger.error(f"Не удалось запустить агент {agent_id}: {e}", exc_info=True)
 
         logger.info("Менеджер агентов запущен")
 
@@ -116,9 +112,7 @@ class AgentManager:
             try:
                 await self.stop_agent(agent_id)
             except Exception as e:
-                logger.error(
-                    f"Ошибка при остановке агента {agent_id}: {e}", exc_info=True
-                )
+                logger.error(f"Ошибка при остановке агента {agent_id}: {e}", exc_info=True)
 
         # Закрываем соединение с шиной событий
         try:
@@ -138,9 +132,7 @@ class AgentManager:
         self._shutdown_event.set()
         await self.stop()
 
-    def register_agent_class(
-        self, agent_class: Type[T], name: Optional[str] = None
-    ) -> str:
+    def register_agent_class(self, agent_class: type[T], name: str | None = None) -> str:
         """
         Регистрация класса агента в менеджере.
 
@@ -159,8 +151,8 @@ class AgentManager:
     async def create_agent(
         self,
         agent_class_name: str,
-        agent_id: Optional[str] = None,
-        config: Optional[Dict[str, Any]] = None,
+        agent_id: str | None = None,
+        config: dict[str, Any] | None = None,
     ) -> str:
         """
         Создание и регистрация нового экземпляра агента.
@@ -291,7 +283,7 @@ class AgentManager:
         del self.agents[agent_id]
         logger.info(f"Агент {agent_id} удален из менеджера")
 
-    def get_agent(self, agent_id: str) -> Optional[MicroAgent]:
+    def get_agent(self, agent_id: str) -> MicroAgent | None:
         """
         Получение экземпляра агента по идентификатору.
 
@@ -303,7 +295,7 @@ class AgentManager:
         """
         return self.agents.get(agent_id)
 
-    def list_agents(self) -> List[Dict[str, Any]]:
+    def list_agents(self) -> list[dict[str, Any]]:
         """
         Получение списка всех зарегистрированных агентов.
 
@@ -322,7 +314,7 @@ class AgentManager:
             for agent_id, agent in self.agents.items()
         ]
 
-    async def get_agent_status(self, agent_id: str) -> Dict[str, Any]:
+    async def get_agent_status(self, agent_id: str) -> dict[str, Any]:
         """
         Получение статуса агента.
 
@@ -355,7 +347,7 @@ class AgentManager:
 
         return status
 
-    async def broadcast_message(self, topic: str, message: Dict[str, Any]):
+    async def broadcast_message(self, topic: str, message: dict[str, Any]):
         """
         Отправка сообщения всем подписчикам темы.
 
@@ -372,7 +364,7 @@ class AgentManager:
             logger.error(f"Ошибка при отправке сообщения в тему '{topic}': {e}")
             raise
 
-    async def send_message(self, agent_id: str, message: Dict[str, Any]) -> Any:
+    async def send_message(self, agent_id: str, message: dict[str, Any]) -> Any:
         """
         Отправка сообщения конкретному агенту.
 
@@ -399,12 +391,10 @@ class AgentManager:
             else:
                 return await agent.process(message)
         except Exception as e:
-            logger.error(
-                f"Ошибка при обработке сообщения агентом {agent_id}: {e}", exc_info=True
-            )
+            logger.error(f"Ошибка при обработке сообщения агентом {agent_id}: {e}", exc_info=True)
             raise
 
-    async def get_agent_metrics(self) -> Dict[str, Any]:
+    async def get_agent_metrics(self) -> dict[str, Any]:
         """
         Сбор метрик со всех агентов.
 
@@ -422,40 +412,30 @@ class AgentManager:
         }
 
         # Собираем метрики по каждому агенту
-        for agent_id, agent in self.agents.items():
+        for agent_id, _agent in self.agents.items():
             # Получаем статус агента
             try:
                 status = await self.get_agent_status(agent_id)
 
                 # Обновляем счетчики по слоям
                 layer = status.get("layer", "unknown")
-                metrics["agents_by_layer"][layer] = (
-                    metrics["agents_by_layer"].get(layer, 0) + 1
-                )
+                metrics["agents_by_layer"][layer] = metrics["agents_by_layer"].get(layer, 0) + 1
 
                 # Обновляем счетчики состояний здоровья
                 health = status.get("health", "UNKNOWN").upper()
-                metrics["health_status"][health] = (
-                    metrics["health_status"].get(health, 0) + 1
-                )
+                metrics["health_status"][health] = metrics["health_status"].get(health, 0) + 1
 
                 # Обновляем счетчики состояний
                 state = status.get("state", "unknown")
-                metrics["state_status"][state] = (
-                    metrics["state_status"].get(state, 0) + 1
-                )
+                metrics["state_status"][state] = metrics["state_status"].get(state, 0) + 1
 
                 # Суммируем метрики
                 if "metrics" in status:
-                    metrics["messages_processed"] += status["metrics"].get(
-                        "messages_processed", 0
-                    )
+                    metrics["messages_processed"] += status["metrics"].get("messages_processed", 0)
                     metrics["errors"] += status["metrics"].get("errors", 0)
 
             except Exception as e:
                 logger.error(f"Ошибка при сборе метрик агента {agent_id}: {e}")
-                metrics["health_status"]["ERROR"] = (
-                    metrics["health_status"].get("ERROR", 0) + 1
-                )
+                metrics["health_status"]["ERROR"] = metrics["health_status"].get("ERROR", 0) + 1
 
         return metrics

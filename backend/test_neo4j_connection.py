@@ -22,9 +22,7 @@ def test_neo4j_connection(timeout=10):
     try:
         # Устанавливаем таймаут для подключения
         print("Попытка подключения с таймаутом...")
-        driver = GraphDatabase.driver(
-            uri, auth=(user, password), connection_timeout=timeout
-        )
+        driver = GraphDatabase.driver(uri, auth=(user, password), connection_timeout=timeout)
 
         print("Driver создан, проверка подключения...")
         driver.verify_connectivity()

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Philosophy Neo4j Writer
@@ -9,7 +8,7 @@ Neo4j интеграция для Philosophy First подхода
 
 import json
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     from neo4j import GraphDatabase
@@ -48,9 +47,7 @@ class PhilosophyNeo4jWriter:
         """
         self.uri = uri or os.environ.get("NEO4J_URI", "bolt://localhost:7687")
         self.user = user or os.environ.get("NEO4J_USER", "neo4j")
-        self.password = password or os.environ.get(
-            "NEO4J_PASSWORD", "NewStrongPass123!"
-        )
+        self.password = password or os.environ.get("NEO4J_PASSWORD", "NewStrongPass123!")
         self.database = database
 
         self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
@@ -60,15 +57,9 @@ class PhilosophyNeo4jWriter:
         """Инициализирует базу данных, создавая необходимые индексы."""
         with self.driver.session(database=self.database) as session:
             # Создаем индексы для быстрого поиска
-            session.run(
-                "CREATE INDEX IF NOT EXISTS FOR (n:ConsciousnessNode) ON (n.id)"
-            )
-            session.run(
-                "CREATE INDEX IF NOT EXISTS FOR (n:ConsciousnessNode) ON (n.state)"
-            )
-            session.run(
-                "CREATE INDEX IF NOT EXISTS FOR (n:ConsciousnessNode) ON (n.user_id)"
-            )
+            session.run("CREATE INDEX IF NOT EXISTS FOR (n:ConsciousnessNode) ON (n.id)")
+            session.run("CREATE INDEX IF NOT EXISTS FOR (n:ConsciousnessNode) ON (n.state)")
+            session.run("CREATE INDEX IF NOT EXISTS FOR (n:ConsciousnessNode) ON (n.user_id)")
 
     def close(self):
         """Закрывает соединение с Neo4j."""
@@ -149,9 +140,7 @@ class PhilosophyNeo4jWriter:
             result = session.run(query, **transition_dict)
             return result.single()["id"]
 
-    def get_consciousness_timeline(
-        self, hours: int = 24, user_id: str = None
-    ) -> Dict[str, Any]:
+    def get_consciousness_timeline(self, hours: int = 24, user_id: str = None) -> dict[str, Any]:
         """
         Получает временную линию сознания для анализа и визуализации.
 
@@ -220,9 +209,7 @@ class PhilosophyNeo4jWriter:
                         "questionClarity": record["questionClarity"],
                         "resonanceStrength": record["resonanceStrength"],
                         "timestamp": (
-                            record["timestamp"].isoformat()
-                            if record["timestamp"]
-                            else None
+                            record["timestamp"].isoformat() if record["timestamp"] else None
                         ),
                         "userId": record["userId"],
                     }
@@ -237,13 +224,9 @@ class PhilosophyNeo4jWriter:
                         "target": record["target"],
                         "trigger": record["trigger"],
                         "timestamp": (
-                            record["timestamp"].isoformat()
-                            if record["timestamp"]
-                            else None
+                            record["timestamp"].isoformat() if record["timestamp"] else None
                         ),
-                        "philosophical_significance": record[
-                            "philosophical_significance"
-                        ],
+                        "philosophical_significance": record["philosophical_significance"],
                         "presence_delta": record["presence_delta"],
                         "harmony_delta": record["harmony_delta"],
                         "authenticity_delta": record["authenticity_delta"],
@@ -254,7 +237,7 @@ class PhilosophyNeo4jWriter:
 
             return {"nodes": nodes_list, "links": links_list}
 
-    def analyze_temporal_patterns(self, days: int = 7) -> List[Dict[str, Any]]:
+    def analyze_temporal_patterns(self, days: int = 7) -> list[dict[str, Any]]:
         """
         Анализирует временные паттерны в переходах сознания.
         Не использует APOC для совместимости с базовой Neo4j.
@@ -275,14 +258,14 @@ class PhilosophyNeo4jWriter:
              collect(t.philosophical_significance) as significances,
              collect(t.timestamp) as timestamps
         WHERE frequency > 1
-        RETURN 
-            source_state as source, 
-            target_state as target, 
+        RETURN
+            source_state as source,
+            target_state as target,
             frequency,
             first_occurrence,
             last_occurrence,
             significances[0] as philosophical_significance,
-            CASE 
+            CASE
                 WHEN frequency >= 5 THEN 'Frequent Pattern'
                 WHEN frequency >= 3 THEN 'Emerging Pattern'
                 ELSE 'Occasional Pattern'
@@ -305,9 +288,7 @@ class PhilosophyNeo4jWriter:
                         else None
                     ),
                     "last_occurrence": (
-                        record["last_occurrence"].isoformat()
-                        if record["last_occurrence"]
-                        else None
+                        record["last_occurrence"].isoformat() if record["last_occurrence"] else None
                     ),
                     "philosophical_significance": record["philosophical_significance"],
                     "pattern_type": record["pattern_type"],
@@ -318,7 +299,7 @@ class PhilosophyNeo4jWriter:
 
     def find_resonance_moments(
         self, hours: int = 24, max_time_diff_seconds: int = 300
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Находит моменты резонанса между пользователями, когда они
         переходили в одинаковое состояние сознания примерно в одно время.
@@ -341,7 +322,7 @@ class PhilosophyNeo4jWriter:
         WITH n2.state as shared_state, t1.user_id as user1, t2.user_id as user2,
              n2.timestamp as timestamp1, n4.timestamp as timestamp2,
              abs(duration.between(n2.timestamp, n4.timestamp).seconds) as time_diff
-        RETURN 
+        RETURN
             shared_state as to_state,
             user1,
             user2,
@@ -374,14 +355,10 @@ class PhilosophyNeo4jWriter:
                     "user1": record["user1"],
                     "user2": record["user2"],
                     "timestamp1": (
-                        record["timestamp1"].isoformat()
-                        if record["timestamp1"]
-                        else None
+                        record["timestamp1"].isoformat() if record["timestamp1"] else None
                     ),
                     "timestamp2": (
-                        record["timestamp2"].isoformat()
-                        if record["timestamp2"]
-                        else None
+                        record["timestamp2"].isoformat() if record["timestamp2"] else None
                     ),
                     "time_diff_seconds": record["time_diff_seconds"],
                     "resonance_type": record["resonance_type"],
@@ -391,7 +368,7 @@ class PhilosophyNeo4jWriter:
 
             return moments
 
-    def get_transition_details(self, transition_id: str) -> Optional[Dict[str, Any]]:
+    def get_transition_details(self, transition_id: str) -> dict[str, Any] | None:
         """
         Получает подробности о переходе для отправки через WebSocket.
 
@@ -403,7 +380,7 @@ class PhilosophyNeo4jWriter:
         """
         query = """
         MATCH (source:ConsciousnessNode)-[t:TRANSITIONS_TO {id: $id}]->(target:ConsciousnessNode)
-        RETURN 
+        RETURN
             source.state as source_state,
             target.state as target_state,
             t.trigger as trigger,
@@ -434,7 +411,7 @@ class PhilosophyNeo4jWriter:
                 "user_id": record["user_id"],
             }
 
-    def get_last_transition(self) -> Optional[Dict[str, Any]]:
+    def get_last_transition(self) -> dict[str, Any] | None:
         """
         Получает последний созданный переход для демонстрации.
 

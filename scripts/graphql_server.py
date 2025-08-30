@@ -21,9 +21,7 @@ def main(host: str = "127.0.0.1", port: int = 8000, reload: bool = False) -> Non
     try:
         import uvicorn  # type: ignore
     except Exception as e:  # pragma: no cover
-        raise RuntimeError(
-            "uvicorn is required to run the GraphQL server. Install uvicorn."
-        ) from e
+        raise RuntimeError("uvicorn is required to run the GraphQL server. Install uvicorn.") from e
 
     uvicorn.run(graphql_app, host=host, port=port, reload=reload, log_level="info")
 

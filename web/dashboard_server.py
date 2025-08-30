@@ -301,11 +301,10 @@ class SOMADashboardServer:
     def get_demo_maturation_metrics(self) -> dict:
         """Demo maturation metrics when not available"""
         import random
-        from datetime import timedelta
 
         # Calculate a fake age based on current time
         # This simulates the system being a few days old
-        current_time = time.time()
+        time.time()
         fake_age_days = random.uniform(1.5, 3.0)  # Between 1.5 and 3 days old
 
         # Choose a development stage appropriate for the age
@@ -349,7 +348,7 @@ class SOMADashboardServer:
         ]
 
         recent_lessons = []
-        for i in range(3):  # Generate 3 recent lessons
+        for _i in range(3):  # Generate 3 recent lessons
             recent_lessons.append(
                 {
                     "type": random.choice(lesson_types),

@@ -2,13 +2,13 @@
 Базовый класс для сценариев нагрузочного тестирования.
 """
 
-import asyncio
 import logging
 import random
 from abc import ABC, abstractmethod
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Type
+from collections.abc import Awaitable, Callable
+from typing import Any
 
-from locust import TaskSet, User, between, task
+from locust import TaskSet, User, between
 from locust.env import Environment
 from locust.runners import WorkerRunner
 
@@ -26,7 +26,7 @@ class BaseScenario(ABC, TaskSet):
 
     def __init__(self, parent: User):
         super().__init__(parent)
-        self.metrics: Optional[MetricsCollector] = None
+        self.metrics: MetricsCollector | None = None
         self.user_id: str = f"user_{random.randint(1, 1000000)}"
         self._setup_metrics()
 
@@ -83,7 +83,7 @@ class BaseScenario(ABC, TaskSet):
         pass
 
     @classmethod
-    def register(cls, env: Environment, user_classes: List[Type[User]] = None):
+    def register(cls, env: Environment, user_classes: list[type[User]] = None):
         """Зарегистрировать сценарий в среде выполнения."""
         if user_classes is None:
             user_classes = []

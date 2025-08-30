@@ -2,6 +2,7 @@
 """
 Simple diagnostic script for Universal OpenAI Adapter
 """
+
 import asyncio
 import json
 import os
@@ -18,9 +19,7 @@ print("\n======== UNIVERSAL OPENAI ADAPTER CHECK ========\n")
 # Create log file
 log_dir = Path(__file__).parent.parent / "logs"
 log_dir.mkdir(exist_ok=True)
-log_file = (
-    log_dir / f"openai_adapter_check_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-)
+log_file = log_dir / f"openai_adapter_check_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
 
 def log_msg(msg):

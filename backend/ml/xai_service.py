@@ -4,7 +4,7 @@ XAI (Explainable AI) Service для Resonance Liminal.
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from loguru import logger
@@ -39,12 +39,12 @@ class ExplanationResult:
 
     prediction: Any
     confidence: float
-    feature_importance: Dict[str, float]
+    feature_importance: dict[str, float]
     explanation_text: str
-    shap_values: Optional[List[float]] = None
-    lime_explanation: Optional[Dict[str, Any]] = None
-    counterfactual: Optional[Dict[str, Any]] = None
-    decision_path: Optional[List[str]] = None
+    shap_values: list[float] | None = None
+    lime_explanation: dict[str, Any] | None = None
+    counterfactual: dict[str, Any] | None = None
+    decision_path: list[str] | None = None
 
 
 class XAIService:
@@ -93,8 +93,8 @@ class XAIService:
             logger.error(f"Ошибка инициализации демо-моделей: {e}")
 
     def prepare_features(
-        self, raw_features: Dict[str, Any], model_name: str
-    ) -> Tuple[np.ndarray, List[str]]:
+        self, raw_features: dict[str, Any], model_name: str
+    ) -> tuple[np.ndarray, list[str]]:
         """
         Подготавливает фичи для ML-модели.
 
@@ -132,7 +132,7 @@ class XAIService:
         features = []
         for name in feature_names:
             value = raw_features.get(name, 0.0)
-            if isinstance(value, (int, float)):
+            if isinstance(value, int | float):
                 features.append(float(value))
             else:
                 features.append(0.0)  # Заглушка для нечисловых значений
@@ -144,9 +144,9 @@ class XAIService:
         self,
         model: Any,
         features: np.ndarray,
-        feature_names: List[str],
+        feature_names: list[str],
         model_name: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Объясняет предсказание с помощью SHAP.
 
@@ -192,9 +192,7 @@ class XAIService:
 
             # Сортируем по важности
             sorted_importance = dict(
-                sorted(
-                    feature_importance.items(), key=lambda x: abs(x[1]), reverse=True
-                )
+                sorted(feature_importance.items(), key=lambda x: abs(x[1]), reverse=True)
             )
 
             return {
@@ -211,9 +209,9 @@ class XAIService:
         self,
         model: Any,
         features: np.ndarray,
-        feature_names: List[str],
-        training_data: Optional[np.ndarray] = None,
-    ) -> Dict[str, Any]:
+        feature_names: list[str],
+        training_data: np.ndarray | None = None,
+    ) -> dict[str, Any]:
         """
         Объясняет предсказание с помощью LIME.
 
@@ -243,21 +241,13 @@ class XAIService:
             explainer = LimeTabularExplainer(
                 training_data,
                 feature_names=feature_names,
-                mode=(
-                    "classification"
-                    if hasattr(model, "predict_proba")
-                    else "regression"
-                ),
+                mode=("classification" if hasattr(model, "predict_proba") else "regression"),
             )
 
             # Получаем объяснение
             explanation = explainer.explain_instance(
                 features[0],
-                (
-                    model.predict_proba
-                    if hasattr(model, "predict_proba")
-                    else model.predict
-                ),
+                (model.predict_proba if hasattr(model, "predict_proba") else model.predict),
                 num_features=len(feature_names),
             )
 
@@ -272,9 +262,7 @@ class XAIService:
             return {
                 "feature_importance": feature_importance,
                 "explanation": self._generate_lime_explanation(feature_importance),
-                "lime_html": (
-                    explanation.as_html() if hasattr(explanation, "as_html") else None
-                ),
+                "lime_html": (explanation.as_html() if hasattr(explanation, "as_html") else None),
             }
 
         except Exception as e:
@@ -282,8 +270,8 @@ class XAIService:
             return {"error": str(e)}
 
     def explain_decision_tree(
-        self, model: Any, features: np.ndarray, feature_names: List[str]
-    ) -> Dict[str, Any]:
+        self, model: Any, features: np.ndarray, feature_names: list[str]
+    ) -> dict[str, Any]:
         """
         Объясняет решение decision tree модели.
 
@@ -351,8 +339,8 @@ class XAIService:
             return {"error": str(e)}
 
     def generate_counterfactual(
-        self, features: Dict[str, Any], model_name: str, target_outcome: Any = None
-    ) -> Dict[str, Any]:
+        self, features: dict[str, Any], model_name: str, target_outcome: Any = None
+    ) -> dict[str, Any]:
         """
         Генерирует counterfactual объяснение.
         "Что нужно изменить, чтобы получить другой результат?"
@@ -405,7 +393,7 @@ class XAIService:
             logger.error(f"Ошибка генерации counterfactual: {e}")
             return {"error": str(e)}
 
-    def _generate_shap_explanation(self, feature_importance: Dict[str, float]) -> str:
+    def _generate_shap_explanation(self, feature_importance: dict[str, float]) -> str:
         """Генерирует текстовое объяснение SHAP результатов."""
         if not feature_importance:
             return "Нет данных для объяснения"
@@ -415,31 +403,27 @@ class XAIService:
         explanation = "Наиболее важные факторы для этого предсказания:\n"
         for i, (feature, importance) in enumerate(top_features, 1):
             direction = "увеличивает" if importance > 0 else "уменьшает"
-            explanation += (
-                f"{i}. {feature}: {direction} вероятность на {abs(importance):.3f}\n"
-            )
+            explanation += f"{i}. {feature}: {direction} вероятность на {abs(importance):.3f}\n"
 
         return explanation
 
-    def _generate_lime_explanation(self, feature_importance: Dict[str, float]) -> str:
+    def _generate_lime_explanation(self, feature_importance: dict[str, float]) -> str:
         """Генерирует текстовое объяснение LIME результатов."""
         if not feature_importance:
             return "Нет данных для объяснения"
 
-        sorted_features = sorted(
-            feature_importance.items(), key=lambda x: abs(x[1]), reverse=True
-        )[:3]
+        sorted_features = sorted(feature_importance.items(), key=lambda x: abs(x[1]), reverse=True)[
+            :3
+        ]
 
         explanation = "Локальное объяснение предсказания:\n"
         for i, (feature, importance) in enumerate(sorted_features, 1):
-            direction = (
-                "положительно влияет" if importance > 0 else "отрицательно влияет"
-            )
+            direction = "положительно влияет" if importance > 0 else "отрицательно влияет"
             explanation += f"{i}. {feature}: {direction} (вес: {importance:.3f})\n"
 
         return explanation
 
-    def _generate_tree_explanation(self, decision_path: List[Dict[str, Any]]) -> str:
+    def _generate_tree_explanation(self, decision_path: list[dict[str, Any]]) -> str:
         """Генерирует текстовое объяснение decision tree."""
         if not decision_path:
             return "Прямое решение без условий"
@@ -448,15 +432,13 @@ class XAIService:
         for i, step in enumerate(decision_path, 1):
             explanation += f"{i}. {step['condition']}\n"
 
-        explanation += (
-            f"\nИтого: решение принято на основе {len(decision_path)} условий"
-        )
+        explanation += f"\nИтого: решение принято на основе {len(decision_path)} условий"
         return explanation
 
     async def explain_prediction(
         self,
         model_name: str,
-        features: Dict[str, Any],
+        features: dict[str, Any],
         prediction: Any,
         confidence: float = 0.0,
         use_cache: bool = True,
@@ -481,9 +463,7 @@ class XAIService:
 
         try:
             # Подготавливаем фичи
-            prepared_features, feature_names = self.prepare_features(
-                features, model_name
-            )
+            prepared_features, feature_names = self.prepare_features(features, model_name)
 
             # Получаем соответствующую модель
             model = self._get_model_for_explanation(model_name)
@@ -506,17 +486,13 @@ class XAIService:
                 explanations["shap"] = shap_result
 
             # LIME объяснение
-            lime_result = self.explain_with_lime(
-                model, prepared_features, feature_names
-            )
+            lime_result = self.explain_with_lime(model, prepared_features, feature_names)
             if "error" not in lime_result:
                 explanations["lime"] = lime_result
 
             # Decision tree объяснение (если применимо)
             if hasattr(model, "tree_"):
-                tree_result = self.explain_decision_tree(
-                    model, prepared_features, feature_names
-                )
+                tree_result = self.explain_decision_tree(model, prepared_features, feature_names)
                 if "error" not in tree_result:
                     explanations["tree"] = tree_result
 
@@ -582,8 +558,8 @@ class XAIService:
         self,
         prediction: Any,
         confidence: float,
-        explanations: Dict[str, Any],
-        counterfactual: Dict[str, Any],
+        explanations: dict[str, Any],
+        counterfactual: dict[str, Any],
     ) -> str:
         """Генерирует комбинированное объяснение."""
         text = f"Предсказание: {prediction} (уверенность: {confidence:.2f})\n\n"

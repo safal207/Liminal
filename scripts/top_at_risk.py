@@ -5,7 +5,7 @@ import json
 import os
 import pathlib
 import sys
-from typing import Any, List
+from typing import Any
 
 # Ensure `src` is on sys.path for local execution
 _ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -40,13 +40,13 @@ def gql(query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
             body = resp.read().decode("utf-8")
-    except urllib.error.URLError as e:  # pragma: no cover
+    except urllib.error.URLError:  # pragma: no cover
         # Fall back to REST when GraphQL unreachable
         return {"__rest_fallback__": True}
     try:
         js = json.loads(body)
     except Exception as e:  # pragma: no cover
-        raise SystemExit(f"Invalid JSON from GraphQL endpoint: {e}\nRaw: {body[:300]}")
+        raise SystemExit(f"Invalid JSON from GraphQL endpoint: {e}\nRaw: {body[:300]}") from e
     if js.get("errors"):
         # Indicate failure so caller can fallback to REST
         return {"__rest_fallback__": True}
@@ -54,9 +54,7 @@ def gql(query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Show top at-risk edges (weak relationships)"
-    )
+    parser = argparse.ArgumentParser(description="Show top at-risk edges (weak relationships)")
     parser.add_argument(
         "--limit",
         "-l",
@@ -80,7 +78,7 @@ def main() -> None:
         "query($n:Int!){ topAtRiskEdges(limit:$n){ sourceId targetId score advice } }",
         {"n": int(args.limit)},
     )
-    rows: List[dict[str, Any]]
+    rows: list[dict[str, Any]]
     if data.get("__rest_fallback__"):
         # REST fallback
         import urllib.error
@@ -93,7 +91,7 @@ def main() -> None:
                 body = resp.read().decode("utf-8")
                 js = json.loads(body)
         except Exception as e:
-            raise SystemExit(f"REST fallback failed at {rest_url}: {e}")
+            raise SystemExit(f"REST fallback failed at {rest_url}: {e}") from e
         rows = js.get("topAtRiskEdges", [])
     else:
         rows = data["topAtRiskEdges"]

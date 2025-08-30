@@ -50,9 +50,7 @@ class PhilosophyPipelineTest:
             response = requests.get(CONSCIOUSNESS_URL, timeout=5)
             if response.status_code == 200:
                 data = response.json()
-                print(
-                    f"✅ Neo4j API working: {len(data.get('nodes', []))} consciousness nodes"
-                )
+                print(f"✅ Neo4j API working: {len(data.get('nodes', []))} consciousness nodes")
 
                 # Check for philosophy concepts
                 nodes = data.get("nodes", [])
@@ -98,9 +96,7 @@ class PhilosophyPipelineTest:
             print("⚠️ WebSocket client not available - using HTTP fallback")
             # Test HTTP endpoint instead
             try:
-                response = requests.get(
-                    "http://localhost:8181/api/consciousness", timeout=5
-                )
+                response = requests.get("http://localhost:8181/api/consciousness", timeout=5)
                 if response.status_code == 200:
                     print("✅ HTTP connection working (WebSocket fallback)")
                     self.connected = True

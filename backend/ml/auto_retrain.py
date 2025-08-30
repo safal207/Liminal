@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """
 Автоматический ретренинг моделей с использованием Kenning
@@ -12,7 +11,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any
 
 import pandas as pd
 
@@ -50,9 +49,9 @@ class ModelRetrainer:
         self.model_dir = model_dir
         self.config = self._load_config()
 
-    def _load_config(self) -> Dict[str, Any]:
+    def _load_config(self) -> dict[str, Any]:
         """Загрузка конфигурации модели"""
-        with open(self.config_path, "r") as f:
+        with open(self.config_path) as f:
             return json.load(f)
 
     def _get_metrics_from_prometheus(self) -> pd.DataFrame:
@@ -68,9 +67,7 @@ class ModelRetrainer:
         # но для простоты демонстрации мы будем использовать заглушку
         # Создаем запрос к /metrics endpoint'у бэкенда
         try:
-            response = requests.get(
-                f"{PROMETHEUS_URL}/api/v1/query?query=ml_feature_value"
-            )
+            response = requests.get(f"{PROMETHEUS_URL}/api/v1/query?query=ml_feature_value")
             if response.status_code == 200:
                 data = response.json()
                 # Преобразуем результат в DataFrame
@@ -91,9 +88,7 @@ class ModelRetrainer:
                 df = pd.DataFrame(metrics)
                 return df
             else:
-                logger.error(
-                    f"Failed to get metrics from Prometheus: {response.status_code}"
-                )
+                logger.error(f"Failed to get metrics from Prometheus: {response.status_code}")
                 return pd.DataFrame()
         except Exception as e:
             logger.error(f"Error getting metrics from Prometheus: {e}")
@@ -139,7 +134,7 @@ class ModelRetrainer:
             logger.error(f"Error getting data from Redis: {e}")
             return pd.DataFrame()
 
-    def _prepare_dataset(self) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def _prepare_dataset(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Подготовка датасета для обучения
 
@@ -159,9 +154,7 @@ class ModelRetrainer:
 
         # Преобразуем данные из "длинного" формата в "широкий"
         # timestamp | feature1 | feature2 | ...
-        df_wide = df.pivot(
-            index="timestamp", columns="feature_name", values="value"
-        ).reset_index()
+        df_wide = df.pivot(index="timestamp", columns="feature_name", values="value").reset_index()
 
         # Проверяем, что у нас есть все необходимые фичи
         required_features = self.config["training"]["features"]
@@ -174,9 +167,7 @@ class ModelRetrainer:
                 df_wide[feature] = 0
 
         # Разделяем на обучающую и тестовую выборки
-        train_size = int(
-            len(df_wide) * (1 - self.config["training"]["validation_split"])
-        )
+        train_size = int(len(df_wide) * (1 - self.config["training"]["validation_split"]))
         train_df = df_wide.iloc[:train_size]
         test_df = df_wide.iloc[train_size:]
 
@@ -311,9 +302,7 @@ def main():
     parser.add_argument(
         "--model-dir", type=str, default=MODEL_DIR, help="Directory for model storage"
     )
-    parser.add_argument(
-        "--force", action="store_true", help="Force retraining regardless of drift"
-    )
+    parser.add_argument("--force", action="store_true", help="Force retraining regardless of drift")
     parser.add_argument(
         "--interval",
         type=int,

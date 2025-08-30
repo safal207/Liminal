@@ -24,13 +24,24 @@ jobs:
         if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
     - name: Start backend (uvicorn on 8080) and wait readiness
+      env:
+        TESTING: 1
       run: |
-        uvicorn backend.main:app --host 127.0.0.1 --port 8080 &
+        export PORT=8080
+        uvicorn backend.api:app --host 0.0.0.0 --port $PORT --factory --log-level info &
         echo $! > uvicorn.pid
-        bash scripts/check-health.sh --url http://127.0.0.1:8080 --retries 60 --delay 1 --fail-on-not-ready
+        for i in {1..60}; do
+          if curl -fsS "http://127.0.0.1:${PORT}/ready" | grep -qi "ready"; then
+            echo "API is ready"
+            break
+          fi
+          sleep 1
+        done
+        curl -fsS "http://127.0.0.1:${PORT}/health"
 
     - name: Run WebSocket integration tests
       env:
+        TESTING: 1
         WS_API_URL: http://localhost:8080
         WS_URL: ws://localhost:8080/ws
       run: |

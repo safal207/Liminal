@@ -2,6 +2,7 @@
 """
 Простой тест API ключей OpenAI, Anthropic и XAI
 """
+
 import asyncio
 import os
 import sys
@@ -19,9 +20,7 @@ try:
     load_dotenv(BASE_DIR / ".env")
     print("🟢 .env файл успешно загружен")
 except ImportError:
-    print(
-        "🟠 WARNING: dotenv не установлен, используются только системные переменные окружения"
-    )
+    print("🟠 WARNING: dotenv не установлен, используются только системные переменные окружения")
 
 # Проверка API ключей
 api_keys = {
@@ -33,9 +32,7 @@ api_keys = {
 print("\n=== ПРОВЕРКА API КЛЮЧЕЙ ===\n")
 for key_name, key_value in api_keys.items():
     if key_value:
-        masked_key = (
-            f"{key_value[:5]}...{key_value[-5:]}" if len(key_value) > 10 else "[скрыт]"
-        )
+        masked_key = f"{key_value[:5]}...{key_value[-5:]}" if len(key_value) > 10 else "[скрыт]"
         print(f"🟢 {key_name} найден: {masked_key}")
     else:
         print(f"🔴 {key_name} не найден")
@@ -57,9 +54,7 @@ async def test_openai_api():
             import openai
             from openai import AsyncOpenAI
 
-            print(
-                f"🟢 Библиотека OpenAI успешно импортирована (версия: {openai.__version__})"
-            )
+            print(f"🟢 Библиотека OpenAI успешно импортирована (версия: {openai.__version__})")
         except ImportError as e:
             print(f"🔴 Ошибка импорта библиотеки OpenAI: {e}")
             print("🟠 Попытка установки библиотеки OpenAI...")
@@ -67,13 +62,13 @@ async def test_openai_api():
             try:
                 import subprocess
 
-                result = subprocess.run(
+                subprocess.run(
                     [sys.executable, "-m", "pip", "install", "openai"],
                     capture_output=True,
                     text=True,
                     check=True,
                 )
-                print(f"🟢 Установка OpenAI выполнена успешно")
+                print("🟢 Установка OpenAI выполнена успешно")
 
                 # Повторная попытка импорта
                 import openai
@@ -84,7 +79,7 @@ async def test_openai_api():
                 )
             except Exception as install_error:
                 print(f"🔴 Ошибка установки OpenAI: {install_error}")
-                print(f"🟠 Будет использована мок-реализация")
+                print("🟠 Будет использована мок-реализация")
                 return False
 
         # Инициализация клиента OpenAI

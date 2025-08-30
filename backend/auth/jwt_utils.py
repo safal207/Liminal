@@ -5,7 +5,7 @@ JWT Authentication utilities for WebSocket and API endpoints.
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any
 
 from jose import JWTError, jwt
 
@@ -19,9 +19,7 @@ try:
 except (ImportError, AttributeError) as e:
     logger = logging.getLogger("auth.jwt_utils")
     logger.warning(f"Ошибка при импорте passlib/bcrypt: {e}")
-    logger.warning(
-        "JWT аутентификация будет работать в тестовом режиме без проверки паролей"
-    )
+    logger.warning("JWT аутентификация будет работать в тестовом режиме без проверки паролей")
     CRYPTO_ENABLED = False
 
     # Заглушка для CryptContext
@@ -42,9 +40,7 @@ except (ImportError, AttributeError) as e:
 logger = logging.getLogger("auth.jwt_utils")
 
 # Конфигурация JWT
-SECRET_KEY = os.getenv(
-    "JWT_SECRET_KEY", "resonance-liminal-secret-key-change-in-production"
-)
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "resonance-liminal-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -68,7 +64,7 @@ class JWTManager:
         return pwd_context.hash(password)
 
     def create_access_token(
-        self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None
+        self, data: dict[str, Any], expires_delta: timedelta | None = None
     ) -> str:
         """
         Создает JWT токен.
@@ -84,9 +80,7 @@ class JWTManager:
         if expires_delta:
             expire = datetime.utcnow() + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(
-                minutes=self.access_token_expire_minutes
-            )
+            expire = datetime.utcnow() + timedelta(minutes=self.access_token_expire_minutes)
 
         to_encode.update({"exp": expire})
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
@@ -94,7 +88,7 @@ class JWTManager:
         logger.info(f"JWT токен создан для пользователя: {data.get('sub', 'unknown')}")
         return encoded_jwt
 
-    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
+    def verify_token(self, token: str) -> dict[str, Any] | None:
         """
         Проверяет JWT токен.
 
@@ -117,7 +111,7 @@ class JWTManager:
             logger.warning(f"Ошибка проверки JWT токена: {e}")
             return None
 
-    def extract_user_id_from_token(self, token: str) -> Optional[str]:
+    def extract_user_id_from_token(self, token: str) -> str | None:
         """
         Извлекает user_id из JWT токена.
 
@@ -155,7 +149,7 @@ fake_users_db = {
 }
 
 
-def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
+def authenticate_user(username: str, password: str) -> dict[str, Any] | None:
     """
     Аутентифицирует пользователя по логину и паролю.
 
@@ -179,7 +173,7 @@ def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
     return user
 
 
-def create_access_token_for_user(user_data: Dict[str, Any]) -> str:
+def create_access_token_for_user(user_data: dict[str, Any]) -> str:
     """
     Создает access token для пользователя.
 
@@ -197,7 +191,7 @@ def create_access_token_for_user(user_data: Dict[str, Any]) -> str:
     return access_token
 
 
-def verify_websocket_token(token: str) -> Optional[str]:
+def verify_websocket_token(token: str) -> str | None:
     """
     Проверяет токен для WebSocket соединения.
 

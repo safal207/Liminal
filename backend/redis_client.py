@@ -20,10 +20,7 @@ class RedisClient:
         redis_password = os.environ.get("REDIS_PASSWORD", password)
 
         # For local test mode, use localhost
-        if (
-            redis_host == "redis"
-            and os.environ.get("TEST_MODE", "false").lower() == "true"
-        ):
+        if redis_host == "redis" and os.environ.get("TEST_MODE", "false").lower() == "true":
             redis_host = "localhost"
 
         try:
@@ -38,9 +35,7 @@ class RedisClient:
             )
             # Test connection
             self.client.ping()
-            logger.info(
-                f"Connected to Redis at {redis_host}:{redis_port}, db={redis_db}"
-            )
+            logger.info(f"Connected to Redis at {redis_host}:{redis_port}, db={redis_db}")
         except redis.ConnectionError as e:
             logger.warning(f"Redis connection failed: {e} - Using dummy mode")
             self.client = DummyRedis()

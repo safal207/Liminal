@@ -5,8 +5,9 @@
 import asyncio
 import json
 import logging
-from contextlib import asynccontextmanager
-from typing import Any, Awaitable, Callable, Dict, List, Optional
+from collections.abc import Awaitable, Callable
+from contextlib import asynccontextmanager, suppress
+from typing import Any
 
 from websockets.client import WebSocketClientProtocol, connect
 
@@ -19,28 +20,26 @@ class WebSocketManager:
     def __init__(
         self,
         url: str,
-        on_message: Optional[
-            Callable[[Dict[str, Any], "WebSocketManager"], Awaitable[None]]
-        ] = None,
-        on_connect: Optional[Callable[["WebSocketManager"], Awaitable[None]]] = None,
-        on_disconnect: Optional[Callable[["WebSocketManager"], Awaitable[None]]] = None,
+        on_message: Callable[[dict[str, Any], "WebSocketManager"], Awaitable[None]] | None = None,
+        on_connect: Callable[["WebSocketManager"], Awaitable[None]] | None = None,
+        on_disconnect: Callable[["WebSocketManager"], Awaitable[None]] | None = None,
         reconnect_interval: int = 5,
         max_reconnect_attempts: int = 3,
         **websocket_kwargs,
     ):
         self.url = url
-        self.ws: Optional[WebSocketClientProtocol] = None
+        self.ws: WebSocketClientProtocol | None = None
         self.on_message = on_message or self._default_on_message
         self.on_connect = on_connect or self._default_on_connect
         self.on_disconnect = on_disconnect or self._default_on_disconnect
         self.reconnect_interval = reconnect_interval
         self.max_reconnect_attempts = max_reconnect_attempts
         self.websocket_kwargs = websocket_kwargs
-        self._receive_task: Optional[asyncio.Task] = None
+        self._receive_task: asyncio.Task | None = None
         self._reconnect_attempts = 0
         self._is_connected = False
-        self._message_handlers: Dict[
-            str, List[Callable[[Dict[str, Any]], Awaitable[None]]]
+        self._message_handlers: dict[
+            str, list[Callable[[dict[str, Any]], Awaitable[None]]]
         ] = {}
 
     @property
@@ -49,7 +48,7 @@ class WebSocketManager:
         return self._is_connected and self.ws is not None and not self.ws.closed
 
     async def _default_on_message(
-        self, message: Dict[str, Any], manager: "WebSocketManager"
+        self, message: dict[str, Any], manager: "WebSocketManager"
     ) -> None:
         """Обработчик сообщений по умолчанию."""
         logger.debug(f"Received message: {message}")
@@ -69,7 +68,7 @@ class WebSocketManager:
         logger.info(f"Disconnected from WebSocket at {self.url}")
 
     def add_message_handler(
-        self, event_type: str, handler: Callable[[Dict[str, Any]], Awaitable[None]]
+        self, event_type: str, handler: Callable[[dict[str, Any]], Awaitable[None]]
     ):
         """Добавить обработчик для определенного типа сообщений."""
         if event_type not in self._message_handlers:
@@ -115,10 +114,8 @@ class WebSocketManager:
         """Закрыть соединение с WebSocket сервером."""
         if self._receive_task and not self._receive_task.done():
             self._receive_task.cancel()
-            try:
+            with suppress(asyncio.CancelledError):
                 await self._receive_task
-            except asyncio.CancelledError:
-                pass
             self._receive_task = None
 
         if self.ws and not self.ws.closed:
@@ -126,7 +123,7 @@ class WebSocketManager:
             self._is_connected = False
             await self.on_disconnect(self)
 
-    async def send_json(self, data: Dict[str, Any]) -> bool:
+    async def send_json(self, data: dict[str, Any]) -> bool:
         """Отправить JSON данные через WebSocket."""
         if not self.is_connected or not self.ws:
             logger.warning("Cannot send message: WebSocket is not connected")

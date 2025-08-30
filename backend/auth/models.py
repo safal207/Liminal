@@ -2,7 +2,6 @@
 Pydantic модели для аутентификации.
 """
 
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -32,8 +31,8 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Модель для данных токена."""
 
-    user_id: Optional[str] = None
-    username: Optional[str] = None
+    user_id: str | None = None
+    username: str | None = None
 
 
 class User(BaseModel):

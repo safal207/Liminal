@@ -3,6 +3,7 @@
 Simplified Universal OpenAI Adapter Test
 Outputs results to both console and a log file for reliable diagnostics
 """
+
 import asyncio
 import json
 import os
@@ -110,11 +111,7 @@ async def test_adapter():
             log(json.dumps(content, indent=2, ensure_ascii=False))
         except json.JSONDecodeError:
             log("\n--- Raw Response ---")
-            log(
-                response.content[:500] + "..."
-                if len(response.content) > 500
-                else response.content
-            )
+            log(response.content[:500] + "..." if len(response.content) > 500 else response.content)
 
         # Test caching
         log("\n--- Cache Test ---")
@@ -188,7 +185,7 @@ if __name__ == "__main__":
     env_path = Path(__file__).parent.parent / ".env"
     if env_path.exists():
         log("Loading environment from .env file")
-        with open(env_path, "r") as f:
+        with open(env_path) as f:
             for line in f:
                 if line.strip() and not line.startswith("#"):
                     try:

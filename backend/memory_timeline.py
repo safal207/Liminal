@@ -2,19 +2,13 @@
 MemoryTimeline - динамически обновляемая временная шкала для работы с памятью.
 Поддерживает подписку на обновления в реальном времени.
 """
-
-print("DEBUG: Starting memory_timeline.py imports")
 import asyncio
-from datetime import datetime
-from typing import Any, Dict, List, Optional
-
-print("DEBUG: Importing fastapi.WebSocket")
 import json
+from datetime import datetime
+from typing import Any
 
 from fastapi import HTTPException, WebSocket
 from jose import JWTError, jwt
-
-print("DEBUG: All imports completed in memory_timeline.py")
 
 SECRET_KEY = "your_secret_key"
 ALGORITHM = "HS256"
@@ -24,17 +18,15 @@ def verify_jwt_token(token: str):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
-    except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+    except JWTError as e:
+        raise HTTPException(status_code=401, detail="Invalid token") from e
 
 
 class MemoryTimeline:
     def __init__(self):
-        print("DEBUG: Initializing MemoryTimeline instance")
-        self.timeline: List[Dict[str, Any]] = []
-        self._subscribers: List[WebSocket] = []
+        self.timeline: list[dict[str, Any]] = []
+        self._subscribers: list[WebSocket] = []
         self._lock = asyncio.Lock()
-        print("DEBUG: MemoryTimeline instance initialized")
 
     @property
     def subscribers(self):
@@ -42,8 +34,8 @@ class MemoryTimeline:
         return self._subscribers.copy()
 
     async def add_memory(
-        self, content: str, memory_type: str, metadata: Optional[Dict] = None
-    ) -> Dict[str, Any]:
+        self, content: str, memory_type: str, metadata: dict | None = None
+    ) -> dict[str, Any]:
         """Добавляет новое воспоминание в таймлайн."""
         memory = {
             "id": f"mem_{len(self.timeline) + 1}",
@@ -89,7 +81,7 @@ class MemoryTimeline:
             if websocket in self._subscribers:
                 self._subscribers.remove(websocket)
 
-    async def _notify_subscribers(self, event_type: str, data: Dict):
+    async def _notify_subscribers(self, event_type: str, data: dict):
         """Отправляет уведомление всем подписчикам."""
         # Если нет подписчиков, не создаем сообщение и не блокируем
         if not self._subscribers:
@@ -118,30 +110,22 @@ class MemoryTimeline:
 
             # Удаляем отключившихся подписчиков, если они еще не были удалены
             if disconnected:
-                self._subscribers = [
-                    sub for sub in self._subscribers if sub not in disconnected
-                ]
+                self._subscribers = [sub for sub in self._subscribers if sub not in disconnected]
 
     def get_timeline(
         self,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
-        memory_type: Optional[str] = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        memory_type: str | None = None,
         limit: int = 100,
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Возвращает отфильтрованный таймлайн."""
         result = self.timeline
 
         if start_time:
-            result = [
-                m
-                for m in result
-                if datetime.fromisoformat(m["timestamp"]) >= start_time
-            ]
+            result = [m for m in result if datetime.fromisoformat(m["timestamp"]) >= start_time]
         if end_time:
-            result = [
-                m for m in result if datetime.fromisoformat(m["timestamp"]) <= end_time
-            ]
+            result = [m for m in result if datetime.fromisoformat(m["timestamp"]) <= end_time]
         if memory_type:
             result = [m for m in result if m["type"] == memory_type]
 
@@ -149,6 +133,4 @@ class MemoryTimeline:
 
 
 # Глобальный экземпляр таймлайна
-print("DEBUG: Creating global timeline instance")
 timeline = MemoryTimeline()
-print("DEBUG: Global timeline instance created")

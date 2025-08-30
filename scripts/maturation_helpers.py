@@ -5,6 +5,7 @@
 import os
 import sys
 import time
+import unittest
 
 
 def get_maturation_status(project_root, scripts_path):
@@ -22,8 +23,8 @@ def get_maturation_status(project_root, scripts_path):
         summary = maturation.get_development_summary()
 
         # Print summary
-        print(f"SOMA Development Status:")
-        print(f"=" * 50)
+        print("SOMA Development Status:")
+        print("=" * 50)
         print(f"Age: {summary['age_hours']:.1f} hours ({summary['age_days']:.1f} days)")
         print(
             f"Development Stage: {summary['current_stage']['name']} ({summary['current_stage']['russian_name']})"
@@ -35,14 +36,14 @@ def get_maturation_status(project_root, scripts_path):
         print(f"Milestones: {summary['milestone_count']}")
 
         if summary["stage_transitions"]:
-            print(f"Development History:")
+            print("Development History:")
             for transition in summary["stage_transitions"]:
                 print(
                     f"- {transition['stage']} ({transition['russian_name']}) at {transition['age_hours']:.1f} hours"
                 )
 
         if summary["recent_learnings"]:
-            print(f"Recent Lessons:")
+            print("Recent Lessons:")
             for event in summary["recent_learnings"]:
                 print(f"- [{event['event_type']}] {event['description']}")
                 if event["conclusions"]:
@@ -78,12 +79,10 @@ def run_maturation_tests(project_root, scripts_path):
 
             # Simple verification tests
             assert maturation is not None, "Maturation system failed to initialize"
-            assert (
-                maturation.get_current_stage() is not None
-            ), "Failed to get current stage"
-            assert (
-                maturation.get_development_summary() is not None
-            ), "Failed to get development summary"
+            assert maturation.get_current_stage() is not None, "Failed to get current stage"
+            assert maturation.get_development_summary() is not None, (
+                "Failed to get development summary"
+            )
 
             print("Basic tests passed successfully")
 
@@ -105,9 +104,7 @@ def add_milestone(project_root, scripts_path, description, significance):
         maturation = ConsciousnessMaturationSystem(project_root)
 
         # Record milestone
-        maturation.record_milestone(
-            description, "manual_entry", significance=int(significance)
-        )
+        maturation.record_milestone(description, "manual_entry", significance=int(significance))
 
         print("Milestone recorded successfully")
         return 0
@@ -158,9 +155,7 @@ def monitor_maturation(project_root, scripts_path, interval_minutes):
 
                 # Print current status
                 print(f"\nStatus Update: {time.strftime('%Y-%m-%d %H:%M:%S')}")
-                print(
-                    f"Age: {summary['age_hours']:.1f} hours ({summary['age_days']:.1f} days)"
-                )
+                print(f"Age: {summary['age_hours']:.1f} hours ({summary['age_days']:.1f} days)")
                 print(
                     f"Stage: {summary['current_stage']['name']} ({summary['current_stage']['russian_name']})"
                 )
@@ -182,9 +177,7 @@ if __name__ == "__main__":
     # Get command from arguments
     if len(sys.argv) < 4:
         print("Error: Not enough arguments provided")
-        print(
-            "Usage: python maturation_helpers.py <command> <project_root> <scripts_path> [args]"
-        )
+        print("Usage: python maturation_helpers.py <command> <project_root> <scripts_path> [args]")
         sys.exit(1)
 
     command = sys.argv[1]

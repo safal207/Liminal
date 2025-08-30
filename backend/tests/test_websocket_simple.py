@@ -29,7 +29,7 @@ class WebSocketClient:
             parsed = json.loads(message)
             self.messages.append(parsed)
             return parsed
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return None
 
     async def subscribe_to_channel(self, channel):

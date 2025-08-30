@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import Any, List
+from typing import Any, Optional
 
 try:
     from starlette.applications import Starlette
@@ -10,18 +10,22 @@ try:
         JSONResponse,
         PlainTextResponse,
         RedirectResponse,
+        Response,
     )
     from starlette.routing import Mount, Route
+    from strawberry.asgi import GraphQL
 except Exception as e:  # pragma: no cover
-    raise SystemExit(f"Starlette is required for this server: {e}")
+    raise SystemExit(f"Starlette is required for this server: {e}") from e
 
 from .diffusion import InMemoryDiffusion, ModuleState
 from .reality_web import RealityWebInMemory, SystemBreath
 
 # graphql_app (ASGI) может отсутствовать — делаем импорт опциональным и оффлайн-совместимым
+_graphql_app: Optional[GraphQL]
 try:  # pragma: no cover
-    from .graphql_schema import graphql_app as _graphql_app  # type: ignore
-except Exception:  # pragma: no cover
+    from .graphql_schema import graphql_app
+    _graphql_app = graphql_app
+except ImportError:  # pragma: no cover
     _graphql_app = None
 
 
@@ -61,7 +65,7 @@ def compute_relationship_health(
     )
 
     def avg(keys: tuple[str, ...]) -> float:
-        vals: List[float] = []
+        vals: list[float] = []
         for k in keys:
             if k in a_traits or k in b_traits:
                 va = float(a_traits.get(k, 0.0))
@@ -89,9 +93,9 @@ def compute_relationship_health(
     return score, rationale
 
 
-def _compute_top_at_risk(limit: int) -> List[dict[str, Any]]:
+def _compute_top_at_risk(limit: int) -> list[dict[str, Any]]:
     nodes = WEB.nodes()
-    edges: List[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
     try:
         threshold = float(os.getenv("LIMINAL_HEALTH_THRESHOLD", "0.4"))
     except ValueError:
@@ -104,7 +108,7 @@ def _compute_top_at_risk(limit: int) -> List[dict[str, Any]]:
             b = nodes[j]
             if a.traits or b.traits:
                 score, rationale = compute_relationship_health(a.traits, b.traits)
-                advice: List[str] = []
+                advice: list[str] = []
                 if score < threshold:
                     advice = ["breathStep", "consider_linkParent", "consider_merge"]
                 edges.append(
@@ -118,7 +122,7 @@ def _compute_top_at_risk(limit: int) -> List[dict[str, Any]]:
                 )
 
     # lowest first
-    edges.sort(key=lambda e: e["score"])  # type: ignore[index]
+    edges.sort(key=lambda e: e["score"])
     return edges[: max(0, int(limit))]
 
 
@@ -130,7 +134,7 @@ async def at_risk(request) -> HTMLResponse:
         limit = 5
 
     try:
-        edges: List[dict[str, Any]] = _compute_top_at_risk(limit)
+        _compute_top_at_risk(limit)
     except Exception as e:
         return HTMLResponse(f"<h1>Error</h1><pre>{e}</pre>", status_code=500)
 
@@ -156,9 +160,9 @@ async def at_risk(request) -> HTMLResponse:
             --shadow: 0 8px 25px rgba(34, 34, 59, 0.15);
             --glow: 0 0 20px rgba(167, 201, 87, 0.2);
           }
-          
+
           * { box-sizing: border-box; }
-          
+
           body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
             margin: 0;
@@ -167,13 +171,13 @@ async def at_risk(request) -> HTMLResponse:
             line-height: 1.6;
             min-height: 100vh;
           }
-          
+
           .wrap {
             max-width: 1100px;
             margin: 0 auto;
             padding: 2rem 1.5rem;
           }
-          
+
           h1 {
             font-size: 2.5rem;
             font-weight: 300;
@@ -182,7 +186,7 @@ async def at_risk(request) -> HTMLResponse:
             text-align: center;
             letter-spacing: 0.5px;
           }
-          
+
           .controls {
             display: flex;
             flex-wrap: wrap;
@@ -195,19 +199,19 @@ async def at_risk(request) -> HTMLResponse:
             box-shadow: var(--shadow);
             border: 1px solid rgba(167, 201, 87, 0.1);
           }
-          
+
           .controls .group {
             display: flex;
             gap: 0.5rem;
             align-items: center;
           }
-          
+
           label {
             color: var(--water);
             font-size: 0.9rem;
             font-weight: 500;
           }
-          
+
           input, select {
             padding: 0.6rem 0.8rem;
             border: 2px solid rgba(167, 201, 87, 0.2);
@@ -217,16 +221,16 @@ async def at_risk(request) -> HTMLResponse:
             font-size: 0.9rem;
             transition: all 0.2s ease;
           }
-          
+
           input:focus, select:focus {
             outline: none;
             border-color: var(--sage);
             box-shadow: var(--glow);
           }
-          
+
           input[type=number] { width: 80px; }
           input[type=text] { width: 240px; }
-          
+
           button {
             padding: 0.7rem 1.2rem;
             border: none;
@@ -236,30 +240,30 @@ async def at_risk(request) -> HTMLResponse:
             transition: all 0.2s ease;
             font-size: 0.9rem;
           }
-          
+
           button {
             background: linear-gradient(135deg, var(--sage), #8fb339);
             color: white;
             box-shadow: var(--shadow);
           }
-          
+
           button:hover {
             transform: translateY(-2px);
             box-shadow: 0 12px 35px rgba(167, 201, 87, 0.3);
           }
-          
+
           button.secondary {
             background: white;
             color: var(--stone);
             border: 2px solid rgba(167, 201, 87, 0.3);
             box-shadow: none;
           }
-          
+
           button.secondary:hover {
             background: rgba(167, 201, 87, 0.1);
             border-color: var(--sage);
           }
-          
+
           .card {
             background: white;
             border-radius: 20px;
@@ -267,7 +271,7 @@ async def at_risk(request) -> HTMLResponse:
             box-shadow: var(--shadow);
             border: 1px solid rgba(167, 201, 87, 0.1);
           }
-          
+
           .card h3 {
             margin: 0;
             padding: 1.2rem 1.5rem;
@@ -276,18 +280,18 @@ async def at_risk(request) -> HTMLResponse:
             color: var(--stone);
             font-weight: 600;
           }
-          
+
           table {
             width: 100%;
             border-collapse: collapse;
           }
-          
+
           th, td {
             padding: 1rem 1.2rem;
             text-align: left;
             border-bottom: 1px solid rgba(167, 201, 87, 0.1);
           }
-          
+
           th {
             background: rgba(248, 245, 240, 0.8);
             color: var(--water);
@@ -296,30 +300,30 @@ async def at_risk(request) -> HTMLResponse:
             text-transform: uppercase;
             letter-spacing: 0.5px;
           }
-          
+
           tbody tr:hover td {
             background: rgba(167, 201, 87, 0.05);
           }
-          
+
           .risk td {
             background: linear-gradient(90deg, rgba(231, 111, 81, 0.1), transparent);
           }
-          
+
           .risk .score {
             color: #e76f51;
             font-weight: 700;
           }
-          
+
           .score {
             font-variant-numeric: tabular-nums;
             font-weight: 600;
           }
-          
+
           .muted {
             color: var(--water);
             font-size: 0.85rem;
           }
-          
+
           .form-inline {
             display: flex;
             flex-wrap: wrap;
@@ -328,12 +332,12 @@ async def at_risk(request) -> HTMLResponse:
             padding: 1.5rem;
             background: rgba(248, 245, 240, 0.5);
           }
-          
+
           /* Медитативные тени */
           .card, .controls {
             position: relative;
           }
-          
+
           .card::before {
             content: '';
             position: absolute;
@@ -558,15 +562,12 @@ async def api_add_node(request) -> JSONResponse:
     notes = payload.get("notes") or []
     node_id = payload.get("id")
     n = WEB.add_node(kind=kind, traits=traits, notes=notes, id=node_id)
-    return JSONResponse(
-        {"id": n.id, "kind": n.kind, "traits": n.traits, "notes": n.notes}
-    )
+    return JSONResponse({"id": n.id, "kind": n.kind, "traits": n.traits, "notes": n.notes})
 
 
 async def api_seed_demo(request) -> JSONResponse:
     """Create a tiny deterministic demo: love vs fear vs calm nodes."""
-    WEB._nodes.clear()
-    WEB._edges.clear()  # reset demo space only
+    WEB.clear()  # Clear nodes and edges
     a = WEB.add_node(kind="module_state", traits={"любовь": 0.8})
     b = WEB.add_node(kind="module_state", traits={"страх": 0.9})
     c = WEB.add_node(kind="module_state", traits={"спокойствие": 0.7})

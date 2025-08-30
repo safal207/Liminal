@@ -1,29 +1,12 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 24.4.2
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.3
     hooks:
-      - id: black
-        stages: [manual]
-
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
-        stages: [manual]
-
-  - repo: https://github.com/PyCQA/flake8
-    rev: 7.0.0
-    hooks:
-      - id: flake8
-        stages: [manual]
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.10.0
-    hooks:
-      - id: mypy
-        files: "^((src|backend)/|tests/)"
-        stages: [manual]
-
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        files: ^(src|tests)/
+      - id: ruff-format
+        files: ^(src|tests)/
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:

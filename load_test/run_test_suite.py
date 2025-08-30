@@ -3,14 +3,11 @@
 Performance Test Suite Runner for LIMINAL API.
 """
 import argparse
-import json
 import logging
-import os
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
 
 import yaml
 
@@ -32,11 +29,11 @@ class TestSuiteRunner:
         )
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def _load_config(self, config_file: str) -> Dict:
-        with open(config_file, "r") as f:
+    def _load_config(self, config_file: str) -> dict:
+        with open(config_file) as f:
             return yaml.safe_load(f)
 
-    def run(self, scenarios: List[str] = None):
+    def run(self, scenarios: list[str] = None):
         """Run test scenarios."""
         scenarios = scenarios or list(self.config["test_scenarios"].keys())
         results = []
@@ -53,7 +50,7 @@ class TestSuiteRunner:
         self._generate_report(results)
         logger.info(f"\n✅ Test suite completed. Report: {self.output_dir}/index.html")
 
-    def _run_scenario(self, name: str) -> Dict:
+    def _run_scenario(self, name: str) -> dict:
         """Execute a single test scenario."""
         cfg = self.config["test_scenarios"][name]
         cmd = [
@@ -81,7 +78,7 @@ class TestSuiteRunner:
         except subprocess.CalledProcessError as e:
             return {"name": name, "status": "FAILED", "error": str(e), "config": cfg}
 
-    def _generate_report(self, results: List[Dict]):
+    def _generate_report(self, results: list[dict]):
         """Generate HTML report."""
         html = f"""
         <!DOCTYPE html>

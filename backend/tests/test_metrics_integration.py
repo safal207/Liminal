@@ -35,9 +35,7 @@ class WebSocketClient:
         try:
             self.websocket = await websockets.connect(self.server_url)
             self.connected = True
-            print(
-                f"{Fore.GREEN}[{self.client_id}] Подключен к {self.server_url}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.GREEN}[{self.client_id}] Подключен к {self.server_url}{Style.RESET_ALL}")
 
             # Аутентификация с токеном, если предоставлен
             if self.token:
@@ -48,18 +46,14 @@ class WebSocketClient:
 
             return True
         except Exception as e:
-            print(
-                f"{Fore.RED}[{self.client_id}] Ошибка подключения: {e}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.RED}[{self.client_id}] Ошибка подключения: {e}{Style.RESET_ALL}")
             self.connected = False
             return False
 
     async def authenticate(self):
         """Аутентификация на WebSocket сервере с использованием JWT"""
         if not self.connected:
-            print(
-                f"{Fore.RED}[{self.client_id}] Не подключен к серверу{Style.RESET_ALL}"
-            )
+            print(f"{Fore.RED}[{self.client_id}] Не подключен к серверу{Style.RESET_ALL}")
             return False
 
         try:
@@ -68,9 +62,7 @@ class WebSocketClient:
                 "token": self.token or f"test-token-{self.client_id}-{uuid.uuid4()}",
             }
             await self.websocket.send(json.dumps(auth_message))
-            print(
-                f"{Fore.CYAN}[{self.client_id}] Отправлен запрос аутентификации{Style.RESET_ALL}"
-            )
+            print(f"{Fore.CYAN}[{self.client_id}] Отправлен запрос аутентификации{Style.RESET_ALL}")
 
             response = await self.websocket.recv()
             response_data = json.loads(response)
@@ -81,9 +73,7 @@ class WebSocketClient:
             # Проверяем успешность аутентификации
             if response_data.get("type") == "auth_success":
                 self.authenticated = True
-                print(
-                    f"{Fore.GREEN}[{self.client_id}] Аутентификация успешна{Style.RESET_ALL}"
-                )
+                print(f"{Fore.GREEN}[{self.client_id}] Аутентификация успешна{Style.RESET_ALL}")
                 return True
             else:
                 print(
@@ -92,9 +82,7 @@ class WebSocketClient:
                 return False
 
         except Exception as e:
-            print(
-                f"{Fore.RED}[{self.client_id}] Ошибка при аутентификации: {e}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.RED}[{self.client_id}] Ошибка при аутентификации: {e}{Style.RESET_ALL}")
             return False
 
     async def subscribe(self, channel):
@@ -118,9 +106,7 @@ class WebSocketClient:
 
             # Получаем ответ подписки
             response = await self.websocket.recv()
-            print(
-                f"{Fore.CYAN}[{self.client_id}] Ответ подписки: {response}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.CYAN}[{self.client_id}] Ответ подписки: {response}{Style.RESET_ALL}")
 
             self.subscribed_channels.add(channel)
             return True
@@ -155,9 +141,7 @@ class WebSocketClient:
             )
             return True
         except Exception as e:
-            print(
-                f"{Fore.RED}[{self.client_id}] Ошибка отправки сообщения: {e}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.RED}[{self.client_id}] Ошибка отправки сообщения: {e}{Style.RESET_ALL}")
             return False
 
     async def unsubscribe(self, channel):
@@ -187,9 +171,7 @@ class WebSocketClient:
 
             # Получаем ответ отписки
             response = await self.websocket.recv()
-            print(
-                f"{Fore.CYAN}[{self.client_id}] Ответ отписки: {response}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.CYAN}[{self.client_id}] Ответ отписки: {response}{Style.RESET_ALL}")
 
             self.subscribed_channels.remove(channel)
             return True
@@ -204,9 +186,7 @@ class WebSocketClient:
                 await self.websocket.close()
                 print(f"{Fore.GREEN}[{self.client_id}] Отключен{Style.RESET_ALL}")
             except Exception as e:
-                print(
-                    f"{Fore.RED}[{self.client_id}] Ошибка отключения: {e}{Style.RESET_ALL}"
-                )
+                print(f"{Fore.RED}[{self.client_id}] Ошибка отключения: {e}{Style.RESET_ALL}")
             finally:
                 self.connected = False
                 self.authenticated = False
@@ -220,21 +200,15 @@ class WebSocketClient:
         try:
             while self.connected:
                 message = await self.websocket.recv()
-                print(
-                    f"{Fore.BLUE}[{self.client_id}] Получено: {message}{Style.RESET_ALL}"
-                )
+                print(f"{Fore.BLUE}[{self.client_id}] Получено: {message}{Style.RESET_ALL}")
         except websockets.exceptions.ConnectionClosedOK:
-            print(
-                f"{Fore.YELLOW}[{self.client_id}] Соединение закрыто{Style.RESET_ALL}"
-            )
+            print(f"{Fore.YELLOW}[{self.client_id}] Соединение закрыто{Style.RESET_ALL}")
         except websockets.exceptions.ConnectionClosedError as e:
             print(
                 f"{Fore.RED}[{self.client_id}] Соединение закрыто с ошибкой: {e.code} {e.reason}{Style.RESET_ALL}"
             )
         except Exception as e:
-            print(
-                f"{Fore.RED}[{self.client_id}] Ошибка при прослушивании: {e}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.RED}[{self.client_id}] Ошибка при прослушивании: {e}{Style.RESET_ALL}")
         finally:
             self.connected = False
 
@@ -261,9 +235,7 @@ def print_metrics(url):
             ]
 
             for line in metrics.split("\n"):
-                if any(x in line for x in metrics_of_interest) and not line.startswith(
-                    "#"
-                ):
+                if any(x in line for x in metrics_of_interest) and not line.startswith("#"):
                     if line.strip():
                         filtered_metrics.append(line)
                         print(f"{Fore.CYAN}{line}{Style.RESET_ALL}")
@@ -273,9 +245,7 @@ def print_metrics(url):
 
             return filtered_metrics
         else:
-            print(
-                f"{Fore.RED}Ошибка получения метрик: {response.status_code}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.RED}Ошибка получения метрик: {response.status_code}{Style.RESET_ALL}")
             return []
     except Exception as e:
         print(f"{Fore.RED}Ошибка при запросе метрик: {e}{Style.RESET_ALL}")
@@ -312,7 +282,7 @@ async def test_single_client(server_url, metrics_url):
 
     # Отправляем несколько сообщений
     for i in range(3):
-        await client.send_message(test_channel, f"Тестовое сообщение {i+1}")
+        await client.send_message(test_channel, f"Тестовое сообщение {i + 1}")
         await asyncio.sleep(0.5)
 
     # Проверяем метрики после отправки сообщений
@@ -342,7 +312,7 @@ async def test_multiple_clients(server_url, metrics_url, num_clients=5):
 
     print(f"Создание {num_clients} клиентов...")
     for i in range(num_clients):
-        client = WebSocketClient(server_url, f"multi_user_{i+1}")
+        client = WebSocketClient(server_url, f"multi_user_{i + 1}")
         clients.append(client)
 
         # Подключаем клиентов
@@ -355,19 +325,17 @@ async def test_multiple_clients(server_url, metrics_url, num_clients=5):
             listener_tasks.append(listener_task)
 
             # Подписываемся на каналы
-            channels = [f"multi_channel_{j+1}" for j in range(random.randint(1, 3))]
+            channels = [f"multi_channel_{j + 1}" for j in range(random.randint(1, 3))]
             for channel in channels:
                 await client.subscribe(channel)
                 await asyncio.sleep(0.1)  # Небольшая пауза между подписками
 
     # Проверяем метрики после подключения всех клиентов
-    print(
-        f"\n{Fore.GREEN}Метрики после подключения {len(clients)} клиентов:{Style.RESET_ALL}"
-    )
+    print(f"\n{Fore.GREEN}Метрики после подключения {len(clients)} клиентов:{Style.RESET_ALL}")
     print_metrics(metrics_url)
 
     # Отправка сообщений от случайных клиентов
-    print(f"\nОтправка сообщений от случайных клиентов...")
+    print("\nОтправка сообщений от случайных клиентов...")
     for _ in range(min(10, num_clients * 2)):
         client = random.choice(clients)
         if client.connected and client.authenticated and client.subscribed_channels:
@@ -390,7 +358,7 @@ async def test_multiple_clients(server_url, metrics_url, num_clients=5):
     print_metrics(metrics_url)
 
     # Отключаем оставшихся клиентов
-    print(f"\nОтключение оставшихся клиентов...")
+    print("\nОтключение оставшихся клиентов...")
     for client in clients[disconnect_count:]:
         await client.disconnect()
 
@@ -399,9 +367,7 @@ async def test_multiple_clients(server_url, metrics_url, num_clients=5):
         task.cancel()
 
     # Финальная проверка метрик
-    print(
-        f"\n{Fore.GREEN}Финальные метрики после отключения всех клиентов:{Style.RESET_ALL}"
-    )
+    print(f"\n{Fore.GREEN}Финальные метрики после отключения всех клиентов:{Style.RESET_ALL}")
     print_metrics(metrics_url)
 
 
@@ -414,23 +380,21 @@ async def test_connection_limits(server_url, metrics_url, num_clients=12):
     clients = []
     client_prefix = f"limit_test_{uuid.uuid4().hex[:6]}"
 
-    print(
-        f"Тестирование лимитов подключений с {num_clients} клиентами с одинаковым префиксом..."
-    )
+    print(f"Тестирование лимитов подключений с {num_clients} клиентами с одинаковым префиксом...")
 
     for i in range(num_clients):
         # Используем один префикс ID для имитации одного IP
-        client = WebSocketClient(server_url, f"{client_prefix}_{i+1}")
-        print(f"Попытка подключения клиента {i+1}...")
+        client = WebSocketClient(server_url, f"{client_prefix}_{i + 1}")
+        print(f"Попытка подключения клиента {i + 1}...")
 
         success = await client.connect()
         if success:
             clients.append(client)
-            print(f"{Fore.GREEN}Клиент {i+1} успешно подключен{Style.RESET_ALL}")
+            print(f"{Fore.GREEN}Клиент {i + 1} успешно подключен{Style.RESET_ALL}")
             await client.authenticate()
         else:
             print(
-                f"{Fore.YELLOW}Клиент {i+1} не смог подключиться (возможно, достигнут лимит){Style.RESET_ALL}"
+                f"{Fore.YELLOW}Клиент {i + 1} не смог подключиться (возможно, достигнут лимит){Style.RESET_ALL}"
             )
 
         await asyncio.sleep(0.2)  # Пауза между попытками подключения
@@ -440,7 +404,7 @@ async def test_connection_limits(server_url, metrics_url, num_clients=12):
     metrics = print_metrics(metrics_url)
 
     # Находим значения лимитов в метриках
-    limit_metrics = [m for m in metrics if "connection_limits" in m]
+    [m for m in metrics if "connection_limits" in m]
     rejection_metrics = [m for m in metrics if "connection_rejections" in m]
 
     print(
@@ -457,9 +421,7 @@ async def test_connection_limits(server_url, metrics_url, num_clients=12):
         await client.disconnect()
 
     # Финальная проверка метрик после отключения
-    print(
-        f"\n{Fore.GREEN}Финальные метрики после отключения всех клиентов:{Style.RESET_ALL}"
-    )
+    print(f"\n{Fore.GREEN}Финальные метрики после отключения всех клиентов:{Style.RESET_ALL}")
     print_metrics(metrics_url)
 
 
@@ -498,9 +460,7 @@ async def test_invalid_auth(server_url, metrics_url):
 
 async def main():
     parser = argparse.ArgumentParser(description="Тестирование метрик WebSocket")
-    parser.add_argument(
-        "--server", default="ws://localhost:8000", help="URL WebSocket сервера"
-    )
+    parser.add_argument("--server", default="ws://localhost:8000", help="URL WebSocket сервера")
     parser.add_argument(
         "--metrics",
         default="http://localhost:8000/metrics",
@@ -522,8 +482,8 @@ async def main():
     args = parser.parse_args()
 
     print(f"{Fore.GREEN}=========================================")
-    print(f"ТЕСТИРОВАНИЕ МЕТРИК PROMETHEUS WEBSOCKET СЕРВЕРА")
-    print(f"=========================================")
+    print("ТЕСТИРОВАНИЕ МЕТРИК PROMETHEUS WEBSOCKET СЕРВЕРА")
+    print("=========================================")
     print(f"WebSocket сервер: {args.server}")
     print(f"Metrics endpoint: {args.metrics}")
     print(f"Выбранные тесты: {args.test}{Style.RESET_ALL}")
@@ -541,8 +501,8 @@ async def main():
         await test_invalid_auth(args.server, args.metrics)
 
     print(f"\n{Fore.GREEN}=========================================")
-    print(f"ТЕСТИРОВАНИЕ ЗАВЕРШЕНО")
-    print(f"=========================================")
+    print("ТЕСТИРОВАНИЕ ЗАВЕРШЕНО")
+    print("=========================================")
     print(f"Все тесты выполнены{Style.RESET_ALL}")
 
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """
 Экстрактор фичей для ML-моделей с интеграцией Kenning
@@ -11,7 +10,7 @@ import logging
 import os
 import sys
 import time
-from typing import Any, Dict
+from typing import Any
 
 import requests
 
@@ -48,7 +47,7 @@ class FeatureExtractor:
         self.features = {}
         self.last_extract_time = 0
 
-    def extract_features_from_backend(self) -> Dict[str, Any]:
+    def extract_features_from_backend(self) -> dict[str, Any]:
         """
         Получение признаков из бэкенда через API
 
@@ -64,15 +63,13 @@ class FeatureExtractor:
                 logger.info(f"Received features from backend: {list(data.keys())}")
                 return data
             else:
-                logger.error(
-                    f"Failed to get features from backend: {response.status_code}"
-                )
+                logger.error(f"Failed to get features from backend: {response.status_code}")
                 return {}
         except Exception as e:
             logger.error(f"Error getting features from backend: {e}")
             return {}
 
-    def store_features_in_redis(self, features: Dict[str, Any]) -> None:
+    def store_features_in_redis(self, features: dict[str, Any]) -> None:
         """
         Сохранение признаков в Redis для использования Kenning
 
@@ -88,26 +85,20 @@ class FeatureExtractor:
         try:
             # Сохраняем каждый признак отдельно для удобства доступа
             for feature_name, value in features.items():
-                if isinstance(value, (int, float)):
+                if isinstance(value, int | float):
                     feature_data = {"timestamp": timestamp, "value": value}
-                    redis_client.set(
-                        f"ml_feature:{feature_name}", json.dumps(feature_data)
-                    )
-                    redis_client.expire(
-                        f"ml_feature:{feature_name}", 86400
-                    )  # TTL 1 день
+                    redis_client.set(f"ml_feature:{feature_name}", json.dumps(feature_data))
+                    redis_client.expire(f"ml_feature:{feature_name}", 86400)  # TTL 1 день
                 elif isinstance(value, dict):
                     # Для сложных метрик (словарей), сохраняем каждую подметрику
                     for subfeature, subvalue in value.items():
-                        if isinstance(subvalue, (int, float)):
+                        if isinstance(subvalue, int | float):
                             feature_data = {"timestamp": timestamp, "value": subvalue}
                             redis_client.set(
                                 f"ml_feature:{feature_name}_{subfeature}",
                                 json.dumps(feature_data),
                             )
-                            redis_client.expire(
-                                f"ml_feature:{feature_name}_{subfeature}", 86400
-                            )
+                            redis_client.expire(f"ml_feature:{feature_name}_{subfeature}", 86400)
 
             # Также сохраняем полный набор признаков
             redis_client.set(
@@ -120,7 +111,7 @@ class FeatureExtractor:
         except Exception as e:
             logger.error(f"Failed to store features in Redis: {e}")
 
-    def send_features_to_kenning(self, features: Dict[str, Any]) -> Dict[str, Any]:
+    def send_features_to_kenning(self, features: dict[str, Any]) -> dict[str, Any]:
         """
         Отправка признаков в Kenning для анализа и предсказаний
 
@@ -149,15 +140,13 @@ class FeatureExtractor:
                 logger.info("Prediction received from Kenning")
                 return result
             else:
-                logger.error(
-                    f"Failed to get prediction from Kenning: {response.status_code}"
-                )
+                logger.error(f"Failed to get prediction from Kenning: {response.status_code}")
                 return {}
         except Exception as e:
             logger.error(f"Error sending features to Kenning: {e}")
             return {}
 
-    def store_predictions(self, predictions: Dict[str, Any]) -> None:
+    def store_predictions(self, predictions: dict[str, Any]) -> None:
         """
         Сохранение результатов предсказаний в Redis
 
@@ -188,9 +177,7 @@ class FeatureExtractor:
 
     def run_extraction_loop(self) -> None:
         """Основной цикл извлечения признаков и отправки в Kenning"""
-        logger.info(
-            f"Starting feature extraction loop with interval {EXTRACT_INTERVAL}s"
-        )
+        logger.info(f"Starting feature extraction loop with interval {EXTRACT_INTERVAL}s")
 
         while True:
             try:
@@ -218,12 +205,8 @@ class FeatureExtractor:
 
 def main():
     """Точка входа для запуска экстрактора фичей"""
-    parser = argparse.ArgumentParser(
-        description="ML Feature Extractor for Kenning integration"
-    )
-    parser.add_argument(
-        "--once", action="store_true", help="Run extraction once and exit"
-    )
+    parser = argparse.ArgumentParser(description="ML Feature Extractor for Kenning integration")
+    parser.add_argument("--once", action="store_true", help="Run extraction once and exit")
     parser.add_argument(
         "--interval",
         type=int,

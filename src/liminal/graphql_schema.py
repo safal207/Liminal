@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+import json
+import os
+from datetime import datetime
+from pathlib import Path
 
 import strawberry
 from strawberry.scalars import JSON
@@ -33,20 +36,20 @@ class TraitEntry:
 class ResonanceEventType:
     timestamp: str
     text: str
-    meta: JSON
+    meta: JSON  # type: ignore[valid-type]
 
 
 @strawberry.type
 class ModuleStateType:
     name: str
-    traits: List[TraitEntry]
-    notes: List[str]
+    traits: list[TraitEntry]
+    notes: list[str]
 
 
 @strawberry.type
 class BlendResultType:
     state: ModuleStateType
-    rationale: List[str]
+    rationale: list[str]
 
 
 # ===== Reality Web Types =====
@@ -56,8 +59,8 @@ class BlendResultType:
 class NodeType:
     id: str
     kind: str
-    traits: List[TraitEntry]
-    notes: List[str]
+    traits: list[TraitEntry]
+    notes: list[str]
 
 
 @strawberry.type
@@ -66,8 +69,8 @@ class EdgeType:
     target_id: str
     kind: str
     weight: float
-    notes: List[str]
-    rationale: List[str]
+    notes: list[str]
+    rationale: list[str]
 
 
 @strawberry.type
@@ -88,8 +91,8 @@ class BreakdownEntryType:
 @strawberry.type
 class RelationshipHealthType:
     score: float
-    rationale: List[str]
-    breakdown: List[BreakdownEntryType]
+    rationale: list[str]
+    breakdown: list[BreakdownEntryType]
 
 
 @strawberry.type
@@ -97,8 +100,8 @@ class AtRiskEdgeType:
     source_id: str
     target_id: str
     score: float
-    advice: List[str]
-    rationale: List[str]
+    advice: list[str]
+    rationale: list[str]
 
 
 @strawberry.input
@@ -110,8 +113,8 @@ class TraitEntryInput:
 @strawberry.input
 class ModuleStateInput:
     name: str
-    traits: List[TraitEntryInput]
-    notes: Optional[List[str]] = None
+    traits: list[TraitEntryInput]
+    notes: list[str] | None = None
 
 
 def _to_module_state(msi: ModuleStateInput) -> ModuleState:
@@ -122,26 +125,20 @@ def _to_module_state(msi: ModuleStateInput) -> ModuleState:
     )
 
 
-def _to_trait_entries(traits: Dict[str, float]) -> List[TraitEntry]:
+def _to_trait_entries(traits: dict[str, float]) -> list[TraitEntry]:
     return [TraitEntry(key=k, value=float(v)) for k, v in sorted(traits.items())]
 
 
 def _to_module_state_type(ms: ModuleState) -> ModuleStateType:
-    return ModuleStateType(
-        name=ms.name, traits=_to_trait_entries(ms.traits), notes=ms.notes
-    )
+    return ModuleStateType(name=ms.name, traits=_to_trait_entries(ms.traits), notes=ms.notes)
 
 
 def _to_event_type(ev: ResonanceEvent) -> ResonanceEventType:
-    return ResonanceEventType(
-        timestamp=ev.timestamp.isoformat(), text=ev.text, meta=ev.meta
-    )
+    return ResonanceEventType(timestamp=ev.timestamp.isoformat(), text=ev.text, meta=ev.meta)
 
 
 def _to_node_type(n: RWNode) -> NodeType:
-    return NodeType(
-        id=n.id, kind=n.kind, traits=_to_trait_entries(n.traits), notes=n.notes
-    )
+    return NodeType(id=n.id, kind=n.kind, traits=_to_trait_entries(n.traits), notes=n.notes)
 
 
 def _to_edge_type(e: RWEdge) -> EdgeType:
@@ -162,8 +159,8 @@ def _to_edge_type(e: RWEdge) -> EdgeType:
 class Query:
     @strawberry.field
     def resonance_map(
-        self, seed: Optional[List[str]] = None, top_n: int = 10
-    ) -> List[ResonanceMapEntry]:
+        self, seed: list[str] | None = None, top_n: int = 10
+    ) -> list[ResonanceMapEntry]:
         r = InMemoryREINCE()
         for t in seed or []:
             r.record_emotional_event(t)
@@ -171,7 +168,7 @@ class Query:
         return [ResonanceMapEntry(key=k, count=v) for k, v in m.items()]
 
     @strawberry.field
-    def sentiments(self, text: str) -> List[TraitEntry]:
+    def sentiments(self, text: str) -> list[TraitEntry]:
         r = InMemoryREINCE()
         s = r.sentiments(text)
         return _to_trait_entries(s)
@@ -179,31 +176,29 @@ class Query:
     @strawberry.field
     def blend(
         self,
-        states: List[ModuleStateInput],
-        weights: Optional[List[float]] = None,
+        states: list[ModuleStateInput],
+        weights: list[float] | None = None,
         name: str = "diffused",
     ) -> BlendResultType:
         d = InMemoryDiffusion()
         ms_list = [_to_module_state(s) for s in states]
         res = d.blend(ms_list, weights=weights, name=name)
-        return BlendResultType(
-            state=_to_module_state_type(res.state), rationale=res.rationale
-        )
+        return BlendResultType(state=_to_module_state_type(res.state), rationale=res.rationale)
 
     # Reality Web
     @strawberry.field
-    def reality_web_nodes(self) -> List[NodeType]:
+    def reality_web_nodes(self) -> list[NodeType]:
         return [_to_node_type(n) for n in WEB.nodes()]
 
     @strawberry.field
-    def reality_web_edges(self) -> List[EdgeType]:
+    def reality_web_edges(self) -> list[EdgeType]:
         return [_to_edge_type(e) for e in WEB.edges()]
 
     @strawberry.field
-    def top_at_risk_edges(self, limit: int = 5) -> List[AtRiskEdgeType]:
+    def top_at_risk_edges(self, limit: int = 5) -> list[AtRiskEdgeType]:
         # Compute pairwise relationship health for all node pairs and return lowest scores
         nodes = list(WEB.nodes())
-        pairs: List[AtRiskEdgeType] = []
+        pairs: list[AtRiskEdgeType] = []
 
         # Soft keys and weights aligned with compute_relationship_health
         POS_KEYS = getattr(
@@ -252,8 +247,8 @@ class Query:
                     )
                 )
 
-                def avg(keys: tuple[str, ...]) -> float:
-                    vals: List[float] = []
+                def avg(keys: tuple[str, ...], a=a, b=b) -> float:
+                    vals: list[float] = []
                     for k in keys:
                         if k in a.traits or k in b.traits:
                             va = float(a.traits.get(k, 0.0))
@@ -267,19 +262,13 @@ class Query:
                 penalty = NEG_W * neg_avg
                 parent = has_parent(a, b)
                 raw_score = base + bonus - penalty + (PARENT_BONUS if parent else 0.0)
-                score = (
-                    0.0 if raw_score < 0.0 else 1.0 if raw_score > 1.0 else raw_score
-                )
+                score = 0.0 if raw_score < 0.0 else 1.0 if raw_score > 1.0 else raw_score
 
                 rationale = [
                     f"base_similarity={base:.3f}",
                     f"pos_avg={pos_avg:.3f}*{POS_W:.2f} -> +{bonus:.3f}",
                     f"neg_avg={neg_avg:.3f}*{NEG_W:.2f} -> -{penalty:.3f}",
-                    (
-                        ("parent_bonus=+%.3f" % PARENT_BONUS)
-                        if parent
-                        else "parent_bonus=+0.000"
-                    ),
+                    f"parent_bonus=+{PARENT_BONUS:.3f}" if parent else "parent_bonus=+0.000",
                     f"score_clipped={score:.3f}",
                 ]
 
@@ -307,13 +296,9 @@ class Query:
 @strawberry.type
 class Mutation:
     @strawberry.field
-    def record_event(
-        self, text: str, meta: Optional[JSON] = None
-    ) -> ResonanceEventType:
+    def record_event(self, text: str, meta: JSON | None = None) -> ResonanceEventType:  # type: ignore[valid-type]
         r = InMemoryREINCE()
-        ev = r.record_emotional_event(
-            text, meta=meta if isinstance(meta, dict) else None
-        )
+        ev = r.record_emotional_event(text, meta=meta if isinstance(meta, dict) else None)
         return _to_event_type(ev)
 
     # Reality Web mutations
@@ -321,9 +306,9 @@ class Mutation:
     def add_node(
         self,
         kind: str,
-        traits: List[TraitEntryInput],
-        notes: Optional[List[str]] = None,
-        id: Optional[str] = None,
+        traits: list[TraitEntryInput],
+        notes: list[str] | None = None,
+        id: str | None = None,
     ) -> NodeType:
         node = WEB.add_node(
             kind=kind,
@@ -341,9 +326,7 @@ class Mutation:
         return _to_edge_type(e)
 
     @strawberry.field
-    def link_merge(
-        self, source_id: str, target_id: str, name: str = "merged"
-    ) -> NodeType:
+    def link_merge(self, source_id: str, target_id: str, name: str = "merged") -> NodeType:
         a = next(n for n in WEB.nodes() if n.id == source_id)
         b = next(n for n in WEB.nodes() if n.id == target_id)
         merged, _ = WEB.link_merge(a, b, name=name)
@@ -352,9 +335,7 @@ class Mutation:
     @strawberry.field
     def breath_step(self, steps: int = 1) -> VitalSignsType:
         vit = BREATH.step(WEB, steps=steps)
-        return VitalSignsType(
-            phase=vit.phase, bpm=vit.bpm, last_ts=vit.last_ts, cycles=vit.cycles
-        )
+        return VitalSignsType(phase=vit.phase, bpm=vit.bpm, last_ts=vit.last_ts, cycles=vit.cycles)
 
     @strawberry.field
     def link_parent(self, parent_id: str, child_id: str) -> EdgeType:
@@ -364,9 +345,7 @@ class Mutation:
         return _to_edge_type(e)
 
     @strawberry.field
-    def compute_relationship_health(
-        self, source_id: str, target_id: str
-    ) -> RelationshipHealthType:
+    def compute_relationship_health(self, source_id: str, target_id: str) -> RelationshipHealthType:
         # locate nodes
         a = next(n for n in WEB.nodes() if n.id == source_id)
         b = next(n for n in WEB.nodes() if n.id == target_id)
@@ -401,7 +380,7 @@ class Mutation:
         )
 
         def avg(keys: tuple[str, ...]) -> float:
-            vals: List[float] = []
+            vals: list[float] = []
             for k in keys:
                 if k in a.traits or k in b.traits:
                     va = float(a.traits.get(k, 0.0))
@@ -434,20 +413,14 @@ class Mutation:
             f"base_similarity={base:.3f}",
             f"pos_avg={pos_avg:.3f}*{POS_W:.2f} -> +{bonus:.3f}",
             f"neg_avg={neg_avg:.3f}*{NEG_W:.2f} -> -{penalty:.3f}",
-            (
-                ("parent_bonus=+%.3f" % PARENT_BONUS)
-                if has_parent
-                else "parent_bonus=+0.000"
-            ),
+            f"parent_bonus=+{PARENT_BONUS:.3f}" if has_parent else "parent_bonus=+0.000",
             f"score_clipped={score:.3f}",
         ]
 
         breakdown = [
             BreakdownEntryType(key="base_similarity", weight=1.0, contribution=base),
             BreakdownEntryType(key="positive_traits", weight=POS_W, contribution=bonus),
-            BreakdownEntryType(
-                key="negative_traits", weight=NEG_W, contribution=-penalty
-            ),
+            BreakdownEntryType(key="negative_traits", weight=NEG_W, contribution=-penalty),
         ]
 
         # --- Self-healing insight on low health ---
@@ -467,9 +440,7 @@ class Mutation:
                 "rationale": rationale,
                 "advice": advice,
             }
-            path = os.getenv(
-                "LIMINAL_INSIGHTS_PATH", str(Path("data") / "insights.jsonl")
-            )
+            path = os.getenv("LIMINAL_INSIGHTS_PATH", str(Path("data") / "insights.jsonl"))
             p = Path(path)
             try:
                 p.parent.mkdir(parents=True, exist_ok=True)
@@ -479,9 +450,7 @@ class Mutation:
                 # Non-fatal: insights writing should never break the mutation
                 pass
 
-        return RelationshipHealthType(
-            score=score, rationale=rationale, breakdown=breakdown
-        )
+        return RelationshipHealthType(score=score, rationale=rationale, breakdown=breakdown)
 
 
 # Module-level singletons for in-memory web and system breath
@@ -497,8 +466,3 @@ try:
     graphql_app = GraphQL(schema)
 except Exception:  # pragma: no cover - allow import without ASGI extras installed
     graphql_app = None  # type: ignore
-
-import json
-import os
-from datetime import datetime
-from pathlib import Path

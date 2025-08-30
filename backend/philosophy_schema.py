@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Philosophy First - Consciousness Schema
@@ -9,7 +8,7 @@ Enhanced consciousness schema for Philosophy First approach
 
 from datetime import datetime
 from enum import Enum, auto
-from typing import Any, Dict, List
+from typing import Any
 
 
 class ConsciousnessState(Enum):
@@ -65,7 +64,7 @@ class ConsciousnessNode:
         question_clarity: float = 0.0,
         resonance_strength: float = 0.0,
         user_id: str = "anonymous",
-        meta: Dict[str, Any] = None,
+        meta: dict[str, Any] = None,
     ):
         self.id = id
         self.state = state
@@ -79,7 +78,7 @@ class ConsciousnessNode:
         self.user_id = user_id
         self.meta = meta or {}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Преобразует узел в словарь для Neo4j."""
         return {
             "id": self.id,
@@ -132,7 +131,7 @@ class StateTransition:
         resonance_delta: float = 0.0,
         philosophical_significance: str = "",
         user_id: str = "anonymous",
-        meta: Dict[str, Any] = None,
+        meta: dict[str, Any] = None,
     ):
         self.id = id
         self.source_id = source_id
@@ -147,7 +146,7 @@ class StateTransition:
         self.user_id = user_id
         self.meta = meta or {}
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Преобразует переход в словарь для Neo4j."""
         return {
             "id": self.id,
@@ -171,8 +170,8 @@ class ConsciousnessTimeline:
     """
 
     def __init__(self):
-        self.nodes: List[ConsciousnessNode] = []
-        self.transitions: List[StateTransition] = []
+        self.nodes: list[ConsciousnessNode] = []
+        self.transitions: list[StateTransition] = []
 
     def add_node(self, node: ConsciousnessNode) -> None:
         """Добавляет узел сознания во временную линию."""
@@ -182,7 +181,7 @@ class ConsciousnessTimeline:
         """Добавляет переход состояния во временную линию."""
         self.transitions.append(transition)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Преобразует временную линию в словарь для фронтенда."""
         return {
             "nodes": [node.to_dict() for node in self.nodes],
@@ -200,7 +199,7 @@ def create_consciousness_event(
     harmony_delta: float = 0.1,
     authenticity_delta: float = 0.1,
     resonance_delta: float = 0.1,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Создает событие перехода сознания для отправки через WebSocket.
     """

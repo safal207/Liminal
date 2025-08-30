@@ -3,7 +3,7 @@ Health check endpoints для мониторинга состояния сист
 Реализованы liveness, readiness и startup пробы.
 """
 
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, status
 from loguru import logger
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/health", tags=["health"])
 
 
 @router.get("/live", status_code=status.HTTP_200_OK)
-async def liveness_check() -> Dict[str, str]:
+async def liveness_check() -> dict[str, str]:
     """
     Liveness probe.
     Проверяет, что приложение запущено и отвечает на запросы.
@@ -25,13 +25,13 @@ async def liveness_check() -> Dict[str, str]:
 
 
 @router.get("/ready", status_code=status.HTTP_200_OK)
-async def readiness_check(request: Request) -> Dict[str, Any]:
+async def readiness_check(request: Request) -> dict[str, Any]:
     """
     Readiness probe.
     Проверяет, готово ли приложение принимать трафик, включая проверку
     критически важных зависимостей (например, Redis).
     """
-    component_statuses: Dict[str, Dict[str, Any]] = {}
+    component_statuses: dict[str, dict[str, Any]] = {}
 
     # 1) Redis
     try:
@@ -74,7 +74,7 @@ async def readiness_check(request: Request) -> Dict[str, Any]:
 
 
 @router.get("/startup", status_code=status.HTTP_200_OK)
-async def startup_check(request: Request) -> Dict[str, str]:
+async def startup_check(request: Request) -> dict[str, str]:
     """
     Startup probe.
     Возвращает 200 только после завершения старта приложения

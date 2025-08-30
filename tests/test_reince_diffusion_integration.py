@@ -21,11 +21,12 @@ def test_reince_resonance_to_diffusion_state_and_blend_offline():
 
     # Basic invariants
     assert blended.state.name == "merged"
-    assert "alpha" in blended.state.notes and "beta" in blended.state.notes
+    assert "alpha" in blended.state.notes
+    assert "beta" in blended.state.notes
 
     # Traits must include shared keywords like "страх" if present in either map
     # and be within [0,1]
-    for k, v in blended.state.traits.items():
+    for _k, v in blended.state.traits.items():
         assert 0.0 <= v <= 1.0
 
     # If both states mention "страх", expect non-zero

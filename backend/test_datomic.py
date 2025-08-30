@@ -30,7 +30,7 @@ def test_datomic_operations():
             if intensity > 1.0:
                 intensity = 1.0
 
-            result = client.add_emotion_entry(
+            client.add_emotion_entry(
                 user_id=user_id,
                 emotion=emotion,
                 intensity=intensity,
@@ -48,9 +48,7 @@ def test_datomic_operations():
 
         print("\n📊 История эмоций:")
         for entry in history:
-            print(
-                f"  - {entry['emotion']}: {entry['intensity']:.2f} ({entry['timestamp']})"
-            )
+            print(f"  - {entry['emotion']}: {entry['intensity']:.2f} ({entry['timestamp']})")
 
         # Пример запроса с использованием Datalog
         print("\n🔍 Выполняем сложный запрос...")

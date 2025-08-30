@@ -22,7 +22,7 @@ HEARTBEAT_FILE = LOG_DIR / "heartbeat.log"
 INTERVAL = 30  # seconds
 
 # Load service list
-with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+with open(CONFIG_PATH, encoding="utf-8") as f:
     SERVICES = yaml.safe_load(f)
 
 last_heartbeat = {}
@@ -108,9 +108,7 @@ def heartbeat():
         _log_insight(insight_event)
     # Append to markdown log
     with open(HEARTBEAT_FILE, "a", encoding="utf-8") as f:
-        f.write(
-            f"## Heartbeat {hb['timestamp']}\n```${json.dumps(hb, ensure_ascii=False)}```\n\n"
-        )
+        f.write(f"## Heartbeat {hb['timestamp']}\n```${json.dumps(hb, ensure_ascii=False)}```\n\n")
 
 
 def loop():

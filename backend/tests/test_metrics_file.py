@@ -35,9 +35,7 @@ websocket_broadcast_duration_seconds = Histogram(
     buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10),
 )
 
-connection_limits = Gauge(
-    "connection_limits", "Статистика по ограничениям соединений", ["type"]
-)
+connection_limits = Gauge("connection_limits", "Статистика по ограничениям соединений", ["type"])
 
 connection_rejections = Counter(
     "connection_rejections_total",
@@ -52,9 +50,7 @@ def save_metrics_to_file(filename):
 
     filtered_metrics = []
     for line in metrics_data.split("\n"):
-        if any(
-            x in line for x in ["websocket_", "connection_"]
-        ) and not line.startswith("#"):
+        if any(x in line for x in ["websocket_", "connection_"]) and not line.startswith("#"):
             if line:  # Проверка на пустую строку
                 filtered_metrics.append(line)
 
@@ -79,36 +75,32 @@ def run_tests():
     channels = ["news", "events", "chat"]
     for channel in channels:
         count = random.randint(1, 3)
-        for i in range(count):
+        for _i in range(count):
             websocket_connections.labels(channel=channel, authenticated="true").inc()
 
     # Тест 2: Сообщения
     message_types = ["message", "notification", "system", "broadcast"]
-    for i in range(10):
+    for _i in range(10):
         msg_type = random.choice(message_types)
         channel = random.choice(channels)
 
-        websocket_messages_total.labels(
-            type=msg_type, direction="in", channel=channel
-        ).inc()
+        websocket_messages_total.labels(type=msg_type, direction="in", channel=channel).inc()
         recipients = random.randint(1, 5)
-        websocket_messages_total.labels(
-            type=msg_type, direction="out", channel=channel
-        ).inc(recipients)
-
-        processing_time = random.uniform(0.01, 0.5)
-        websocket_broadcast_duration_seconds.labels(message_type=msg_type).observe(
-            processing_time
+        websocket_messages_total.labels(type=msg_type, direction="out", channel=channel).inc(
+            recipients
         )
 
+        processing_time = random.uniform(0.01, 0.5)
+        websocket_broadcast_duration_seconds.labels(message_type=msg_type).observe(processing_time)
+
     # Тест 3: Аутентификация
-    for i in range(8):
+    for _i in range(8):
         websocket_auth_total.labels(status="success").inc()
 
     failure_reasons = {"invalid_token": 3, "expired_token": 2, "missing_token": 1}
 
     for reason, count in failure_reasons.items():
-        for i in range(count):
+        for _i in range(count):
             websocket_auth_total.labels(status="failure").inc()
             connection_rejections.labels(reason=reason).inc()
 
@@ -116,7 +108,7 @@ def run_tests():
     successful = 0
     rejected = 0
 
-    for i in range(15):
+    for _i in range(15):
         if successful < 10:  # Лимит подключений с одного IP
             successful += 1
         else:
@@ -131,4 +123,4 @@ def run_tests():
 if __name__ == "__main__":
     metrics = run_tests()
     print(f"Тест метрик завершен. Сгенерировано {len(metrics)} строк метрик.")
-    print(f"Результаты сохранены в файл 'metrics_output.txt'")
+    print("Результаты сохранены в файл 'metrics_output.txt'")

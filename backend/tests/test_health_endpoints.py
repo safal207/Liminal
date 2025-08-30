@@ -5,8 +5,8 @@ from fastapi.testclient import TestClient
 # Ensure test-friendly environment
 os.environ.setdefault("TEST_MODE", "true")
 
-from backend.main import app  # noqa: E402
-from backend.redis_client import DummyRedis  # noqa: E402
+from backend.main import app
+from backend.redis_client import DummyRedis
 
 client = TestClient(app)
 

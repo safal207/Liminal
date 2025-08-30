@@ -40,9 +40,7 @@ class AuthenticatedClient:
             token_url = f"{self.api_url}/token"
 
             # Для отладки используем хардкодированное значение
-            print(
-                f"{Fore.YELLOW}Пытаемся получить JWT токен из {token_url}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.YELLOW}Пытаемся получить JWT токен из {token_url}{Style.RESET_ALL}")
 
             try:
                 # Используем json= вместо data= для отправки JSON
@@ -64,9 +62,7 @@ class AuthenticatedClient:
 
                     # Создаем тестовый токен для отладки, если сервер его примет
                     # НЕ ИСПОЛЬЗОВАТЬ В ПРОДАКШЕНЕ
-                    print(
-                        f"{Fore.YELLOW}Создаем тестовый токен для отладки{Style.RESET_ALL}"
-                    )
+                    print(f"{Fore.YELLOW}Создаем тестовый токен для отладки{Style.RESET_ALL}")
                     self.token = "test_token_for_debugging"
                     return False
             except Exception as e:
@@ -91,9 +87,7 @@ class AuthenticatedClient:
             # Пробуем подключиться с токеном в URL
             ws_url = f"{base_url}/timeline?token={self.token}"
 
-            print(
-                f"{Fore.CYAN}Попытка подключения к WebSocket: {ws_url}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.CYAN}Попытка подключения к WebSocket: {ws_url}{Style.RESET_ALL}")
 
             try:
                 # Увеличиваем таймаут подключения до 10 секунд
@@ -156,15 +150,11 @@ class AuthenticatedClient:
 
             try:
                 await self.websocket.send(json.dumps(auth_message))
-                print(
-                    f"{Fore.GREEN}Запрос на аутентификацию отправлен{Style.RESET_ALL}"
-                )
+                print(f"{Fore.GREEN}Запрос на аутентификацию отправлен{Style.RESET_ALL}")
 
                 # Увеличиваем таймаут ожидания ответа до 10 секунд
                 try:
-                    response = await asyncio.wait_for(
-                        self.websocket.recv(), timeout=10.0
-                    )
+                    response = await asyncio.wait_for(self.websocket.recv(), timeout=10.0)
                     print(f"{Fore.CYAN}Получен ответ: {response}{Style.RESET_ALL}")
 
                     try:
@@ -173,46 +163,32 @@ class AuthenticatedClient:
                             response_data.get("type") == "auth_ok"
                             or response_data.get("type") == "auth_success"
                         ):
-                            print(
-                                f"{Fore.GREEN}Аутентификация успешна{Style.RESET_ALL}"
-                            )
+                            print(f"{Fore.GREEN}Аутентификация успешна{Style.RESET_ALL}")
                             return True
                         else:
                             print(
                                 f"{Fore.YELLOW}Неожиданный тип ответа: {response_data.get('type')}{Style.RESET_ALL}"
                             )
-                            print(
-                                f"{Fore.YELLOW}Полный ответ: {response_data}{Style.RESET_ALL}"
-                            )
+                            print(f"{Fore.YELLOW}Полный ответ: {response_data}{Style.RESET_ALL}")
                             return False
                     except json.JSONDecodeError as je:
-                        print(
-                            f"{Fore.RED}Ошибка декодирования JSON: {je}{Style.RESET_ALL}"
-                        )
-                        print(
-                            f"{Fore.RED}Полученные данные: {response}{Style.RESET_ALL}"
-                        )
+                        print(f"{Fore.RED}Ошибка декодирования JSON: {je}{Style.RESET_ALL}")
+                        print(f"{Fore.RED}Полученные данные: {response}{Style.RESET_ALL}")
                         return False
 
-                except asyncio.TimeoutError:
-                    print(
-                        f"{Fore.RED}Таймаут ожидания ответа на аутентификацию{Style.RESET_ALL}"
-                    )
+                except TimeoutError:
+                    print(f"{Fore.RED}Таймаут ожидания ответа на аутентификацию{Style.RESET_ALL}")
                     return False
 
             except websockets.exceptions.ConnectionClosed as e:
                 print(
                     f"{Fore.RED}Соединение закрыто при отправке аутентификации: {e}{Style.RESET_ALL}"
                 )
-                print(
-                    f"{Fore.YELLOW}Код: {e.code}, причина: {e.reason}{Style.RESET_ALL}"
-                )
+                print(f"{Fore.YELLOW}Код: {e.code}, причина: {e.reason}{Style.RESET_ALL}")
                 return False
 
         except Exception as e:
-            print(
-                f"{Fore.RED}Критическая ошибка при аутентификации: {e}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.RED}Критическая ошибка при аутентификации: {e}{Style.RESET_ALL}")
             import traceback
 
             traceback.print_exc()
@@ -231,18 +207,14 @@ class AuthenticatedClient:
                 "channel": channel,
             }
             await self.websocket.send(json.dumps(subscribe_message))
-            print(
-                f"{Fore.CYAN}Отправлен запрос на подписку на канал: {channel}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.CYAN}Отправлен запрос на подписку на канал: {channel}{Style.RESET_ALL}")
 
             # Получаем ответ подписки (может быть асинхронным)
             try:
                 response = await asyncio.wait_for(self.websocket.recv(), timeout=3.0)
                 print(f"{Fore.CYAN}Ответ подписки: {response}{Style.RESET_ALL}")
-            except asyncio.TimeoutError:
-                print(
-                    f"{Fore.YELLOW}Тайм-аут ожидания ответа подписки{Style.RESET_ALL}"
-                )
+            except TimeoutError:
+                print(f"{Fore.YELLOW}Тайм-аут ожидания ответа подписки{Style.RESET_ALL}")
 
             self.subscribed_channels.add(channel)
             return True
@@ -292,15 +264,13 @@ class AuthenticatedClient:
                 "channel": channel,
             }
             await self.websocket.send(json.dumps(unsubscribe_message))
-            print(
-                f"{Fore.CYAN}Отправлен запрос на отписку от канала: {channel}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.CYAN}Отправлен запрос на отписку от канала: {channel}{Style.RESET_ALL}")
 
             # Получаем ответ отписки (может быть асинхронным)
             try:
                 response = await asyncio.wait_for(self.websocket.recv(), timeout=3.0)
                 print(f"{Fore.CYAN}Ответ отписки: {response}{Style.RESET_ALL}")
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 print(f"{Fore.YELLOW}Тайм-аут ожидания ответа отписки{Style.RESET_ALL}")
 
             if channel in self.subscribed_channels:
@@ -332,18 +302,14 @@ class AuthenticatedClient:
             while self.connected and asyncio.get_event_loop().time() < end_time:
                 try:
                     message = await asyncio.wait_for(self.websocket.recv(), timeout=1.0)
-                    print(
-                        f"{Fore.BLUE}[{self.client_id}] Получено: {message}{Style.RESET_ALL}"
-                    )
-                except asyncio.TimeoutError:
+                    print(f"{Fore.BLUE}[{self.client_id}] Получено: {message}{Style.RESET_ALL}")
+                except TimeoutError:
                     # Тайм-аут просто для проверки подключения
                     continue
         except websockets.exceptions.ConnectionClosedOK:
             print(f"{Fore.YELLOW}Соединение закрыто{Style.RESET_ALL}")
         except websockets.exceptions.ConnectionClosedError as e:
-            print(
-                f"{Fore.RED}Соединение закрыто с ошибкой: {e.code} {e.reason}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.RED}Соединение закрыто с ошибкой: {e.code} {e.reason}{Style.RESET_ALL}")
         except Exception as e:
             print(f"{Fore.RED}Ошибка при прослушивании: {e}{Style.RESET_ALL}")
         finally:
@@ -371,9 +337,7 @@ class AuthenticatedClient:
                 ]
 
                 for line in metrics.split("\n"):
-                    if any(
-                        x in line for x in metrics_of_interest
-                    ) and not line.startswith("#"):
+                    if any(x in line for x in metrics_of_interest) and not line.startswith("#"):
                         if line.strip():
                             filtered_metrics.append(line)
                             print(f"{Fore.CYAN}{line}{Style.RESET_ALL}")
@@ -383,9 +347,7 @@ class AuthenticatedClient:
 
                 return filtered_metrics
             else:
-                print(
-                    f"{Fore.RED}Ошибка получения метрик: {response.status_code}{Style.RESET_ALL}"
-                )
+                print(f"{Fore.RED}Ошибка получения метрик: {response.status_code}{Style.RESET_ALL}")
                 return []
         except Exception as e:
             print(f"{Fore.RED}Ошибка при запросе метрик: {e}{Style.RESET_ALL}")
@@ -423,7 +385,7 @@ async def test_with_auth(server_url, metrics_url, api_url):
 
     # Отправляем несколько сообщений
     for i in range(3):
-        await client.send_message(test_channel, f"Тестовое сообщение {i+1}")
+        await client.send_message(test_channel, f"Тестовое сообщение {i + 1}")
         await asyncio.sleep(0.5)
 
     # Проверяем метрики после отправки сообщений
@@ -465,8 +427,8 @@ async def main():
     args = parser.parse_args()
 
     print(f"{Fore.GREEN}=========================================")
-    print(f"ТЕСТИРОВАНИЕ МЕТРИК PROMETHEUS С JWT АУТЕНТИФИКАЦИЕЙ")
-    print(f"=========================================")
+    print("ТЕСТИРОВАНИЕ МЕТРИК PROMETHEUS С JWT АУТЕНТИФИКАЦИЕЙ")
+    print("=========================================")
     print(f"WebSocket сервер: {args.server}")
     print(f"Metrics endpoint: {args.metrics}")
     print(f"API endpoint: {args.api}{Style.RESET_ALL}")
@@ -474,8 +436,8 @@ async def main():
     await test_with_auth(args.server, args.metrics, args.api)
 
     print(f"\n{Fore.GREEN}=========================================")
-    print(f"ТЕСТИРОВАНИЕ ЗАВЕРШЕНО")
-    print(f"=========================================")
+    print("ТЕСТИРОВАНИЕ ЗАВЕРШЕНО")
+    print("=========================================")
     print(f"Все тесты выполнены{Style.RESET_ALL}")
 
 

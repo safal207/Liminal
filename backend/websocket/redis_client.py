@@ -4,11 +4,13 @@ Redis клиент для поддержки масштабируемой WebSoc
 """
 
 import asyncio
+import contextlib
 import json
 import os
 import time
 import uuid
-from typing import Any, Callable, List, Optional, Set
+from collections.abc import Callable
+from typing import Any
 
 from loguru import logger
 
@@ -29,9 +31,7 @@ try:
     METRICS_ENABLED = True
     logger.info("Prometheus Redis metrics module loaded successfully")
 except ImportError:
-    logger.warning(
-        "Prometheus Redis metrics module not found, metrics collection disabled"
-    )
+    logger.warning("Prometheus Redis metrics module not found, metrics collection disabled")
     METRICS_ENABLED = False
 
     # Заглушки для метрик Redis
@@ -67,7 +67,7 @@ class RedisClient:
 
     # Системные каналы, общие для всех инстансов. Для них НЕ применяется префикс,
     # чтобы все инстансы принимали сообщения из одного и того же канала.
-    _SYSTEM_CHANNELS: Set[str] = {
+    _SYSTEM_CHANNELS: set[str] = {
         "broadcast",
         "subscribe",
         "unsubscribe",
@@ -84,9 +84,7 @@ class RedisClient:
 
     """Клиент Redis для синхронизации состояния WebSocket соединений между серверами."""
 
-    def __init__(
-        self, url: str = None, prefix: str = "liminal", test_mode: bool = False
-    ):
+    def __init__(self, url: str = None, prefix: str = "liminal", test_mode: bool = False):
         """
         Инициализирует Redis клиент.
 
@@ -98,7 +96,7 @@ class RedisClient:
         """
         self.url = url or os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         self.prefix = prefix
-        self.redis: Optional[Redis] = None
+        self.redis: Redis | None = None
         self.pubsub = None
         self.instance_id = str(uuid.uuid4())[:8]  # Уникальный ID для этого инстанса
         self.subscription_callbacks = {}
@@ -147,10 +145,8 @@ class RedisClient:
 
         if self._pubsub_task:
             self._pubsub_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._pubsub_task
-            except asyncio.CancelledError:
-                pass
 
         if self.redis:
             await self.redis.aclose()
@@ -176,7 +172,7 @@ class RedisClient:
         """
         return f"{self.prefix}:{key}"
 
-    async def set(self, key: str, value: Any, expire: Optional[int] = None) -> bool:
+    async def set(self, key: str, value: Any, expire: int | None = None) -> bool:
         """
         Устанавливает значение по ключу.
 
@@ -211,7 +207,7 @@ class RedisClient:
             logger.error(f"Ошибка установки значения {key}: {str(e)}")
             return False
 
-    async def keys(self, pattern: str, use_prefix: bool = True) -> List[str]:
+    async def keys(self, pattern: str, use_prefix: bool = True) -> list[str]:
         """
         Возвращает ключи по шаблону.
 
@@ -285,9 +281,7 @@ class RedisClient:
 
             # Обновляем метрики - успешное удаление ключа
             if METRICS_ENABLED:
-                redis_operations_total.labels(
-                    operation="delete", status="success"
-                ).inc()
+                redis_operations_total.labels(operation="delete", status="success").inc()
                 redis_operation_duration_seconds.labels(operation="delete").observe(
                     time.time() - start_time
                 )
@@ -317,16 +311,12 @@ class RedisClient:
         try:
             full_channel = self._full_channel(channel)
             payload = {"data": message, "sender_id": self.instance_id}
-            result = await self.redis.publish(full_channel, json.dumps(payload))
+            await self.redis.publish(full_channel, json.dumps(payload))
 
             # Обновляем метрики - успешная публикация сообщения
             if METRICS_ENABLED:
-                redis_operations_total.labels(
-                    operation="publish", status="success"
-                ).inc()
-                redis_pubsub_messages_total.labels(
-                    channel=channel, direction="published"
-                ).inc()
+                redis_operations_total.labels(operation="publish", status="success").inc()
+                redis_pubsub_messages_total.labels(channel=channel, direction="published").inc()
                 redis_operation_duration_seconds.labels(operation="publish").observe(
                     time.time() - start_time
                 )
@@ -369,9 +359,7 @@ class RedisClient:
 
             # Обновляем метрики - успешная подписка на канал
             if METRICS_ENABLED:
-                redis_operations_total.labels(
-                    operation="subscribe", status="success"
-                ).inc()
+                redis_operations_total.labels(operation="subscribe", status="success").inc()
                 redis_operation_duration_seconds.labels(operation="subscribe").observe(
                     time.time() - start_time
                 )
@@ -381,9 +369,7 @@ class RedisClient:
         except RedisError as e:
             # Обновляем метрики - ошибка подписки на канал
             if METRICS_ENABLED:
-                redis_operations_total.labels(
-                    operation="subscribe", status="error"
-                ).inc()
+                redis_operations_total.labels(operation="subscribe", status="error").inc()
                 redis_errors_total.labels(type="operation").inc()
 
             logger.error(f"Ошибка подписки на канал {channel}: {str(e)}")
@@ -412,21 +398,17 @@ class RedisClient:
 
             # Обновляем метрики - успешная отписка от канала
             if METRICS_ENABLED:
-                redis_operations_total.labels(
-                    operation="unsubscribe", status="success"
-                ).inc()
-                redis_operation_duration_seconds.labels(
-                    operation="unsubscribe"
-                ).observe(time.time() - start_time)
+                redis_operations_total.labels(operation="unsubscribe", status="success").inc()
+                redis_operation_duration_seconds.labels(operation="unsubscribe").observe(
+                    time.time() - start_time
+                )
 
             logger.info(f"Отписка от канала {channel} успешна")
             return True
         except RedisError as e:
             # Обновляем метрики - ошибка отписки от канала
             if METRICS_ENABLED:
-                redis_operations_total.labels(
-                    operation="unsubscribe", status="error"
-                ).inc()
+                redis_operations_total.labels(operation="unsubscribe", status="error").inc()
                 redis_errors_total.labels(type="operation").inc()
 
             logger.error(f"Ошибка отписки от канала {channel}: {str(e)}")
@@ -474,16 +456,12 @@ class RedisClient:
                         # Обновляем метрики - ошибка десериализации сообщения
                         if METRICS_ENABLED:
                             redis_errors_total.labels(type="parse").inc()
-                        logger.error(
-                            f"Невозможно десериализовать сообщение из канала {channel}"
-                        )
+                        logger.error(f"Невозможно десериализовать сообщение из канала {channel}")
                     except Exception as e:
                         # Обновляем метрики - ошибка обработки сообщения
                         if METRICS_ENABLED:
                             redis_errors_total.labels(type="processing").inc()
-                        logger.error(
-                            f"Ошибка обработки сообщения из канала {channel}: {str(e)}"
-                        )
+                        logger.error(f"Ошибка обработки сообщения из канала {channel}: {str(e)}")
         except asyncio.CancelledError:
             logger.info("Задача прослушивания сообщений отменена")
         except Exception as e:
@@ -578,7 +556,7 @@ class RedisClient:
             logger.error(f"Ошибка удаления из набора {key}: {str(e)}")
             return False
 
-    async def set_members(self, key: str) -> List[Any]:
+    async def set_members(self, key: str) -> list[Any]:
         """
         Получает все элементы набора.
 
@@ -596,9 +574,7 @@ class RedisClient:
                 try:
                     result.append(json.loads(value))
                 except json.JSONDecodeError:
-                    logger.warning(
-                        f"Невозможно десериализовать значение из набора {key}"
-                    )
+                    logger.warning(f"Невозможно десериализовать значение из набора {key}")
             return result
         except RedisError as e:
             logger.error(f"Ошибка получения набора {key}: {str(e)}")

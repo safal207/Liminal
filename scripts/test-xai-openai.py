@@ -3,6 +3,7 @@
 Интеграционный тест XAI + OpenAI для ML системы Resonance Liminal
 Проверяет работу объяснений ML-предсказаний с использованием SHAP/LIME + OpenAI GPT-4
 """
+
 import asyncio
 import json
 import os
@@ -26,9 +27,7 @@ try:
 
     load_dotenv(BASE_DIR / ".env")
 except ImportError:
-    print(
-        "WARNING: dotenv не установлен, используются только системные переменные окружения"
-    )
+    print("WARNING: dotenv не установлен, используются только системные переменные окружения")
 
 
 # Цветной вывод для лучшей читаемости
@@ -45,9 +44,9 @@ class Colors:
 
 
 def print_header(text):
-    print(f"\n{Colors.HEADER}{Colors.BOLD}{'='*60}{Colors.ENDC}")
+    print(f"\n{Colors.HEADER}{Colors.BOLD}{'=' * 60}{Colors.ENDC}")
     print(f"{Colors.HEADER}{Colors.BOLD}{text.center(60)}{Colors.ENDC}")
-    print(f"{Colors.HEADER}{Colors.BOLD}{'='*60}{Colors.ENDC}\n")
+    print(f"{Colors.HEADER}{Colors.BOLD}{'=' * 60}{Colors.ENDC}\n")
 
 
 def print_section(text):
@@ -94,7 +93,7 @@ if api_key:
     masked_key = f"{api_key[:4]}...{api_key[-4:]}" if len(api_key) > 8 else "[скрыт]"
     print_success(f"OpenAI API ключ найден: {masked_key}")
 else:
-    print_warning(f"OpenAI API ключ не найден. Будет использована мок-реализация.")
+    print_warning("OpenAI API ключ не найден. Будет использована мок-реализация.")
 
 # Импорт ML сервисов
 try:
@@ -136,9 +135,7 @@ try:
     if xai_components:
         print_success(f"Доступные XAI компоненты: {', '.join(xai_components)}")
     else:
-        print_warning(
-            "XAI компоненты не обнаружены. Будет тестироваться только OpenAI интеграция."
-        )
+        print_warning("XAI компоненты не обнаружены. Будет тестироваться только OpenAI интеграция.")
 
 except Exception as e:
     print_warning(f"Ошибка при проверке XAI компонентов: {e}")
@@ -254,7 +251,7 @@ async def test_openai_integration():
         # Вывод результата для аномалий
         print_info("Результат анализа аномалий:")
         print_info(
-            f"Уровень серьезности: {anomaly_result.severity} (Уверенность: {anomaly_result.confidence*100:.1f}%)"
+            f"Уровень серьезности: {anomaly_result.severity} (Уверенность: {anomaly_result.confidence * 100:.1f}%)"
         )
         print_info("Краткое резюме:")
         print(f"{Colors.YELLOW}{anomaly_result.summary}{Colors.ENDC}")
@@ -277,7 +274,7 @@ async def test_openai_integration():
 
         # Вывод результата для масштабирования
         print_info("Результат анализа прогноза масштабирования:")
-        print_info(f"Уверенность: {scaling_result.confidence*100:.1f}%")
+        print_info(f"Уверенность: {scaling_result.confidence * 100:.1f}%")
         print_info("Краткое резюме:")
         print(f"{Colors.YELLOW}{scaling_result.summary}{Colors.ENDC}")
         print_info("Действия:")
@@ -300,9 +297,7 @@ async def main():
 
     if success:
         print_success("Интеграция XAI + OpenAI работает корректно")
-        print_info(
-            "Система генерирует человекочитаемые объяснения на основе ML-предсказаний и XAI"
-        )
+        print_info("Система генерирует человекочитаемые объяснения на основе ML-предсказаний и XAI")
     else:
         print_error("Тестирование интеграции завершилось с ошибками")
         print_info("Проверьте журналы для получения подробной информации")
@@ -311,22 +306,16 @@ async def main():
     try:
         import openai
 
-        print_info(
-            f"Используется реальная OpenAI библиотека (версия: {openai.__version__})"
-        )
+        print_info(f"Используется реальная OpenAI библиотека (версия: {openai.__version__})")
     except ImportError:
         print_warning("Используется мок-реализация OpenAI API")
-        print_info(
-            "Для продакшн рекомендуется установить библиотеку: pip install openai"
-        )
+        print_info("Для продакшн рекомендуется установить библиотеку: pip install openai")
 
     # Рекомендации для продакшн
     print_section("Следующие шаги интеграции:")
     print_info("1. Добавить кэширование с TTL для оптимизации вызовов OpenAI API")
     print_info("2. Интегрировать XAI + OpenAI объяснения с ML метриками в Prometheus")
-    print_info(
-        "3. Реализовать автоматический выбор метода XAI (SHAP/LIME) в зависимости от задачи"
-    )
+    print_info("3. Реализовать автоматический выбор метода XAI (SHAP/LIME) в зависимости от задачи")
     print_info("4. Внедрить механизм обратной связи для улучшения объяснений")
 
 

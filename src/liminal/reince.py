@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import datetime as _dt
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Protocol, Tuple
+from typing import Protocol
 
 
 class REINCEInterface(Protocol):
@@ -16,23 +17,23 @@ class REINCEInterface(Protocol):
     """
 
     def record_emotional_event(
-        self, text: str, meta: Optional[Dict[str, str]] = None
-    ) -> "ResonanceEvent": ...
+        self, text: str, meta: dict[str, str] | None = None
+    ) -> ResonanceEvent: ...
 
-    def get_resonance_map(self, top_n: int = 10) -> Dict[str, int]: ...
+    def get_resonance_map(self, top_n: int = 10) -> dict[str, int]: ...
 
     def recommend_intervention(self, text: str) -> str: ...
 
-    def list_recent(self, limit: int = 5) -> List["ResonanceEvent"]: ...
-    def sentiments(self, text: str) -> Dict[str, float]: ...
-    def sentiments_recent(self, limit: int = 50) -> Dict[str, float]: ...
+    def list_recent(self, limit: int = 5) -> list[ResonanceEvent]: ...
+    def sentiments(self, text: str) -> dict[str, float]: ...
+    def sentiments_recent(self, limit: int = 50) -> dict[str, float]: ...
 
 
 @dataclass(frozen=True)
 class ResonanceEvent:
     timestamp: _dt.datetime
     text: str
-    meta: Dict[str, str] = field(default_factory=dict)
+    meta: dict[str, str] = field(default_factory=dict)
 
 
 class InMemoryREINCE(REINCEInterface):
@@ -43,16 +44,14 @@ class InMemoryREINCE(REINCEInterface):
     - Clock injection for tests
     """
 
-    def __init__(self, now_fn: Optional[Callable[[], float]] = None) -> None:
-        self._events: List[ResonanceEvent] = []
-        self._now_fn: Callable[[], float] = now_fn or (
-            lambda: _dt.datetime.now().timestamp()
-        )
+    def __init__(self, now_fn: Callable[[], float] | None = None) -> None:
+        self._events: list[ResonanceEvent] = []
+        self._now_fn: Callable[[], float] = now_fn or (lambda: _dt.datetime.now().timestamp())
         # Precompile a unicode-friendly tokenizer (Python re has no \p{L}):
         # split on any non-letter. We cover Latin + Cyrillic (including Ё/ё).
         self._tokenizer = re.compile(r"[^A-Za-zА-Яа-яЁё]+")
         # Minimal sentiment lexicon (Russian stems → tags)
-        self._sent_lex: List[Tuple[str, str]] = [
+        self._sent_lex: list[tuple[str, str]] = [
             ("радост", "joy"),
             ("спокой", "calm"),
             ("тихо", "calm"),
@@ -73,16 +72,14 @@ class InMemoryREINCE(REINCEInterface):
         return _dt.datetime.fromtimestamp(self._now_fn())
 
     def record_emotional_event(
-        self, text: str, meta: Optional[Dict[str, str]] = None
+        self, text: str, meta: dict[str, str] | None = None
     ) -> ResonanceEvent:
-        event = ResonanceEvent(
-            timestamp=self._now_dt(), text=text, meta=dict(meta or {})
-        )
+        event = ResonanceEvent(timestamp=self._now_dt(), text=text, meta=dict(meta or {}))
         self._events.append(event)
         return event
 
-    def _tokens(self) -> List[str]:
-        words: List[str] = []
+    def _tokens(self) -> list[str]:
+        words: list[str] = []
         for e in self._events:
             # Lowercase and split using tokenizer; filter empty and very short tokens
             for w in self._tokenizer.split(e.text.lower()):
@@ -90,15 +87,15 @@ class InMemoryREINCE(REINCEInterface):
                     words.append(w)
         return words
 
-    def get_resonance_map(self, top_n: int = 10) -> Dict[str, int]:
-        counts: Dict[str, int] = {}
+    def get_resonance_map(self, top_n: int = 10) -> dict[str, int]:
+        counts: dict[str, int] = {}
         for w in self._tokens():
             counts[w] = counts.get(w, 0) + 1
         # Stabilize ordering by (count desc, token asc) and take top_n
-        items: List[Tuple[str, int]] = sorted(
-            counts.items(), key=lambda kv: (-kv[1], kv[0])
-        )[:top_n]
-        return {k: v for k, v in items}
+        items: list[tuple[str, int]] = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[
+            :top_n
+        ]
+        return dict(items)
 
     def recommend_intervention(self, text: str) -> str:
         t = text.lower()
@@ -112,13 +109,13 @@ class InMemoryREINCE(REINCEInterface):
         # Default compassionate nudge
         return "Остановись на минуту, подыши мягко. Спроси себя: чего мне хочется с любовью к себе?"
 
-    def list_recent(self, limit: int = 5) -> List[ResonanceEvent]:
+    def list_recent(self, limit: int = 5) -> list[ResonanceEvent]:
         return list(self._events[-limit:])
 
-    def sentiments(self, text: str) -> Dict[str, float]:
+    def sentiments(self, text: str) -> dict[str, float]:
         """Map text to basic affect tags using a tiny lexicon; normalized to [0,1]."""
         t = text.lower()
-        counts: Dict[str, int] = {}
+        counts: dict[str, int] = {}
         for stem, tag in self._sent_lex:
             if stem in t:
                 counts[tag] = counts.get(tag, 0) + 1
@@ -127,8 +124,8 @@ class InMemoryREINCE(REINCEInterface):
         m = max(counts.values())
         return {k: v / float(m) for k, v in counts.items()}
 
-    def sentiments_recent(self, limit: int = 50) -> Dict[str, float]:
-        agg: Dict[str, int] = {}
+    def sentiments_recent(self, limit: int = 50) -> dict[str, float]:
+        agg: dict[str, int] = {}
         for e in self.list_recent(limit=limit):
             s = self.sentiments(e.text)
             for k, v in s.items():

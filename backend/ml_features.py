@@ -14,7 +14,7 @@ import os
 import time
 from collections import Counter, defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import prometheus_client as prom
 
@@ -54,7 +54,7 @@ class MLFeatureExtractor:
         )
 
     @staticmethod
-    def extract_user_patterns() -> Dict[str, Any]:
+    def extract_user_patterns() -> dict[str, Any]:
         """Извлекает паттерны использования по пользователям"""
         if not ML_ENABLED:
             return {"enabled": False}
@@ -68,7 +68,7 @@ class MLFeatureExtractor:
         return result
 
     @staticmethod
-    def extract_traffic_features() -> Dict[str, Any]:
+    def extract_traffic_features() -> dict[str, Any]:
         """Извлекает признаки трафика"""
         if not ML_ENABLED:
             return {"enabled": False}
@@ -83,7 +83,7 @@ class MLFeatureExtractor:
         return result
 
     @staticmethod
-    def get_current_anomaly_scores() -> Dict[str, Any]:
+    def get_current_anomaly_scores() -> dict[str, Any]:
         """Вычисляет текущие аномальные скоры"""
         if not ML_ENABLED:
             return {"enabled": False}
@@ -119,14 +119,12 @@ class MLFeatureExtractor:
             "enabled": True,
             "traffic_anomaly_score": round(traffic_anomaly, 3),
             "auth_anomaly_score": round(auth_anomaly, 3),
-            "ip_diversity_anomaly": round(
-                (1.0 - ip_entropy) if ip_entropy is not None else 0, 3
-            ),
+            "ip_diversity_anomaly": round((1.0 - ip_entropy) if ip_entropy is not None else 0, 3),
             "total_anomaly_score": round(total_anomaly, 3),
         }
 
     @staticmethod
-    def get_prediction_features() -> Dict[str, Any]:
+    def get_prediction_features() -> dict[str, Any]:
         """Предсказательные признаки для ML-моделей"""
         if not ML_ENABLED:
             return {"enabled": False}
@@ -154,7 +152,7 @@ class MLFeatureExtractor:
     # Вспомогательные методы для вычисления конкретных метрик
 
     @staticmethod
-    def _calculate_login_intervals() -> Dict[str, float]:
+    def _calculate_login_intervals() -> dict[str, float]:
         """Вычисляет интервалы между логинами пользователей"""
         # Заглушка для демонстрации
         return {
@@ -171,7 +169,7 @@ class MLFeatureExtractor:
         return total_requests / 60 if total_requests else 0
 
     @staticmethod
-    def _get_recent_ip_addresses(window_seconds: int = 300) -> List[str]:
+    def _get_recent_ip_addresses(window_seconds: int = 300) -> list[str]:
         """Получает список IP-адресов из последних запросов за указанное окно времени.
 
         Args:
@@ -194,7 +192,7 @@ class MLFeatureExtractor:
         return recent_ips
 
     @staticmethod
-    def _get_user_requests(window_seconds: int = 300) -> Dict[str, int]:
+    def _get_user_requests(window_seconds: int = 300) -> dict[str, int]:
         """Получает количество запросов по пользователям за указанное окно времени.
 
         Args:
@@ -216,7 +214,7 @@ class MLFeatureExtractor:
         return dict(user_counts)
 
     @staticmethod
-    def _calculate_requests_per_user(user_requests: Dict[str, int]) -> Dict[str, Any]:
+    def _calculate_requests_per_user(user_requests: dict[str, int]) -> dict[str, Any]:
         """Вычисляет статистику по запросам пользователей.
 
         Эта метрика позволяет выявлять аномальную активность отдельных пользователей,
@@ -245,7 +243,7 @@ class MLFeatureExtractor:
 
         # Определение топ-5 пользователей по количеству запросов
         top_users = sorted(
-            [(user_id, count) for user_id, count in user_requests.items()],
+            user_requests.items(),
             key=lambda x: x[1],
             reverse=True,
         )[:5]
@@ -295,7 +293,7 @@ class MLFeatureExtractor:
         return burstiness
 
     @staticmethod
-    def _calculate_ip_entropy() -> Optional[float]:
+    def _calculate_ip_entropy() -> float | None:
         """Вычисляет энтропию IP адресов для обнаружения ботов.
 
         Высокая энтропия (ближе к 1) означает равномерное распределение IP-адресов.
@@ -315,7 +313,7 @@ class MLFeatureExtractor:
 
         # Вычисляем энтропию Шеннона
         entropy = 0.0
-        for ip, count in ip_counts.items():
+        for _ip, count in ip_counts.items():
             probability = count / total
             entropy -= probability * math.log2(probability)
 
@@ -346,7 +344,7 @@ class MLFeatureExtractor:
         return round(predicted_load, 1)
 
     @staticmethod
-    def _extract_jwt_patterns() -> Dict[str, Any]:
+    def _extract_jwt_patterns() -> dict[str, Any]:
         """Извлекает паттерны использования JWT токенов"""
         # Заглушка для демонстрации
         return {
@@ -356,31 +354,31 @@ class MLFeatureExtractor:
         }
 
     @staticmethod
-    def _get_request_timestamps() -> List[float]:
+    def _get_request_timestamps() -> list[float]:
         """Возвращает временные метки запросов"""
         global _request_timestamps
         return _request_timestamps
 
     @staticmethod
-    def _get_user_request_data() -> List[Tuple[float, str]]:
+    def _get_user_request_data() -> list[tuple[float, str]]:
         """Возвращает данные о запросах пользователей"""
         global _user_request_data
         return _user_request_data
 
     @staticmethod
-    def _get_request_ip_data() -> List[Tuple[float, str]]:
+    def _get_request_ip_data() -> list[tuple[float, str]]:
         """Возвращает данные об IP-адресах запросов"""
         global _request_ip_data
         return _request_ip_data
 
     @staticmethod
-    def _get_auth_events() -> List[Dict[str, Any]]:
+    def _get_auth_events() -> list[dict[str, Any]]:
         """Возвращает события авторизации"""
         global _auth_events
         return _auth_events
 
     @staticmethod
-    def _get_channel_activity() -> Dict[str, int]:
+    def _get_channel_activity() -> dict[str, int]:
         """Возвращает активность по каналам"""
         global _channel_activity
         return dict(_channel_activity)
@@ -396,9 +394,7 @@ _auth_events = []
 _channel_activity = defaultdict(int)
 
 
-def register_request(
-    timestamp: float = None, user_id: str = None, ip_address: str = None
-):
+def register_request(timestamp: float = None, user_id: str = None, ip_address: str = None):
     """Регистрирует новый запрос для ML-анализа
 
     Args:
@@ -456,9 +452,7 @@ def register_auth_event(user_id: str, success: bool) -> None:
         return
 
     global _auth_events
-    _auth_events.append(
-        {"user_id": user_id, "timestamp": time.time(), "success": success}
-    )
+    _auth_events.append({"user_id": user_id, "timestamp": time.time(), "success": success})
 
     # Ограничиваем размер истории событий
     if len(_auth_events) > 1000:

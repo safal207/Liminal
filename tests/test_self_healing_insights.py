@@ -24,7 +24,7 @@ def exec_gql(query: str, variables: dict[str, Any] | None = None) -> dict[str, A
     res = schema.execute_sync(query, variable_values=variables)
     assert res.errors is None, f"GraphQL errors: {res.errors}"
     assert res.data is not None
-    return res.data  # type: ignore[return-value]
+    return res.data
 
 
 def setup_function(_: Any) -> None:
@@ -32,9 +32,7 @@ def setup_function(_: Any) -> None:
     WEB._edges.clear()
 
 
-def test_low_health_writes_insight(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_low_health_writes_insight(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     # Arrange: set low threshold high so almost any pair triggers, and set insights path
     insights_path = tmp_path / "insights.jsonl"
     monkeypatch.setenv("LIMINAL_HEALTH_THRESHOLD", "0.99")
@@ -67,6 +65,4 @@ def test_low_health_writes_insight(
     assert len(content) >= 1
     rec = json.loads(content[-1])
     assert rec["type"] == "relationship_low_health"
-    assert set(
-        ["ts", "source_id", "target_id", "score", "threshold", "rationale", "advice"]
-    ).issubset(rec.keys())
+    assert {"ts", "source_id", "target_id", "score", "threshold", "rationale", "advice"}.issubset(rec.keys())

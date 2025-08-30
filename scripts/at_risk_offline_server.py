@@ -3,14 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
-
-# Make src importable when running from repo root
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any, List, Tuple
+from typing import Any
 from urllib.parse import parse_qs, urlparse
 
+# Make src importable when running from repo root
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
@@ -29,7 +28,7 @@ def _clip01(x: float) -> float:
 
 def compute_relationship_health(
     a_traits: dict[str, float], b_traits: dict[str, float]
-) -> Tuple[float, List[str]]:
+) -> tuple[float, list[str]]:
     d = InMemoryDiffusion()
     base = float(
         d.similarity(
@@ -48,8 +47,8 @@ def compute_relationship_health(
         ("страх", "гнев", "злость", "тревога", "anger", "fear"),
     )
 
-    def avg(keys: Tuple[str, ...]) -> float:
-        vals: List[float] = []
+    def avg(keys: tuple[str, ...]) -> float:
+        vals: list[float] = []
         for k in keys:
             if k in a_traits or k in b_traits:
                 va = float(a_traits.get(k, 0.0))
@@ -73,9 +72,9 @@ def compute_relationship_health(
     return score, rationale
 
 
-def compute_top_at_risk(limit: int) -> List[dict[str, Any]]:
+def compute_top_at_risk(limit: int) -> list[dict[str, Any]]:
     nodes = WEB.nodes()
-    edges: List[dict[str, Any]] = []
+    edges: list[dict[str, Any]] = []
     try:
         threshold = float(os.getenv("LIMINAL_HEALTH_THRESHOLD", "0.4"))
     except ValueError:
@@ -86,7 +85,7 @@ def compute_top_at_risk(limit: int) -> List[dict[str, Any]]:
             b = nodes[j]
             if a.traits or b.traits:
                 score, rationale = compute_relationship_health(a.traits, b.traits)
-                advice: List[str] = []
+                advice: list[str] = []
                 if score < threshold:
                     advice = ["breathStep", "consider_linkParent", "consider_merge"]
                 edges.append(
@@ -109,29 +108,29 @@ HTML_TEMPLATE = """<!doctype html>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Top At-Risk Edges</title>
     <style>
-      :root { --accent: #5b7cff; --danger: #d32f2f; --bg: #0b1020; --card: #121a2e; --muted: #94a3b8; }
-      * { box-sizing: border-box; }
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }
-      .wrap { max-width: 1080px; margin: 24px auto; padding: 0 16px; }
-      h1 { margin: 8px 0 16px; font-weight: 700; letter-spacing: 0.3px; }
-      .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
-      .controls .group { display: flex; gap: 8px; align-items: center; background: #0b1224; padding: 8px 10px; border-radius: 8px; border: 1px solid #1f2a44; }
-      label { color: var(--muted); font-size: 14px; }
-      input[type=number] { width: 90px; background: #0a1326; color: #e2e8f0; border: 1px solid #1f2a44; padding: 6px 8px; border-radius: 6px; }
-      input[type=text] { width: 220px; background: #0a1326; color: #e2e8f0; border: 1px solid #1f2a44; padding: 6px 8px; border-radius: 6px; }
-      button { background: linear-gradient(135deg, #3b82f6, #6366f1); border: 0; color: white; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 14px rgba(59,130,246,0.35); }
-      button.secondary { background: #15213b; border: 1px solid #243b64; color: #cbd5e1; box-shadow: none; }
-      .card { background: #0b1224; border: 1px solid #1f2a44; border-radius: 12px; overflow: hidden; }
-      .card h3 { margin: 0; padding: 12px 14px; background: #0d1731; border-bottom: 1px solid #1f2a44; font-size: 15px; color: #cbd5e1; }
-      table { border-collapse: collapse; width: 100%; }
-      th, td { border-bottom: 1px solid #1e293b; padding: 10px 12px; font-size: 14px; }
-      th { text-align: left; color: #94a3b8; background: #0b1224; position: sticky; top: 0; }
-      tr:hover td { background: #0d1731; }
-      .score { font-variant-numeric: tabular-nums; }
-      .risk td { background: rgba(211,47,47,0.10); }
-      .risk .score { color: #ff6b6b; font-weight: 700; }
-      .muted { color: #94a3b8; font-size: 13px; }
-      .form-inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; }
+      :root {{ --accent: #5b7cff; --danger: #d32f2f; --bg: #0b1020; --card: #121a2e; --muted: #94a3b8; }}
+      * {{ box-sizing: border-box; }}
+      body {{ font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #0f172a; color: #e2e8f0; }}
+      .wrap {{ max-width: 1080px; margin: 24px auto; padding: 0 16px; }}
+      h1 {{ margin: 8px 0 16px; font-weight: 700; letter-spacing: 0.3px; }}
+      .controls {{ display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }}
+      .controls .group {{ display: flex; gap: 8px; align-items: center; background: #0b1224; padding: 8px 10px; border-radius: 8px; border: 1px solid #1f2a44; }}
+      label {{ color: var(--muted); font-size: 14px; }}
+      input[type=number] {{ width: 90px; background: #0a1326; color: #e2e8f0; border: 1px solid #1f2a44; padding: 6px 8px; border-radius: 6px; }}
+      input[type=text] {{ width: 220px; background: #0a1326; color: #e2e8f0; border: 1px solid #1f2a44; padding: 6px 8px; border-radius: 6px; }}
+      button {{ background: linear-gradient(135deg, #3b82f6, #6366f1); border: 0; color: white; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 4px 14px rgba(59,130,246,0.35); }}
+      button.secondary {{ background: #15213b; border: 1px solid #243b64; color: #cbd5e1; box-shadow: none; }}
+      .card {{ background: #0b1224; border: 1px solid #1f2a44; border-radius: 12px; overflow: hidden; }}
+      .card h3 {{ margin: 0; padding: 12px 14px; background: #0d1731; border-bottom: 1px solid #1f2a44; font-size: 15px; color: #cbd5e1; }}
+      table {{ border-collapse: collapse; width: 100%; }}
+      th, td {{ border-bottom: 1px solid #1e293b; padding: 10px 12px; font-size: 14px; }}
+      th {{ text-align: left; color: #94a3b8; background: #0b1224; position: sticky; top: 0; }}
+      tr:hover td {{ background: #0d1731; }}
+      .score {{ font-variant-numeric: tabular-nums; }}
+      .risk td {{ background: rgba(211,47,47,0.10); }}
+      .risk .score {{ color: #ff6b6b; font-weight: 700; }}
+      .muted {{ color: #94a3b8; font-size: 13px; }}
+      .form-inline {{ display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 10px 12px; }}
     </style>
   </head>
   <body>
@@ -274,7 +273,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def do_GET(self) -> None:  # noqa: N802
+    def do_GET(self) -> None:
         parsed = urlparse(self.path)
         qs = parse_qs(parsed.query)
         if parsed.path == "/api/top-at-risk":
@@ -310,7 +309,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(404)
         self.end_headers()
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         parsed = urlparse(self.path)
         if parsed.path == "/api/seed-demo":
             WEB._nodes.clear()
@@ -333,9 +332,7 @@ class Handler(BaseHTTPRequestHandler):
             notes = payload.get("notes") or []
             node_id = payload.get("id")
             n = WEB.add_node(kind=kind, traits=traits, notes=notes, id=node_id)
-            self._send_json(
-                {"id": n.id, "kind": n.kind, "traits": n.traits, "notes": n.notes}
-            )
+            self._send_json({"id": n.id, "kind": n.kind, "traits": n.traits, "notes": n.notes})
             return
         self.send_response(404)
         self.end_headers()
@@ -349,7 +346,8 @@ def main() -> None:
     args = parser.parse_args()
     httpd = HTTPServer(("127.0.0.1", args.port), Handler)
     print(
-        f"Offline at-risk server running on http://127.0.0.1:{args.port}  (endpoints: /at-risk, /api/top-at-risk, /api/seed-demo)"
+        f"Offline at-risk server running on http://127.0.0.1:{args.port} "
+        "(endpoints: /at-risk, /api/top-at-risk, /api/seed-demo)"
     )
     try:
         httpd.serve_forever()

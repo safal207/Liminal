@@ -6,6 +6,7 @@
 с API ключами OpenAI, Anthropic и XAI без необходимости установки
 официальных библиотек.
 """
+
 import asyncio
 import json
 import os
@@ -123,9 +124,7 @@ async def main():
         except json.JSONDecodeError:
             print_warning("Ответ не является валидным JSON:")
             print(
-                response.content[:200] + "..."
-                if len(response.content) > 200
-                else response.content
+                response.content[:200] + "..." if len(response.content) > 200 else response.content
             )
 
         # Проверка кэширования

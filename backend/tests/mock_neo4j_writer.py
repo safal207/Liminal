@@ -4,7 +4,7 @@ This module will be used instead of the real neo4j_writer when running tests.
 """
 
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 print("MOCK: Using mock Neo4jWriter implementation")
 
@@ -48,9 +48,7 @@ class Neo4jWriter:
         print("MOCK: Closing mock Neo4j connection")
         self.connected = False
 
-    def execute_query(
-        self, query: str, parameters: Optional[Dict] = None, **kwargs
-    ) -> Any:
+    def execute_query(self, query: str, parameters: dict | None = None, **kwargs) -> Any:
         print(f"MOCK: Executing query: {query[:100]}...")
         print(f"MOCK: With parameters: {parameters}")
         return []

@@ -7,8 +7,9 @@
 import logging
 import uuid
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +31,11 @@ class MicroAgent(ABC):
 
     def __init__(
         self,
-        agent_id: Optional[str] = None,
+        agent_id: str | None = None,
         name: str = "BaseAgent",
         layer: str = "base",
-        capabilities: List[str] = None,
-        config: Dict[str, Any] = None,
+        capabilities: list[str] = None,
+        config: dict[str, Any] = None,
     ):
         """
         Инициализация агента.
@@ -61,8 +62,8 @@ class MicroAgent(ABC):
             "start_time": datetime.utcnow().isoformat(),
             "uptime": 0.0,
         }
-        self._subscribed_topics: Set[str] = set()
-        self._message_handlers: Dict[str, List[Callable]] = {}
+        self._subscribed_topics: set[str] = set()
+        self._message_handlers: dict[str, list[Callable]] = {}
 
     async def initialize(self):
         """Инициализация ресурсов агента.
@@ -74,8 +75,8 @@ class MicroAgent(ABC):
 
     @abstractmethod
     async def process(
-        self, message: Dict[str, Any], context: Dict[str, Any] = None
-    ) -> Dict[str, Any]:
+        self, message: dict[str, Any], context: dict[str, Any] = None
+    ) -> dict[str, Any]:
         """
         Основной метод обработки входящих сообщений.
 
@@ -91,7 +92,7 @@ class MicroAgent(ABC):
         """
         raise NotImplementedError("Подклассы должны реализовать метод process()")
 
-    async def handle_error(self, error: Exception, context: Dict[str, Any] = None):
+    async def handle_error(self, error: Exception, context: dict[str, Any] = None):
         """Обработка ошибок, возникающих при работе агента.
 
         Args:
@@ -115,7 +116,7 @@ class MicroAgent(ABC):
         logger.error(f"Ошибка в агенте {self.agent_id}: {error}", exc_info=True)
         return error_info
 
-    def get_status(self) -> Dict[str, Any]:
+    def get_status(self) -> dict[str, Any]:
         """Возвращает текущее состояние агента.
 
         Returns:
@@ -151,7 +152,7 @@ class MicroAgent(ABC):
         self.state = "TERMINATED"
         logger.info(f"Агент {self.agent_id} успешно завершил работу")
 
-    def subscribe_to_topic(self, topic: str, handler: Optional[Callable] = None):
+    def subscribe_to_topic(self, topic: str, handler: Callable | None = None):
         """Подписывает агента на указанную тему.
 
         Args:
@@ -165,7 +166,7 @@ class MicroAgent(ABC):
                 self._message_handlers[topic] = []
             self._message_handlers[topic].append(handler)
 
-    def unsubscribe_from_topic(self, topic: str, handler: Optional[Callable] = None):
+    def unsubscribe_from_topic(self, topic: str, handler: Callable | None = None):
         """Отписывает агента от указанной темы.
 
         Args:
@@ -177,17 +178,14 @@ class MicroAgent(ABC):
             if not handler:
                 self._subscribed_topics.remove(topic)
                 self._message_handlers.pop(topic, None)
-            elif (
-                topic in self._message_handlers
-                and handler in self._message_handlers[topic]
-            ):
+            elif topic in self._message_handlers and handler in self._message_handlers[topic]:
                 self._message_handlers[topic].remove(handler)
                 if not self._message_handlers[topic]:
                     self._subscribed_topics.remove(topic)
                     self._message_handlers.pop(topic, None)
 
     async def handle_message(
-        self, topic: str, message: Dict[str, Any], context: Dict[str, Any] = None
+        self, topic: str, message: dict[str, Any], context: dict[str, Any] = None
     ):
         """Обрабатывает входящее сообщение.
 
@@ -234,15 +232,13 @@ class MicroAgent(ABC):
             total_time = self.metrics["average_processing_time"] * (
                 self.metrics["messages_processed"] - 1
             )
-            self.metrics["average_processing_time"] = (
-                total_time + processing_time
-            ) / self.metrics["messages_processed"]
+            self.metrics["average_processing_time"] = (total_time + processing_time) / self.metrics[
+                "messages_processed"
+            ]
 
             self.state = "IDLE"
             return response
 
         except Exception as e:
             self.state = "ERROR"
-            return await self.handle_error(
-                e, {"topic": topic, "message": message, **context}
-            )
+            return await self.handle_error(e, {"topic": topic, "message": message, **context})

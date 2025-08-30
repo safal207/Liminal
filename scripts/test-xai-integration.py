@@ -2,6 +2,7 @@
 """
 Расширенный тест интеграции XAI + OpenAI для системы Resonance Liminal
 """
+
 import asyncio
 import json
 import os
@@ -32,9 +33,9 @@ class Colors:
 
 
 def print_header(text):
-    print(f"\n{Colors.HEADER}{Colors.BOLD}{'='*50}{Colors.ENDC}")
+    print(f"\n{Colors.HEADER}{Colors.BOLD}{'=' * 50}{Colors.ENDC}")
     print(f"{Colors.HEADER}{Colors.BOLD}{text.center(50)}{Colors.ENDC}")
-    print(f"{Colors.HEADER}{Colors.BOLD}{'='*50}{Colors.ENDC}\n")
+    print(f"{Colors.HEADER}{Colors.BOLD}{'=' * 50}{Colors.ENDC}\n")
 
 
 def print_section(text):
@@ -73,9 +74,7 @@ try:
     load_dotenv(BASE_DIR / ".env")
     print_success("Переменные окружения загружены")
 except ImportError:
-    print_warning(
-        "dotenv не установлен, используются только системные переменные окружения"
-    )
+    print_warning("dotenv не установлен, используются только системные переменные окружения")
 
 # Проверка API ключа
 api_key = os.getenv("OPENAI_API_KEY")
@@ -229,12 +228,8 @@ async def main():
 
     if success:
         print_success("Интеграция XAI + OpenAI работает корректно")
-        print_info(
-            "Система может генерировать человекочитаемые объяснения для ML-предсказаний"
-        )
-        print_info(
-            "OpenAI используется для объяснения результатов XAI методов (SHAP/LIME)"
-        )
+        print_info("Система может генерировать человекочитаемые объяснения для ML-предсказаний")
+        print_info("OpenAI используется для объяснения результатов XAI методов (SHAP/LIME)")
     else:
         print_error("Тестирование интеграции завершилось с ошибками")
         print_info("Проверьте журналы для получения подробной информации")
@@ -245,14 +240,10 @@ async def main():
     try:
         import openai
 
-        print_info(
-            f"Используется реальная OpenAI библиотека, версия: {openai.__version__}"
-        )
+        print_info(f"Используется реальная OpenAI библиотека, версия: {openai.__version__}")
     except ImportError:
         print_warning("Используется мок-реализация OpenAI API")
-        print_info(
-            "Для продакшн используйте реальную библиотеку openai: pip install openai"
-        )
+        print_info("Для продакшн используйте реальную библиотеку openai: pip install openai")
 
 
 # Запуск

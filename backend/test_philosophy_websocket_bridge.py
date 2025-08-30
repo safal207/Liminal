@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Unit Tests for Philosophy WebSocket Bridge
@@ -54,7 +53,7 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
             result = self.bridge.connect()
 
             # Verify connection was successful
-            self.assertTrue(result)
+            assert result
             mock_db.driver.assert_called_once_with("bolt://test:7687", auth=ANY)
 
     def test_connect_failure(self):
@@ -66,7 +65,7 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
             result = self.bridge.connect()
 
             # Verify connection failed
-            self.assertFalse(result)
+            assert not result
 
     def test_check_websocket_relay_success(self):
         """Test successful WebSocket relay check"""
@@ -79,7 +78,7 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
             result = self.bridge.check_websocket_relay()
 
             # Verify check was successful
-            self.assertTrue(result)
+            assert result
             mock_get.assert_called_once_with("http://test:8181/health", timeout=5)
 
     def test_check_websocket_relay_failure(self):
@@ -91,13 +90,13 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
             mock_get.return_value = mock_response
 
             result = self.bridge.check_websocket_relay()
-            self.assertFalse(result)
+            assert not result
 
             # Test with connection error
             mock_get.side_effect = requests.exceptions.ConnectionError()
 
             result = self.bridge.check_websocket_relay()
-            self.assertFalse(result)
+            assert not result
 
     def test_get_new_transitions_empty(self):
         """Test getting transitions when there are none"""
@@ -105,7 +104,7 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
 
         transitions = self.bridge.get_new_transitions()
 
-        self.assertEqual(len(transitions), 0)
+        assert len(transitions) == 0
         self.mock_session.run.assert_called_once()
 
     def test_get_new_transitions_with_data(self):
@@ -127,15 +126,12 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
         transitions = self.bridge.get_new_transitions()
 
         # Verify result
-        self.assertEqual(len(transitions), 1)
-        self.assertEqual(transitions[0]["user_id"], "philosopher_1")
-        self.assertEqual(transitions[0]["source_state"], "PRESENCE_NOW")
-        self.assertEqual(transitions[0]["target_state"], "HARMONY_BALANCE")
-        self.assertEqual(transitions[0]["trigger"], "MEDITATION")
-        self.assertEqual(
-            transitions[0]["meta"]["description"],
-            "Achieving harmony through meditation",
-        )
+        assert len(transitions) == 1
+        assert transitions[0]["user_id"] == "philosopher_1"
+        assert transitions[0]["source_state"] == "PRESENCE_NOW"
+        assert transitions[0]["target_state"] == "HARMONY_BALANCE"
+        assert transitions[0]["trigger"] == "MEDITATION"
+        assert transitions[0]["meta"]["description"] == "Achieving harmony through meditation"
 
     def test_send_event_to_websocket_success(self):
         """Test successful event sending to WebSocket relay"""
@@ -156,7 +152,7 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
 
             result = self.bridge.send_event_to_websocket(event)
 
-            self.assertTrue(result)
+            assert result
             mock_post.assert_called_once_with(
                 "http://test:8181/events",
                 json=event,
@@ -181,50 +177,42 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
             }
 
             result = self.bridge.send_event_to_websocket(event)
-            self.assertFalse(result)
+            assert not result
 
             # Test with connection error
             mock_post.side_effect = requests.exceptions.ConnectionError()
 
             result = self.bridge.send_event_to_websocket(event)
-            self.assertFalse(result)
+            assert not result
 
     def test_generate_simulated_event(self):
         """Test generation of simulated events"""
         event = self.bridge.generate_simulated_event()
 
         # Verify event structure
-        self.assertIn("id", event)
-        self.assertEqual(event["event_type"], "consciousness_transition")
-        self.assertIn("timestamp", event)
-        self.assertIn(
-            event["user_id"],
-            [
-                "philosopher_1",
-                "philosopher_2",
-                "consciousness_explorer",
-                "authentic_self",
-            ],
-        )
-        self.assertIn(event["source_state"], CONSCIOUSNESS_STATES)
-        self.assertIn(event["target_state"], CONSCIOUSNESS_STATES)
-        self.assertIn(event["trigger"], TRANSITION_TRIGGERS)
+        assert "id" in event
+        assert event["event_type"] == "consciousness_transition"
+        assert "timestamp" in event
+        assert event["user_id"] in ["philosopher_1", "philosopher_2", "consciousness_explorer", "authentic_self"]
+        assert event["source_state"] in CONSCIOUSNESS_STATES
+        assert event["target_state"] in CONSCIOUSNESS_STATES
+        assert event["trigger"] in TRANSITION_TRIGGERS
 
         # Verify meta structure
-        self.assertIn("meta", event)
-        self.assertIn("description", event["meta"])
-        self.assertIn("presence_delta", event["meta"])
-        self.assertIn("harmony_delta", event["meta"])
-        self.assertIn("authenticity_delta", event["meta"])
-        self.assertIn("resonance_delta", event["meta"])
-        self.assertTrue(event["meta"]["simulated"])
+        assert "meta" in event
+        assert "description" in event["meta"]
+        assert "presence_delta" in event["meta"]
+        assert "harmony_delta" in event["meta"]
+        assert "authenticity_delta" in event["meta"]
+        assert "resonance_delta" in event["meta"]
+        assert event["meta"]["simulated"]
 
         # Verify values are in expected ranges
-        self.assertGreaterEqual(event["meta"]["presence_delta"], 0)
-        self.assertLessEqual(event["meta"]["presence_delta"], 0.5)
+        assert event["meta"]["presence_delta"] >= 0
+        assert event["meta"]["presence_delta"] <= 0.5
 
         # Source and target should be different
-        self.assertNotEqual(event["source_state"], event["target_state"])
+        assert event["source_state"] != event["target_state"]
 
     def test_run_neo4j_monitor_keyboard_interrupt(self):
         """Test Neo4j monitoring loop can be interrupted"""
@@ -243,8 +231,8 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
         # Set interval to 0 for faster test
         self.bridge.run_simulation(interval=0, count=5)
 
-        self.assertEqual(self.bridge.generate_simulated_event.call_count, 5)
-        self.assertEqual(self.bridge.send_event_to_websocket.call_count, 5)
+        assert self.bridge.generate_simulated_event.call_count == 5
+        assert self.bridge.send_event_to_websocket.call_count == 5
 
     def test_close(self):
         """Test closing connection"""

@@ -36,13 +36,13 @@ async def test_websocket():
                     "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 }
                 await websocket.send(json.dumps(test_msg))
-                print(f"📨 Отправили тестовое сообщение")
+                print("📨 Отправили тестовое сообщение")
 
                 # Ждем ответ
                 response = await asyncio.wait_for(websocket.recv(), timeout=5.0)
                 print(f"📩 Получен ответ: {response}")
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 print("⏱️ Таймаут ожидания ответа")
             except Exception as e:
                 print(f"❌ Ошибка при получении: {str(e)}")

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Тест подключения к Neo4j Docker с записью в файл
@@ -13,9 +12,7 @@ from datetime import datetime
 from neo4j import GraphDatabase
 
 # Путь для файла журнала
-log_file = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "neo4j_test_output.log"
-)
+log_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "neo4j_test_output.log")
 
 
 def log(message):

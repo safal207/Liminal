@@ -3,11 +3,7 @@
 Utility script to analyze and visualize load test results.
 """
 import argparse
-import json
-import os
-import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -27,7 +23,7 @@ class ResultAnalyzer:
         self.results_dir = Path(results_dir)
         self.results = []
 
-    def load_results(self) -> List[Dict]:
+    def load_results(self) -> list[dict]:
         """Load all test results from the results directory."""
         if not self.results_dir.exists():
             print(f"Error: Directory '{self.results_dir}' not found.")
@@ -116,7 +112,7 @@ class ResultAnalyzer:
         print("\nTest Results Summary:")
         print(tabulate(table_data, headers=headers, tablefmt="grid"))
 
-    def plot_trends(self, output_file: Optional[str] = None):
+    def plot_trends(self, output_file: str | None = None):
         """Plot trends across test runs."""
         if not self.results:
             print("No test results to plot.")

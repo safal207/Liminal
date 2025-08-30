@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Integration Tests for Philosophy First Neo4j and WebSocket Pipeline
@@ -41,9 +40,7 @@ try:
 
     bridge_imported = True
 except ImportError:
-    logger.warning(
-        "Could not import PhilosophyWebSocketBridge, some tests will be skipped"
-    )
+    logger.warning("Could not import PhilosophyWebSocketBridge, some tests will be skipped")
     bridge_imported = False
 
 # Neo4j connection parameters (for integration tests)
@@ -95,9 +92,7 @@ class PhilosophyIntegrationBase(unittest.TestCase):
                 logger.info("WebSocket relay is available")
                 return True
             else:
-                logger.warning(
-                    f"WebSocket relay returned status {response.status_code}"
-                )
+                logger.warning(f"WebSocket relay returned status {response.status_code}")
                 return False
         except requests.RequestException as e:
             logger.warning(f"WebSocket relay connection failed: {e}")
@@ -130,8 +125,7 @@ class PhilosophyIntegrationBase(unittest.TestCase):
             # Create timestamp sequence
             base_time = datetime.datetime.now()
             timestamps = [
-                (base_time + datetime.timedelta(seconds=i)).isoformat()
-                for i in range(len(states))
+                (base_time + datetime.timedelta(seconds=i)).isoformat() for i in range(len(states))
             ]
 
             # Create nodes and transitions
@@ -201,7 +195,7 @@ class PhilosophyIntegrationBase(unittest.TestCase):
                         id=str(uuid.uuid4()),
                         timestamp=timestamps[i + 1],
                         trigger=triggers[i],
-                        significance=f"Test transition from {states[i]} to {states[i+1]}",
+                        significance=f"Test transition from {states[i]} to {states[i + 1]}",
                         presence_delta=random.uniform(0.1, 0.5),
                         harmony_delta=random.uniform(0.1, 0.5),
                         authenticity_delta=random.uniform(0.1, 0.5),
@@ -248,7 +242,7 @@ class PhilosophyIntegrationBase(unittest.TestCase):
             )
 
             if response.status_code == 200:
-                logger.info(f"Successfully sent test event to WebSocket relay")
+                logger.info("Successfully sent test event to WebSocket relay")
                 return True
             else:
                 logger.error(
@@ -273,7 +267,7 @@ class TestPhilosophyNeo4jIntegration(PhilosophyIntegrationBase):
     def test_create_consciousness_data(self):
         """Test creating consciousness data in Neo4j"""
         success = self.create_test_data_in_neo4j("test_integration_user")
-        self.assertTrue(success)
+        assert success
 
         # Verify data was created
         driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
@@ -282,7 +276,7 @@ class TestPhilosophyNeo4jIntegration(PhilosophyIntegrationBase):
             # Count nodes
             result = session.run(
                 """
-                MATCH (n:ConsciousnessNode {user_id: $user_id}) 
+                MATCH (n:ConsciousnessNode {user_id: $user_id})
                 RETURN count(n) as node_count
                 """,
                 user_id="test_integration_user",
@@ -292,7 +286,7 @@ class TestPhilosophyNeo4jIntegration(PhilosophyIntegrationBase):
             # Count transitions
             result = session.run(
                 """
-                MATCH (:ConsciousnessNode {user_id: $user_id})-[t:TRANSITIONS_TO]->() 
+                MATCH (:ConsciousnessNode {user_id: $user_id})-[t:TRANSITIONS_TO]->()
                 RETURN count(t) as transition_count
                 """,
                 user_id="test_integration_user",
@@ -302,8 +296,8 @@ class TestPhilosophyNeo4jIntegration(PhilosophyIntegrationBase):
         driver.close()
 
         # Verify counts
-        self.assertEqual(node_count, 6)  # 6 states
-        self.assertEqual(transition_count, 5)  # 5 transitions
+        assert node_count == 6  # 6 states
+        assert transition_count == 5  # 5 transitions
 
 
 class TestPhilosophyWebSocketRelayIntegration(PhilosophyIntegrationBase):
@@ -318,7 +312,7 @@ class TestPhilosophyWebSocketRelayIntegration(PhilosophyIntegrationBase):
     def test_send_event_to_relay(self):
         """Test sending event to WebSocket relay"""
         success = self.send_test_event_to_relay("test_relay_user")
-        self.assertTrue(success)
+        assert success
 
 
 @unittest.skipIf(not bridge_imported, "Philosophy WebSocket Bridge not available")
@@ -344,8 +338,8 @@ class TestPhilosophyBridgeIntegration(PhilosophyIntegrationBase):
         neo4j_result = self.bridge.connect()
         websocket_result = self.bridge.check_websocket_relay()
 
-        self.assertTrue(neo4j_result)
-        self.assertTrue(websocket_result)
+        assert neo4j_result
+        assert websocket_result
 
     def test_bridge_poll_and_send(self):
         """Test bridge can poll Neo4j and send to WebSocket"""
@@ -357,9 +351,7 @@ class TestPhilosophyBridgeIntegration(PhilosophyIntegrationBase):
         self.bridge.connect()
 
         # Record last transition time
-        self.bridge.last_transition_time = (
-            now - datetime.timedelta(minutes=5)
-        ).isoformat()
+        self.bridge.last_transition_time = (now - datetime.timedelta(minutes=5)).isoformat()
 
         # Create fresh test data
         self.create_test_data_in_neo4j(test_user_id)
@@ -368,12 +360,12 @@ class TestPhilosophyBridgeIntegration(PhilosophyIntegrationBase):
         transitions = self.bridge.get_new_transitions()
 
         # Verify we got transitions
-        self.assertGreater(len(transitions), 0)
+        assert len(transitions) > 0
 
         # Send first transition to WebSocket
         if transitions:
             success = self.bridge.send_event_to_websocket(transitions[0])
-            self.assertTrue(success)
+            assert success
 
     def test_simulated_events(self):
         """Test generating and sending simulated events"""
@@ -384,18 +376,18 @@ class TestPhilosophyBridgeIntegration(PhilosophyIntegrationBase):
         event = self.bridge.generate_simulated_event()
 
         # Verify event structure
-        self.assertIn("id", event)
-        self.assertEqual(event["event_type"], "consciousness_transition")
-        self.assertIn("timestamp", event)
-        self.assertIn("user_id", event)
-        self.assertIn("source_state", event)
-        self.assertIn("target_state", event)
-        self.assertIn("trigger", event)
-        self.assertIn("meta", event)
+        assert "id" in event
+        assert event["event_type"] == "consciousness_transition"
+        assert "timestamp" in event
+        assert "user_id" in event
+        assert "source_state" in event
+        assert "target_state" in event
+        assert "trigger" in event
+        assert "meta" in event
 
         # Send event
         success = self.bridge.send_event_to_websocket(event)
-        self.assertTrue(success)
+        assert success
 
 
 class TestEndToEndIntegration(PhilosophyIntegrationBase):

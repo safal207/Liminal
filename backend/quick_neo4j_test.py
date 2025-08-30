@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Тест подключения к Neo4j Docker контейнеру
@@ -13,9 +12,7 @@ print("=== Neo4j Docker Connection Test ===")
 
 try:
     print("Попытка подключения к Neo4j на localhost:7687...")
-    driver = GraphDatabase.driver(
-        "bolt://localhost:7687", auth=("neo4j", "NewStrongPass123!")
-    )
+    driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "NewStrongPass123!"))
     print("Подключение установлено!")
 
     with driver.session() as session:
@@ -25,9 +22,7 @@ try:
 
     print("Проверка версии Neo4j...")
     with driver.session() as session:
-        result = session.run(
-            "CALL dbms.components() YIELD name, versions RETURN name, versions"
-        )
+        result = session.run("CALL dbms.components() YIELD name, versions RETURN name, versions")
         for record in result:
             print(f"{record['name']}: {record['versions'][0]}")
 

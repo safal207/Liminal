@@ -7,7 +7,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class ConsciousnessState(Enum):
@@ -75,11 +75,11 @@ class ConsciousnessNode:
     stress_level: float  # Уровень стресса
 
     # Контекстные данные
-    location: Optional[str] = None
-    activity: Optional[str] = None
-    companions: Optional[List[str]] = None
+    location: str | None = None
+    activity: str | None = None
+    companions: list[str] | None = None
 
-    def to_neo4j_dict(self) -> Dict[str, Any]:
+    def to_neo4j_dict(self) -> dict[str, Any]:
         """Преобразование в формат для Neo4j"""
         return {
             "id": self.id,
@@ -115,9 +115,9 @@ class StateTransition:
     authenticity_delta: float
 
     # Контекст перехода
-    trigger_data: Dict[str, Any]
+    trigger_data: dict[str, Any]
 
-    def to_neo4j_dict(self) -> Dict[str, Any]:
+    def to_neo4j_dict(self) -> dict[str, Any]:
         """Преобразование в формат для Neo4j"""
         return {
             "id": self.id,
@@ -183,7 +183,7 @@ class ConsciousnessQueries:
         """Поиск состояний 'дома' (высокая искренность)"""
         return """
         MATCH (c:ConsciousnessState)
-        WHERE c.state = 'home_authentic' 
+        WHERE c.state = 'home_authentic'
         AND c.home_resonance > 0.8
         AND c.authenticity_score > 0.8
         RETURN c
@@ -197,7 +197,7 @@ class ConsciousnessQueries:
         return """
         MATCH (from:ConsciousnessState)-[t:TRANSITIONS_TO]->(to:ConsciousnessState)
         WHERE t.timestamp > datetime() - duration('P7D')  // Последние 7 дней
-        RETURN 
+        RETURN
             from.state as from_state,
             to.state as to_state,
             t.trigger as trigger,
@@ -216,7 +216,7 @@ class ConsciousnessQueries:
         AND abs(duration.between(c1.timestamp, c2.timestamp).seconds) < 60  // В пределах минуты
         AND c1.state = c2.state
         AND c1.home_resonance > 0.7 AND c2.home_resonance > 0.7
-        RETURN c1, c2, 
+        RETURN c1, c2,
                abs(c1.home_resonance - c2.home_resonance) as resonance_similarity
         ORDER BY resonance_similarity ASC
         LIMIT 10

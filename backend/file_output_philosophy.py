@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Philosophy First - File Output Diagnostics
@@ -15,9 +14,7 @@ import requests
 from neo4j import GraphDatabase
 
 # Create output file
-OUTPUT_FILE = os.path.join(
-    os.path.dirname(os.path.dirname(__file__)), "philosophy_diagnostics.log"
-)
+OUTPUT_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "philosophy_diagnostics.log")
 
 
 def log_to_file(message, append=True):
@@ -33,9 +30,7 @@ log_to_file(f"Started: {datetime.now().isoformat()}")
 log_to_file(f"Output file: {OUTPUT_FILE}")
 
 
-def check_neo4j_connection(
-    uri="bolt://localhost:7687", user="neo4j", password="NewStrongPass123!"
-):
+def check_neo4j_connection(uri="bolt://localhost:7687", user="neo4j", password="NewStrongPass123!"):
     """Test Neo4j connection and database state"""
 
     log_to_file("\n=== NEO4J CONNECTION TEST ===")
@@ -60,9 +55,7 @@ def check_neo4j_connection(
             log_to_file(f"Total nodes in database: {result['node_count']}")
 
             # Count consciousness nodes
-            result = session.run(
-                "MATCH (n:ConsciousnessNode) RETURN count(n) as count"
-            ).single()
+            result = session.run("MATCH (n:ConsciousnessNode) RETURN count(n) as count").single()
             log_to_file(f"ConsciousnessNode count: {result['count']}")
 
             # Count transitions
@@ -75,8 +68,8 @@ def check_neo4j_connection(
             log_to_file("\n=== CONSCIOUSNESS STATES COUNT ===")
             result = session.run(
                 """
-                MATCH (n:ConsciousnessNode) 
-                RETURN n.state as state, count(n) as count 
+                MATCH (n:ConsciousnessNode)
+                RETURN n.state as state, count(n) as count
                 ORDER BY count DESC
             """
             )
@@ -88,7 +81,7 @@ def check_neo4j_connection(
             result = session.run(
                 """
                 MATCH (source:ConsciousnessNode)-[t:TRANSITIONS_TO]->(target:ConsciousnessNode)
-                RETURN source.state as source_state, 
+                RETURN source.state as source_state,
                        target.state as target_state,
                        t.trigger as trigger,
                        t.timestamp as timestamp,
@@ -97,10 +90,8 @@ def check_neo4j_connection(
             """
             )
             for i, record in enumerate(result):
-                log_to_file(f"\nTransition #{i+1}:")
-                log_to_file(
-                    f"  From: {record['source_state']} To: {record['target_state']}"
-                )
+                log_to_file(f"\nTransition #{i + 1}:")
+                log_to_file(f"  From: {record['source_state']} To: {record['target_state']}")
                 log_to_file(f"  Trigger: {record['trigger']}")
                 log_to_file(f"  Time: {record['timestamp']}")
                 log_to_file(f"  Significance: {record['significance']}")
@@ -132,7 +123,7 @@ def check_resonance_moments(
             WHERE n1.user_id <> n2.user_id
             AND m1.state = m2.state
             AND abs(datetime(m1.timestamp).epochMillis - datetime(m2.timestamp).epochMillis) < 5000
-            RETURN n1.user_id as user1, n2.user_id as user2, 
+            RETURN n1.user_id as user1, n2.user_id as user2,
                   m1.state as state, m1.timestamp as time1, m2.timestamp as time2,
                   abs(datetime(m1.timestamp).epochMillis - datetime(m2.timestamp).epochMillis) as time_diff_ms
             ORDER BY time_diff_ms ASC
@@ -145,7 +136,7 @@ def check_resonance_moments(
             log_to_file(f"Found {len(records)} resonance moments")
 
             for i, record in enumerate(records):
-                log_to_file(f"\nResonance #{i+1}:")
+                log_to_file(f"\nResonance #{i + 1}:")
                 log_to_file(f"  Users: {record['user1']} and {record['user2']}")
                 log_to_file(f"  State: {record['state']}")
                 log_to_file(f"  Time difference: {record['time_diff_ms']} ms")
@@ -174,7 +165,7 @@ def get_user_timeline(
             query = """
             MATCH (source:ConsciousnessNode)-[t:TRANSITIONS_TO]->(target:ConsciousnessNode)
             WHERE source.user_id = $user_id
-            RETURN source.state as source_state, 
+            RETURN source.state as source_state,
                   target.state as target_state,
                   t.trigger as trigger,
                   t.philosophical_significance as significance,
@@ -188,7 +179,7 @@ def get_user_timeline(
             log_to_file(f"Found {len(records)} transitions for user {user_id}")
 
             for i, record in enumerate(records):
-                log_to_file(f"\nTransition #{i+1}:")
+                log_to_file(f"\nTransition #{i + 1}:")
                 log_to_file(f"  {record['source_state']} → {record['target_state']}")
                 log_to_file(f"  Trigger: {record['trigger']}")
                 log_to_file(f"  Time: {record['timestamp']}")

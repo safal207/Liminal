@@ -75,25 +75,21 @@ async def test_unsubscribe_debug():
                 if response:
                     logger.info(f"Received message: {response}")
                     messages.append(response)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.info("No more messages")
 
         # Проверяем результаты
         logger.info(f"Total messages received: {len(messages)}")
 
         # Не должно быть сообщений из channel1
-        channel1_messages = [
-            msg for msg in messages if msg.get("channel") == "channel1"
-        ]
+        channel1_messages = [msg for msg in messages if msg.get("channel") == "channel1"]
         logger.info(f"Messages from channel1: {len(channel1_messages)}")
-        assert (
-            len(channel1_messages) == 0
-        ), f"Received unexpected messages from channel1: {channel1_messages}"
+        assert len(channel1_messages) == 0, (
+            f"Received unexpected messages from channel1: {channel1_messages}"
+        )
 
         # Должно быть сообщение из channel2
-        channel2_messages = [
-            msg for msg in messages if msg.get("channel") == "channel2"
-        ]
+        channel2_messages = [msg for msg in messages if msg.get("channel") == "channel2"]
         logger.info(f"Messages from channel2: {len(channel2_messages)}")
 
         # Проверяем, что есть наше тестовое сообщение
@@ -106,9 +102,9 @@ async def test_unsubscribe_debug():
                     found_test_message = True
                     break
 
-        assert (
-            found_test_message
-        ), f"Test message not found in channel2. Messages: {channel2_messages}"
+        assert found_test_message, (
+            f"Test message not found in channel2. Messages: {channel2_messages}"
+        )
 
         logger.info("=== Test completed successfully ===")
 

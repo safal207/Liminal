@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Resonance Liminal - Диагностический инструмент для WebSocket relay
@@ -38,6 +37,7 @@ WS_URL = "ws://localhost:8080/ws"
 API_URL = "http://localhost:8080"
 
 
+@pytest.mark.asyncio
 async def test_websocket_connection():
     """Проверка подключения к WebSocket серверу"""
     console.print("[bold blue]Тестирование WebSocket соединения[/bold blue]")
@@ -48,31 +48,27 @@ async def test_websocket_connection():
         ws = await websockets.connect(WS_URL, ping_interval=None, close_timeout=5)
         connection_time = time.time() - connection_start
 
-        console.print(
-            f"[green]✓[/green] Соединение установлено за {connection_time:.2f} сек"
-        )
+        console.print(f"[green]✓[/green] Соединение установлено за {connection_time:.2f} сек")
 
         # Отправка ping для проверки
-        await ws.send(
-            json.dumps({"type": "ping", "timestamp": datetime.now().isoformat()})
-        )
+        await ws.send(json.dumps({"type": "ping", "timestamp": datetime.now().isoformat()}))
         console.print("Отправлен ping...")
 
         try:
             # Пробуем получить ответ в течение 5 секунд
             response = await asyncio.wait_for(ws.recv(), timeout=5.0)
             console.print(f"[green]✓[/green] Получен ответ: {response[:100]}...")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             console.print(
                 "[yellow]⚠[/yellow] Не получен ответ на ping (это нормально, если сервер не настроен на ответ)"
             )
 
         await ws.close()
         console.print("[green]✓[/green] Соединение успешно закрыто")
-        return True, "WebSocket соединение работает"
+        assert True, "WebSocket соединение работает"
     except Exception as e:
         console.print(f"[red]✗[/red] Ошибка WebSocket: {str(e)}")
-        return False, f"Ошибка: {str(e)}"
+        assert False, f"Ошибка: {str(e)}"
 
 
 def test_graphql_endpoint():
@@ -84,18 +80,14 @@ def test_graphql_endpoint():
         response = requests.get(f"{API_URL}/graphql", timeout=5)
 
         if response.status_code == 200:
-            console.print(
-                f"[green]✓[/green] GraphQL API доступен (HTTP {response.status_code})"
-            )
-            return True, "GraphQL API доступен"
+            console.print(f"[green]✓[/green] GraphQL API доступен (HTTP {response.status_code})")
+            assert True, "GraphQL API доступен"
         else:
-            console.print(
-                f"[yellow]⚠[/yellow] GraphQL API вернул код {response.status_code}"
-            )
-            return False, f"HTTP код {response.status_code}"
+            console.print(f"[yellow]⚠[/yellow] GraphQL API вернул код {response.status_code}")
+            assert False, f"HTTP код {response.status_code}"
     except Exception as e:
         console.print(f"[red]✗[/red] Ошибка доступа к GraphQL API: {str(e)}")
-        return False, f"Ошибка: {str(e)}"
+        assert False, f"Ошибка: {str(e)}"
 
 
 def test_consciousness_graph_api():
@@ -111,9 +103,7 @@ def test_consciousness_graph_api():
             node_count = len(graph_data.get("nodes", []))
             link_count = len(graph_data.get("links", []))
 
-            console.print(
-                f"[green]✓[/green] Граф получен: {node_count} узлов, {link_count} связей"
-            )
+            console.print(f"[green]✓[/green] Граф получен: {node_count} узлов, {link_count} связей")
 
             # Вывод списка состояний
             if node_count > 0:
@@ -122,9 +112,7 @@ def test_consciousness_graph_api():
                 table.add_column("Название", style="green")
                 table.add_column("Описание")
 
-                for node in graph_data.get("nodes", [])[
-                    :5
-                ]:  # Показываем только первые 5
+                for node in graph_data.get("nodes", [])[:5]:  # Показываем только первые 5
                     table.add_row(
                         node.get("id", ""),
                         node.get("label", ""),
@@ -137,15 +125,13 @@ def test_consciousness_graph_api():
 
                 console.print(table)
 
-            return True, f"{node_count} узлов, {link_count} связей"
+            assert True, f"{node_count} узлов, {link_count} связей"
         else:
-            console.print(
-                f"[yellow]⚠[/yellow] API графа вернул код {response.status_code}"
-            )
-            return False, f"HTTP код {response.status_code}"
+            console.print(f"[yellow]⚠[/yellow] API графа вернул код {response.status_code}")
+            assert False, f"HTTP код {response.status_code}"
     except Exception as e:
         console.print(f"[red]✗[/red] Ошибка доступа к API графа: {str(e)}")
-        return False, f"Ошибка: {str(e)}"
+        assert False, f"Ошибка: {str(e)}"
 
 
 def test_events_api():
@@ -183,16 +169,14 @@ def test_events_api():
             except:
                 console.print(f"Ответ: {response.text[:100]}...")
 
-            return True, "Событие успешно отправлено"
+            assert True, "Событие успешно отправлено"
         else:
-            console.print(
-                f"[yellow]⚠[/yellow] API событий вернул код {response.status_code}"
-            )
+            console.print(f"[yellow]⚠[/yellow] API событий вернул код {response.status_code}")
             console.print(f"Ответ: {response.text[:100]}...")
-            return False, f"HTTP код {response.status_code}"
+            assert False, f"HTTP код {response.status_code}"
     except Exception as e:
         console.print(f"[red]✗[/red] Ошибка отправки события: {str(e)}")
-        return False, f"Ошибка: {str(e)}"
+        assert False, f"Ошибка: {str(e)}"
 
 
 async def run_diagnostics():
@@ -209,16 +193,34 @@ async def run_diagnostics():
     results = {}
 
     # Тест 1: Проверка GraphQL API
-    results["graphql"] = test_graphql_endpoint()
+    try:
+        test_graphql_endpoint()
+        results["graphql"] = (True, "GraphQL API доступен")
+    except AssertionError as e:
+        results["graphql"] = (False, str(e))
+
 
     # Тест 2: Проверка API графа сознания
-    results["graph"] = test_consciousness_graph_api()
+    try:
+        test_consciousness_graph_api()
+        results["graph"] = (True, "API графа сознания доступно")
+    except AssertionError as e:
+        results["graph"] = (False, str(e))
 
     # Тест 3: Проверка WebSocket соединения
-    results["websocket"] = await test_websocket_connection()
+    try:
+        await test_websocket_connection()
+        results["websocket"] = (True, "WebSocket соединение работает")
+    except AssertionError as e:
+        results["websocket"] = (False, str(e))
 
     # Тест 4: Проверка API событий
-    results["events"] = test_events_api()
+    try:
+        test_events_api()
+        results["events"] = (True, "API событий работает")
+    except AssertionError as e:
+        results["events"] = (False, str(e))
+
 
     # Итоговая таблица
     console.print("\n[bold]Итоги диагностики:[/bold]")

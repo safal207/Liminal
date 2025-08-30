@@ -7,7 +7,7 @@ import math
 import time
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter
 from loguru import logger
@@ -27,14 +27,14 @@ class MLMetrics:
     """Структура для ML-метрик."""
 
     timestamp: float
-    requests_per_user: Dict[str, float]
+    requests_per_user: dict[str, float]
     average_request_rate: float
     burstiness_score: float
     ip_entropy: float
-    channel_activity: Dict[str, float]
-    geographic_distribution: Dict[str, int]
-    jwt_usage_patterns: Dict[str, Any]
-    connection_patterns: Dict[str, Any]
+    channel_activity: dict[str, float]
+    geographic_distribution: dict[str, int]
+    jwt_usage_patterns: dict[str, Any]
+    connection_patterns: dict[str, Any]
 
 
 class MLMetricsCollector:
@@ -70,9 +70,7 @@ class MLMetricsCollector:
             "ml_burstiness_score", "Traffic burstiness score for anomaly detection"
         )
 
-        self.ml_ip_entropy = Gauge(
-            "ml_ip_entropy", "IP address entropy for geographic analysis"
-        )
+        self.ml_ip_entropy = Gauge("ml_ip_entropy", "IP address entropy for geographic analysis")
 
         self.ml_channel_hotness = Gauge(
             "ml_channel_hotness", "Channel activity hotness score", ["channel"]
@@ -131,7 +129,7 @@ class MLMetricsCollector:
         if len(self.connection_events) > 10000:
             self.connection_events = self.connection_events[-10000:]
 
-    def track_jwt_event(self, user_id: str, event_data: Dict[str, Any]) -> None:
+    def track_jwt_event(self, user_id: str, event_data: dict[str, Any]) -> None:
         """
         Отслеживает события JWT для анализа паттернов.
 
@@ -146,7 +144,7 @@ class MLMetricsCollector:
         if len(self.jwt_events[user_id]) > 100:
             self.jwt_events[user_id] = self.jwt_events[user_id][-100:]
 
-    def calculate_requests_per_user(self, time_window: str = "1m") -> Dict[str, float]:
+    def calculate_requests_per_user(self, time_window: str = "1m") -> dict[str, float]:
         """
         Вычисляет количество запросов на пользователя за временное окно.
 
@@ -163,16 +161,14 @@ class MLMetricsCollector:
         result = {}
         for user_id, timestamps in self.user_requests.items():
             # Считаем запросы за последнее временное окно
-            recent_requests = [
-                ts for ts in timestamps if current_time - ts <= window_duration
-            ]
+            recent_requests = [ts for ts in timestamps if current_time - ts <= window_duration]
             requests_per_minute = len(recent_requests) * (60 / window_duration)
             result[user_id] = requests_per_minute
 
             # Обновляем Prometheus метрику
-            self.ml_requests_per_user.labels(
-                user_id=user_id, time_window=time_window
-            ).set(requests_per_minute)
+            self.ml_requests_per_user.labels(user_id=user_id, time_window=time_window).set(
+                requests_per_minute
+            )
 
         return result
 
@@ -240,9 +236,7 @@ class MLMetricsCollector:
                 entropy -= probability * math.log2(probability)
 
         # Нормализуем относительно максимальной возможной энтропии
-        max_entropy = (
-            math.log2(len(self.ip_requests)) if len(self.ip_requests) > 1 else 1
-        )
+        max_entropy = math.log2(len(self.ip_requests)) if len(self.ip_requests) > 1 else 1
         normalized_entropy = entropy / max_entropy if max_entropy > 0 else 0
 
         # Обновляем Prometheus метрику
@@ -250,7 +244,7 @@ class MLMetricsCollector:
 
         return normalized_entropy
 
-    def calculate_channel_hotness(self) -> Dict[str, float]:
+    def calculate_channel_hotness(self) -> dict[str, float]:
         """
         Вычисляет "горячность" каналов для предсказания нагрузки.
 
@@ -280,7 +274,7 @@ class MLMetricsCollector:
 
         return hotness_scores
 
-    def analyze_connection_patterns(self) -> Dict[str, float]:
+    def analyze_connection_patterns(self) -> dict[str, float]:
         """
         Анализирует паттерны подключений для выявления аномалий.
 
@@ -309,15 +303,13 @@ class MLMetricsCollector:
         event_counts = defaultdict(int)
         unique_users = set()
 
-        for timestamp, event_type, user_id in recent_events:
+        for _timestamp, event_type, user_id in recent_events:
             event_counts[event_type] += 1
             unique_users.add(user_id)
 
         total_events = len(recent_events)
         if total_events > 0:
-            patterns["connection_rate"] = (
-                event_counts.get("connect", 0) / 5.0
-            )  # за 5 минут
+            patterns["connection_rate"] = event_counts.get("connect", 0) / 5.0  # за 5 минут
             patterns["auth_failure_rate"] = event_counts.get("auth_failure", 0) / max(
                 event_counts.get("connect", 1), 1
             )
@@ -329,7 +321,7 @@ class MLMetricsCollector:
             for timestamp, event_type, user_id in recent_events:
                 user_events[user_id].append((timestamp, event_type))
 
-            for user_id, events in user_events.items():
+            for _user_id, events in user_events.items():
                 events.sort()  # Сортируем по времени
                 for i in range(len(events) - 2):
                     if (
@@ -348,7 +340,7 @@ class MLMetricsCollector:
 
         return patterns
 
-    def detect_jwt_anomalies(self) -> Dict[str, int]:
+    def detect_jwt_anomalies(self) -> dict[str, int]:
         """
         Обнаруживает аномалии в использовании JWT токенов.
 
@@ -358,7 +350,7 @@ class MLMetricsCollector:
         anomalies = defaultdict(int)
         current_time = time.time()
 
-        for user_id, events in self.jwt_events.items():
+        for _user_id, events in self.jwt_events.items():
             recent_events = [
                 event
                 for event in events
@@ -373,12 +365,10 @@ class MLMetricsCollector:
             # 1. Слишком частое обновление токенов
             if len(recent_events) > 10:  # Более 10 обновлений за час
                 anomalies["frequent_token_refresh"] += 1
-                self.ml_jwt_anomalies.labels(
-                    anomaly_type="frequent_token_refresh"
-                ).inc()
+                self.ml_jwt_anomalies.labels(anomaly_type="frequent_token_refresh").inc()
 
             # 2. Использование токенов с разных IP
-            unique_ips = set(event.get("source_ip", "") for event in recent_events)
+            unique_ips = {event.get("source_ip", "") for event in recent_events}
             if len(unique_ips) > 3:  # Более 3 разных IP за час
                 anomalies["multiple_ip_usage"] += 1
                 self.ml_jwt_anomalies.labels(anomaly_type="multiple_ip_usage").inc()
@@ -420,7 +410,7 @@ ml_metrics_collector = MLMetricsCollector()
 
 
 @router.get("/")
-async def get_ml_metrics_summary() -> Dict[str, Any]:
+async def get_ml_metrics_summary() -> dict[str, Any]:
     """
     Возвращает сводку ML-метрик в JSON формате.
     """

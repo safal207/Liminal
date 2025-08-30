@@ -3,12 +3,10 @@
 """
 
 from .collectors import (
-    message_processing_time,  # Это теперь псевдоним для websocket_broadcast_duration_seconds
-)
-from .collectors import (
     connection_limits,
     connection_rejections,
     http_requests_total,
+    message_processing_time,  # Это теперь псевдоним для websocket_broadcast_duration_seconds
     websocket_auth_total,
     websocket_broadcast_duration_seconds,
     websocket_connections,

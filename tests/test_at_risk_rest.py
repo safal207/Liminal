@@ -5,7 +5,7 @@ These tests require a running server. Run manually:
 2. python -m pytest tests/test_at_risk_rest.py
 """
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 import requests
@@ -47,7 +47,7 @@ def test_seed_demo_then_query_top_at_risk() -> None:
         assert r2.status_code == 200
         j = r2.json()
         assert "topAtRiskEdges" in j
-        edges: List[Dict[str, Any]] = j["topAtRiskEdges"]
+        edges: list[dict[str, Any]] = j["topAtRiskEdges"]
         assert isinstance(edges, list)
         assert len(edges) >= 1  # Should have at least one pair after seeding
 
@@ -56,7 +56,7 @@ def test_seed_demo_then_query_top_at_risk() -> None:
         for key in ("sourceId", "targetId", "score", "advice"):
             assert key in sample
         assert isinstance(sample["advice"], list)
-        assert isinstance(sample["score"], (int, float))
+        assert isinstance(sample["score"], int | float)
     except requests.exceptions.ConnectionError:
         pytest.skip("Server not running at {BASE_URL}")
 
@@ -93,9 +93,7 @@ def test_add_node_and_fetch_again() -> None:
 def test_limit_parameter_effect(limit: int) -> None:
     """Test that limit parameter controls number of returned edges."""
     try:
-        r = requests.get(
-            f"{BASE_URL}/api/top-at-risk", params={"limit": limit}, timeout=5
-        )
+        r = requests.get(f"{BASE_URL}/api/top-at-risk", params={"limit": limit}, timeout=5)
         assert r.status_code == 200
         j = r.json()
         edges = j.get("topAtRiskEdges", [])

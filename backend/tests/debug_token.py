@@ -9,9 +9,7 @@ TOKEN_URL = f"{API_URL}/token"
 def get_token():
     print(f"--- Attempting to get token from {TOKEN_URL} ---")
     try:
-        response = requests.post(
-            TOKEN_URL, json={"username": "testuser", "password": "testpass"}
-        )
+        response = requests.post(TOKEN_URL, json={"username": "testuser", "password": "testpass"})
         print(f"Status Code: {response.status_code}")
 
         if response.status_code == 200:

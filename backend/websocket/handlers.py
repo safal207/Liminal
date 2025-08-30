@@ -4,19 +4,18 @@
 
 import json
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict
+from typing import Any
 
 from fastapi import WebSocket
 from loguru import logger
 
 # Тип для обработчиков сообщений
-MessageHandler = Callable[
-    [Dict[str, Any], WebSocket, "ConnectionManager"], Awaitable[None]
-]
+MessageHandler = Callable[[dict[str, Any], WebSocket, "ConnectionManager"], Awaitable[None]]
 
 # Реестр обработчиков
-HANDLERS: Dict[str, MessageHandler] = {}
+HANDLERS: dict[str, MessageHandler] = {}
 
 
 def register_handler(message_type: str):
@@ -29,9 +28,7 @@ def register_handler(message_type: str):
     return decorator
 
 
-async def handle_message(
-    message: str, websocket: WebSocket, manager: "ConnectionManager"
-):
+async def handle_message(message: str, websocket: WebSocket, manager: "ConnectionManager"):
     """
     Обрабатывает входящее сообщение и вызывает соответствующий обработчик.
 
@@ -81,7 +78,7 @@ async def handle_message(
 # Регистрируем обработчики
 @register_handler("subscribe")
 async def handle_subscribe(
-    data: Dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"
+    data: dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"
 ):
     """
     Обработчик подписки на канал.
@@ -97,9 +94,7 @@ async def handle_subscribe(
     channel = data.get("channel")
 
     if not user_id or not channel:
-        error_msg = (
-            f"Недостаточно данных для подписки: user_id={user_id}, channel={channel}"
-        )
+        error_msg = f"Недостаточно данных для подписки: user_id={user_id}, channel={channel}"
         logger.warning(error_msg)
         return {"status": "error", "error": error_msg}
 
@@ -113,16 +108,14 @@ async def handle_subscribe(
             "user_id": user_id,
         }
     except Exception as e:
-        error_msg = (
-            f"Ошибка при подписке пользователя {user_id} на канал {channel}: {e}"
-        )
+        error_msg = f"Ошибка при подписке пользователя {user_id} на канал {channel}: {e}"
         logger.error(error_msg)
         return {"status": "error", "error": error_msg}
 
 
 @register_handler("unsubscribe")
 async def handle_unsubscribe(
-    data: Dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"
+    data: dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"
 ):
     """
     Обработчик отписки от канала.
@@ -138,9 +131,7 @@ async def handle_unsubscribe(
     channel = data.get("channel")
 
     if not user_id or not channel:
-        error_msg = (
-            f"Недостаточно данных для отписки: user_id={user_id}, channel={channel}"
-        )
+        error_msg = f"Недостаточно данных для отписки: user_id={user_id}, channel={channel}"
         logger.warning(error_msg)
         return {"status": "error", "error": error_msg}
 
@@ -154,16 +145,14 @@ async def handle_unsubscribe(
             "user_id": user_id,
         }
     except Exception as e:
-        error_msg = (
-            f"Ошибка при отписке пользователя {user_id} от канала {channel}: {e}"
-        )
+        error_msg = f"Ошибка при отписке пользователя {user_id} от канала {channel}: {e}"
         logger.error(error_msg)
         return {"status": "error", "error": error_msg}
 
 
 @register_handler("message")
 async def handle_message_event(
-    data: Dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"
+    data: dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"
 ):
     """
     Обработчик отправки сообщения в канал.
@@ -184,7 +173,9 @@ async def handle_message_event(
     message = data.get("message")
 
     if not user_id or not channel or not message:
-        error_msg = f"Недостаточно данных для отправки сообщения: user_id={user_id}, channel={channel}"
+        error_msg = (
+            f"Недостаточно данных для отправки сообщения: user_id={user_id}, channel={channel}"
+        )
         logger.warning(error_msg)
         return {"status": "error", "error": error_msg}
 
@@ -231,9 +222,7 @@ def register_handlers():
 
 # Heartbeat: обработчик ответа pong от клиента
 @register_handler("pong")
-async def handle_pong(
-    data: Dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"
-):
+async def handle_pong(data: dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"):
     """
     Клиент отвечает на ping сообщением {"type": "pong"}.
     Мы отмечаем получение pong для обновления heartbeat.

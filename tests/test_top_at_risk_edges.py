@@ -22,7 +22,7 @@ def exec_gql(query: str, variables: dict[str, Any] | None = None) -> dict[str, A
     res = schema.execute_sync(query, variable_values=variables)
     assert res.errors is None, f"GraphQL errors: {res.errors}"
     assert res.data is not None
-    return res.data  # type: ignore[return-value]
+    return res.data
 
 
 def setup_function(_: Any) -> None:

@@ -10,25 +10,27 @@ class TestRINSE(unittest.TestCase):
 
     def test_process_experience(self):
         """Тест обработки опыта"""
-        raw_experience = "Сегодня был сложный день. Много стресса на работе. Но я понял, что могу идти вперёд"
+        raw_experience = (
+            "Сегодня был сложный день. Много стресса на работе. Но я понял, что могу идти вперёд"
+        )
         timestamp = datetime(2025, 7, 16, 15, 39, 28)
 
         result = self.rince.process_experience(raw_experience, timestamp)
 
-        self.assertIn("cleansed", result)
-        self.assertIn("insight", result)
-        self.assertIn("tags", result)
-        self.assertIn("clarity", result)
-        self.assertIn("timestamp", result)
+        assert "cleansed" in result
+        assert "insight" in result
+        assert "tags" in result
+        assert "clarity" in result
+        assert "timestamp" in result
 
         # Проверяем, что теги содержат ожидаемые эмоции
         expected_tags = ["страх", "решимость"]
         for tag in expected_tags:
-            self.assertIn(tag, result["tags"])
+            assert tag in result["tags"]
 
         # Проверяем, что ясность в правильном диапазоне
-        self.assertGreaterEqual(result["clarity"], 0)
-        self.assertLessEqual(result["clarity"], 1)
+        assert result["clarity"] >= 0
+        assert result["clarity"] <= 1
 
     def test_sentiment_analysis(self):
         """Тест анализа настроения"""
@@ -38,15 +40,15 @@ class TestRINSE(unittest.TestCase):
         pos_score = self.rince.analyze_sentiment(positive_text)
         neg_score = self.rince.analyze_sentiment(negative_text)
 
-        self.assertGreater(pos_score, neg_score)
+        assert pos_score > neg_score
 
     def test_emotion_classification(self):
         """Тест классификации эмоций"""
         text = "Я счастлив и полон надежды на будущее"
         emotions = self.rince.classify_emotions(text)
 
-        self.assertIn("joy", emotions)
-        self.assertIn("anticipation", emotions)
+        assert "joy" in emotions
+        assert "anticipation" in emotions
 
 
 if __name__ == "__main__":

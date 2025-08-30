@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Protocol
+from typing import Protocol
 
 
 @dataclass(frozen=True)
 class ModuleState:
     name: str
-    traits: Dict[str, float]
-    notes: List[str]
+    traits: dict[str, float]
+    notes: list[str]
 
 
 @dataclass(frozen=True)
 class BlendResult:
     state: ModuleState
-    rationale: List[str]
+    rationale: list[str]
 
 
 class DiffusionInterface(Protocol):
@@ -27,8 +27,8 @@ class DiffusionInterface(Protocol):
 
     def blend(
         self,
-        states: List[ModuleState],
-        weights: Optional[List[float]] = None,
+        states: list[ModuleState],
+        weights: list[float] | None = None,
         name: str = "diffused",
     ) -> BlendResult: ...
 
@@ -49,7 +49,7 @@ class InMemoryDiffusion(DiffusionInterface):
     - Rationale lists top contributing traits with weights
     """
 
-    def _normalize_weights(self, n: int, weights: Optional[List[float]]) -> List[float]:
+    def _normalize_weights(self, n: int, weights: list[float] | None) -> list[float]:
         if not weights:
             return [1.0 / n] * n
         if len(weights) != n:
@@ -59,8 +59,8 @@ class InMemoryDiffusion(DiffusionInterface):
             return [1.0 / n] * n
         return [w / s for w in weights]
 
-    def _all_traits(self, states: List[ModuleState]) -> List[str]:
-        keys = set()
+    def _all_traits(self, states: list[ModuleState]) -> list[str]:
+        keys: set[str] = set()
         for s in states:
             keys.update(s.traits.keys())
         return sorted(keys)
@@ -72,9 +72,9 @@ class InMemoryDiffusion(DiffusionInterface):
             return 1.0
         return x
 
-    def _merge_notes(self, states: List[ModuleState]) -> List[str]:
+    def _merge_notes(self, states: list[ModuleState]) -> list[str]:
         seen = set()
-        merged: List[str] = []
+        merged: list[str] = []
         for s in states:
             for note in s.notes:
                 if note not in seen:
@@ -84,18 +84,18 @@ class InMemoryDiffusion(DiffusionInterface):
 
     def blend(
         self,
-        states: List[ModuleState],
-        weights: Optional[List[float]] = None,
+        states: list[ModuleState],
+        weights: list[float] | None = None,
         name: str = "diffused",
     ) -> BlendResult:
         if not states:
             raise ValueError("states must be non-empty")
         ws = self._normalize_weights(len(states), weights)
-        traits: Dict[str, float] = {}
+        traits: dict[str, float] = {}
         keys = self._all_traits(states)
         for k in keys:
             acc = 0.0
-            for s, w in zip(states, ws):
+            for s, w in zip(states, ws, strict=False):
                 acc += w * s.traits.get(k, 0.0)
             traits[k] = self._clamp(acc)
         notes = self._merge_notes(states)

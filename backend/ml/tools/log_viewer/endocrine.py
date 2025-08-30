@@ -5,7 +5,6 @@ and releases healing insights when threshold exceeded.
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Dict
 
 STORE_PATH = Path(__file__).parent / "state" / "thyroid.json"
 STORE_PATH.parent.mkdir(exist_ok=True)
@@ -62,7 +61,7 @@ class ThyroidSystem:
     def should_release(self) -> bool:
         return self.charge >= self.threshold
 
-    def release(self) -> Dict:
+    def release(self) -> dict:
         if not self.should_release():
             return {}
         self.charge = 0
@@ -73,7 +72,7 @@ class ThyroidSystem:
             "message": "healing_insight_triggered",
         }
 
-    def status(self) -> Dict:
+    def status(self) -> dict:
         return {
             "charge": self.charge,
             "threshold": self.threshold,

@@ -75,9 +75,7 @@ class WebSocketClient:
                 "channel": channel,
             }
             await self.websocket.send(json.dumps(subscribe_message))
-            print(
-                f"[{self.client_id}] Отправлен запрос на подписку на канал: {channel}"
-            )
+            print(f"[{self.client_id}] Отправлен запрос на подписку на канал: {channel}")
 
             # Получаем ответ подписки
             response = await self.websocket.recv()
@@ -107,9 +105,7 @@ class WebSocketClient:
                 "message": {"text": message, "timestamp": datetime.now().isoformat()},
             }
             await self.websocket.send(json.dumps(msg))
-            print(
-                f"[{self.client_id}] Отправлено сообщение в канал {channel}: {message}"
-            )
+            print(f"[{self.client_id}] Отправлено сообщение в канал {channel}: {message}")
             return True
         except Exception as e:
             print(f"[{self.client_id}] Ошибка отправки сообщения: {e}")
@@ -132,9 +128,7 @@ class WebSocketClient:
                 "channel": channel,
             }
             await self.websocket.send(json.dumps(unsubscribe_message))
-            print(
-                f"[{self.client_id}] Отправлен запрос на отписку от канала: {channel}"
-            )
+            print(f"[{self.client_id}] Отправлен запрос на отписку от канала: {channel}")
 
             # Получаем ответ отписки
             response = await self.websocket.recv()
@@ -214,7 +208,7 @@ async def test_single_client(server_url, metrics_url):
 
     # Отправляем несколько сообщений
     for i in range(3):
-        await client.send_message("test_channel", f"Тестовое сообщение {i+1}")
+        await client.send_message("test_channel", f"Тестовое сообщение {i + 1}")
         await asyncio.sleep(1)
 
     # Отписываемся от канала
@@ -237,7 +231,7 @@ async def test_multiple_clients(server_url, metrics_url, num_clients=5):
 
     print(f"Создание {num_clients} клиентов...")
     for i in range(num_clients):
-        client = WebSocketClient(server_url, f"test_user_{i+1}")
+        client = WebSocketClient(server_url, f"test_user_{i + 1}")
         clients.append(client)
 
         # Подключаем клиентов
@@ -248,11 +242,11 @@ async def test_multiple_clients(server_url, metrics_url, num_clients=5):
             listener_tasks.append(listener_task)
 
             # Подписываемся на каналы
-            channels = [f"test_channel_{j+1}" for j in range(random.randint(1, 3))]
+            channels = [f"test_channel_{j + 1}" for j in range(random.randint(1, 3))]
             for channel in channels:
                 await client.subscribe(channel)
 
-    print(f"Отправка сообщений...")
+    print("Отправка сообщений...")
     # Отправка сообщений от случайных клиентов
     for _ in range(10):
         client = random.choice(clients)
@@ -264,7 +258,7 @@ async def test_multiple_clients(server_url, metrics_url, num_clients=5):
     # Получаем метрики
     print_metrics(metrics_url)
 
-    print(f"Отключение клиентов...")
+    print("Отключение клиентов...")
     # Отключаем клиентов
     for client in clients:
         await client.disconnect()
@@ -285,8 +279,8 @@ async def test_connection_limits(server_url, metrics_url, num_clients=15):
     print(f"Тестирование лимитов подключений с {num_clients} клиентами...")
     for i in range(num_clients):
         # Используем один и тот же IP для провоцирования лимита подключений с одного IP
-        client = WebSocketClient(server_url, f"test_user_{i+1}")
-        print(f"Попытка подключения клиента {i+1}...")
+        client = WebSocketClient(server_url, f"test_user_{i + 1}")
+        print(f"Попытка подключения клиента {i + 1}...")
         success = await client.connect()
         if success:
             clients.append(client)
@@ -318,9 +312,7 @@ async def test_invalid_auth(server_url, metrics_url):
 
 async def main():
     parser = argparse.ArgumentParser(description="Тестирование метрик WebSocket")
-    parser.add_argument(
-        "--server", default="ws://localhost:8000", help="URL WebSocket сервера"
-    )
+    parser.add_argument("--server", default="ws://localhost:8000", help="URL WebSocket сервера")
     parser.add_argument(
         "--metrics",
         default="http://localhost:8000/metrics",

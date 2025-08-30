@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import builtins
+import contextlib
 import json
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, TypedDict
 
-from neo4j import GraphDatabase
+from neo4j import GraphDatabase  # type: ignore[import-not-found]
 
+from liminal.reality_web import RiskEdge
 from .adapters import build_state_from_reince
 from .diffusion import InMemoryDiffusion, ModuleState
 from .reality_web import Edge, Node, SystemBreath
@@ -32,9 +35,7 @@ class RealityWebNeo4j:
         """Initialize Neo4j database with constraints and indices for better performance."""
         with self.driver.session() as session:
             # Constraints for uniqueness
-            session.run(
-                "CREATE CONSTRAINT IF NOT EXISTS FOR (n:Node) REQUIRE n.id IS UNIQUE"
-            )
+            session.run("CREATE CONSTRAINT IF NOT EXISTS FOR (n:Node) REQUIRE n.id IS UNIQUE")
 
             # Indices for faster lookups
             session.run("CREATE INDEX IF NOT EXISTS FOR (n:Node) ON (n.kind)")
@@ -51,21 +52,24 @@ class RealityWebNeo4j:
 
             # Relationship indexes for common filters/ordering
             session.run("CREATE INDEX IF NOT EXISTS FOR ()-[r:RELATES]-() ON (r.kind)")
-            session.run(
-                "CREATE INDEX IF NOT EXISTS FOR ()-[r:RELATES]-() ON (r.weight)"
-            )
+            session.run("CREATE INDEX IF NOT EXISTS FOR ()-[r:RELATES]-() ON (r.weight)")
 
     def close(self) -> None:
         """Close the Neo4j driver connection."""
         self.driver.close()
 
+    def clear(self) -> None:
+        """Clear all nodes and edges from the Neo4j database."""
+        with self.driver.session() as session:
+            session.run("MATCH (n) DETACH DELETE n")
+
     # ---- Node/Edge management ----
     def add_node(
         self,
         kind: str,
-        traits: Optional[Dict[str, float]] = None,
-        notes: Optional[List[str]] = None,
-        id: Optional[str] = None,
+        traits: dict[str, float] | None = None,
+        notes: list[str] | None = None,
+        id: str | None = None,
     ) -> Node:
         """Add a node to Neo4j database and return the created Node object."""
         nid = id or str(uuid.uuid4())
@@ -105,9 +109,7 @@ class RealityWebNeo4j:
             db_notes = json.loads(record["notes"])
 
             # Create Node object from Neo4j data
-            return Node(
-                id=record["id"], kind=record["kind"], traits=db_traits, notes=db_notes
-            )
+            return Node(id=record["id"], kind=record["kind"], traits=db_traits, notes=db_notes)
 
     def add_edge(
         self,
@@ -115,8 +117,8 @@ class RealityWebNeo4j:
         target_id: str,
         kind: str,
         weight: float = 0.0,
-        notes: Optional[List[str]] = None,
-        rationale: Optional[List[str]] = None,
+        notes: list[str] | None = None,
+        rationale: list[str] | None = None,
     ) -> Edge:
         """Add an edge between two nodes in Neo4j and return the created Edge object."""
         weight_clipped = max(0.0, min(1.0, weight))
@@ -195,7 +197,7 @@ class RealityWebNeo4j:
                 rationale=db_rationale,
             )
 
-    def nodes(self) -> List[Node]:
+    def nodes(self) -> list[Node]:
         """Get all nodes from Neo4j database."""
         with self.driver.session() as session:
             result = session.run(
@@ -212,21 +214,19 @@ class RealityWebNeo4j:
                 notes = json.loads(record["notes"]) if record["notes"] else []
 
                 # Create Node object from Neo4j data
-                node = Node(
-                    id=record["id"], kind=record["kind"], traits=traits, notes=notes
-                )
+                node = Node(id=record["id"], kind=record["kind"], traits=traits, notes=notes)
                 nodes.append(node)
 
             return nodes
 
-    def edges(self) -> List[Edge]:
+    def edges(self) -> list[Edge]:
         """Get all edges from Neo4j database."""
         with self.driver.session() as session:
             result = session.run(
                 """
                 MATCH (source:Node)-[r:RELATES]->(target:Node)
-                RETURN source.id as source_id, target.id as target_id, 
-                       r.kind as kind, r.weight as weight, 
+                RETURN source.id as source_id, target.id as target_id,
+                       r.kind as kind, r.weight as weight,
                        r.notes as notes, r.rationale as rationale
                 """
             )
@@ -235,9 +235,7 @@ class RealityWebNeo4j:
             for record in result:
                 # Parse notes and rationale from JSON strings
                 notes = json.loads(record["notes"]) if record["notes"] else []
-                rationale = (
-                    json.loads(record["rationale"]) if record["rationale"] else []
-                )
+                rationale = json.loads(record["rationale"]) if record["rationale"] else []
 
                 # Create Edge object from Neo4j data
                 edge = Edge(
@@ -253,23 +251,19 @@ class RealityWebNeo4j:
             return edges
 
     # ---- Adapters ----
-    def node_from_module_state(self, ms: ModuleState, id: Optional[str] = None) -> Node:
+    def node_from_module_state(self, ms: ModuleState, id: str | None = None) -> Node:
         """Create a node from ModuleState object."""
-        return self.add_node(
-            kind="module_state", traits=ms.traits, notes=ms.notes, id=id
-        )
+        return self.add_node(kind="module_state", traits=ms.traits, notes=ms.notes, id=id)
 
     def node_from_reince(
         self,
         reince: InMemoryREINCE,
         name: str,
         top_n: int = 10,
-        id: Optional[str] = None,
+        id: str | None = None,
     ) -> Node:
         """Create a node from REINCE object using build_state_from_reince adapter."""
-        ms = build_state_from_reince(
-            reince, name=name, top_n=top_n, notes=["from_reince"]
-        )
+        ms = build_state_from_reince(reince, name=name, top_n=top_n, notes=["from_reince"])
         return self.node_from_module_state(ms, id=id)
 
     # ---- Relationships ----
@@ -285,7 +279,7 @@ class RealityWebNeo4j:
 
     def link_merge(
         self, a: Node, b: Node, name: str = "merged", kind: str = "merged_into"
-    ) -> Tuple[Node, Edge]:
+    ) -> tuple[Node, Edge]:
         """Merge two nodes and create relationships to the merged node."""
         # Blend the states and create a new node representing the merge
         br = self._diff.blend(
@@ -296,9 +290,7 @@ class RealityWebNeo4j:
             name=name,
         )
         merged = self.node_from_module_state(br.state)
-        e = self.add_edge(
-            a.id, merged.id, kind=kind, weight=1.0, rationale=br.rationale
-        )
+        e = self.add_edge(a.id, merged.id, kind=kind, weight=1.0, rationale=br.rationale)
         self.add_edge(b.id, merged.id, kind=kind, weight=1.0, rationale=br.rationale)
         return merged, e
 
@@ -312,9 +304,7 @@ class RealityWebNeo4j:
             rationale=["family_bond=parent_child"],
         )
 
-    def top_at_risk(
-        self, limit: int = 5, threshold: float = 0.4
-    ) -> List[Dict[str, Any]]:
+    def top_at_risk(self, limit: int = 5, threshold: float = 0.4) -> list[RiskEdge]:
         """Find top at-risk relationships using Neo4j's processing power.
 
         This is an optimized version that processes the calculation in the database.
@@ -326,10 +316,10 @@ class RealityWebNeo4j:
             return []
 
         # Create a mapping of node_id -> traits for quick access
-        node_traits = {node.id: node.traits for node in nodes}
+        {node.id: node.traits for node in nodes}
 
         # Generate all possible pairs (avoiding duplicates)
-        edges = []
+        edges: list[RiskEdge] = []
         for i in range(len(nodes)):
             for j in range(i + 1, len(nodes)):
                 a = nodes[i]
@@ -400,19 +390,19 @@ class RealityWebNeo4j:
                     ]
 
                     # Generate advice based on threshold
-                    advice = []
+                    advice: list[str] = []
                     if final_score < threshold:
                         advice = ["breathStep", "consider_linkParent", "consider_merge"]
 
                     # Add to result list
                     edges.append(
-                        {
-                            "sourceId": a.id,
-                            "targetId": b.id,
-                            "score": final_score,
-                            "advice": advice,
-                            "rationale": rationale,
-                        }
+                        RiskEdge(
+                            sourceId=a.id,
+                            targetId=b.id,
+                            score=final_score,
+                            advice=advice,
+                            rationale=rationale,
+                        )
                     )
 
         # Sort by score (lowest first) and limit
@@ -421,7 +411,5 @@ class RealityWebNeo4j:
 
     def __del__(self):
         """Ensure driver is closed when object is garbage collected."""
-        try:
+        with contextlib.suppress(builtins.BaseException):
             self.close()
-        except:
-            pass

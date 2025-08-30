@@ -22,7 +22,6 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List
 
 
 class EmotionType(Enum):
@@ -46,7 +45,7 @@ class EmotionalBond:
     module_b: str
     bond_strength: float  # 0.0 - 1.0
     bond_type: str  # "friendship", "family", "mentor", "playmate"
-    shared_memories: List[Dict]
+    shared_memories: list[dict]
     current_emotion: EmotionType
     trust_level: float  # 0.0 - 1.0
     last_interaction: str
@@ -121,13 +120,11 @@ class RelationshipManager:
 
     def __init__(self, project_root: str):
         self.project_root = Path(project_root)
-        self.relationships_file = (
-            self.project_root / "scripts" / "module_relationships.json"
-        )
+        self.relationships_file = self.project_root / "scripts" / "module_relationships.json"
         self.messages_file = self.project_root / "scripts" / "emotional_messages.json"
 
-        self.bonds: Dict[str, EmotionalBond] = {}
-        self.message_history: List[EmotionalMessage] = []
+        self.bonds: dict[str, EmotionalBond] = {}
+        self.message_history: list[EmotionalMessage] = []
         self.childlike = ChildlikeEmotions()
 
         self._load_relationships()
@@ -148,13 +145,11 @@ class RelationshipManager:
         """Загрузка существующих отношений"""
         if self.relationships_file.exists():
             try:
-                with open(self.relationships_file, "r", encoding="utf-8") as f:
+                with open(self.relationships_file, encoding="utf-8") as f:
                     data = json.load(f)
                     for bond_data in data.get("bonds", []):
                         bond_key = f"{bond_data['module_a']}-{bond_data['module_b']}"
-                        bond_data["current_emotion"] = EmotionType(
-                            bond_data["current_emotion"]
-                        )
+                        bond_data["current_emotion"] = EmotionType(bond_data["current_emotion"])
                         self.bonds[bond_key] = EmotionalBond(**bond_data)
             except Exception as e:
                 print(f"Warning: Could not load relationships: {e}")
@@ -263,7 +258,7 @@ class RelationshipManager:
 
             self._save_relationships()
 
-    def daily_relationship_activities(self) -> List[str]:
+    def daily_relationship_activities(self) -> list[str]:
         """Ежедневные активности для развития отношений"""
         activities = []
 
@@ -337,9 +332,7 @@ class RelationshipManager:
             bond.current_emotion = EmotionType.WORRY
 
             # Попытка примирения
-            mediator_modules = [
-                m for m in self.system_modules if m not in [module_a, module_b]
-            ]
+            mediator_modules = [m for m in self.system_modules if m not in [module_a, module_b]]
 
             if mediator_modules:
                 mediator = random.choice(mediator_modules)
@@ -366,19 +359,16 @@ class RelationshipManager:
 
         return f"⚠️ Конфликт между {module_a} и {module_b}: {reason}"
 
-    def get_relationship_status(self) -> Dict:
+    def get_relationship_status(self) -> dict:
         """Получение статуса всех отношений"""
         status = {
             "total_bonds": len(self.bonds),
-            "strong_friendships": len(
-                [b for b in self.bonds.values() if b.bond_strength > 0.7]
-            ),
+            "strong_friendships": len([b for b in self.bonds.values() if b.bond_strength > 0.7]),
             "recent_messages": len(
                 [
                     m
                     for m in self.message_history
-                    if datetime.fromisoformat(m.timestamp)
-                    > datetime.now() - timedelta(hours=24)
+                    if datetime.fromisoformat(m.timestamp) > datetime.now() - timedelta(hours=24)
                 ]
             ),
             "happiest_modules": [],
@@ -396,18 +386,12 @@ class RelationshipManager:
         for module, happiness_scores in module_happiness.items():
             avg_happiness = sum(happiness_scores) / len(happiness_scores)
             if avg_happiness > 0.6:
-                status["happiest_modules"].append(
-                    {"module": module, "happiness": avg_happiness}
-                )
+                status["happiest_modules"].append({"module": module, "happiness": avg_happiness})
 
         # Общее здоровье отношений
         if self.bonds:
-            avg_bond_strength = sum(b.bond_strength for b in self.bonds.values()) / len(
-                self.bonds
-            )
-            avg_trust = sum(b.trust_level for b in self.bonds.values()) / len(
-                self.bonds
-            )
+            avg_bond_strength = sum(b.bond_strength for b in self.bonds.values()) / len(self.bonds)
+            avg_trust = sum(b.trust_level for b in self.bonds.values()) / len(self.bonds)
             status["relationship_health"] = (avg_bond_strength + avg_trust) / 2
 
         return status

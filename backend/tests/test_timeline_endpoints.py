@@ -4,9 +4,11 @@
 
 import os
 import sys
+import types
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
 # Устанавливаем переменную окружения для тестового режима
 os.environ["TESTING"] = "1"
@@ -15,21 +17,16 @@ os.environ["TESTING"] = "1"
 project_root = str(Path(__file__).parent.parent)
 sys.path.insert(0, project_root)
 
-# Монтируем мок-модуль в sys.modules до импорта приложения
-import types
-
 # Импортируем мок-реализацию neo4j_writer
 from tests.mock_neo4j_writer import Neo4jDateTime, Neo4jWriter
 
+# Монтируем мок-модуль в sys.modules до импорта приложения
 mock_neo4j = types.ModuleType("neo4j_writer")
 mock_neo4j.Neo4jWriter = Neo4jWriter
 mock_neo4j.Neo4jDateTime = Neo4jDateTime
 sys.modules["neo4j_writer"] = mock_neo4j
 
 from api import app, memory_timeline
-
-# Теперь можно импортировать приложение
-from fastapi.testclient import TestClient
 
 
 # Фикстура для тестового клиента
@@ -117,17 +114,16 @@ async def test_get_memories_with_filters(client):
 async def test_websocket_updates():
     """Тестирование обновлений через WebSocket."""
     # Используем отдельный клиент для WebSocket теста
-    with TestClient(app) as client:
-        with client.websocket_connect("/ws/timeline") as websocket:
-            # Отправляем новое сообщение
-            response = client.post(
-                "/timeline/memories/",
-                json={"content": "WebSocket тест", "memory_type": "test"},
-            )
-            assert response.status_code == 201
+    with TestClient(app) as client, client.websocket_connect("/ws/timeline") as websocket:
+        # Отправляем новое сообщение
+        response = client.post(
+            "/timeline/memories/",
+            json={"content": "WebSocket тест", "memory_type": "test"},
+        )
+        assert response.status_code == 201
 
-            # Проверяем, что получили обновление через WebSocket
-            data = websocket.receive_json()
-            assert data["event"] == "memory_added"
-            assert data["data"]["content"] == "WebSocket тест"
-            assert data["data"]["type"] == "test"
+        # Проверяем, что получили обновление через WebSocket
+        data = websocket.receive_json()
+        assert data["event"] == "memory_added"
+        assert data["data"]["content"] == "WebSocket тест"
+        assert data["data"]["type"] == "test"

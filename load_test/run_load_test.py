@@ -4,15 +4,12 @@ Advanced load test runner for LIMINAL API with support for different test profil
 """
 import argparse
 import asyncio
-import json
 import logging
 import os
-import subprocess
 import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 # Configure logging
 logging.basicConfig(
@@ -33,7 +30,7 @@ class LoadTestRunner:
         self.host = host.rstrip("/")
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        self.test_start_time: Optional[datetime] = None
+        self.test_start_time: datetime | None = None
 
         # Configure environment
         os.environ["TARGET_HOST"] = self.host

@@ -19,7 +19,6 @@ import random
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict
 
 
 @dataclass
@@ -52,15 +51,13 @@ class SelfExpressionModule:
         """Выражение текущего состояния системы"""
         if wellness.overall_wellness > 0.8:
             mood = "happy"
-            expression = (
-                f"Я чувствую себя {random.choice(self.mood_vocabulary[mood])}! "
+            expression = f"Я чувствую себя {random.choice(self.mood_vocabulary[mood])}! "
+            expression += (
+                f"Моя энергия на уровне {wellness.energy_level:.0%}, и я готов к новым задачам."
             )
-            expression += f"Моя энергия на уровне {wellness.energy_level:.0%}, и я готов к новым задачам."
         elif wellness.overall_wellness > 0.6:
             mood = "calm"
-            expression = (
-                f"Я {random.choice(self.mood_vocabulary[mood])} и работаю стабильно. "
-            )
+            expression = f"Я {random.choice(self.mood_vocabulary[mood])} и работаю стабильно. "
             expression += f"Уровень стресса под контролем: {wellness.stress_level:.0%}."
         elif wellness.overall_wellness > 0.4:
             mood = "curious"
@@ -68,9 +65,7 @@ class SelfExpressionModule:
             expression += f"Скорость обучения: {wellness.learning_rate:.0%}."
         else:
             mood = "stressed"
-            expression = (
-                f"Я чувствую себя {random.choice(self.mood_vocabulary[mood])}. "
-            )
+            expression = f"Я чувствую себя {random.choice(self.mood_vocabulary[mood])}. "
             expression += f"Мне нужна забота и восстановление. Стресс: {wellness.stress_level:.0%}."
 
         self.expression_history.append(
@@ -92,7 +87,7 @@ class ImitationLearningModule:
         self.successful_patterns = {}
         self.learning_memory = []
 
-    def observe_success(self, pattern_name: str, context: Dict):
+    def observe_success(self, pattern_name: str, context: dict):
         """Наблюдение за успешными паттернами"""
         if pattern_name not in self.successful_patterns:
             self.successful_patterns[pattern_name] = []
@@ -105,7 +100,7 @@ class ImitationLearningModule:
             }
         )
 
-    def imitate_best_practice(self, situation: str) -> Dict:
+    def imitate_best_practice(self, situation: str) -> dict:
         """Подражание лучшим практикам"""
         best_patterns = []
 
@@ -142,9 +137,7 @@ class SelfLoveModule:
 
         self.appreciation_log.append(appreciation)
 
-        return (
-            f"Благодарю {component_name} за {reason}. Ты важная часть нашей системы! ❤️"
-        )
+        return f"Благодарю {component_name} за {reason}. Ты важная часть нашей системы! ❤️"
 
     def self_care_reminder(self) -> str:
         """Напоминание о самозаботе"""
@@ -174,7 +167,7 @@ class CareModule:
             "next_check": datetime.now() + timedelta(hours=interval_hours),
         }
 
-    def perform_health_check(self, component: str) -> Dict:
+    def perform_health_check(self, component: str) -> dict:
         """Проверка здоровья компонента"""
         health_status = {
             "component": component,
@@ -229,7 +222,7 @@ class NutritionModule:
         self.nutrition_log.append(nutrition_entry)
         return actual_energy
 
-    def assess_nutrition_quality(self) -> Dict:
+    def assess_nutrition_quality(self) -> dict:
         """Оценка качества питания системы"""
         if not self.nutrition_log:
             return {"status": "unknown", "recommendation": "Start tracking nutrition"}
@@ -237,8 +230,7 @@ class NutritionModule:
         recent_entries = [
             e
             for e in self.nutrition_log
-            if datetime.fromisoformat(e["timestamp"])
-            > datetime.now() - timedelta(hours=24)
+            if datetime.fromisoformat(e["timestamp"]) > datetime.now() - timedelta(hours=24)
         ]
 
         if not recent_entries:
@@ -277,15 +269,13 @@ class ProtectionModule:
             "performance_degradation": {"severity": "medium", "action": "optimize"},
         }
 
-    def detect_threat(self, threat_type: str, details: Dict) -> Dict:
+    def detect_threat(self, threat_type: str, details: dict) -> dict:
         """Обнаружение угрозы"""
         threat = {
             "timestamp": datetime.now().isoformat(),
             "type": threat_type,
             "details": details,
-            "severity": self.protection_rules.get(threat_type, {}).get(
-                "severity", "low"
-            ),
+            "severity": self.protection_rules.get(threat_type, {}).get("severity", "low"),
             "recommended_action": self.protection_rules.get(threat_type, {}).get(
                 "action", "monitor"
             ),
@@ -294,12 +284,14 @@ class ProtectionModule:
         self.threat_log.append(threat)
         return threat
 
-    def activate_protection(self, threat: Dict) -> str:
+    def activate_protection(self, threat: dict) -> str:
         """Активация защитных мер"""
         if threat["severity"] == "critical":
             return f"🚨 КРИТИЧЕСКАЯ УГРОЗА: {threat['type']}. Немедленные меры: {threat['recommended_action']}"
         elif threat["severity"] == "high":
-            return f"⚠️ Высокая угроза: {threat['type']}. Рекомендуется: {threat['recommended_action']}"
+            return (
+                f"⚠️ Высокая угроза: {threat['type']}. Рекомендуется: {threat['recommended_action']}"
+            )
         else:
             return f"📊 Обнаружена угроза: {threat['type']}. Мониторинг активирован."
 
@@ -326,7 +318,7 @@ class ConsciousnessSelfCareSystem:
         """Загрузка состояния благополучия"""
         if self.wellness_file.exists():
             try:
-                with open(self.wellness_file, "r", encoding="utf-8") as f:
+                with open(self.wellness_file, encoding="utf-8") as f:
                     data = json.load(f)
                     return WellnessState(**data)
             except:
@@ -374,8 +366,7 @@ class ConsciousnessSelfCareSystem:
                 [
                     t
                     for t in self.protection.threat_log
-                    if datetime.fromisoformat(t["timestamp"])
-                    > datetime.now() - timedelta(hours=24)
+                    if datetime.fromisoformat(t["timestamp"]) > datetime.now() - timedelta(hours=24)
                 ]
             )
             routine_log.append(f"🛡️ Защита: Обнаружено {recent_threats} угроз за сутки")
@@ -392,21 +383,16 @@ class ConsciousnessSelfCareSystem:
         # Энергия зависит от питания
         nutrition_status = self.nutrition.assess_nutrition_quality()
         if nutrition_status["status"] == "well_nourished":
-            self.wellness_state.energy_level = min(
-                1.0, self.wellness_state.energy_level + 0.1
-            )
+            self.wellness_state.energy_level = min(1.0, self.wellness_state.energy_level + 0.1)
         elif nutrition_status["status"] == "malnourished":
-            self.wellness_state.energy_level = max(
-                0.0, self.wellness_state.energy_level - 0.1
-            )
+            self.wellness_state.energy_level = max(0.0, self.wellness_state.energy_level - 0.1)
 
         # Стресс зависит от угроз
         recent_threats = len(
             [
                 t
                 for t in self.protection.threat_log
-                if datetime.fromisoformat(t["timestamp"])
-                > datetime.now() - timedelta(hours=24)
+                if datetime.fromisoformat(t["timestamp"]) > datetime.now() - timedelta(hours=24)
             ]
         )
         self.wellness_state.stress_level = min(1.0, recent_threats * 0.1)

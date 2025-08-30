@@ -3,10 +3,9 @@
 """
 
 import asyncio
-import json
 import logging
 import random
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from locust import between, task
 
@@ -26,8 +25,8 @@ class WebSocketScenario(BaseScenario):
 
     def __init__(self, parent):
         super().__init__(parent)
-        self.ws_manager: Optional[WebSocketManager] = None
-        self.memory_ids: List[str] = []
+        self.ws_manager: WebSocketManager | None = None
+        self.memory_ids: list[str] = []
         self.messages_received: int = 0
 
     async def setup(self):
@@ -69,7 +68,7 @@ class WebSocketScenario(BaseScenario):
                 max(0, self.user.environment.runner.user_count - 1)
             )
 
-    async def _handle_websocket_message(self, message: Dict[str, Any], manager):
+    async def _handle_websocket_message(self, message: dict[str, Any], manager):
         """Обработчик входящих WebSocket сообщений."""
         self.messages_received += 1
 

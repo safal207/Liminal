@@ -3,6 +3,7 @@
 Расширенная мок-реализация OpenAI API для Resonance Liminal ML
 Используется для разработки и тестирования без реальной библиотеки OpenAI
 """
+
 import asyncio
 import hashlib
 import json
@@ -60,7 +61,7 @@ class AsyncOpenAI:
         try:
             filename = f"{MOCK_RESPONSES_DIR}/{cache_key}.json"
             if os.path.exists(filename):
-                with open(filename, "r", encoding="utf-8") as f:
+                with open(filename, encoding="utf-8") as f:
                     data = json.load(f)
                 logger.debug(f"Загружен мок-ответ из файла: {filename}")
                 return data
@@ -71,30 +72,19 @@ class AsyncOpenAI:
     class chat:
         class completions:
             @classmethod
-            async def create(
-                cls, model=None, messages=None, max_tokens=None, temperature=None
-            ):
+            async def create(cls, model=None, messages=None, max_tokens=None, temperature=None):
                 """Мок-реализация OpenAI API для генерации ответов"""
                 # Симулируем задержку для реалистичности
                 await asyncio.sleep(0.5)
 
-                logger.info(
-                    f"Мок-вызов OpenAI API, модель: {model}, max_tokens: {max_tokens}"
-                )
+                logger.info(f"Мок-вызов OpenAI API, модель: {model}, max_tokens: {max_tokens}")
 
                 # Получаем текст запроса для генерации соответствующего мок-ответа
-                request_text = (
-                    messages[-1]["content"] if messages and len(messages) > 0 else ""
-                )
+                request_text = messages[-1]["content"] if messages and len(messages) > 0 else ""
 
                 # Паттерны для различных типов предсказаний
-                is_anomaly = (
-                    "anomaly" in request_text.lower()
-                    or "аномал" in request_text.lower()
-                )
-                is_fraud = (
-                    "fraud" in request_text.lower() or "мошенни" in request_text.lower()
-                )
+                is_anomaly = "anomaly" in request_text.lower() or "аномал" in request_text.lower()
+                is_fraud = "fraud" in request_text.lower() or "мошенни" in request_text.lower()
                 is_performance = (
                     "performance" in request_text.lower()
                     or "производительн" in request_text.lower()

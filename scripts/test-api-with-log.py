@@ -7,6 +7,7 @@
 как в режиме реального API, так и в режиме мока,
 с подробным логированием в файл для диагностики.
 """
+
 import asyncio
 import json
 import os
@@ -93,10 +94,8 @@ async def test_api_adapter():
         import openai
 
         log(f"✓ OpenAI библиотека установлена (версия: {openai.__version__})")
-        openai_installed = True
     except ImportError:
         log("✗ OpenAI библиотека не установлена")
-        openai_installed = False
 
     # 4. Импортируем универсальный адаптер
     log("\n--- Импорт универсального адаптера ---")
@@ -111,9 +110,7 @@ async def test_api_adapter():
         )
 
         log("✓ Универсальный адаптер успешно импортирован")
-        log(
-            f"Параметры адаптера: MOCK_ONLY={MOCK_ONLY}, FALLBACK_TO_LOCAL={FALLBACK_TO_LOCAL}"
-        )
+        log(f"Параметры адаптера: MOCK_ONLY={MOCK_ONLY}, FALLBACK_TO_LOCAL={FALLBACK_TO_LOCAL}")
 
         # 5. Инициализация клиента
         log("\n--- Инициализация клиента ---")
@@ -178,8 +175,7 @@ async def test_api_adapter():
 
                 # Проверяем наличие ключевых полей
                 if all(
-                    k in content
-                    for k in ["analysis", "recommendations", "severity", "confidence"]
+                    k in content for k in ["analysis", "recommendations", "severity", "confidence"]
                 ):
                     log("✓ Ответ содержит все необходимые поля")
                 else:
@@ -206,13 +202,9 @@ async def test_api_adapter():
             elapsed = time.time() - start_time
 
             if cache_response.cached:
-                log(
-                    f"✓ Кэширование работает! Повторный запрос выполнен за {elapsed:.2f} сек"
-                )
+                log(f"✓ Кэширование работает! Повторный запрос выполнен за {elapsed:.2f} сек")
             else:
-                log(
-                    f"⚠ Кэширование не сработало. Повторный запрос выполнен за {elapsed:.2f} сек"
-                )
+                log(f"⚠ Кэширование не сработало. Повторный запрос выполнен за {elapsed:.2f} сек")
 
             # Проверяем совпадение ответов
             if cache_response.content == response.content:

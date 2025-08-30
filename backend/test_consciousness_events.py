@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Consciousness State Transition Test Script
@@ -15,7 +14,6 @@ import datetime
 import random
 import time
 from dataclasses import dataclass
-from typing import Dict, Optional, Tuple, Union
 
 import requests
 
@@ -34,7 +32,7 @@ class ConsciousnessState:
     emotional_charge: float
     color_class: str = ""
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Чистая функция для преобразования в словарь"""
         return {
             "id": self.id,
@@ -58,9 +56,9 @@ class StateTransition:
     trigger: str
     description: str
     insight: str
-    timestamp: Optional[str] = None
+    timestamp: str | None = None
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Чистая функция для преобразования в словарь"""
         return {
             "source": self.source,
@@ -174,9 +172,7 @@ class ConsciousnessTransitionGenerator:
     ]
 
     DEFAULT_URL = "http://localhost:8080/events"  # URL для отправки событий
-    GRAPH_URL = (
-        "http://localhost:8080/api/consciousness/graph"  # URL для получения графа
-    )
+    GRAPH_URL = "http://localhost:8080/api/consciousness/graph"  # URL для получения графа
 
     def __init__(self, ws_relay_url: str = "http://localhost:8080"):
         """Инициализация генератора с URL WebSocket relay"""
@@ -224,7 +220,7 @@ class ConsciousnessTransitionGenerator:
                 if t.source == "QUESTION_SPACE" and t.target == "TRANSITION_LIMINAL"
             )
 
-    def send_transition_event(self, transition: StateTransition) -> Tuple[bool, str]:
+    def send_transition_event(self, transition: StateTransition) -> tuple[bool, str]:
         """Отправка события перехода на WebSocket relay"""
         event_data = transition.to_dict()
 
@@ -249,7 +245,7 @@ class ConsciousnessTransitionGenerator:
         except Exception as e:
             return False, f"Ошибка при отправке события: {str(e)}"
 
-    def get_consciousness_graph(self) -> Tuple[bool, Union[Dict, str]]:
+    def get_consciousness_graph(self) -> tuple[bool, dict | str]:
         """Получение текущего графа состояний из Neo4j через WebSocket relay"""
         try:
             response = requests.get(self.api_graph_endpoint)
@@ -266,9 +262,7 @@ class ConsciousnessTransitionGenerator:
         self, count: int = 5, interval: float = 2.0, philosophical: bool = True
     ) -> None:
         """Запуск симуляции переходов сознания"""
-        print(
-            f"Запуск симуляции {count} переходов сознания с интервалом {interval} сек."
-        )
+        print(f"Запуск симуляции {count} переходов сознания с интервалом {interval} сек.")
         print(f"{'Философский режим' if philosophical else 'Случайный режим'}")
         print("-" * 60)
 
@@ -281,7 +275,7 @@ class ConsciousnessTransitionGenerator:
             success, message = self.send_transition_event(transition)
             timestamp = datetime.datetime.now().strftime("%H:%M:%S")
 
-            print(f"[{timestamp}] [{i+1}/{count}] {message}")
+            print(f"[{timestamp}] [{i + 1}/{count}] {message}")
 
             if not success:
                 print(f"ОШИБКА: {message}")
@@ -295,15 +289,11 @@ class ConsciousnessTransitionGenerator:
 
 def main():
     """Основная функция для запуска из командной строки"""
-    parser = argparse.ArgumentParser(
-        description="Тестирование переходов состояний сознания"
-    )
+    parser = argparse.ArgumentParser(description="Тестирование переходов состояний сознания")
     parser.add_argument(
         "--url", default="http://localhost:8080", help="URL WebSocket relay сервера"
     )
-    parser.add_argument(
-        "--count", type=int, default=5, help="Количество переходов для симуляции"
-    )
+    parser.add_argument("--count", type=int, default=5, help="Количество переходов для симуляции")
     parser.add_argument(
         "--interval", type=float, default=2.0, help="Интервал между переходами (сек)"
     )
@@ -323,7 +313,7 @@ def main():
     if args.graph:
         success, graph_data = generator.get_consciousness_graph()
         if success:
-            print(f"Получен граф состояний сознания:")
+            print("Получен граф состояний сознания:")
             print(f"Узлы: {len(graph_data['nodes'])}")
             print(f"Связи: {len(graph_data['links'])}")
             for node in graph_data["nodes"]:

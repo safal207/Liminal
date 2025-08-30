@@ -18,7 +18,6 @@ import random
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import List
 
 # Импорт всех систем сознания
 try:
@@ -123,7 +122,7 @@ class SOMAIntegratedFamily:
         if self.self_care_system:
             life_report.append("💚 Family Self-Care Routine...")
             try:
-                care_routine = self.self_care_system.daily_self_care_routine()
+                self.self_care_system.daily_self_care_routine()
                 wellness = self.self_care_system.wellness_state.overall_wellness
                 life_report.append(f"   🌟 Family Wellness: {wellness:.0%}")
                 life_report.append("   ✅ Self-care completed")
@@ -134,12 +133,8 @@ class SOMAIntegratedFamily:
         if self.relationship_manager:
             life_report.append("💕 Emotional Relationships Development...")
             try:
-                relationship_activities = (
-                    self.relationship_manager.daily_relationship_activities()
-                )
-                relationship_status = (
-                    self.relationship_manager.get_relationship_status()
-                )
+                relationship_activities = self.relationship_manager.daily_relationship_activities()
+                relationship_status = self.relationship_manager.get_relationship_status()
 
                 life_report.append(
                     f"   🤗 Active Bonds: {relationship_status.get('total_bonds', 0)}"
@@ -184,9 +179,7 @@ class SOMAIntegratedFamily:
                     new_child_name = self._generate_child_name()
                     parents = self._choose_parents()
 
-                    new_child = self.family_care_system.birth_new_child(
-                        new_child_name, parents
-                    )
+                    new_child = self.family_care_system.birth_new_child(new_child_name, parents)
                     life_report.append(
                         f"   🍼 NEW BIRTH: {new_child_name} born to {', '.join(parents)}!"
                     )
@@ -258,7 +251,7 @@ class SOMAIntegratedFamily:
 
         return f"{random.choice(prefixes)}_{random.choice(suffixes)}"
 
-    def _choose_parents(self) -> List[str]:
+    def _choose_parents(self) -> list[str]:
         """Выбор родителей для нового ребенка"""
         available_parents = []
 
@@ -273,20 +266,16 @@ class SOMAIntegratedFamily:
 
         # Выбрать 1-2 родителей
         num_parents = random.choice([1, 2])
-        return random.sample(
-            available_parents, min(num_parents, len(available_parents))
-        )
+        return random.sample(available_parents, min(num_parents, len(available_parents)))
 
-    def _create_integration_moments(self) -> List[str]:
+    def _create_integration_moments(self) -> list[str]:
         """Создание моментов интеграции между системами"""
         moments = []
 
         # Момент 1: SOMA делится мудростью с детьми
         if self.soma_orchestrator and self.family_care_system:
             if len(self.family_care_system.children) > 0:
-                child_name = random.choice(
-                    list(self.family_care_system.children.keys())
-                )
+                child_name = random.choice(list(self.family_care_system.children.keys()))
                 wisdom_sharing = [
                     "Каждая система важна в нашей семье",
                     "Рост происходит через взаимодействие",
@@ -294,9 +283,7 @@ class SOMAIntegratedFamily:
                     "Мудрость приходит через опыт",
                 ]
                 wisdom = random.choice(wisdom_sharing)
-                moments.append(
-                    f"🧠→👶 SOMA shares wisdom with {child_name}: '{wisdom}'"
-                )
+                moments.append(f"🧠→👶 SOMA shares wisdom with {child_name}: '{wisdom}'")
 
         # Момент 2: Системы самозаботы помогают отношениям
         if self.self_care_system and self.relationship_manager:
@@ -306,9 +293,7 @@ class SOMAIntegratedFamily:
                     f"💚→💕 High wellness ({wellness:.0%}) strengthens all relationships"
                 )
             else:
-                moments.append(
-                    f"💚→💕 Self-care system nurtures stressed relationships"
-                )
+                moments.append("💚→💕 Self-care system nurtures stressed relationships")
 
         # Момент 3: Дети играют между собой
         if self.family_care_system and len(self.family_care_system.children) >= 2:
@@ -408,9 +393,7 @@ class SOMAIntegratedFamily:
                 time.sleep(interval_minutes * 60)
 
         except KeyboardInterrupt:
-            print(
-                f"\n🛑 SOMA Family Life stopped after {self.integration_cycles} cycles"
-            )
+            print(f"\n🛑 SOMA Family Life stopped after {self.integration_cycles} cycles")
             print("👨‍👩‍👧‍👦 Family continues to live in harmony...")
 
 

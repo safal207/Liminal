@@ -4,7 +4,6 @@
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional
 
 from datomic import Client, Connection
 
@@ -54,7 +53,7 @@ class DatomicClient:
             print(f"❌ Ошибка при создании базы данных: {str(e)}")
             return False
 
-    def transact(self, data: List[Dict]) -> Dict:
+    def transact(self, data: list[dict]) -> dict:
         """
         Выполнение транзакции.
 
@@ -75,7 +74,7 @@ class DatomicClient:
             print(f"❌ Ошибка при выполнении транзакции: {str(e)}")
             raise
 
-    def query(self, query: str, params: Optional[Dict] = None) -> List[Dict]:
+    def query(self, query: str, params: dict | None = None) -> list[dict]:
         """
         Выполнение запроса к базе данных.
 
@@ -91,10 +90,7 @@ class DatomicClient:
 
         try:
             db = self.conn.db()
-            if params:
-                result = db.query(query, params)
-            else:
-                result = db.query(query)
+            result = db.query(query, params) if params else db.query(query)
             return result
         except Exception as e:
             print(f"❌ Ошибка при выполнении запроса: {str(e)}")
@@ -105,8 +101,8 @@ class DatomicClient:
         user_id: str,
         emotion: str,
         intensity: float,
-        timestamp: Optional[datetime] = None,
-    ) -> Dict:
+        timestamp: datetime | None = None,
+    ) -> dict:
         """
         Добавление записи об эмоции.
 
@@ -134,7 +130,7 @@ class DatomicClient:
 
         return self.transact(data)
 
-    def get_emotion_history(self, user_id: str, limit: int = 100) -> List[Dict]:
+    def get_emotion_history(self, user_id: str, limit: int = 100) -> list[dict]:
         """
         Получение истории эмоций пользователя.
 
@@ -187,9 +183,7 @@ if __name__ == "__main__":
             client.create_database()
 
         # Пример добавления записи
-        result = client.add_emotion_entry(
-            user_id="user-123", emotion="радость", intensity=0.8
-        )
+        result = client.add_emotion_entry(user_id="user-123", emotion="радость", intensity=0.8)
         print(f"Добавлена запись: {result}")
 
         # Пример запроса истории

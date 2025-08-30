@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Philosophy First: Тест Broadcasting состояний сознания через WebSocket
@@ -67,9 +66,7 @@ def create_consciousness_event(source_state, target_state, user_id="philosopher_
 
 def send_event(event):
     """Отправка события в Go WebSocket relay"""
-    print_styled(
-        "Событие", f"Отправка {event['source_state']} → {event['target_state']}"
-    )
+    print_styled("Событие", f"Отправка {event['source_state']} → {event['target_state']}")
 
     try:
         response = requests.post(WS_RELAY_URL, json=event)
@@ -102,9 +99,7 @@ def test_philosophy_transitions():
     print_styled("Начало", "Тестирование Philosophy First переходов сознания", "bold")
 
     for i, (source, target) in enumerate(transitions):
-        print_styled(
-            "Переход", f"{i+1}/{len(transitions)}: {source} → {target}", "info"
-        )
+        print_styled("Переход", f"{i + 1}/{len(transitions)}: {source} → {target}", "info")
 
         # Создание и отправка события
         event = create_consciousness_event(source, target)
@@ -132,9 +127,7 @@ def test_philosophy_transitions():
 def test_api_endpoints():
     """Тестирование всех API эндпоинтов Go WebSocket relay"""
     endpoints = {
-        "consciousness_graph": WS_RELAY_URL.replace(
-            "/events", "/api/consciousness/graph"
-        ),
+        "consciousness_graph": WS_RELAY_URL.replace("/events", "/api/consciousness/graph"),
         "consciousness_api": WS_RELAY_URL.replace("/events", "/api/consciousness"),
         "events_api": WS_RELAY_URL,
         "root": WS_RELAY_URL.replace("/events", "/"),
@@ -142,7 +135,7 @@ def test_api_endpoints():
 
     print_styled("API Tests", "Проверка всех API эндпоинтов", "bold")
 
-    for name, url in endpoints.items():
+    for _name, url in endpoints.items():
         try:
             print_styled("Запрос", f"GET {url}", "info")
             response = requests.get(url)
@@ -155,16 +148,13 @@ def test_api_endpoints():
                         data = response.json()
                         print_styled(
                             "JSON",
-                            json.dumps(data, indent=2, ensure_ascii=False)[:500]
-                            + "...",
+                            json.dumps(data, indent=2, ensure_ascii=False)[:500] + "...",
                             "success",
                         )
                     else:
                         print_styled("Текст", response.text[:200] + "...", "success")
                 except Exception as e:
-                    print_styled(
-                        "Парсинг", f"Не удалось обработать ответ: {e}", "warning"
-                    )
+                    print_styled("Парсинг", f"Не удалось обработать ответ: {e}", "warning")
             else:
                 print_styled(
                     "Внимание",
@@ -183,16 +173,12 @@ if __name__ == "__main__":
 
     # Проверка доступности Go WebSocket relay через тестирование всех эндпоинтов
     try:
-        print_styled(
-            "Диагностика", "Тестирование всех API эндпоинтов Go WebSocket relay", "info"
-        )
+        print_styled("Диагностика", "Тестирование всех API эндпоинтов Go WebSocket relay", "info")
         test_api_endpoints()
 
         # Прямая отправка запроса с детальным выводом
         print_styled("Диагностика", "Детальный запрос к API графа сознания", "info")
-        response = requests.get(
-            WS_RELAY_URL.replace("/events", "/api/consciousness/graph")
-        )
+        response = requests.get(WS_RELAY_URL.replace("/events", "/api/consciousness/graph"))
 
         print(f"Status Code: {response.status_code}")
         print(f"Headers: {dict(response.headers)}")
@@ -200,9 +186,7 @@ if __name__ == "__main__":
 
         # Если API работает, запускаем тест философских переходов
         if response.status_code == 200:
-            print_styled(
-                "Готово", "Go WebSocket relay доступен, запускаем тест", "success"
-            )
+            print_styled("Готово", "Go WebSocket relay доступен, запускаем тест", "success")
             test_philosophy_transitions()
         else:
             print_styled(
@@ -221,7 +205,5 @@ if __name__ == "__main__":
         try:
             test_philosophy_transitions()
         except Exception as e2:
-            print_styled(
-                "Критическая ошибка", f"Не удалось запустить тест: {e2}", "error"
-            )
+            print_styled("Критическая ошибка", f"Не удалось запустить тест: {e2}", "error")
             traceback.print_exc()

@@ -8,7 +8,7 @@ import os
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -27,13 +27,11 @@ class ClaudeAnalysisRequest:
     """Запрос на анализ для Claude."""
 
     type: str  # "safety", "ethics", "detailed_reasoning", "security", "consensus"
-    data: Dict[str, Any]
-    context: Optional[Dict[str, Any]] = None
+    data: dict[str, Any]
+    context: dict[str, Any] | None = None
     priority: str = "normal"  # "low", "normal", "high", "critical"
-    model: str = (
-        "claude-3-sonnet-20240229"  # claude-3-opus, claude-3-sonnet, claude-3-haiku
-    )
-    timestamp: Optional[str] = None
+    model: str = "claude-3-sonnet-20240229"  # claude-3-opus, claude-3-sonnet, claude-3-haiku
+    timestamp: str | None = None
 
 
 @dataclass
@@ -41,15 +39,15 @@ class ClaudeAnalysisResponse:
     """Ответ от Claude анализа."""
 
     analysis: str
-    reasoning: List[str]  # Пошаговое рассуждение
+    reasoning: list[str]  # Пошаговое рассуждение
     safety_assessment: str  # "safe", "caution", "unsafe"
-    ethical_considerations: List[str]
-    recommendations: List[str]
+    ethical_considerations: list[str]
+    recommendations: list[str]
     confidence: float
     model_used: str
-    constitutional_ai_notes: List[str]  # Constitutional AI insights
-    harm_assessment: Dict[str, Any]
-    follow_up_questions: List[str]
+    constitutional_ai_notes: list[str]  # Constitutional AI insights
+    harm_assessment: dict[str, Any]
+    follow_up_questions: list[str]
 
 
 class ClaudeService:
@@ -58,7 +56,7 @@ class ClaudeService:
     Специализируется на безопасном AI анализе, этических решениях и детальном reasoning.
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         self.api_key = api_key or os.getenv("ANTHROPIC_API_KEY")
         self.client = None
 
@@ -119,7 +117,7 @@ class ClaudeService:
         except Exception as e:
             logger.error(f"Ошибка инициализации Claude клиента: {e}")
 
-    def _build_constitutional_principles(self) -> List[str]:
+    def _build_constitutional_principles(self) -> list[str]:
         """Строит Constitutional AI принципы для Claude."""
         return [
             "Анализируй безопасность и потенциальные риски каждого ML-решения",
@@ -172,10 +170,7 @@ CONSTITUTIONAL AI ПРИНЦИПЫ:
 
     def _select_optimal_model(self, task_type: str, complexity: str = "medium") -> str:
         """Выбирает оптимальную модель Claude для задачи."""
-        if (
-            task_type in ["safety", "ethics", "detailed_reasoning"]
-            and complexity == "high"
-        ):
+        if task_type in ["safety", "ethics", "detailed_reasoning"] and complexity == "high":
             return "claude-3-opus-20240229"  # Самая мощная для сложных задач
         elif task_type in ["security", "consensus"] or complexity == "medium":
             return "claude-3-sonnet-20240229"  # Сбалансированная
@@ -183,7 +178,7 @@ CONSTITUTIONAL AI ПРИНЦИПЫ:
             return "claude-3-haiku-20240307"  # Быстрая для простых задач
 
     async def analyze_ml_safety(
-        self, ml_decision: Dict[str, Any], context: Optional[Dict[str, Any]] = None
+        self, ml_decision: dict[str, Any], context: dict[str, Any] | None = None
     ) -> ClaudeAnalysisResponse:
         """
         Анализирует безопасность ML-решения с Constitutional AI подходом.
@@ -208,9 +203,9 @@ CONSTITUTIONAL AI ПРИНЦИПЫ:
 
     async def analyze_ethical_implications(
         self,
-        automated_action: Dict[str, Any],
-        affected_users: List[str],
-        context: Optional[Dict[str, Any]] = None,
+        automated_action: dict[str, Any],
+        affected_users: list[str],
+        context: dict[str, Any] | None = None,
     ) -> ClaudeAnalysisResponse:
         """
         Анализирует этические аспекты автоматизированного действия.
@@ -240,9 +235,9 @@ CONSTITUTIONAL AI ПРИНЦИПЫ:
 
     async def detailed_reasoning_analysis(
         self,
-        complex_problem: Dict[str, Any],
-        available_data: Dict[str, Any],
-        constraints: List[str],
+        complex_problem: dict[str, Any],
+        available_data: dict[str, Any],
+        constraints: list[str],
     ) -> ClaudeAnalysisResponse:
         """
         Выполняет детальный пошаговый анализ сложной проблемы.
@@ -267,15 +262,13 @@ CONSTITUTIONAL AI ПРИНЦИПЫ:
         )
 
         prompt = self._build_detailed_reasoning_prompt(request)
-        return await self._get_claude_analysis(
-            prompt, "detailed_reasoning", request.model
-        )
+        return await self._get_claude_analysis(prompt, "detailed_reasoning", request.model)
 
     async def security_threat_analysis(
         self,
-        threat_indicators: Dict[str, Any],
-        system_state: Dict[str, Any],
-        historical_data: Optional[List[Dict]] = None,
+        threat_indicators: dict[str, Any],
+        system_state: dict[str, Any],
+        historical_data: list[dict] | None = None,
     ) -> ClaudeAnalysisResponse:
         """
         Анализирует угрозы безопасности и рекомендует меры защиты.
@@ -305,8 +298,8 @@ CONSTITUTIONAL AI ПРИНЦИПЫ:
     async def consensus_analysis_with_openai(
         self,
         openai_analysis: str,
-        problem_data: Dict[str, Any],
-        context: Dict[str, Any],
+        problem_data: dict[str, Any],
+        context: dict[str, Any],
     ) -> ClaudeAnalysisResponse:
         """
         Выполняет консенсус-анализ с результатами OpenAI для критических решений.
@@ -564,9 +557,7 @@ ML РЕШЕНИЕ:
                 recommendations=response_data.get("recommendations", []),
                 confidence=response_data.get("confidence", 0.8),
                 model_used=model,
-                constitutional_ai_notes=response_data.get(
-                    "constitutional_ai_notes", []
-                ),
+                constitutional_ai_notes=response_data.get("constitutional_ai_notes", []),
                 harm_assessment=response_data.get("harm_assessment", {}),
                 follow_up_questions=response_data.get("follow_up_questions", []),
             )
@@ -614,7 +605,7 @@ ML РЕШЕНИЕ:
             logger.error(f"Ошибка вызова Claude API: {e}")
             raise
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Проверка здоровья Claude сервиса."""
         if not self.client:
             return {
@@ -649,7 +640,7 @@ ML РЕШЕНИЕ:
                 "api_key_configured": bool(self.api_key),
             }
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """Возвращает информацию о доступных моделях Claude."""
         return {
             "models": self.models,

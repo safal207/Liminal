@@ -5,14 +5,10 @@ Runs tests, collects metrics, and generates a performance report.
 """
 import argparse
 import json
-import os
-import shutil
 import subprocess
 import sys
-import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -299,7 +295,7 @@ def main():
     analyzer.generate_plots(metrics)
     report_file = analyzer.generate_report()
 
-    print(f"\n🎉 Performance analysis completed!")
+    print("\n🎉 Performance analysis completed!")
     print(f"📊 View the report at: file://{report_file.absolute()}")
 
     return 0

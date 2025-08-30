@@ -5,9 +5,7 @@ import asyncio
 import json
 import logging
 import random
-import time
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
 
 
 # Mock dependencies для прототипа
@@ -22,7 +20,7 @@ class MockRedis:
         if key.startswith("biometric:"):
             await self.publish("biometric_stream", value)
 
-    async def get(self, key: str) -> Optional[str]:
+    async def get(self, key: str) -> str | None:
         return self.data.get(key)
 
     async def publish(self, channel: str, message: str):
@@ -41,7 +39,7 @@ class MockInfluxDB:
         self.points = []
 
     async def write_point(
-        self, measurement: str, tags: Dict, fields: Dict, timestamp: datetime
+        self, measurement: str, tags: dict, fields: dict, timestamp: datetime
     ):
         point = {
             "measurement": measurement,
@@ -52,7 +50,7 @@ class MockInfluxDB:
         self.points.append(point)
         print(f"📊 InfluxDB: {measurement} - {fields}")
 
-    async def query_recent(self, measurement: str, limit: int = 10) -> List[Dict]:
+    async def query_recent(self, measurement: str, limit: int = 10) -> list[dict]:
         # Возвращаем последние точки для измерения
         recent = [p for p in self.points if p["measurement"] == measurement][-limit:]
         return recent
@@ -63,14 +61,14 @@ class MockNeo4j:
         self.nodes = {}
         self.relationships = []
 
-    async def create_node(self, label: str, properties: Dict):
+    async def create_node(self, label: str, properties: dict):
         node_id = f"{label}_{len(self.nodes)}"
         self.nodes[node_id] = {"label": label, "properties": properties}
         print(f"🧠 Neo4j: Создан узел {label} - {properties}")
         return node_id
 
     async def create_relationship(
-        self, from_node: str, to_node: str, rel_type: str, properties: Dict = None
+        self, from_node: str, to_node: str, rel_type: str, properties: dict = None
     ):
         rel = {
             "from": from_node,
@@ -87,9 +85,9 @@ class MockDatomic:
         self.facts = []
         self.transaction_id = 0
 
-    async def transact(self, facts: List[Dict]):
+    async def transact(self, facts: list[dict]):
         self.transaction_id += 1
-        timestamp = datetime.now(timezone.utc)
+        timestamp = datetime.now(UTC)
 
         for fact in facts:
             fact["tx_id"] = self.transaction_id
@@ -98,7 +96,7 @@ class MockDatomic:
 
         print(f"🕰️ Datomic: Транзакция {self.transaction_id} - {len(facts)} фактов")
 
-    async def query_entity(self, entity_id: str) -> List[Dict]:
+    async def query_entity(self, entity_id: str) -> list[dict]:
         return [f for f in self.facts if f.get("entity") == entity_id]
 
 
@@ -117,7 +115,7 @@ class BiometricService:
         self, user_id: str, heart_rate: int, timestamp: datetime = None
     ):
         if timestamp is None:
-            timestamp = datetime.now(timezone.utc)
+            timestamp = datetime.now(UTC)
 
         # Сохраняем в Redis для быстрого доступа
         session_key = f"biometric:{user_id}:current"
@@ -179,7 +177,7 @@ class PythiaAI:
         self.datomic = datomic
         self.pattern_threshold = 3  # Минимум точек для паттерна
 
-    async def analyze_biometric_patterns(self, user_id: str) -> List[Dict]:
+    async def analyze_biometric_patterns(self, user_id: str) -> list[dict]:
         # Получаем последние биометрические данные
         recent_bio = await self.influx.query_recent("biometrics", limit=10)
         recent_psych = await self.influx.query_recent("psychological_state", limit=10)
@@ -207,8 +205,8 @@ class PythiaAI:
         return insights
 
     async def _analyze_heartrate_trend(
-        self, user_id: str, heart_rates: List[int]
-    ) -> Optional[Dict]:
+        self, user_id: str, heart_rates: list[int]
+    ) -> dict | None:
         if len(heart_rates) < 3:
             return None
 
@@ -234,8 +232,8 @@ class PythiaAI:
         return None
 
     async def _analyze_state_pattern(
-        self, user_id: str, states: List[str]
-    ) -> Optional[Dict]:
+        self, user_id: str, states: list[str]
+    ) -> dict | None:
         # Анализ паттернов состояний
         if len(states) < 3:
             return None
@@ -259,7 +257,7 @@ class PythiaAI:
 
         return None
 
-    async def _store_insight(self, user_id: str, insight: Dict):
+    async def _store_insight(self, user_id: str, insight: dict):
         # Создаем узел инсайта в Neo4j
         insight_node = await self.neo4j.create_node(
             "Insight",
@@ -267,7 +265,7 @@ class PythiaAI:
                 "type": insight["type"],
                 "message": insight["message"],
                 "confidence": insight["confidence"],
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )
 
@@ -277,7 +275,7 @@ class PythiaAI:
             user_node,
             insight_node,
             "HAS_INSIGHT",
-            {"created_at": datetime.now(timezone.utc).isoformat()},
+            {"created_at": datetime.now(UTC).isoformat()},
         )
 
         # Сохраняем в Datomic для временного анализа
@@ -315,8 +313,8 @@ class MorpheusNavigator:
         self.datomic = datomic
 
     async def suggest_transition(
-        self, user_id: str, current_insights: List[Dict]
-    ) -> Optional[Dict]:
+        self, user_id: str, current_insights: list[dict]
+    ) -> dict | None:
         if not current_insights:
             return None
 
@@ -354,7 +352,7 @@ class MorpheusNavigator:
         return transition
 
     async def _store_transition(
-        self, user_id: str, transition: Dict, triggering_insight: Dict
+        self, user_id: str, transition: dict, triggering_insight: dict
     ):
         # Создаем узел перехода в Neo4j
         transition_node = await self.neo4j.create_node(
@@ -363,7 +361,7 @@ class MorpheusNavigator:
                 "action": transition["action"],
                 "message": transition["message"],
                 "duration_minutes": transition["duration_minutes"],
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             },
         )
 
@@ -430,7 +428,7 @@ class LiminalGateway:
         print(f"\n📱 Получен пульс от пользователя {user_id}: {heart_rate} BPM")
         return await self.biometric.process_heartrate(user_id, heart_rate)
 
-    async def get_user_insights(self, user_id: str) -> List[Dict]:
+    async def get_user_insights(self, user_id: str) -> list[dict]:
         """Получить последние инсайты пользователя"""
         return await self.datomic.query_entity(f"insight_{user_id}")
 
@@ -473,7 +471,7 @@ async def demo_full_flow():
             print("⏳ Ожидание анализа...")
             await asyncio.sleep(2)
 
-    print(f"\n🏁 Демонстрация завершена!")
+    print("\n🏁 Демонстрация завершена!")
     print(f"📊 Всего точек в InfluxDB: {len(gateway.influx.points)}")
     print(f"🧠 Узлов в Neo4j: {len(gateway.neo4j.nodes)}")
     print(f"🕰️ Фактов в Datomic: {len(gateway.datomic.facts)}")

@@ -35,12 +35,9 @@ def test_consciousness_node():
     print(json.dumps(neo4j_dict, indent=2))
 
     # Проверка философских метрик
-    is_home = (
-        neo4j_dict["home_resonance"] > PHILOSOPHICAL_THRESHOLDS["HOME_RESONANCE_HIGH"]
-    )
+    is_home = neo4j_dict["home_resonance"] > PHILOSOPHICAL_THRESHOLDS["HOME_RESONANCE_HIGH"]
     is_authentic = (
-        neo4j_dict["authenticity_score"]
-        > PHILOSOPHICAL_THRESHOLDS["AUTHENTICITY_HONEST"]
+        neo4j_dict["authenticity_score"] > PHILOSOPHICAL_THRESHOLDS["AUTHENTICITY_HONEST"]
     )
 
     print(f"🏠 В состоянии 'дома': {is_home}")
@@ -213,7 +210,7 @@ def generate_cypher_examples():
         """
     MATCH (from:ConsciousnessState)-[t:TRANSITIONS_TO]->(to:ConsciousnessState)
     WHERE t.timestamp > datetime() - duration('P7D')
-    RETURN 
+    RETURN
         from.state as from_state,
         to.state as to_state,
         t.trigger as trigger,
@@ -233,7 +230,7 @@ def generate_cypher_examples():
     AND abs(duration.between(c1.timestamp, c2.timestamp).seconds) < 60
     AND c1.state = c2.state
     AND c1.home_resonance > 0.7 AND c2.home_resonance > 0.7
-    RETURN c1, c2, 
+    RETURN c1, c2,
            abs(c1.home_resonance - c2.home_resonance) as resonance_similarity
     ORDER BY resonance_similarity ASC
     LIMIT 10

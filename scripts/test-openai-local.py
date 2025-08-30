@@ -62,7 +62,7 @@ except ImportError as e:
     service_path = Path(__file__).parent.parent / "backend" / "ml" / "openai_service.py"
     if service_path.exists():
         print(f"      ✅ File exists at {service_path}")
-        with open(service_path, "r") as f:
+        with open(service_path) as f:
             first_lines = "\n".join(f.readlines()[:20])
             print(f"      First lines of file:\n{first_lines}")
     else:
@@ -116,9 +116,7 @@ async def test_openai_explanation():
                 if hasattr(openai_service, "initialize_client"):
                     print("      Found initialize_client method, calling it...")
                     openai_service.initialize_client(api_key)
-                    print(
-                        f"      Client initialized: {openai_service.client is not None}"
-                    )
+                    print(f"      Client initialized: {openai_service.client is not None}")
                 else:
                     print("      ❌ initialize_client method not found!")
                     print("      Available methods/attributes:")
@@ -142,7 +140,7 @@ async def test_openai_explanation():
 
         print("\n   ⏳ Requesting natural language explanation from OpenAI...")
         print("      Request params:")
-        print(f"      - Model type: anomaly_detection")
+        print("      - Model type: anomaly_detection")
         print(f"      - Features: {json.dumps(test_features)[:100]}...")
         print(f"      - Prediction: {json.dumps(test_prediction)[:100]}...")
 

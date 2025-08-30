@@ -28,9 +28,7 @@ class FlowCoordinator:
 
     def find_concept(self, concept_name):
         with self.driver.session() as session:
-            result = session.run(
-                "MATCH (c:Concept {name: $name}) RETURN c", name=concept_name
-            )
+            result = session.run("MATCH (c:Concept {name: $name}) RETURN c", name=concept_name)
             record = result.single()
             if record:
                 print(f"🔍 Найден узел '{concept_name}'")

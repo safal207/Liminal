@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import time
 
@@ -22,7 +23,7 @@ class TestWebSocketPythonClient:
     async def test_websocket_connection(self, websocket_url):
         """Тест: подключение к WebSocket."""
         try:
-            async with websockets.connect(websocket_url) as websocket:
+            async with websockets.connect(websocket_url):
                 # Если подключение успешно, тест пройден
                 # Если объект создан, соединение установлено
                 print("✓ WebSocket подключение установлено")
@@ -45,7 +46,7 @@ class TestWebSocketPythonClient:
                 assert "event" in data or "error" in data
                 print(f"✓ Получено сообщение от сервера: {data}")
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             pytest.fail("Не получено сообщение от сервера в течение 5 секунд")
         except Exception as e:
             pytest.fail(f"Ошибка при получении начального состояния: {e}")
@@ -70,7 +71,7 @@ class TestWebSocketPythonClient:
                     response = await asyncio.wait_for(websocket.recv(), timeout=3.0)
                     response_data = json.loads(response)
                     print(f"✓ Получен ответ: {response_data}")
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     print("⚠ Ответ от сервера не получен (это нормально)")
 
         except Exception as e:
@@ -86,11 +87,11 @@ class TestWebSocketPythonClient:
             for i in range(3):
                 websocket = await websockets.connect(websocket_url)
                 connections.append(websocket)
-                print(f"✓ Подключение {i+1} установлено")
+                print(f"✓ Подключение {i + 1} установлено")
 
             # Проверяем, что все подключения активны
             for i, ws in enumerate(connections):
-                assert ws is not None, f"Подключение {i+1} не активно"
+                assert ws is not None, f"Подключение {i + 1} не активно"
 
             print("✓ Все множественные подключения работают")
 
@@ -99,10 +100,8 @@ class TestWebSocketPythonClient:
         finally:
             # Закрываем все подключения
             for ws in connections:
-                try:
+                with contextlib.suppress(Exception):
                     await ws.close()
-                except Exception:
-                    pass
 
     @pytest.mark.asyncio
     async def test_websocket_connection_close(self, websocket_url):
@@ -133,7 +132,7 @@ class TestWebSocketPythonClient:
                 try:
                     response = await asyncio.wait_for(websocket.recv(), timeout=3.0)
                     print(f"✓ Сервер обработал невалидный JSON: {response}")
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     print("⚠ Сервер не ответил на невалидный JSON (это нормально)")
 
         except ConnectionClosed:

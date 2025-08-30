@@ -111,10 +111,8 @@ def test_age_appropriate_conclusions(mock_maturation_system):
     """Test age-appropriate conclusion generation"""
     # Test conclusions for different stages
     with patch.object(mock_maturation_system, "current_stage", MaturationStage.NEWBORN):
-        infant_conclusions = (
-            mock_maturation_system.generate_age_appropriate_conclusions(
-                "error", "test error", {"error_type": "TestError"}
-            )
+        infant_conclusions = mock_maturation_system.generate_age_appropriate_conclusions(
+            "error", "test error", {"error_type": "TestError"}
         )
         assert any("doesn't work" in c.lower() for c in infant_conclusions)
 
@@ -151,35 +149,26 @@ def test_philosophy_principles_exist(mock_maturation_system):
     assert len(mock_maturation_system.philosophy_principles) > 0
 
     # Check first principle is correct
-    assert (
-        mock_maturation_system.philosophy_principles[0]
-        == "Дом - это ты, когда искренен с собой"
-    )
+    assert mock_maturation_system.philosophy_principles[0] == "Дом - это ты, когда искренен с собой"
 
 
 def test_philosophy_in_conclusions(mock_maturation_system):
     """Test that philosophy is incorporated into conclusions"""
     # Record an error and check conclusions
-    error_event = mock_maturation_system.record_error(
-        "Philosophy test error", "test_module"
-    )
+    error_event = mock_maturation_system.record_error("Philosophy test error", "test_module")
 
     # At least one conclusion should reference philosophy
     has_philosophy = any(
         "философ" in c.lower() or "дом" in c.lower() for c in error_event.conclusions
     )
-    assert (
-        has_philosophy
-    ), f"No philosophy reference found in: {error_event.conclusions}"
+    assert has_philosophy, f"No philosophy reference found in: {error_event.conclusions}"
 
 
 def test_philosophy_integration_with_stages(mock_elder_maturation_system):
     """Test that philosophy integrates with developmental stages"""
     # Elder stage should have more philosophical conclusions
-    elder_conclusions = (
-        mock_elder_maturation_system.generate_age_appropriate_conclusions(
-            "insight", "philosophical insight", {}
-        )
+    elder_conclusions = mock_elder_maturation_system.generate_age_appropriate_conclusions(
+        "insight", "philosophical insight", {}
     )
     assert any("философ" in c.lower() for c in elder_conclusions)
     assert any("core" in c.lower() or "wisdom" in c.lower() for c in elder_conclusions)

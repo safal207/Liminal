@@ -6,7 +6,7 @@
 
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 from prometheus_client import Counter, Gauge, Histogram, start_http_server
 
@@ -18,7 +18,7 @@ class MetricsCollector:
 
     def __init__(self, enable_prometheus: bool = False, port: int = 9090):
         self.enable_prometheus = enable_prometheus
-        self.metrics: Dict[str, Any] = {}
+        self.metrics: dict[str, Any] = {}
 
         if enable_prometheus:
             self._init_prometheus_metrics()

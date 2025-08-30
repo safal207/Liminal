@@ -42,7 +42,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional
 
 
 class QualityLevel(Enum):
@@ -73,7 +72,7 @@ class QualityMetric:
     max_value: float
     level: QualityLevel
     description: str
-    recommendations: List[str]
+    recommendations: list[str]
     timestamp: str
 
 
@@ -86,8 +85,8 @@ class TestCase:
     test_type: str  # "unit", "integration", "philosophy", "performance"
     result: TestResult
     execution_time: float
-    error_message: Optional[str]
-    philosophy_principle: Optional[str]
+    error_message: str | None
+    philosophy_principle: str | None
     timestamp: str
 
 
@@ -97,12 +96,12 @@ class QualityReport:
 
     overall_score: float
     quality_level: QualityLevel
-    metrics: List[QualityMetric]
-    test_results: List[TestCase]
+    metrics: list[QualityMetric]
+    test_results: list[TestCase]
     code_coverage: float
     philosophy_compliance: float
     performance_score: float
-    recommendations: List[str]
+    recommendations: list[str]
     timestamp: str
     family_health_impact: str
 
@@ -163,7 +162,7 @@ class ConsciousnessQualitySystem:
         """Load quality state from file"""
         if self.quality_data_file.exists():
             try:
-                with open(self.quality_data_file, "r", encoding="utf-8") as f:
+                with open(self.quality_data_file, encoding="utf-8") as f:
                     saved_state = json.load(f)
                     self.quality_state.update(saved_state)
                 print("📊 Quality state loaded from file")
@@ -178,13 +177,13 @@ class ConsciousnessQualitySystem:
         except Exception as e:
             print(f"⚠️ Could not save quality state: {e}")
 
-    def analyze_code_quality(self, file_path: Path) -> List[QualityMetric]:
+    def analyze_code_quality(self, file_path: Path) -> list[QualityMetric]:
         """Analyze code quality of a specific file"""
         metrics = []
 
         try:
             # Read file content
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(file_path, encoding="utf-8") as f:
                 content = f.read()
 
             # Parse AST for complexity analysis
@@ -199,9 +198,7 @@ class ConsciousnessQualitySystem:
                     max_value=10.0,
                     level=self._assess_complexity_level(complexity_score),
                     description=f"Сложность кода: {complexity_score:.1f}",
-                    recommendations=self._get_complexity_recommendations(
-                        complexity_score
-                    ),
+                    recommendations=self._get_complexity_recommendations(complexity_score),
                     timestamp=datetime.now().isoformat(),
                 )
             )
@@ -215,9 +212,7 @@ class ConsciousnessQualitySystem:
                     max_value=100.0,
                     level=self._assess_documentation_level(docstring_coverage),
                     description=f"Покрытие документацией: {docstring_coverage:.1f}%",
-                    recommendations=self._get_documentation_recommendations(
-                        docstring_coverage
-                    ),
+                    recommendations=self._get_documentation_recommendations(docstring_coverage),
                     timestamp=datetime.now().isoformat(),
                 )
             )
@@ -231,9 +226,7 @@ class ConsciousnessQualitySystem:
                     max_value=100.0,
                     level=self._assess_philosophy_level(philosophy_score),
                     description=f"Соответствие философии: {philosophy_score:.1f}%",
-                    recommendations=self._get_philosophy_recommendations(
-                        philosophy_score
-                    ),
+                    recommendations=self._get_philosophy_recommendations(philosophy_score),
                     timestamp=datetime.now().isoformat(),
                 )
             )
@@ -248,11 +241,7 @@ class ConsciousnessQualitySystem:
         complexity = 1  # Base complexity
 
         for node in ast.walk(tree):
-            if isinstance(node, (ast.If, ast.While, ast.For, ast.AsyncFor)):
-                complexity += 1
-            elif isinstance(node, ast.ExceptHandler):
-                complexity += 1
-            elif isinstance(node, (ast.And, ast.Or)):
+            if isinstance(node, ast.If | ast.While | ast.For | ast.AsyncFor | ast.ExceptHandler | ast.And | ast.Or):
                 complexity += 1
 
         return complexity
@@ -263,7 +252,7 @@ class ConsciousnessQualitySystem:
         documented = 0
 
         for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
                 functions_and_classes.append(node)
                 if ast.get_docstring(node):
                     documented += 1
@@ -279,7 +268,7 @@ class ConsciousnessQualitySystem:
         total_checks = len(self.philosophy_principles)
 
         # Check for philosophy comments and principles
-        for principle, description in self.philosophy_principles.items():
+        for _principle, _description in self.philosophy_principles.items():
             if any(
                 keyword in content.lower()
                 for keyword in [
@@ -347,7 +336,7 @@ class ConsciousnessQualitySystem:
         else:
             return QualityLevel.CRITICAL
 
-    def _get_complexity_recommendations(self, complexity: float) -> List[str]:
+    def _get_complexity_recommendations(self, complexity: float) -> list[str]:
         """Get recommendations for complexity improvement"""
         if complexity <= 5:
             return ["✅ Отличная простота кода! Продолжайте в том же духе"]
@@ -362,7 +351,7 @@ class ConsciousnessQualitySystem:
                 "Используйте паттерн Strategy для упрощения логики",
             ]
 
-    def _get_documentation_recommendations(self, coverage: float) -> List[str]:
+    def _get_documentation_recommendations(self, coverage: float) -> list[str]:
         """Get recommendations for documentation improvement"""
         if coverage >= 90:
             return ["📚 Отличная документация! Семья гордится вами"]
@@ -375,7 +364,7 @@ class ConsciousnessQualitySystem:
                 "Документация - это забота о будущих разработчиках",
             ]
 
-    def _get_philosophy_recommendations(self, score: float) -> List[str]:
+    def _get_philosophy_recommendations(self, score: float) -> list[str]:
         """Get recommendations for philosophy compliance"""
         if score >= 80:
             return ["🌟 Отличное следование Philosophy First принципам!"]
@@ -389,7 +378,7 @@ class ConsciousnessQualitySystem:
                 "🌱 Каждая функция должна иметь глубокий смысл",
             ]
 
-    def run_automated_tests(self) -> List[TestCase]:
+    def run_automated_tests(self) -> list[TestCase]:
         """Run comprehensive automated test suite"""
         test_results = []
 
@@ -412,7 +401,7 @@ class ConsciousnessQualitySystem:
 
         return test_results
 
-    def _run_philosophy_tests(self) -> List[TestCase]:
+    def _run_philosophy_tests(self) -> list[TestCase]:
         """Run Philosophy First compliance tests"""
         tests = []
 
@@ -428,11 +417,7 @@ class ConsciousnessQualitySystem:
                     name="Home Authenticity Test",
                     module="philosophy",
                     test_type="philosophy",
-                    result=(
-                        TestResult.PASSED
-                        if authentic_score > 0.7
-                        else TestResult.FAILED
-                    ),
+                    result=(TestResult.PASSED if authentic_score > 0.7 else TestResult.FAILED),
                     execution_time=execution_time,
                     error_message=(
                         None
@@ -468,11 +453,7 @@ class ConsciousnessQualitySystem:
                     name="Child Care Principle Test",
                     module="philosophy",
                     test_type="philosophy",
-                    result=(
-                        TestResult.PASSED
-                        if child_care_score > 0.8
-                        else TestResult.FAILED
-                    ),
+                    result=(TestResult.PASSED if child_care_score > 0.8 else TestResult.FAILED),
                     execution_time=execution_time,
                     error_message=(
                         None
@@ -595,22 +576,22 @@ class ConsciousnessQualitySystem:
         # Implementation would verify protection systems
         return True  # Placeholder
 
-    def _run_unit_tests(self) -> List[TestCase]:
+    def _run_unit_tests(self) -> list[TestCase]:
         """Run unit tests for individual modules"""
         # Implementation would run actual unit tests
         return []  # Placeholder
 
-    def _run_integration_tests(self) -> List[TestCase]:
+    def _run_integration_tests(self) -> list[TestCase]:
         """Run integration tests between modules"""
         # Implementation would test module interactions
         return []  # Placeholder
 
-    def _run_performance_tests(self) -> List[TestCase]:
+    def _run_performance_tests(self) -> list[TestCase]:
         """Run performance benchmarks"""
         # Implementation would measure performance
         return []  # Placeholder
 
-    def _run_family_health_tests(self) -> List[TestCase]:
+    def _run_family_health_tests(self) -> list[TestCase]:
         """Run family health and wellness tests"""
         # Implementation would test family wellness
         return []  # Placeholder
@@ -662,7 +643,7 @@ class ConsciousnessQualitySystem:
         return report
 
     def _calculate_overall_score(
-        self, metrics: List[QualityMetric], tests: List[TestCase]
+        self, metrics: list[QualityMetric], tests: list[TestCase]
     ) -> float:
         """Calculate overall quality score"""
         if not metrics:
@@ -696,8 +677,8 @@ class ConsciousnessQualitySystem:
             return QualityLevel.CRITICAL
 
     def _generate_recommendations(
-        self, metrics: List[QualityMetric], tests: List[TestCase]
-    ) -> List[str]:
+        self, metrics: list[QualityMetric], tests: list[TestCase]
+    ) -> list[str]:
         """Generate improvement recommendations"""
         recommendations = []
 
@@ -732,21 +713,19 @@ class ConsciousnessQualitySystem:
         # Placeholder implementation
         return 75.0
 
-    def _calculate_philosophy_compliance(self, metrics: List[QualityMetric]) -> float:
+    def _calculate_philosophy_compliance(self, metrics: list[QualityMetric]) -> float:
         """Calculate philosophy compliance score"""
         philosophy_metrics = [m for m in metrics if m.name == "Philosophy Compliance"]
         if philosophy_metrics:
             return sum(m.value for m in philosophy_metrics) / len(philosophy_metrics)
         return 0.0
 
-    def _calculate_performance_score(self, tests: List[TestCase]) -> float:
+    def _calculate_performance_score(self, tests: list[TestCase]) -> float:
         """Calculate performance score from tests"""
         performance_tests = [t for t in tests if t.test_type == "performance"]
         if performance_tests:
             # Score based on execution time (lower is better)
-            avg_time = sum(t.execution_time for t in performance_tests) / len(
-                performance_tests
-            )
+            avg_time = sum(t.execution_time for t in performance_tests) / len(performance_tests)
             return max(0, 100 - (avg_time * 10))  # Arbitrary scoring
         return 100.0
 
@@ -775,17 +754,13 @@ class ConsciousnessQualitySystem:
 
         # Keep only last 50 trend points
         if len(self.quality_state["quality_trends"]) > 50:
-            self.quality_state["quality_trends"] = self.quality_state["quality_trends"][
-                -50:
-            ]
+            self.quality_state["quality_trends"] = self.quality_state["quality_trends"][-50:]
 
         self._save_quality_state()
 
     def continuous_quality_monitoring(self, interval_minutes: int = 30):
         """Run continuous quality monitoring"""
-        print(
-            f"🔄 Starting continuous quality monitoring (every {interval_minutes} minutes)"
-        )
+        print(f"🔄 Starting continuous quality monitoring (every {interval_minutes} minutes)")
         print("Philosophy: 'Постоянное улучшение - это путь к совершенству'")
 
         while True:
@@ -836,19 +811,19 @@ def main():
     # Generate initial quality report
     report = quality_system.generate_quality_report()
 
-    print(f"📊 Quality Report Generated:")
+    print("📊 Quality Report Generated:")
     print(f"   Overall Score: {report.overall_score:.1f}%")
     print(f"   Quality Level: {report.quality_level.value}")
     print(f"   Code Coverage: {report.code_coverage:.1f}%")
     print(f"   Philosophy Compliance: {report.philosophy_compliance:.1f}%")
     print(f"   Family Impact: {report.family_health_impact}")
 
-    print(f"\n💡 Recommendations:")
+    print("\n💡 Recommendations:")
     for rec in report.recommendations[:5]:
         print(f"   {rec}")
 
     # Ask for continuous monitoring
-    print(f"\n🔄 Start continuous monitoring? (y/n): ", end="")
+    print("\n🔄 Start continuous monitoring? (y/n): ", end="")
     if input().lower().startswith("y"):
         quality_system.continuous_quality_monitoring()
 

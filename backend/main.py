@@ -4,6 +4,7 @@
 """
 
 import asyncio
+import contextlib
 import json
 import logging
 import sys
@@ -107,9 +108,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 
         # Ожидаем аутентификацию
         try:
-            auth_data = await asyncio.wait_for(
-                websocket.receive_text(), timeout=auth_timeout
-            )
+            auth_data = await asyncio.wait_for(websocket.receive_text(), timeout=auth_timeout)
             try:
                 auth_message = json.loads(auth_data)
                 if "token" in auth_message:
@@ -131,9 +130,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                         )
 
                         # Отслеживаем событие аутентификации в ML
-                        ml_metrics_collector.track_connection_event(
-                            user_id, "auth_success"
-                        )
+                        ml_metrics_collector.track_connection_event(user_id, "auth_success")
                         ml_metrics_collector.track_jwt_event(
                             user_id,
                             {
@@ -143,22 +140,16 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                             },
                         )
                     else:
-                        logger.warning(
-                            f"Неверный токен для WebSocket соединения: {client_id}"
-                        )
+                        logger.warning(f"Неверный токен для WebSocket соединения: {client_id}")
                         # Отслеживаем неудачную аутентификацию
-                        ml_metrics_collector.track_connection_event(
-                            "unknown", "auth_failure"
-                        )
+                        ml_metrics_collector.track_connection_event("unknown", "auth_failure")
                         await websocket.send_json(
                             {"type": "auth_error", "message": "Неверный токен"}
                         )
                         await websocket.close(code=1008, reason="Неверный токен")
                         return
                 else:
-                    logger.warning(
-                        f"В сообщении аутентификации отсутствует токен: {client_id}"
-                    )
+                    logger.warning(f"В сообщении аутентификации отсутствует токен: {client_id}")
                     await websocket.send_json(
                         {
                             "type": "auth_error",
@@ -168,18 +159,14 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     await websocket.close(code=1008, reason="Токен не предоставлен")
                     return
             except json.JSONDecodeError:
-                logger.warning(
-                    f"Ошибка декодирования JSON при аутентификации: {client_id}"
-                )
+                logger.warning(f"Ошибка декодирования JSON при аутентификации: {client_id}")
                 await websocket.send_json(
                     {"type": "auth_error", "message": "Ошибка декодирования JSON"}
                 )
                 await websocket.close(code=1008, reason="Некорректный формат JSON")
                 return
-        except asyncio.TimeoutError:
-            logger.warning(
-                f"Таймаут аутентификации для WebSocket соединения: {client_id}"
-            )
+        except TimeoutError:
+            logger.warning(f"Таймаут аутентификации для WebSocket соединения: {client_id}")
             await websocket.send_json(
                 {"type": "auth_error", "message": "Время аутентификации истекло"}
             )
@@ -205,17 +192,13 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     msg_type = message_obj.get("type")
 
                     # Отмечаем активность на любое сообщение
-                    try:
+                    with contextlib.suppress(Exception):
                         manager.mark_activity(websocket)
-                    except Exception:
-                        pass
 
                     # Пропускаем rate limiting для heartbeat ответов
                     if msg_type == "pong":
-                        try:
+                        with contextlib.suppress(Exception):
                             manager.mark_pong(websocket)
-                        except Exception:
-                            pass
                         # Переходим к следующему циклу, обработка уже выполнена
                         continue
 
@@ -261,18 +244,14 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 
                         # Периодически анализируем на аномалии (каждое 10-е сообщение)
                         if (
-                            feature_extractor.user_sessions.get(user_id, {}).get(
-                                "message_count", 0
-                            )
+                            feature_extractor.user_sessions.get(user_id, {}).get("message_count", 0)
                             % 10
                             == 0
                         ):
                             anomalies = anomaly_detector.analyze_user_activity(user_id)
                             if anomalies:
                                 critical_anomalies = [
-                                    a
-                                    for a in anomalies
-                                    if a.severity in ["high", "critical"]
+                                    a for a in anomalies if a.severity in ["high", "critical"]
                                 ]
                                 if critical_anomalies:
                                     logger.warning(
@@ -294,14 +273,10 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     logger.error(f"Ошибка декодирования JSON от {user_id}: {data}")
                     # Отслеживаем ошибку в ML-системе
                     feature_extractor.track_error(user_id)
-                    await websocket.send_text(
-                        json.dumps({"error": "Invalid JSON format"})
-                    )
+                    await websocket.send_text(json.dumps({"error": "Invalid JSON format"}))
                 except WebSocketDisconnect:
                     # Этот блок должен быть внутри цикла, чтобы корректно завершить его
-                    logger.info(
-                        f"Пользователь {user_id} (клиент {client_id}) отключился."
-                    )
+                    logger.info(f"Пользователь {user_id} (клиент {client_id}) отключился.")
                     # Отслеживаем отключение
                     ml_metrics_collector.track_connection_event(user_id, "disconnect")
                     await manager.disconnect(websocket, user_id)
@@ -334,9 +309,7 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
-        )
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
 # Убираем стандартные обработчики loguru и ставим наш перехватчик
@@ -370,18 +343,14 @@ async def startup_event():
         logger.info("Успешное подключение к Redis.")
     except Exception as e:
         # Переходим в деградированный режим (DummyRedis уже настроен внутри RedisClient)
-        logger.warning(
-            f"Redis недоступен на старте: {e}. Продолжаем в degraded режиме."
-        )
+        logger.warning(f"Redis недоступен на старте: {e}. Продолжаем в degraded режиме.")
 
     # 2. Явное ожидание загрузки Lua-скрипта
     # Это гарантирует, что Rate Limiting будет работать с самого начала.
     # Метод _load_rate_limit_script запускается в __init__, мы даем ему время завершиться.
     for _ in range(10):  # Пробуем до 5 секунд
         if manager.rate_limit_script_sha:
-            logger.info(
-                "Lua-скрипт для Rate Limiting успешно загружен и готов к работе."
-            )
+            logger.info("Lua-скрипт для Rate Limiting успешно загружен и готов к работе.")
             break
         await asyncio.sleep(0.5)
     else:
@@ -389,9 +358,7 @@ async def startup_event():
             "Не удалось подтвердить загрузку Lua-скрипта. Rate Limiting может быть неактивен."
         )
 
-    logger.info(
-        "Приложение успешно стартовало. Метрики Prometheus доступны на /metrics"
-    )
+    logger.info("Приложение успешно стартовало. Метрики Prometheus доступны на /metrics")
 
     # 3. Флаг завершения старта для /health/startup
     app.state.startup_complete = True
@@ -407,12 +374,12 @@ async def get_root():
         <title>LIMINAL WebSocket Test</title>
         <style>
             body { font-family: Arial, sans-serif; margin: 20px; max-width: 800px; }
-            #messages { 
-                height: 300px; 
-                overflow-y: auto; 
-                border: 1px solid #ccc; 
-                padding: 10px; 
-                margin: 10px 0; 
+            #messages {
+                height: 300px;
+                overflow-y: auto;
+                border: 1px solid #ccc;
+                padding: 10px;
+                margin: 10px 0;
                 background: #f9f9f9;
             }
             .message { margin: 5px 0; padding: 5px; border-bottom: 1px solid #eee; }
@@ -444,7 +411,7 @@ async def get_root():
         <script>
             const socket = new WebSocket(`ws://${window.location.host}/ws/test_user_1`);
             const messages = document.getElementById('messages');
-            
+
             function addMessage(text, type = 'system') {
                 const div = document.createElement('div');
                 div.className = `message ${type}`;
@@ -452,7 +419,7 @@ async def get_root():
                 messages.appendChild(div);
                 messages.scrollTop = messages.scrollHeight;
             }
-            
+
             // WebSocket event handlers
             socket.onopen = () => {
                 addMessage('Connected to WebSocket server');
@@ -461,7 +428,7 @@ async def get_root():
                 document.getElementById('subscribe').disabled = false;
                 document.getElementById('unsubscribe').disabled = false;
                 document.getElementById('send').disabled = false;
-                
+
                 // Auto-subscribe to the test channel
                 socket.send(JSON.stringify({
                     type: 'subscribe',
@@ -469,7 +436,7 @@ async def get_root():
                     channel: 'test_channel'
                 }));
             };
-            
+
             socket.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
@@ -478,7 +445,7 @@ async def get_root():
                     addMessage(`Error: ${event.data}`, 'error');
                 }
             };
-            
+
             socket.onclose = () => {
                 addMessage('Disconnected from WebSocket server');
                 document.getElementById('connect').disabled = false;
@@ -487,16 +454,16 @@ async def get_root():
                 document.getElementById('unsubscribe').disabled = true;
                 document.getElementById('send').disabled = true;
             };
-            
+
             // Button event listeners
             document.getElementById('connect').addEventListener('click', () => {
                 window.location.reload();
             });
-            
+
             document.getElementById('disconnect').addEventListener('click', () => {
                 socket.close();
             });
-            
+
             document.getElementById('subscribe').addEventListener('click', () => {
                 const channel = document.getElementById('channel').value || 'test_channel';
                 const userId = document.getElementById('userId').value || 'test_user_1';
@@ -506,7 +473,7 @@ async def get_root():
                     channel: channel
                 }));
             });
-            
+
             document.getElementById('unsubscribe').addEventListener('click', () => {
                 const channel = document.getElementById('channel').value || 'test_channel';
                 const userId = document.getElementById('userId').value || 'test_user_1';
@@ -516,12 +483,12 @@ async def get_root():
                     channel: channel
                 }));
             });
-            
+
             document.getElementById('send').addEventListener('click', () => {
                 const message = document.getElementById('message').value;
                 const channel = document.getElementById('channel').value || 'test_channel';
                 const userId = document.getElementById('userId').value || 'test_user_1';
-                
+
                 if (message) {
                     const msg = {
                         type: 'message',
@@ -537,7 +504,7 @@ async def get_root():
                     document.getElementById('message').value = '';
                 }
             });
-            
+
             // Send message on Enter key
             document.getElementById('message').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {

@@ -165,7 +165,7 @@ def test_emotional_consciousness_paths():
     print("\n4️⃣ ЭМОЦИОНАЛЬНЫЙ ПУТЬ: Горе → Трансформация → Благодарность")
 
     # 4.1 Горе → Трансформация
-    transition1 = create_emotion_transition_path(
+    create_emotion_transition_path(
         writer,
         ConsciousnessState.GRIEF_TRANSFORMATION,
         ConsciousnessState.HOME_AUTHENTIC,

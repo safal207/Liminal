@@ -5,6 +5,7 @@ Test Universal OpenAI Adapter for Resonance Liminal
 This script tests the universal adapter for OpenAI API integration,
 which provides both real API and mock implementations.
 """
+
 import argparse
 import asyncio
 import json
@@ -319,13 +320,9 @@ async def test_backend_endpoints():
 
 async def main():
     parser = argparse.ArgumentParser(description="Test Universal OpenAI Adapter")
-    parser.add_argument(
-        "--show-response", action="store_true", help="Show full API responses"
-    )
+    parser.add_argument("--show-response", action="store_true", help="Show full API responses")
     parser.add_argument("--mock-only", action="store_true", help="Force mock mode")
-    parser.add_argument(
-        "--skip-backend", action="store_true", help="Skip backend endpoint tests"
-    )
+    parser.add_argument("--skip-backend", action="store_true", help="Skip backend endpoint tests")
 
     args = parser.parse_args()
 
@@ -333,7 +330,7 @@ async def main():
     env_path = Path(__file__).parent.parent / ".env"
     if env_path.exists():
         print_info("Loading environment variables from .env")
-        with open(env_path, "r") as f:
+        with open(env_path) as f:
             for line in f:
                 if line.strip() and not line.startswith("#"):
                     try:

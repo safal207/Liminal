@@ -25,14 +25,10 @@ def send_event_to_websocket(event_data):
         response = requests.post(url, json=event_data, headers=headers)
 
         if response.status_code == 200 or response.status_code == 202:
-            print(
-                f"✅ Событие успешно отправлено на WebSocket relay: {response.status_code}"
-            )
+            print(f"✅ Событие успешно отправлено на WebSocket relay: {response.status_code}")
             return True
         else:
-            print(
-                f"❌ Ошибка отправки события: {response.status_code}, {response.text}"
-            )
+            print(f"❌ Ошибка отправки события: {response.status_code}, {response.text}")
             return False
     except Exception as e:
         print(f"❌ Исключение при отправке события: {str(e)}")
@@ -102,14 +98,10 @@ def test_consciousness_websocket_integration():
     print(
         f"🔄 Создаем переход состояния: {transition.from_state.value} → {transition.to_state.value}"
     )
-    print(
-        f"📊 Presence +{transition.presence_delta}, Harmony +{transition.harmony_delta}"
-    )
+    print(f"📊 Presence +{transition.presence_delta}, Harmony +{transition.harmony_delta}")
 
     # Создаем переход в Neo4j
-    created_transition = writer.create_state_transition(
-        transition, initial_state.id, new_state.id
-    )
+    writer.create_state_transition(transition, initial_state.id, new_state.id)
 
     # Отправляем событие напрямую в WebSocket relay через HTTP
     event = {
@@ -127,10 +119,8 @@ def test_consciousness_websocket_integration():
 
     send_event_to_websocket(event)
 
-    print(f"✅ Переход состояния создан в Neo4j и отправлен на WebSocket relay!")
-    print(
-        f"🔌 Проверьте WebSocket-клиент, вы должны увидеть событие перехода состояния."
-    )
+    print("✅ Переход состояния создан в Neo4j и отправлен на WebSocket relay!")
+    print("🔌 Проверьте WebSocket-клиент, вы должны увидеть событие перехода состояния.")
 
     # Небольшая пауза, чтобы увидеть результаты в WebSocket-клиенте
     time.sleep(1)
@@ -149,7 +139,7 @@ def test_consciousness_websocket_integration():
     )
 
     print(f"🧠 Создаем состояние медитации: {meditation_state.state.value}")
-    created_meditation = writer.create_consciousness_state(meditation_state)
+    writer.create_consciousness_state(meditation_state)
 
     meditation_transition = StateTransition(
         id=str(uuid.uuid4()),
@@ -173,7 +163,7 @@ def test_consciousness_websocket_integration():
     )
 
     # Создаем переход медитации в Neo4j
-    created_meditation_transition = writer.create_state_transition(
+    writer.create_state_transition(
         meditation_transition, new_state.id, meditation_state.id
     )
 
@@ -193,7 +183,7 @@ def test_consciousness_websocket_integration():
 
     send_event_to_websocket(meditation_event)
 
-    print(f"✅ Переход медитации создан в Neo4j и отправлен на WebSocket relay!")
+    print("✅ Переход медитации создан в Neo4j и отправлен на WebSocket relay!")
     print(
         f"🌐 Все клиенты WebSocket получили уведомление о переходе в состояние: {meditation_state.state.value}"
     )
@@ -214,10 +204,8 @@ def test_consciousness_websocket_integration():
         stress_level=0.05,  # Минимальный стресс
     )
 
-    print(
-        f"🏠 Создаем Home State: {home_state.state.value} (Дом - это ты, когда искренен с собой)"
-    )
-    created_home_state = writer.create_consciousness_state(home_state)
+    print(f"🏠 Создаем Home State: {home_state.state.value} (Дом - это ты, когда искренен с собой)")
+    writer.create_consciousness_state(home_state)
 
     home_transition = StateTransition(
         id=str(uuid.uuid4()),
@@ -237,7 +225,7 @@ def test_consciousness_websocket_integration():
     )
 
     # Создаем переход к Home State в Neo4j
-    created_home_transition = writer.create_state_transition(
+    writer.create_state_transition(
         home_transition, meditation_state.id, home_state.id
     )
 
@@ -259,8 +247,8 @@ def test_consciousness_websocket_integration():
 
     send_event_to_websocket(home_event)
 
-    print(f"🏠 Переход к Home State создан в Neo4j и отправлен на WebSocket relay!")
-    print(f"🌟 Философский инсайт: Дом - это ты, когда искренен с собой")
+    print("🏠 Переход к Home State создан в Neo4j и отправлен на WebSocket relay!")
+    print("🌟 Философский инсайт: Дом - это ты, когда искренен с собой")
 
     print("🏆 Тесты WebSocket интеграции успешно завершены!")
     print("🔌 Проверьте вкладку с HTML-клиентом для визуализации событий")

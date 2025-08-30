@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 
 import pytest
 import websockets
@@ -29,27 +30,25 @@ class TestConnectionLimits:
                     websocket = await websockets.connect(websocket_url)
                     connections.append(websocket)
                     successful_connections += 1
-                    print(f"✓ Подключение {i+1} установлено")
+                    print(f"✓ Подключение {i + 1} установлено")
                 except ConnectionClosed:
-                    print(f"✗ Подключение {i+1} отклонено (лимит достигнут)")
+                    print(f"✗ Подключение {i + 1} отклонено (лимит достигнут)")
                     break
                 except Exception as e:
-                    print(f"✗ Подключение {i+1} не удалось: {e}")
+                    print(f"✗ Подключение {i + 1} не удалось: {e}")
                     break
 
             # Должно быть не больше 10 успешных подключений
-            assert (
-                successful_connections <= 10
-            ), f"Превышен лимит подключений: {successful_connections}"
+            assert successful_connections <= 10, (
+                f"Превышен лимит подключений: {successful_connections}"
+            )
             print(f"✓ Лимит подключений работает: {successful_connections}/10")
 
         finally:
             # Закрываем все подключения
             for ws in connections:
-                try:
+                with contextlib.suppress(Exception):
                     await ws.close()
-                except Exception:
-                    pass
 
     @pytest.mark.asyncio
     async def test_connection_stats_endpoint(self, websocket_url):
@@ -59,15 +58,13 @@ class TestConnectionLimits:
         # Создаём несколько подключений
         connections = []
         try:
-            for i in range(3):
+            for _i in range(3):
                 websocket = await websockets.connect(websocket_url)
                 connections.append(websocket)
 
             # Проверяем статистику через HTTP API
             async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    "http://127.0.0.1:8000/debug/connections/stats"
-                )
+                response = await client.get("http://127.0.0.1:8000/debug/connections/stats")
                 assert response.status_code == 200
 
                 stats = response.json()
@@ -87,10 +84,8 @@ class TestConnectionLimits:
         finally:
             # Закрываем все подключения
             for ws in connections:
-                try:
+                with contextlib.suppress(Exception):
                     await ws.close()
-                except Exception:
-                    pass
 
     @pytest.mark.asyncio
     async def test_connection_cleanup_on_disconnect(self, websocket_url):
@@ -118,12 +113,8 @@ class TestConnectionLimits:
             stats_after = response.json()
             connections_after = stats_after["total_connections"]
 
-        assert (
-            connections_after < connections_before
-        ), "Счётчик подключений не уменьшился"
-        print(
-            f"✓ Счётчики корректно обновились: {connections_before} → {connections_after}"
-        )
+        assert connections_after < connections_before, "Счётчик подключений не уменьшился"
+        print(f"✓ Счётчики корректно обновились: {connections_before} → {connections_after}")
 
     @pytest.mark.asyncio
     async def test_rejected_connection_handling(self, websocket_url):
@@ -137,27 +128,23 @@ class TestConnectionLimits:
                 try:
                     websocket = await websockets.connect(websocket_url)
                     connections.append(websocket)
-                    print(f"✓ Подключение {i+1} принято")
+                    print(f"✓ Подключение {i + 1} принято")
                 except (ConnectionClosed, OSError) as e:
                     rejected_count += 1
-                    print(f"✗ Подключение {i+1} отклонено: {e}")
+                    print(f"✗ Подключение {i + 1} отклонено: {e}")
                 except Exception as e:
-                    print(f"? Подключение {i+1} ошибка: {e}")
+                    print(f"? Подключение {i + 1} ошибка: {e}")
 
             print(f"✓ Принято: {len(connections)}, Отклонено: {rejected_count}")
 
             # Должно быть отклонено хотя бы 2 подключения
-            assert (
-                rejected_count >= 2 or len(connections) <= 10
-            ), "Лимит подключений не работает"
+            assert rejected_count >= 2 or len(connections) <= 10, "Лимит подключений не работает"
 
         finally:
             # Закрываем все подключения
             for ws in connections:
-                try:
+                with contextlib.suppress(Exception):
                     await ws.close()
-                except Exception:
-                    pass
 
 
 if __name__ == "__main__":

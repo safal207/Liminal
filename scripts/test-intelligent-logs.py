@@ -19,7 +19,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Добавляем путь к бэкенду для импорта модулей
 sys.path.append(str(Path(__file__).parent.parent))
@@ -94,16 +94,10 @@ class IntelligentLogTester:
         self.test_cases_run = 0
         self.test_cases_passed = 0
 
-    async def initialize_adapter(
-        self, mock_mode: bool = None, debug_level: int = None
-    ) -> bool:
+    async def initialize_adapter(self, mock_mode: bool = None, debug_level: int = None) -> bool:
         """Инициализация адаптера с заданными параметрами"""
-        logger.info(
-            f"Инициализация адаптера: mock_mode={mock_mode}, debug_level={debug_level}"
-        )
-        result = await initialize_llm_client(
-            force_mock_mode=mock_mode, debug_level=debug_level
-        )
+        logger.info(f"Инициализация адаптера: mock_mode={mock_mode}, debug_level={debug_level}")
+        result = await initialize_llm_client(force_mock_mode=mock_mode, debug_level=debug_level)
 
         if result:
             logger.success("Адаптер успешно инициализирован")
@@ -111,7 +105,7 @@ class IntelligentLogTester:
             logger.error("Ошибка инициализации адаптера")
         return result
 
-    async def get_status(self) -> Dict[str, Any]:
+    async def get_status(self) -> dict[str, Any]:
         """Получение статуса адаптера"""
         status = await get_adapter_status()
         logger.info(
@@ -121,7 +115,7 @@ class IntelligentLogTester:
 
     async def make_api_call(
         self, model: str = "gpt-4", prompt: str = "Привет, мир!"
-    ) -> Optional[LLMResponse]:
+    ) -> LLMResponse | None:
         """Выполнение вызова API (или мок-вызова)"""
         request = LLMRequest(
             model=model,
@@ -145,9 +139,7 @@ class IntelligentLogTester:
             # Имитируем таймаут изменяя CONNECTION_TIMEOUT временно
             original_timeout = os.environ.get("OPENAI_CONNECTION_TIMEOUT", "10")
             os.environ["OPENAI_CONNECTION_TIMEOUT"] = "0.001"
-            logger.info(
-                "Запуск тестового сценария с таймаутом (CONNECTION_TIMEOUT=0.001)"
-            )
+            logger.info("Запуск тестового сценария с таймаутом (CONNECTION_TIMEOUT=0.001)")
             try:
                 await self.make_api_call(prompt="Этот запрос должен вызвать таймаут")
             except Exception:
@@ -161,9 +153,7 @@ class IntelligentLogTester:
             llm_client.api_key = "sk-invalid-key-12345"
             logger.info("Запуск тестового сценария с неверным API ключом")
             try:
-                await self.make_api_call(
-                    prompt="Этот запрос должен вызвать ошибку аутентификации"
-                )
+                await self.make_api_call(prompt="Этот запрос должен вызвать ошибку аутентификации")
             except Exception:
                 logger.warning("Ожидаемая ошибка аутентификации произошла")
             finally:
@@ -176,16 +166,14 @@ class IntelligentLogTester:
             llm_client.mock_only = False  # Отключаем мок, чтобы был сбой
             logger.info("Запуск тестового сценария без инициализированного клиента")
             try:
-                await self.make_api_call(
-                    prompt="Этот запрос должен вызвать ошибку клиента"
-                )
+                await self.make_api_call(prompt="Этот запрос должен вызвать ошибку клиента")
             except Exception:
                 logger.warning("Ожидаемая ошибка отсутствия клиента произошла")
             finally:
                 llm_client.openai_client = original_client
                 llm_client.mock_only = True  # Возвращаем мок-режим
 
-    async def run_test_scenario(self, scenario_name: str, actions: List) -> bool:
+    async def run_test_scenario(self, scenario_name: str, actions: list) -> bool:
         """Запуск тестового сценария с несколькими действиями"""
         logger.info(f"\n===== СЦЕНАРИЙ: {scenario_name} =====")
         self.test_cases_run += 1
@@ -209,10 +197,8 @@ class IntelligentLogTester:
                     await self.make_failing_call(**action_params)
                 elif action_type == "repeat_error":
                     # Повторяем ошибку несколько раз для создания записи в karma.log
-                    for i in range(action_params.get("count", 3)):
-                        await self.make_failing_call(
-                            action_params.get("error_type", "timeout")
-                        )
+                    for _i in range(action_params.get("count", 3)):
+                        await self.make_failing_call(action_params.get("error_type", "timeout"))
                         # Пауза между повторениями
                         time.sleep(0.3)
                 else:
@@ -238,7 +224,7 @@ class IntelligentLogTester:
             logger.error(f"Ошибка выполнения сценария {scenario_name}: {e}")
             return False
 
-    def check_log_files(self) -> Dict[str, int]:
+    def check_log_files(self) -> dict[str, int]:
         """Проверяет наличие и размер лог-файлов"""
         result = {}
 
@@ -258,7 +244,7 @@ class IntelligentLogTester:
             if path.exists() and path.stat().st_size > 0:
                 print(f"\n{CYAN}===== Содержимое {name}.log ====={RESET}")
                 try:
-                    with open(path, "r", encoding="utf-8") as f:
+                    with open(path, encoding="utf-8") as f:
                         # Читаем файл построчно и выводим каждую строку отдельно
                         # чтобы избежать проблем с перекрытием вывода
                         lines = f.readlines()

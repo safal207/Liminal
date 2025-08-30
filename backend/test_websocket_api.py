@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 WebSocket API Testing for Philosophy First
@@ -104,7 +103,7 @@ class WebSocketTestClient:
                     self.messages.append(parsed)
                 except json.JSONDecodeError:
                     logger.warning(f"Received non-JSON message: {message}")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.debug("No message received within timeout")
         except websockets.exceptions.ConnectionClosed:
             logger.info("WebSocket connection closed")
@@ -169,8 +168,8 @@ class TestWebSocketAPI(unittest.TestCase):
             if connected:
                 loop.run_until_complete(client.disconnect())
 
-            self.assertTrue(connected)
-            self.assertIsNone(client.error)
+            assert connected
+            assert client.error is None
 
     def test_event_receive(self):
         """Test sending event via HTTP and receiving via WebSocket"""
@@ -180,9 +179,9 @@ class TestWebSocketAPI(unittest.TestCase):
 
             # Connect and start listening
             connected = loop.run_until_complete(client.connect())
-            self.assertTrue(connected)
+            assert connected
 
-            receive_task = loop.create_task(client.receive_messages())
+            loop.create_task(client.receive_messages())
 
             # Wait briefly for connection to stabilize
             time.sleep(1)
@@ -213,7 +212,7 @@ class TestWebSocketAPI(unittest.TestCase):
                 timeout=5,
             )
 
-            self.assertEqual(response.status_code, 200)
+            assert response.status_code == 200
 
             # Wait to receive message
             time.sleep(3)
@@ -235,7 +234,7 @@ class TestWebSocketAPI(unittest.TestCase):
 
             # We only assert that connection worked, as message receipt depends on
             # the specific implementation of the WebSocket relay
-            self.assertTrue(connected)
+            assert connected
 
     def test_multiple_events(self):
         """Test sending multiple events"""
@@ -298,9 +297,7 @@ class TestWebSocketAPI(unittest.TestCase):
                         "harmony_delta": random.uniform(0.1, 0.5),
                         "authenticity_delta": random.uniform(0.1, 0.5),
                         "resonance_delta": (
-                            random.uniform(0.1, 0.5)
-                            if target == "RESONANCE_MOMENT"
-                            else 0
+                            random.uniform(0.1, 0.5) if target == "RESONANCE_MOMENT" else 0
                         ),
                         "test_event": True,
                     },
@@ -332,7 +329,7 @@ class TestWebSocketAPI(unittest.TestCase):
             loop.run_until_complete(scenario_task)
 
             # Check results
-            self.assertEqual(sent_count, len(transitions))
+            assert sent_count == len(transitions)
             logger.info(f"Received {len(client.messages)} WebSocket messages")
 
     def test_reconnection(self):
@@ -341,17 +338,18 @@ class TestWebSocketAPI(unittest.TestCase):
             # First connection
             client1 = WebSocketTestClient()
             connected1 = loop.run_until_complete(client1.connect())
-            self.assertTrue(connected1)
+            assert connected1
             loop.run_until_complete(client1.disconnect())
 
             # Second connection
             client2 = WebSocketTestClient()
             connected2 = loop.run_until_complete(client2.connect())
-            self.assertTrue(connected2)
+            assert connected2
             loop.run_until_complete(client2.disconnect())
 
             # Both connections should have succeeded
-            self.assertTrue(connected1 and connected2)
+            assert connected1
+            assert connected2
 
 
 # Import missing modules only if present
@@ -361,9 +359,7 @@ try:
     import websocket
     from websocket import WebSocketApp
 except ImportError:
-    logger.warning(
-        "websocket-client package not installed, skipping compatibility tests"
-    )
+    logger.warning("websocket-client package not installed, skipping compatibility tests")
     WebSocketApp = None
 
 
@@ -440,7 +436,7 @@ class TestWebSocketClientCompatibility(unittest.TestCase):
                 timeout=5,
             )
 
-            self.assertEqual(response.status_code, 200)
+            assert response.status_code == 200
 
             # Wait to receive message
             time.sleep(3)
@@ -452,9 +448,7 @@ class TestWebSocketClientCompatibility(unittest.TestCase):
         # Check if we received any messages
         # Note: We don't assert on receiving the specific message we sent,
         # as that depends on the relay implementation
-        logger.info(
-            f"Received {len(self.received_messages)} messages in compatibility test"
-        )
+        logger.info(f"Received {len(self.received_messages)} messages in compatibility test")
 
 
 # Main entry point

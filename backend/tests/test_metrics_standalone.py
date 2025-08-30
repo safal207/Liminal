@@ -91,15 +91,11 @@ def simulate_single_client():
         ).inc()
         websocket_messages_total.labels(
             type="message", direction="out", channel="test_channel"
-        ).inc(
-            5
-        )  # broadcast
+        ).inc(5)  # broadcast
 
         # Регистрация времени обработки
-        message_processing_time.labels(message_type="message").observe(
-            time.time() - start_time
-        )
-        print(f"  Сообщение {i+1} отправлено, время обработки: {processing_time:.3f}s")
+        message_processing_time.labels(message_type="message").observe(time.time() - start_time)
+        print(f"  Сообщение {i + 1} отправлено, время обработки: {processing_time:.3f}s")
 
     # 4. Отписка от канала
     print("Имитация отписки от канала...")
@@ -133,7 +129,7 @@ def simulate_multiple_clients(num_clients=5):
         for _ in range(num_channels):
             channel = random.choice(channels)
             websocket_connections.labels(channel=channel, authenticated="true").inc()
-            print(f"  Клиент {i+1} подписан на канал {channel}")
+            print(f"  Клиент {i + 1} подписан на канал {channel}")
 
     connection_limits.labels(type="total").set(num_clients)
 
@@ -149,18 +145,14 @@ def simulate_multiple_clients(num_clients=5):
         time.sleep(processing_time)
 
         # Отправка одним клиентом и получение несколькими
-        websocket_messages_total.labels(
-            type=message_type, direction="in", channel=channel
-        ).inc()
+        websocket_messages_total.labels(type=message_type, direction="in", channel=channel).inc()
         recipients = random.randint(1, num_clients - 1)
-        websocket_messages_total.labels(
-            type=message_type, direction="out", channel=channel
-        ).inc(recipients)
+        websocket_messages_total.labels(type=message_type, direction="out", channel=channel).inc(
+            recipients
+        )
 
         # Регистрация времени обработки
-        message_processing_time.labels(message_type=message_type).observe(
-            time.time() - start_time
-        )
+        message_processing_time.labels(message_type=message_type).observe(time.time() - start_time)
         print(
             f"  Сообщение {message_type} в канале {channel} доставлено {recipients} получателям за {processing_time:.3f}s"
         )
@@ -202,11 +194,11 @@ def simulate_connection_limits(num_attempts=15):
             websocket_connections.labels(channel="all", authenticated="true").inc()
             websocket_auth_total.labels(status="success").inc()
             successful += 1
-            print(f"  Попытка {i+1}: успешное подключение")
+            print(f"  Попытка {i + 1}: успешное подключение")
         else:
             connection_rejections.labels(reason="max_connections_per_ip").inc()
             rejected += 1
-            print(f"  Попытка {i+1}: отклонено (превышен лимит по IP)")
+            print(f"  Попытка {i + 1}: отклонено (превышен лимит по IP)")
 
     connection_limits.labels(type="total").set(successful)
 
@@ -225,32 +217,26 @@ def simulate_auth_failures():
 
     for error, count in auth_errors.items():
         print(f"Имитация {count} ошибок аутентификации типа '{error}'...")
-        for i in range(count):
+        for _i in range(count):
             websocket_auth_total.labels(status="failure").inc()
             connection_rejections.labels(reason=error).inc()
 
     # Добавляем несколько успешных аутентификаций для сравнения
     successful = 8
     print(f"Имитация {successful} успешных аутентификаций...")
-    for i in range(successful):
+    for _i in range(successful):
         websocket_auth_total.labels(status="success").inc()
         websocket_connections.labels(channel="all", authenticated="true").inc()
 
     connection_limits.labels(type="total").set(successful)
 
     total_failures = sum(auth_errors.values())
-    print(
-        f"Результаты: {successful} успешных аутентификаций, {total_failures} отклонено"
-    )
+    print(f"Результаты: {successful} успешных аутентификаций, {total_failures} отклонено")
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Тестирование метрик Prometheus для WebSocket"
-    )
-    parser.add_argument(
-        "--port", type=int, default=8000, help="Порт для HTTP сервера метрик"
-    )
+    parser = argparse.ArgumentParser(description="Тестирование метрик Prometheus для WebSocket")
+    parser.add_argument("--port", type=int, default=8000, help="Порт для HTTP сервера метрик")
     parser.add_argument(
         "--test",
         default="all",
@@ -275,9 +261,7 @@ def main():
     # Запуск HTTP сервера метрик
     print(f"Запуск HTTP сервера метрик Prometheus на порту {args.port}...")
     start_http_server(args.port)
-    print(
-        f"Сервер метрик запущен. Доступен по адресу http://localhost:{args.port}/metrics"
-    )
+    print(f"Сервер метрик запущен. Доступен по адресу http://localhost:{args.port}/metrics")
 
     # Инициализация базовых метрик
     connection_limits.labels(type="max_total").set(100)

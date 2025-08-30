@@ -32,9 +32,7 @@ async def test_websocket_connection():
             token = token_data.get("access_token")
             print(f"{Fore.GREEN}✓ Токен получен успешно{Style.RESET_ALL}")
         else:
-            print(
-                f"{Fore.RED}✗ Ошибка получения токена: {response.status_code}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.RED}✗ Ошибка получения токена: {response.status_code}{Style.RESET_ALL}")
             print(f"Ответ: {response.text}")
             return False
 
@@ -69,9 +67,7 @@ async def test_websocket_connection():
                     print(f"{Fore.YELLOW}Сообщение не в формате JSON{Style.RESET_ALL}")
 
                 # 4. Отправляем тестовое сообщение
-                print(
-                    f"{Fore.YELLOW}4. Отправка тестового сообщения...{Style.RESET_ALL}"
-                )
+                print(f"{Fore.YELLOW}4. Отправка тестового сообщения...{Style.RESET_ALL}")
 
                 test_message = {"type": "subscribe", "channel": "timeline"}
 
@@ -82,21 +78,15 @@ async def test_websocket_connection():
                 try:
                     response_msg = await asyncio.wait_for(websocket.recv(), timeout=5.0)
                     print(f"{Fore.CYAN}Ответ сервера: {response_msg}{Style.RESET_ALL}")
-                except asyncio.TimeoutError:
-                    print(
-                        f"{Fore.YELLOW}Тайм-аут ожидания ответа (это нормально){Style.RESET_ALL}"
-                    )
+                except TimeoutError:
+                    print(f"{Fore.YELLOW}Тайм-аут ожидания ответа (это нормально){Style.RESET_ALL}")
 
                 print(f"{Fore.GREEN}✓ Тест завершен успешно!{Style.RESET_ALL}")
                 return True
 
-            except asyncio.TimeoutError:
-                print(
-                    f"{Fore.YELLOW}Тайм-аут ожидания первого сообщения{Style.RESET_ALL}"
-                )
-                print(
-                    f"{Fore.GREEN}✓ Подключение работает (сервер молчит){Style.RESET_ALL}"
-                )
+            except TimeoutError:
+                print(f"{Fore.YELLOW}Тайм-аут ожидания первого сообщения{Style.RESET_ALL}")
+                print(f"{Fore.GREEN}✓ Подключение работает (сервер молчит){Style.RESET_ALL}")
                 return True
 
     except websockets.exceptions.InvalidStatusCode as e:
@@ -104,9 +94,7 @@ async def test_websocket_connection():
         return False
 
     except websockets.exceptions.ConnectionClosed as e:
-        print(
-            f"{Fore.RED}✗ Соединение закрыто: код {e.code}, причина: {e.reason}{Style.RESET_ALL}"
-        )
+        print(f"{Fore.RED}✗ Соединение закрыто: код {e.code}, причина: {e.reason}{Style.RESET_ALL}")
         return False
 
     except Exception as e:
@@ -125,9 +113,7 @@ async def test_metrics_endpoint():
         response = requests.get("http://localhost:8000/metrics")
         if response.status_code == 200:
             metrics_text = response.text
-            print(
-                f"{Fore.GREEN}✓ Метрики доступны ({len(metrics_text)} символов){Style.RESET_ALL}"
-            )
+            print(f"{Fore.GREEN}✓ Метрики доступны ({len(metrics_text)} символов){Style.RESET_ALL}")
 
             # Ищем WebSocket метрики
             if "websocket" in metrics_text.lower():
@@ -137,9 +123,7 @@ async def test_metrics_endpoint():
 
             return True
         else:
-            print(
-                f"{Fore.RED}✗ Ошибка доступа к метрикам: {response.status_code}{Style.RESET_ALL}"
-            )
+            print(f"{Fore.RED}✗ Ошибка доступа к метрикам: {response.status_code}{Style.RESET_ALL}")
             return False
 
     except Exception as e:
@@ -149,9 +133,9 @@ async def test_metrics_endpoint():
 
 async def main():
     """Главная функция теста"""
-    print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}{'=' * 50}{Style.RESET_ALL}")
     print(f"{Fore.CYAN}ПРОСТОЙ ТЕСТ WEBSOCKET + JWT + МЕТРИКИ{Style.RESET_ALL}")
-    print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}{'=' * 50}{Style.RESET_ALL}")
 
     # Тест WebSocket
     ws_success = await test_websocket_connection()
@@ -159,14 +143,14 @@ async def main():
     # Тест метрик
     metrics_success = await test_metrics_endpoint()
 
-    print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}{'=' * 50}{Style.RESET_ALL}")
     if ws_success and metrics_success:
         print(f"{Fore.GREEN}🎉 ВСЕ ТЕСТЫ ПРОШЛИ УСПЕШНО! 🎉{Style.RESET_ALL}")
     else:
         print(f"{Fore.RED}❌ НЕКОТОРЫЕ ТЕСТЫ НЕ ПРОШЛИ{Style.RESET_ALL}")
         print(f"WebSocket: {'✓' if ws_success else '✗'}")
         print(f"Метрики: {'✓' if metrics_success else '✗'}")
-    print(f"{Fore.CYAN}{'='*50}{Style.RESET_ALL}")
+    print(f"{Fore.CYAN}{'=' * 50}{Style.RESET_ALL}")
 
 
 if __name__ == "__main__":

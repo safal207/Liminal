@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 End-to-End Testing for Philosophy First
@@ -57,9 +56,7 @@ WEBSOCKET_CONFIG = {
 }
 
 VISUALIZATION_PATH = os.path.abspath(
-    os.path.join(
-        os.path.dirname(__file__), "..", "frontend", "consciousness_visualizer.html"
-    )
+    os.path.join(os.path.dirname(__file__), "..", "frontend", "consciousness_visualizer.html")
 )
 
 # Philosophical constants
@@ -213,9 +210,7 @@ class PhilosophyE2ETest(unittest.TestCase):
                 logger.info("WebSocket relay is already running")
                 return True
             else:
-                logger.warning(
-                    f"WebSocket relay health check failed: {response.status_code}"
-                )
+                logger.warning(f"WebSocket relay health check failed: {response.status_code}")
                 return False
         except requests.RequestException:
             logger.info("WebSocket relay not running or health check not available")
@@ -225,9 +220,7 @@ class PhilosophyE2ETest(unittest.TestCase):
     def _start_websocket_relay(cls):
         """Start WebSocket relay server"""
         # Get Go WebSocket relay path
-        relay_dir = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "go_ws_relay")
-        )
+        relay_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "go_ws_relay"))
 
         if not os.path.exists(os.path.join(relay_dir, "main.go")):
             logger.error(f"WebSocket relay directory not found: {relay_dir}")
@@ -239,9 +232,7 @@ class PhilosophyE2ETest(unittest.TestCase):
         else:
             cmd = ["go", "run", "main.go"]
 
-        success = cls.process_manager.start_process(
-            "websocket_relay", cmd, cwd=relay_dir
-        )
+        success = cls.process_manager.start_process("websocket_relay", cmd, cwd=relay_dir)
 
         if success:
             # Wait for relay to start
@@ -257,7 +248,7 @@ class PhilosophyE2ETest(unittest.TestCase):
                     pass
 
                 logger.info(
-                    f"Waiting for WebSocket relay to start (attempt {i+1}/{max_attempts})"
+                    f"Waiting for WebSocket relay to start (attempt {i + 1}/{max_attempts})"
                 )
 
             logger.error("WebSocket relay failed to start in time")
@@ -314,9 +305,7 @@ class PhilosophyE2ETest(unittest.TestCase):
                 "harmony_delta": random.uniform(0.1, 0.5),
                 "authenticity_delta": random.uniform(0.1, 0.5),
                 "resonance_delta": (
-                    random.uniform(0.1, 0.5)
-                    if target_state == "RESONANCE_MOMENT"
-                    else 0
+                    random.uniform(0.1, 0.5) if target_state == "RESONANCE_MOMENT" else 0
                 ),
                 "test_event": True,
             },
@@ -358,7 +347,7 @@ class PhilosophyE2ETest(unittest.TestCase):
 
             # Send event
             success = self._send_event_to_relay(event)
-            self.assertTrue(success)
+            assert success
 
             # Small delay between events
             time.sleep(1)
@@ -413,7 +402,8 @@ class PhilosophyE2ETest(unittest.TestCase):
         time.sleep(0.25)  # Small delay to simulate real-world conditions
         success2 = self._send_event_to_relay(event2)
 
-        self.assertTrue(success1 and success2)
+        assert success1
+        assert success2
 
     def test_complete_philosophical_sequence(self):
         """Test sending a complete philosophical sequence for one user"""
@@ -489,7 +479,7 @@ class PhilosophyE2ETest(unittest.TestCase):
 
             # Send event
             success = self._send_event_to_relay(event)
-            self.assertTrue(success)
+            assert success
 
             # Small delay between events
             time.sleep(1)
@@ -500,7 +490,7 @@ class PhilosophyE2ETest(unittest.TestCase):
         # This test is designed to be run manually if needed
 
         # First send some test events
-        for i in range(3):
+        for _i in range(3):
             event = self._generate_philosophical_event()
             self._send_event_to_relay(event)
             time.sleep(0.5)
@@ -563,9 +553,7 @@ class TestPhilosophyPipeline(unittest.TestCase):
             # Construct the command to run bridge in simulation mode
             cmd = [
                 sys.executable,
-                os.path.join(
-                    os.path.dirname(__file__), "philosophy_websocket_bridge.py"
-                ),
+                os.path.join(os.path.dirname(__file__), "philosophy_websocket_bridge.py"),
                 "--mode",
                 "simulate",
                 "--interval",
@@ -611,14 +599,14 @@ class TestPhilosophyPipeline(unittest.TestCase):
     def test_pipeline_running(self):
         """Test that the pipeline is running"""
         # Just check that bridge process is still running
-        self.assertIsNone(self.bridge_process.poll())
+        assert self.bridge_process.poll() is None
 
         # Allow time for events to be generated and sent
         logger.info("Waiting for bridge to generate events...")
         time.sleep(10)
 
         # Bridge should still be running
-        self.assertIsNone(self.bridge_process.poll())
+        assert self.bridge_process.poll() is None
 
         # If we get here without exceptions, test passes
 

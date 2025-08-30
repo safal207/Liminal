@@ -2,6 +2,7 @@
 """
 Диагностический скрипт для проверки OpenAI API ключа и доступа к API
 """
+
 import os
 import sys
 import traceback
@@ -36,10 +37,8 @@ api_key = os.getenv("OPENAI_API_KEY", "")
 if api_key:
     key_length = len(api_key)
     # Показываем первые и последние 4 символа
-    masked_key = (
-        f"{api_key[:4]}...{api_key[-4:]}" if key_length > 8 else "[слишком короткий]"
-    )
-    print(f"\nAPI Key details:")
+    masked_key = f"{api_key[:4]}...{api_key[-4:]}" if key_length > 8 else "[слишком короткий]"
+    print("\nAPI Key details:")
     print(f"✓ Length: {key_length} символов")
     print(f"✓ Format: {masked_key}")
 
@@ -86,7 +85,7 @@ try:
                 print("✅ API connection successful!")
                 print(f"✓ Available models: {len(response.data)} models found")
                 # Показываем первые 3 модели
-                for i, model in enumerate(response.data[:3]):
+                for _i, model in enumerate(response.data[:3]):
                     print(f"  - {model.id}")
                 if len(response.data) > 3:
                     print(f"  - ... and {len(response.data) - 3} more")

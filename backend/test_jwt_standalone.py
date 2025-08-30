@@ -53,9 +53,7 @@ async def test_websocket_messaging_after_auth():
 
         # 6. Подписываемся на канал
         print("📢 Подписываемся на канал test_channel...")
-        await websocket.send(
-            json.dumps({"type": "subscribe", "channel": "test_channel"})
-        )
+        await websocket.send(json.dumps({"type": "subscribe", "channel": "test_channel"}))
 
         # 7. Получаем подтверждение подписки
         subscribe_response = await websocket.recv()
@@ -64,7 +62,7 @@ async def test_websocket_messaging_after_auth():
 
         # Проверяем, что есть поле type
         if "type" not in subscribe_result:
-            print(f"❌ ОШИБКА: В ответе нет поля 'type'!")
+            print("❌ ОШИБКА: В ответе нет поля 'type'!")
             print(f"Полный ответ: {subscribe_result}")
             return False
 

@@ -17,7 +17,6 @@ from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -29,8 +28,8 @@ class TemporalInsight:
     severity: str  # 'low', 'medium', 'high', 'critical'
     title: str
     description: str
-    evidence: List[str]
-    recommendations: List[str]
+    evidence: list[str]
+    recommendations: list[str]
     confidence: float  # 0.0 - 1.0
     philosophy_connection: str
 
@@ -42,10 +41,10 @@ class ProjectState:
     timestamp: str
     build_status: str
     error_count: int
-    pattern_counts: Dict[str, int]
+    pattern_counts: dict[str, int]
     cleanliness_score: int
-    active_files: List[str]
-    recent_changes: List[str]
+    active_files: list[str]
+    recent_changes: list[str]
 
 
 class ConsciousnessCell:
@@ -77,11 +76,11 @@ class ConsciousnessCell:
             "resonance_sync": "Синхронизация состояний между компонентами",
         }
 
-    def _load_memory(self) -> Dict:
+    def _load_memory(self) -> dict:
         """Загрузка памяти клетки"""
         if self.memory_file.exists():
             try:
-                with open(self.memory_file, "r", encoding="utf-8") as f:
+                with open(self.memory_file, encoding="utf-8") as f:
                     return json.load(f)
             except Exception as e:
                 print(f"Warning: Could not load memory: {e}")
@@ -102,7 +101,7 @@ class ConsciousnessCell:
         except Exception as e:
             print(f"Warning: Could not save memory: {e}")
 
-    def analyze_past(self) -> List[TemporalInsight]:
+    def analyze_past(self) -> list[TemporalInsight]:
         """Анализ прошлого проекта через логи и паттерны"""
         insights = []
 
@@ -123,7 +122,7 @@ class ConsciousnessCell:
 
         return insights
 
-    def analyze_present(self) -> List[TemporalInsight]:
+    def analyze_present(self) -> list[TemporalInsight]:
         """Анализ текущего состояния проекта"""
         insights = []
         current_time = datetime.now().isoformat()
@@ -147,9 +146,7 @@ class ConsciousnessCell:
                         "Проверить не накапливается ли технический долг",
                     ],
                     confidence=0.8,
-                    philosophy_connection=self.philosophy_principles[
-                        "presence_awareness"
-                    ],
+                    philosophy_connection=self.philosophy_principles["presence_awareness"],
                 )
             )
 
@@ -169,15 +166,13 @@ class ConsciousnessCell:
                         "Применить принцип 'Home Authenticity' к коду",
                     ],
                     confidence=0.9,
-                    philosophy_connection=self.philosophy_principles[
-                        "home_authenticity"
-                    ],
+                    philosophy_connection=self.philosophy_principles["home_authenticity"],
                 )
             )
 
         return insights
 
-    def predict_future(self) -> List[TemporalInsight]:
+    def predict_future(self) -> list[TemporalInsight]:
         """Предсказание будущих проблем и возможностей"""
         insights = []
         current_time = datetime.now().isoformat()
@@ -213,14 +208,12 @@ class ConsciousnessCell:
 
         return insights
 
-    def _analyze_build_history(self, content: str) -> List[TemporalInsight]:
+    def _analyze_build_history(self, content: str) -> list[TemporalInsight]:
         """Анализ истории сборок"""
         insights = []
 
         # Поиск паттернов ошибок
-        error_patterns = re.findall(
-            r"## (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})", content
-        )
+        error_patterns = re.findall(r"## (\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})", content)
         success_patterns = re.findall(r"SUCCESS ✅", content)
 
         if len(error_patterns) > len(success_patterns) * 2:
@@ -247,18 +240,16 @@ class ConsciousnessCell:
 
         return insights
 
-    def _analyze_pattern_evolution(self, content: str) -> List[TemporalInsight]:
+    def _analyze_pattern_evolution(self, content: str) -> list[TemporalInsight]:
         """Анализ эволюции паттернов"""
         insights = []
 
         # Поиск повторяющихся паттернов
         duplicate_patterns = re.findall(r"Duplicate code patterns: (\d+)", content)
-        import_patterns = re.findall(r"Unused imports: (\d+)", content)
+        re.findall(r"Unused imports: (\d+)", content)
 
         if duplicate_patterns:
-            avg_duplicates = sum(int(x) for x in duplicate_patterns) / len(
-                duplicate_patterns
-            )
+            avg_duplicates = sum(int(x) for x in duplicate_patterns) / len(duplicate_patterns)
             if avg_duplicates > 3:
                 insights.append(
                     TemporalInsight(
@@ -274,15 +265,13 @@ class ConsciousnessCell:
                             "Применить DRY принцип систематически",
                         ],
                         confidence=0.85,
-                        philosophy_connection=self.philosophy_principles[
-                            "home_authenticity"
-                        ],
+                        philosophy_connection=self.philosophy_principles["home_authenticity"],
                     )
                 )
 
         return insights
 
-    def _analyze_git_history(self) -> List[TemporalInsight]:
+    def _analyze_git_history(self) -> list[TemporalInsight]:
         """Анализ Git истории (упрощенный)"""
         insights = []
 
@@ -321,9 +310,7 @@ class ConsciousnessCell:
                                 "Добавить больше integration тестов",
                             ],
                             confidence=0.6,
-                            philosophy_connection=self.philosophy_principles[
-                                "presence_awareness"
-                            ],
+                            philosophy_connection=self.philosophy_principles["presence_awareness"],
                         )
                     )
 
@@ -349,9 +336,7 @@ class ConsciousnessCell:
                     try:
                         mtime = datetime.fromtimestamp(file_path.stat().st_mtime)
                         if datetime.now() - mtime < timedelta(hours=24):
-                            recent_changes.append(
-                                str(file_path.relative_to(self.project_root))
-                            )
+                            recent_changes.append(str(file_path.relative_to(self.project_root)))
                     except:
                         pass
 
@@ -373,13 +358,9 @@ class ConsciousnessCell:
 
             # Подсчет паттернов
             pattern_counts = {
-                "duplicate_code": len(
-                    re.findall(r"Duplicate code patterns: (\d+)", content)
-                ),
+                "duplicate_code": len(re.findall(r"Duplicate code patterns: (\d+)", content)),
                 "unused_imports": len(re.findall(r"Unused imports: (\d+)", content)),
-                "undefined_symbols": len(
-                    re.findall(r"Undefined symbols: (\d+)", content)
-                ),
+                "undefined_symbols": len(re.findall(r"Undefined symbols: (\d+)", content)),
             }
 
         return ProjectState(
@@ -392,7 +373,7 @@ class ConsciousnessCell:
             recent_changes=recent_changes,
         )
 
-    def _analyze_pattern_trends(self) -> Dict:
+    def _analyze_pattern_trends(self) -> dict:
         """Анализ трендов паттернов"""
         trends = {}
 
@@ -413,7 +394,7 @@ class ConsciousnessCell:
 
         return trends
 
-    def _get_pattern_recommendations(self, pattern: str) -> List[str]:
+    def _get_pattern_recommendations(self, pattern: str) -> list[str]:
         """Получение рекомендаций для паттерна"""
         recommendations_map = {
             "DUPLICATE_CODE": [
@@ -445,7 +426,7 @@ class ConsciousnessCell:
 
         return philosophy_map.get(pattern, self.philosophy_principles["resonance_sync"])
 
-    def _predict_development_cycles(self) -> Optional[TemporalInsight]:
+    def _predict_development_cycles(self) -> TemporalInsight | None:
         """Предсказание циклов разработки"""
         # Анализ активности по дням недели/времени
         current_time = datetime.now()
@@ -531,7 +512,7 @@ class ConsciousnessCell:
         severity_emoji = {"critical": "🚨", "high": "⚠️", "medium": "📊", "low": "💡"}
 
         return f"""
-### {severity_emoji.get(insight.severity, '📝')} {insight.title}
+### {severity_emoji.get(insight.severity, "📝")} {insight.title}
 **Тип**: {insight.insight_type} | **Уверенность**: {insight.confidence:.0%}
 
 {insight.description}
@@ -547,11 +528,9 @@ class ConsciousnessCell:
 ---
 """
 
-    def _generate_philosophy_summary(self, insights: List[TemporalInsight]) -> str:
+    def _generate_philosophy_summary(self, insights: list[TemporalInsight]) -> str:
         """Генерация философского резюме"""
-        philosophy_usage = Counter(
-            insight.philosophy_connection for insight in insights
-        )
+        philosophy_usage = Counter(insight.philosophy_connection for insight in insights)
 
         summary = ""
         for philosophy, count in philosophy_usage.most_common():
@@ -559,9 +538,7 @@ class ConsciousnessCell:
 
         return summary
 
-    def _generate_predictions_summary(
-        self, future_insights: List[TemporalInsight]
-    ) -> str:
+    def _generate_predictions_summary(self, future_insights: list[TemporalInsight]) -> str:
         """Генерация резюме предсказаний"""
         if not future_insights:
             return "Предсказания не обнаружены в текущем анализе."
@@ -571,9 +548,7 @@ class ConsciousnessCell:
         summary = f"Обнаружено {len(future_insights)} предсказаний, из них {len(high_confidence)} с высокой уверенностью.\n\n"
 
         for insight in high_confidence:
-            summary += (
-                f"- **{insight.title}** (уверенность: {insight.confidence:.0%})\n"
-            )
+            summary += f"- **{insight.title}** (уверенность: {insight.confidence:.0%})\n"
 
         return summary
 
@@ -587,17 +562,13 @@ class ConsciousnessCell:
         summary = ""
         for pattern, data in trends.items():
             trend_direction = "📈 растет" if data["increasing"] else "📉 снижается"
-            summary += (
-                f"- **{pattern}**: {trend_direction} (частота: {data['frequency']})\n"
-            )
+            summary += f"- **{pattern}**: {trend_direction} (частота: {data['frequency']})\n"
 
         return summary
 
     def run_continuous_monitoring(self, interval_minutes: int = 30):
         """Запуск непрерывного мониторинга"""
-        print(
-            f"🧠 Consciousness Cell Agent started - monitoring every {interval_minutes} minutes"
-        )
+        print(f"🧠 Consciousness Cell Agent started - monitoring every {interval_minutes} minutes")
         print("Philosophy First: 'Дом - это ты, когда искренен с собой'")
 
         while True:

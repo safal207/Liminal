@@ -2,8 +2,8 @@
 API эндпоинты для ML-функций Resonance Liminal.
 Предоставляет доступ к аномалиям, моделям и аналитике.
 """
-
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
 from loguru import logger
@@ -36,7 +36,7 @@ class TrainingRequest(BaseModel):
 
 class PredictionRequest(BaseModel):
     model_name: str
-    features: Dict[str, Any]
+    features: dict[str, Any]
 
 
 class AnomalyAnalysisRequest(BaseModel):
@@ -45,52 +45,52 @@ class AnomalyAnalysisRequest(BaseModel):
 
 class ExplainPredictionRequest(BaseModel):
     model_name: str
-    features: Dict[str, Any]
+    features: dict[str, Any]
     prediction: Any
     confidence: float = 0.0
 
 
 class AnalyzeLogsRequest(BaseModel):
-    log_entries: List[str]
+    log_entries: list[str]
     time_range: str
-    error_patterns: Optional[List[str]] = None
+    error_patterns: list[str] | None = None
 
 
 class SmartAlertRequest(BaseModel):
-    alert_data: Dict[str, Any]
-    context: Dict[str, Any]
+    alert_data: dict[str, Any]
+    context: dict[str, Any]
     recipient_role: str = "devops"
 
 
 class ClaudeSafetyAnalysisRequest(BaseModel):
-    ml_decision: Dict[str, Any]
-    context: Optional[Dict[str, Any]] = None
+    ml_decision: dict[str, Any]
+    context: dict[str, Any] | None = None
 
 
 class ClaudeEthicsAnalysisRequest(BaseModel):
-    automated_action: Dict[str, Any]
-    affected_users: List[str]
-    context: Optional[Dict[str, Any]] = None
+    automated_action: dict[str, Any]
+    affected_users: list[str]
+    context: dict[str, Any] | None = None
 
 
 class ClaudeSecurityAnalysisRequest(BaseModel):
-    threat_indicators: Dict[str, Any]
-    system_state: Dict[str, Any]
-    historical_data: Optional[List[Dict]] = None
+    threat_indicators: dict[str, Any]
+    system_state: dict[str, Any]
+    historical_data: list[dict] | None = None
 
 
 class MultiLLMAnalysisRequest(BaseModel):
     task_type: str  # "general", "safety", "ethics", "security", "logs", "alerts"
-    data: Dict[str, Any]
-    context: Optional[Dict[str, Any]] = None
+    data: dict[str, Any]
+    context: dict[str, Any] | None = None
     preferred_provider: str = "auto"  # "openai", "claude", "both", "auto"
     require_consensus: bool = False
     priority: str = "normal"
-    max_cost: Optional[float] = None
+    max_cost: float | None = None
 
 
 @router.get("/status")
-async def get_ml_status() -> Dict[str, Any]:
+async def get_ml_status() -> dict[str, Any]:
     """
     Возвращает общий статус ML-системы.
     """
@@ -108,7 +108,7 @@ async def get_ml_status() -> Dict[str, Any]:
 
 
 @router.get("/features/recent")
-async def get_recent_features(limit: int = 100) -> Dict[str, Any]:
+async def get_recent_features(limit: int = 100) -> dict[str, Any]:
     """
     Возвращает последние извлеченные фичи.
 
@@ -120,9 +120,7 @@ async def get_recent_features(limit: int = 100) -> Dict[str, Any]:
 
 
 @router.get("/anomalies/recent")
-async def get_recent_anomalies(
-    limit: int = 50, min_severity: str = "low"
-) -> Dict[str, Any]:
+async def get_recent_anomalies(limit: int = 50, min_severity: str = "low") -> dict[str, Any]:
     """
     Возвращает последние обнаруженные аномалии.
 
@@ -135,7 +133,7 @@ async def get_recent_anomalies(
 
 
 @router.post("/anomalies/analyze")
-async def analyze_user_anomalies(request: AnomalyAnalysisRequest) -> Dict[str, Any]:
+async def analyze_user_anomalies(request: AnomalyAnalysisRequest) -> dict[str, Any]:
     """
     Анализирует активность конкретного пользователя на предмет аномалий.
 
@@ -163,13 +161,13 @@ async def analyze_user_anomalies(request: AnomalyAnalysisRequest) -> Dict[str, A
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка анализа: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/models/train")
 async def train_model(
     request: TrainingRequest, background_tasks: BackgroundTasks
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Запускает обучение ML-модели в фоновом режиме.
 
@@ -213,11 +211,11 @@ async def train_model(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка запуска обучения: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/models/{model_name}/load")
-async def load_model(model_name: str) -> Dict[str, Any]:
+async def load_model(model_name: str) -> dict[str, Any]:
     """
     Загружает обученную модель для использования.
 
@@ -246,11 +244,11 @@ async def load_model(model_name: str) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка загрузки модели: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/models/predict")
-async def make_prediction(request: PredictionRequest) -> Dict[str, Any]:
+async def make_prediction(request: PredictionRequest) -> dict[str, Any]:
     """
     Выполняет предсказание используя загруженную модель.
 
@@ -269,7 +267,9 @@ async def make_prediction(request: PredictionRequest) -> Dict[str, Any]:
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Модель {request.model_name} не загружена или произошла ошибка предсказания",
+                detail=(
+                    f"Модель {request.model_name} не загружена или произошла ошибка предсказания"
+                ),
             )
 
     except HTTPException:
@@ -279,11 +279,11 @@ async def make_prediction(request: PredictionRequest) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка предсказания: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/models")
-async def list_models() -> Dict[str, Any]:
+async def list_models() -> dict[str, Any]:
     """
     Возвращает список доступных моделей и их статус.
     """
@@ -291,7 +291,7 @@ async def list_models() -> Dict[str, Any]:
 
 
 @router.delete("/features/cleanup")
-async def cleanup_old_data(max_age_hours: int = 24) -> Dict[str, Any]:
+async def cleanup_old_data(max_age_hours: int = 24) -> dict[str, Any]:
     """
     Очищает старые данные из буферов.
 
@@ -318,7 +318,7 @@ async def cleanup_old_data(max_age_hours: int = 24) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка очистки: {str(e)}",
-        )
+        ) from e
 
 
 # =============================================================================
@@ -327,7 +327,7 @@ async def cleanup_old_data(max_age_hours: int = 24) -> Dict[str, Any]:
 
 
 @router.post("/explain/prediction")
-async def explain_prediction(request: ExplainPredictionRequest) -> Dict[str, Any]:
+async def explain_prediction(request: ExplainPredictionRequest) -> dict[str, Any]:
     """
     Объясняет ML-предсказание с помощью XAI методов.
 
@@ -373,11 +373,11 @@ async def explain_prediction(request: ExplainPredictionRequest) -> Dict[str, Any
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка объяснения: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/explain/anomaly")
-async def explain_anomaly(request: AnomalyAnalysisRequest) -> Dict[str, Any]:
+async def explain_anomaly(request: AnomalyAnalysisRequest) -> dict[str, Any]:
     """
     Объясняет обнаруженную аномалию с помощью XAI и OpenAI.
 
@@ -436,7 +436,7 @@ async def explain_anomaly(request: AnomalyAnalysisRequest) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка анализа аномалии: {str(e)}",
-        )
+        ) from e
 
 
 # =============================================================================
@@ -445,7 +445,7 @@ async def explain_anomaly(request: AnomalyAnalysisRequest) -> Dict[str, Any]:
 
 
 @router.post("/analyze/logs")
-async def analyze_logs_with_ai(request: AnalyzeLogsRequest) -> Dict[str, Any]:
+async def analyze_logs_with_ai(request: AnalyzeLogsRequest) -> dict[str, Any]:
     """
     Анализирует логи с помощью OpenAI для поиска паттернов и проблем.
 
@@ -477,11 +477,11 @@ async def analyze_logs_with_ai(request: AnalyzeLogsRequest) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка анализа логов: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/alerts/smart")
-async def generate_smart_alert(request: SmartAlertRequest) -> Dict[str, Any]:
+async def generate_smart_alert(request: SmartAlertRequest) -> dict[str, Any]:
     """
     Генерирует умное уведомление с помощью OpenAI.
 
@@ -507,11 +507,11 @@ async def generate_smart_alert(request: SmartAlertRequest) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка генерации alert: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/health/xai")
-async def xai_health_check() -> Dict[str, Any]:
+async def xai_health_check() -> dict[str, Any]:
     """
     Проверка здоровья XAI сервиса.
     """
@@ -542,7 +542,7 @@ async def xai_health_check() -> Dict[str, Any]:
 
 
 @router.get("/health/openai")
-async def openai_health_check() -> Dict[str, Any]:
+async def openai_health_check() -> dict[str, Any]:
     """
     Проверка здоровья OpenAI сервиса.
     """
@@ -550,7 +550,7 @@ async def openai_health_check() -> Dict[str, Any]:
 
 
 @router.get("/intelligence/status")
-async def get_intelligence_status() -> Dict[str, Any]:
+async def get_intelligence_status() -> dict[str, Any]:
     """
     Возвращает статус всех AI/ML сервисов.
     """
@@ -596,7 +596,7 @@ async def get_intelligence_status() -> Dict[str, Any]:
 @router.post("/claude/safety-analysis")
 async def claude_safety_analysis(
     request: ClaudeSafetyAnalysisRequest,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Анализ безопасности ML-решения с помощью Claude Constitutional AI.
 
@@ -626,13 +626,13 @@ async def claude_safety_analysis(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка анализа безопасности: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/claude/ethics-analysis")
 async def claude_ethics_analysis(
     request: ClaudeEthicsAnalysisRequest,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Этический анализ автоматизированного действия с помощью Claude.
 
@@ -663,13 +663,13 @@ async def claude_ethics_analysis(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка этического анализа: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/claude/security-analysis")
 async def claude_security_analysis(
     request: ClaudeSecurityAnalysisRequest,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Анализ угроз безопасности с помощью Claude.
 
@@ -699,11 +699,11 @@ async def claude_security_analysis(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка анализа безопасности: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/claude/health")
-async def claude_health_check() -> Dict[str, Any]:
+async def claude_health_check() -> dict[str, Any]:
     """
     Проверка здоровья Claude сервиса.
     """
@@ -711,7 +711,7 @@ async def claude_health_check() -> Dict[str, Any]:
 
 
 @router.get("/claude/models")
-async def claude_model_info() -> Dict[str, Any]:
+async def claude_model_info() -> dict[str, Any]:
     """
     Информация о доступных моделях Claude.
     """
@@ -724,7 +724,7 @@ async def claude_model_info() -> Dict[str, Any]:
 
 
 @router.post("/multi-llm/analyze")
-async def multi_llm_analyze(request: MultiLLMAnalysisRequest) -> Dict[str, Any]:
+async def multi_llm_analyze(request: MultiLLMAnalysisRequest) -> dict[str, Any]:
     """
     Универсальный анализ с автоматическим выбором оптимального AI провайдера.
 
@@ -752,9 +752,7 @@ async def multi_llm_analyze(request: MultiLLMAnalysisRequest) -> Dict[str, Any]:
         }
 
         task_type = task_type_map.get(request.task_type, TaskType.GENERAL_ANALYSIS)
-        preferred_provider = provider_map.get(
-            request.preferred_provider, LLMProvider.AUTO
-        )
+        preferred_provider = provider_map.get(request.preferred_provider, LLMProvider.AUTO)
 
         # Создаем Multi-LLM запрос
         multi_llm_request = MultiLLMRequest(
@@ -790,13 +788,13 @@ async def multi_llm_analyze(request: MultiLLMAnalysisRequest) -> Dict[str, Any]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка Multi-LLM анализа: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/multi-llm/consensus")
 async def multi_llm_consensus_analysis(
     request: MultiLLMAnalysisRequest,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Консенсус-анализ критических решений с использованием OpenAI и Claude.
 
@@ -816,11 +814,11 @@ async def multi_llm_consensus_analysis(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка консенсус-анализа: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/multi-llm/health")
-async def multi_llm_health_check() -> Dict[str, Any]:
+async def multi_llm_health_check() -> dict[str, Any]:
     """
     Проверка здоровья Multi-LLM системы.
     """
@@ -828,7 +826,7 @@ async def multi_llm_health_check() -> Dict[str, Any]:
 
 
 @router.get("/multi-llm/usage-report")
-async def multi_llm_usage_report() -> Dict[str, Any]:
+async def multi_llm_usage_report() -> dict[str, Any]:
     """
     Отчет об использовании AI провайдеров.
     """
@@ -836,7 +834,7 @@ async def multi_llm_usage_report() -> Dict[str, Any]:
 
 
 @router.get("/ai/comprehensive-status")
-async def comprehensive_ai_status() -> Dict[str, Any]:
+async def comprehensive_ai_status() -> dict[str, Any]:
     """
     Комплексный статус всех AI сервисов (XAI, OpenAI, Claude, Multi-LLM).
     """
@@ -864,9 +862,7 @@ async def comprehensive_ai_status() -> Dict[str, Any]:
             ]
         )
 
-        overall_status = (
-            "healthy" if all_healthy else ("degraded" if any_healthy else "unhealthy")
-        )
+        overall_status = "healthy" if all_healthy else ("degraded" if any_healthy else "unhealthy")
 
         return {
             "timestamp": datetime.now().isoformat(),

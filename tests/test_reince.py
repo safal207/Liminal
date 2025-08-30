@@ -24,9 +24,7 @@ def test_resonance_map_is_stable_and_counts_tokens():
     fixed_dt = dt.datetime(2025, 1, 1, 12, 0, 0)
     rein = InMemoryREINCE(now_fn=lambda: fixed_dt.timestamp())
 
-    rein.record_emotional_event(
-        "я чувствую страх и напряжение, но помню про дом внутри"
-    )
+    rein.record_emotional_event("я чувствую страх и напряжение, но помню про дом внутри")
     rein.record_emotional_event("дом — это место любви и благодарности")
     rein.record_emotional_event("страх уходит, остаётся мягкость и любовь")
 

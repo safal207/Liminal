@@ -9,9 +9,19 @@ import time
 import traceback
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
+
+# Проверяем доступность библиотеки openai
+try:
+    import openai
+
+    OPENAI_AVAILABLE = True
+except ImportError:
+    openai = None
+    OPENAI_AVAILABLE = False
+
 
 # Импортируем универсальный адаптер
 try:
@@ -35,19 +45,11 @@ except ImportError as e:
         class chat:
             class completions:
                 @classmethod
-                async def create(
-                    cls, model=None, messages=None, max_tokens=None, temperature=None
-                ):
-                    logger.info(
-                        f"Резервный базовый мок-вызов OpenAI API, модель: {model}"
-                    )
+                async def create(cls, model=None, messages=None, max_tokens=None, temperature=None):
+                    logger.info(f"Резервный базовый мок-вызов OpenAI API, модель: {model}")
 
                     # Получаем текст запроса
-                    request_text = (
-                        messages[-1]["content"]
-                        if messages and len(messages) > 0
-                        else ""
-                    )
+                    request_text = messages[-1]["content"] if messages and len(messages) > 0 else ""
 
                     # Упрощенный мок-ответ
                     mock_response = {
@@ -83,10 +85,10 @@ class AnalysisRequest:
     """Запрос на анализ для OpenAI."""
 
     type: str  # "anomaly", "log_analysis", "incident", "pattern_recognition"
-    data: Dict[str, Any]
-    context: Optional[Dict[str, Any]] = None
+    data: dict[str, Any]
+    context: dict[str, Any] | None = None
     priority: str = "normal"  # "low", "normal", "high", "critical"
-    timestamp: Optional[str] = None
+    timestamp: str | None = None
 
 
 @dataclass
@@ -94,13 +96,13 @@ class AnalysisResponse:
     """Ответ от OpenAI анализа."""
 
     analysis: str
-    recommendations: List[str]
+    recommendations: list[str]
     severity: str  # "low", "medium", "high", "critical"
     confidence: float
-    action_items: List[str]
+    action_items: list[str]
     summary: str
-    technical_details: Dict[str, Any]
-    follow_up_questions: List[str]
+    technical_details: dict[str, Any]
+    follow_up_questions: list[str]
 
 
 class OpenAIService:
@@ -109,7 +111,7 @@ class OpenAIService:
     Предоставляет intelligent analysis, automated responses и natural language explanations.
     """
 
-    def __init__(self, api_key: Optional[str] = None):
+    def __init__(self, api_key: str | None = None):
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.client = None
         self.model = "gpt-4-turbo-preview"  # Используем GPT-4 Turbo
@@ -152,12 +154,8 @@ class OpenAIService:
                         "Универсальный OpenAI клиент инициализирован в режиме реального API"
                     )
                 else:
-                    self.client = AsyncOpenAI(
-                        api_key=self.api_key
-                    )  # Мок-режим в адаптере
-                    logger.info(
-                        "Универсальный OpenAI клиент инициализирован в режиме мока"
-                    )
+                    self.client = AsyncOpenAI(api_key=self.api_key)  # Мок-режим в адаптере
+                    logger.info("Универсальный OpenAI клиент инициализирован в режиме мока")
                 return True
             else:
                 # Резервная мок-реализация
@@ -165,18 +163,14 @@ class OpenAIService:
                 logger.info("Инициализирован резервный мок-клиент OpenAI")
                 return True
 
-        except Exception as e:
-            logger.error(
-                f"Ошибка инициализации OpenAI клиента: {traceback.format_exc()}"
-            )
+        except Exception:
+            logger.error(f"Ошибка инициализации OpenAI клиента: {traceback.format_exc()}")
             self.client = None
             return False
 
         # Дополнительная проверка формата ключа
         if self.api_key and ("\n" in self.api_key or "\r" in self.api_key):
-            logger.warning(
-                "API ключ содержит переносы строк, что может вызвать проблемы"
-            )
+            logger.warning("API ключ содержит переносы строк, что может вызвать проблемы")
 
     def initialize(self, api_key=None):
         """Публичный метод для инициализации клиента.
@@ -231,9 +225,9 @@ class OpenAIService:
 
     async def analyze_anomaly(
         self,
-        anomaly_data: Dict[str, Any],
-        ml_explanation: Optional[Dict[str, Any]] = None,
-        context: Optional[Dict[str, Any]] = None,
+        anomaly_data: dict[str, Any],
+        ml_explanation: dict[str, Any] | None = None,
+        context: dict[str, Any] | None = None,
     ) -> AnalysisResponse:
         """
         Анализирует аномалию с помощью GPT-4.
@@ -258,9 +252,9 @@ class OpenAIService:
 
     async def analyze_logs(
         self,
-        log_entries: List[str],
+        log_entries: list[str],
         time_range: str,
-        error_patterns: Optional[List[str]] = None,
+        error_patterns: list[str] | None = None,
     ) -> AnalysisResponse:
         """
         Анализирует логи для поиска паттернов и проблем.
@@ -289,9 +283,9 @@ class OpenAIService:
     async def explain_ml_prediction(
         self,
         prediction: Any,
-        features: Dict[str, Any],
+        features: dict[str, Any],
         model_type: str,
-        xai_explanation: Optional[Dict[str, Any]] = None,
+        xai_explanation: dict[str, Any] | None = None,
     ) -> AnalysisResponse:
         """
         Объясняет ML-предсказание естественным языком.
@@ -306,9 +300,7 @@ class OpenAIService:
             AnalysisResponse с объяснением на естественном языке
         """
         # Кэш-ключ на основе входных данных
-        cache_key = (
-            f"ml_explanation:{model_type}:{hash(frozenset(str(features.items())))}"
-        )
+        cache_key = f"ml_explanation:{model_type}:{hash(frozenset(str(features.items())))}"
 
         # Проверяем кэш
         if cache_key in self.response_cache:
@@ -356,9 +348,7 @@ XAI АНАЛИЗ:
                     ),
                     severity=json_response.get("severity", "medium"),
                     confidence=float(json_response.get("confidence", 0.5)),
-                    action_items=json_response.get(
-                        "action_items", ["Действия не определены"]
-                    ),
+                    action_items=json_response.get("action_items", ["Действия не определены"]),
                     summary=json_response.get("summary", "Краткое описание недоступно"),
                     technical_details=json_response.get(
                         "technical_details", {"info": "Технические детали недоступны"}
@@ -418,7 +408,7 @@ XAI АНАЛИЗ:
             )
 
     async def generate_incident_response(
-        self, incident_data: Dict[str, Any], severity: str, affected_systems: List[str]
+        self, incident_data: dict[str, Any], severity: str, affected_systems: list[str]
     ) -> AnalysisResponse:
         """
         Генерирует план реагирования на инцидент.
@@ -444,9 +434,9 @@ XAI АНАЛИЗ:
 
     async def analyze_performance_patterns(
         self,
-        metrics: Dict[str, Any],
-        time_series_data: List[Dict[str, Any]],
-        baseline: Optional[Dict[str, Any]] = None,
+        metrics: dict[str, Any],
+        time_series_data: list[dict[str, Any]],
+        baseline: dict[str, Any] | None = None,
     ) -> AnalysisResponse:
         """
         Анализирует паттерны производительности.
@@ -474,8 +464,8 @@ XAI АНАЛИЗ:
 
     async def generate_smart_alert(
         self,
-        alert_data: Dict[str, Any],
-        context: Dict[str, Any],
+        alert_data: dict[str, Any],
+        context: dict[str, Any],
         recipient_role: str = "devops",
     ) -> str:
         """
@@ -618,7 +608,7 @@ XAI АНАЛИЗ:
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
             )
-            logger.debug(f"Получен ответ от OpenAI API")
+            logger.debug("Получен ответ от OpenAI API")
 
             # Извлекаем текст
             content = response.choices[0].message.content
@@ -663,9 +653,7 @@ XAI АНАЛИЗ:
                     ),
                     severity=json_response.get("severity", "medium"),
                     confidence=float(json_response.get("confidence", 0.5)),
-                    action_items=json_response.get(
-                        "action_items", ["Действия не определены"]
-                    ),
+                    action_items=json_response.get("action_items", ["Действия не определены"]),
                     summary=json_response.get("summary", "Краткое описание недоступно"),
                     technical_details=json_response.get(
                         "technical_details", {"info": "Технические детали недоступны"}
@@ -814,7 +802,7 @@ XAI АНАЛИЗ:
             logger.error(f"Ошибка вызова OpenAI API: {e}")
             raise
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Проверка здоровья OpenAI сервиса."""
         if not self.client:
             return {

@@ -12,6 +12,7 @@ OpenAI API Wrapper для Resonance Liminal ML Backend
 - Статус адаптера и проверка здоровья
 - Подробная информация о конфигурации
 """
+
 import hashlib
 import json
 import os
@@ -19,7 +20,7 @@ import time
 import traceback
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 
@@ -40,12 +41,9 @@ DEFAULT_DEBUG_LEVEL = 0  # 0 = minimal, 1 = normal, 2 = verbose
 # Загрузка конфигурации из переменных окружения
 CACHE_TTL = int(os.getenv("OPENAI_CACHE_TTL", str(DEFAULT_CACHE_TTL)))
 MOCK_DATA_DIR = os.getenv("OPENAI_MOCK_DIR", DEFAULT_MOCK_DATA_DIR)
-CONNECTION_TIMEOUT = int(
-    os.getenv("OPENAI_CONNECTION_TIMEOUT", str(DEFAULT_CONNECTION_TIMEOUT))
-)
+CONNECTION_TIMEOUT = int(os.getenv("OPENAI_CONNECTION_TIMEOUT", str(DEFAULT_CONNECTION_TIMEOUT)))
 FALLBACK_TO_LOCAL = (
-    os.getenv("OPENAI_FALLBACK_TO_LOCAL", str(DEFAULT_FALLBACK_TO_LOCAL).lower())
-    == "true"
+    os.getenv("OPENAI_FALLBACK_TO_LOCAL", str(DEFAULT_FALLBACK_TO_LOCAL).lower()) == "true"
 )
 MOCK_ONLY = os.getenv("OPENAI_MOCK_ONLY", str(DEFAULT_MOCK_ONLY).lower()) == "true"
 DEBUG_LEVEL = int(os.getenv("OPENAI_DEBUG_LEVEL", str(DEFAULT_DEBUG_LEVEL)))
@@ -65,12 +63,10 @@ class LLMRequest:
     """Запрос к языковой модели с параметрами"""
 
     model: str
-    messages: List[Dict[str, str]]
+    messages: list[dict[str, str]]
     max_tokens: int = 800
     temperature: float = 0.3
-    response_format: Dict[str, str] = field(
-        default_factory=lambda: {"type": "json_object"}
-    )
+    response_format: dict[str, str] = field(default_factory=lambda: {"type": "json_object"})
 
     def get_cache_key(self) -> str:
         """Создает хеш-ключ для кеширования запроса"""
@@ -93,13 +89,13 @@ class LLMResponse:
 
     content: str
     model: str
-    usage: Dict[str, int] = None
+    usage: dict[str, int] = None
     finish_reason: str = "stop"
     created_at: float = field(default_factory=time.time)
     is_mock: bool = False
     cached: bool = False
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         """Преобразует ответ в словарь"""
         return {
             "content": self.content,
@@ -122,9 +118,7 @@ class OpenAIWrapper:
         # Конфигурация
         self.mock_only = MOCK_ONLY if force_mock_mode is None else force_mock_mode
         self.debug_level = (
-            int(os.getenv("OPENAI_DEBUG_LEVEL", "0"))
-            if debug_level is None
-            else debug_level
+            int(os.getenv("OPENAI_DEBUG_LEVEL", "0")) if debug_level is None else debug_level
         )
         self.cache_ttl = CACHE_TTL if cache_ttl is None else cache_ttl
         self.fallback_to_local = FALLBACK_TO_LOCAL
@@ -182,9 +176,7 @@ class OpenAIWrapper:
         # Если включен режим принудительного мока, пропускаем инициализацию API
         if self.mock_only:
             if self.debug_level > 0:
-                logger.info(
-                    f"Режим mock_only включен, пропускаем инициализацию реального API"
-                )
+                logger.info("Режим mock_only включен, пропускаем инициализацию реального API")
             self.initialization_status["openai"] = {
                 "initialized": False,
                 "error": "mock_only mode enabled",
@@ -195,7 +187,7 @@ class OpenAIWrapper:
         # Пытаемся импортировать OpenAI Client
         try:
             if self.debug_level > 1:
-                logger.debug(f"Попытка импорта библиотеки OpenAI...")
+                logger.debug("Попытка импорта библиотеки OpenAI...")
 
             from openai import AsyncOpenAI
 
@@ -258,9 +250,7 @@ class OpenAIWrapper:
         except Exception as e:
             error_msg = f"Ошибка инициализации OpenAI клиента: {e}"
             if self.debug_level > 0:
-                error_msg = (
-                    f"Ошибка инициализации OpenAI клиента: {traceback.format_exc()}"
-                )
+                error_msg = f"Ошибка инициализации OpenAI клиента: {traceback.format_exc()}"
             logger.error(error_msg)
             self.initialization_status["openai"] = {
                 "initialized": False,
@@ -278,14 +268,10 @@ class OpenAIWrapper:
         # Если не удалось инициализировать клиент, проверяем настройки мока
         if self.fallback_to_local:
             if self.debug_level > 0:
-                logger.info(
-                    f"Включен режим fallback_to_local, используем мок-реализацию"
-                )
+                logger.info("Включен режим fallback_to_local, используем мок-реализацию")
             return True
         else:
-            error_msg = (
-                "Не удалось инициализировать OpenAI клиент и fallback_to_local выключен"
-            )
+            error_msg = "Не удалось инициализировать OpenAI клиент и fallback_to_local выключен"
             logger.error(error_msg)
 
             # Записываем гипотезу для решения проблемы
@@ -295,7 +281,7 @@ class OpenAIWrapper:
 
             return False
 
-    def _get_cached_response(self, request: LLMRequest) -> Optional[LLMResponse]:
+    def _get_cached_response(self, request: LLMRequest) -> LLMResponse | None:
         """Получает ответ из кеша"""
         cache_key = request.get_cache_key()
 
@@ -345,14 +331,14 @@ class OpenAIWrapper:
         except Exception as e:
             logger.error(f"Ошибка при сохранении мок-ответа: {e}")
 
-    def _load_mock_response(self, request: LLMRequest) -> Optional[LLMResponse]:
+    def _load_mock_response(self, request: LLMRequest) -> LLMResponse | None:
         """Загружает мок-ответ с диска"""
         try:
             cache_key = request.get_cache_key()
             file_path = os.path.join(MOCK_DATA_DIR, f"{cache_key}.json")
 
             if os.path.exists(file_path):
-                with open(file_path, "r", encoding="utf-8") as f:
+                with open(file_path, encoding="utf-8") as f:
                     data = json.load(f)
 
                 response_data = data.get("response", {})
@@ -380,15 +366,10 @@ class OpenAIWrapper:
         last_message = request.messages[-1]["content"] if request.messages else ""
 
         # Определяем тип ответа на основе запроса
-        is_anomaly = (
-            "anomaly" in last_message.lower() or "аномалия" in last_message.lower()
-        )
-        is_fraud = (
-            "fraud" in last_message.lower() or "мошенничество" in last_message.lower()
-        )
+        is_anomaly = "anomaly" in last_message.lower() or "аномалия" in last_message.lower()
+        is_fraud = "fraud" in last_message.lower() or "мошенничество" in last_message.lower()
         is_performance = (
-            "performance" in last_message.lower()
-            or "производительность" in last_message.lower()
+            "performance" in last_message.lower() or "производительность" in last_message.lower()
         )
 
         # Генерируем ответ в зависимости от типа
@@ -406,14 +387,9 @@ class OpenAIWrapper:
             content=json.dumps(mock_response, ensure_ascii=False),
             model=f"mock-{request.model}",
             usage={
-                "prompt_tokens": sum(
-                    len(m.get("content", "")) for m in request.messages
-                )
-                // 4,
+                "prompt_tokens": sum(len(m.get("content", "")) for m in request.messages) // 4,
                 "completion_tokens": len(json.dumps(mock_response)) // 4,
-                "total_tokens": (
-                    sum(len(m.get("content", "")) for m in request.messages) // 4
-                )
+                "total_tokens": (sum(len(m.get("content", "")) for m in request.messages) // 4)
                 + (len(json.dumps(mock_response)) // 4),
             },
             finish_reason="stop",
@@ -426,7 +402,7 @@ class OpenAIWrapper:
 
         return response
 
-    def _generate_anomaly_explanation(self) -> Dict[str, Any]:
+    def _generate_anomaly_explanation(self) -> dict[str, Any]:
         """Генерирует объяснение для аномалий"""
         return {
             "analysis": "Повышенная активность пользователя была выявлена как аномальная из-за высокого количества сообщений в минуту (120) и повышенного количества неудачных попыток авторизации. Это может указывать на попытку автоматизированного доступа или брутфорс-атаку.",
@@ -457,7 +433,7 @@ class OpenAIWrapper:
             },
         }
 
-    def _generate_fraud_explanation(self) -> Dict[str, Any]:
+    def _generate_fraud_explanation(self) -> dict[str, Any]:
         """Генерирует объяснение для случаев мошенничества"""
         return {
             "analysis": "Анализ транзакций выявил подозрительные паттерны, характерные для мошенничества: множественные небольшие транзакции с постепенным увеличением сумм, транзакции в нетипичное время и с нетипичных устройств.",
@@ -487,7 +463,7 @@ class OpenAIWrapper:
             },
         }
 
-    def _generate_performance_explanation(self) -> Dict[str, Any]:
+    def _generate_performance_explanation(self) -> dict[str, Any]:
         """Генерирует объяснение для проблем производительности"""
         return {
             "analysis": "Наблюдается снижение производительности системы, вызванное высокой нагрузкой на базу данных и недостаточным кэшированием частых запросов. Количество соединений к базе данных превысило оптимальный порог на 40%.",
@@ -517,7 +493,7 @@ class OpenAIWrapper:
             },
         }
 
-    def _generate_generic_explanation(self, query: str) -> Dict[str, Any]:
+    def _generate_generic_explanation(self, query: str) -> dict[str, Any]:
         """Генерирует общее объяснение на основе запроса"""
         return {
             "analysis": f"Анализ запроса: {query[:100]}... Обнаружены стандартные паттерны поведения пользователя без значительных отклонений от нормы.",
@@ -561,7 +537,9 @@ class OpenAIWrapper:
             error_hash = log_error(error_msg, {"request_model": request.model})
 
             # Предлагаем решение - инсайт
-            solution = "Проверьте, что метод initialize() был вызван и вернул True перед вызовом API"
+            solution = (
+                "Проверьте, что метод initialize() был вызван и вернул True перед вызовом API"
+            )
             log_insight(error_hash, solution, {"solution_type": "initialization_check"})
 
             raise ValueError(error_msg)
@@ -653,9 +631,7 @@ class OpenAIWrapper:
 
         # Логируем информацию о запросе при высоком уровне отладки
         if self.debug_level > 1:
-            messages_info = [
-                f"{m['role']}:{len(m['content'])} chars" for m in request.messages
-            ]
+            messages_info = [f"{m['role']}:{len(m['content'])} chars" for m in request.messages]
             logger.debug(f"Запрос: модель={request.model}, сообщения={messages_info}")
 
         # Проверяем режим мока
@@ -678,9 +654,7 @@ class OpenAIWrapper:
 
             # Генерируем новый мок-ответ
             if self.debug_level > 1:
-                logger.debug(
-                    f"Генерация нового мок-ответа для {request.get_cache_key()[:8]}"
-                )
+                logger.debug(f"Генерация нового мок-ответа для {request.get_cache_key()[:8]}")
 
             mock_response = self._generate_mock_response(request)
             self._cache_response(request, mock_response)
@@ -694,9 +668,7 @@ class OpenAIWrapper:
         # Пытаемся выполнить реальный вызов API
         try:
             if self.debug_level > 0:
-                logger.info(
-                    f"Выполняем реальный вызов OpenAI API для модели {request.model}"
-                )
+                logger.info(f"Выполняем реальный вызов OpenAI API для модели {request.model}")
 
             response = await self._call_real_openai(request)
             self._cache_response(request, response)
@@ -735,7 +707,7 @@ class OpenAIWrapper:
                 return mock_response
             else:
                 if self.debug_level > 0:
-                    logger.error(f"fallback_to_local отключен, пробрасываем исключение")
+                    logger.error("fallback_to_local отключен, пробрасываем исключение")
 
                 # Записываем гипотезу для решения проблемы
                 hypothesis = "Возможно, стоит включить fallback_to_local для автоматического перехода на мок-режим при ошибках"
@@ -851,6 +823,4 @@ class AsyncOpenAI:
                         self.choices = [MockChoice(content, finish_reason)]
                         self.usage = MockUsage(usage or {})
 
-                return MockResponse(
-                    response.content, response.finish_reason, response.usage
-                )
+                return MockResponse(response.content, response.finish_reason, response.usage)

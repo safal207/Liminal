@@ -95,9 +95,7 @@ class TestJWTAuth:
                 assert auth_data["type"] == "auth_required"
 
                 # Отправляем неверный токен
-                await websocket.send(
-                    json.dumps({"type": "auth", "token": "invalid_token"})
-                )
+                await websocket.send(json.dumps({"type": "auth", "token": "invalid_token"}))
 
                 # Соединение должно быть закрыто
                 await asyncio.sleep(1)
@@ -141,7 +139,7 @@ class TestJWTAuth:
         # Подключаемся к WebSocket
         async with websockets.connect(WS_URL) as websocket:
             # Аутентификация
-            auth_request = await websocket.recv()
+            await websocket.recv()
             await websocket.send(json.dumps({"type": "auth", "token": token}))
 
             auth_response = await websocket.recv()
@@ -149,9 +147,7 @@ class TestJWTAuth:
             assert auth_result["type"] == "auth_success"
 
             # Подписка на канал
-            await websocket.send(
-                json.dumps({"type": "subscribe", "channel": "test_channel"})
-            )
+            await websocket.send(json.dumps({"type": "subscribe", "channel": "test_channel"}))
 
             subscribe_response = await websocket.recv()
             subscribe_result = json.loads(subscribe_response)
@@ -170,9 +166,7 @@ class TestJWTAuth:
             )
 
             # Отписка от канала
-            await websocket.send(
-                json.dumps({"type": "unsubscribe", "channel": "test_channel"})
-            )
+            await websocket.send(json.dumps({"type": "unsubscribe", "channel": "test_channel"}))
 
             unsubscribe_response = await websocket.recv()
             unsubscribe_result = json.loads(unsubscribe_response)

@@ -3,7 +3,7 @@
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class Neo4jDateTime:
@@ -33,7 +33,7 @@ class Neo4jWriter:
         self.nodes = []
         self.relationships = []
 
-    def create_dunewave_node(self, wave_data: Dict[str, Any]) -> Optional[Dict]:
+    def create_dunewave_node(self, wave_data: dict[str, Any]) -> dict | None:
         """Создает мок-узел DuneWave."""
         node = {
             "id": wave_data.get("id", f"wave_{len(self.nodes) + 1}"),
@@ -44,9 +44,7 @@ class Neo4jWriter:
         self.nodes.append(node)
         return node
 
-    def create_memory_fragment_node(
-        self, memory_data: Dict[str, Any]
-    ) -> Optional[Dict]:
+    def create_memory_fragment_node(self, memory_data: dict[str, Any]) -> dict | None:
         """Создает мок-узел MemoryFragment."""
         node = {
             "id": memory_data.get("id", f"mem_{len(self.nodes) + 1}"),
@@ -59,24 +57,20 @@ class Neo4jWriter:
 
     def link_dunewave_to_memory(self, wave_id: str, memory_id: str) -> bool:
         """Создает мок-связь между DuneWave и MemoryFragment."""
-        self.relationships.append(
-            {"from": wave_id, "to": memory_id, "type": "CONTAINS"}
-        )
+        self.relationships.append({"from": wave_id, "to": memory_id, "type": "CONTAINS"})
         return True
 
-    def get_memories(self, limit: int = 10) -> List[Dict]:
+    def get_memories(self, limit: int = 10) -> list[dict]:
         """Возвращает список воспоминаний."""
         return [n for n in self.nodes if n.get("type") == "MemoryFragment"][:limit]
 
-    def get_waves(self, limit: int = 10) -> List[Dict]:
+    def get_waves(self, limit: int = 10) -> list[dict]:
         """Возвращает список волн."""
         return [n for n in self.nodes if n.get("type") == "DuneWave"][:limit]
 
     def create_mentorship(self, younger_id: str, mentor_id: str) -> bool:
         """Создает мок-связь наставничества."""
-        self.relationships.append(
-            {"from": mentor_id, "to": younger_id, "type": "MENTORS"}
-        )
+        self.relationships.append({"from": mentor_id, "to": younger_id, "type": "MENTORS"})
         return True
 
     def close(self):

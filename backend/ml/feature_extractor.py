@@ -5,7 +5,7 @@ Feature Extractor для ML-моделей.
 
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -24,7 +24,7 @@ class WebSocketFeatures:
     rate_limit_violations: int
     ip_address: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Конвертирует в словарь для ML-обработки."""
         return {
             "timestamp": self.timestamp,
@@ -46,12 +46,12 @@ class FeatureExtractor:
     """
 
     def __init__(self):
-        self.user_sessions: Dict[str, Dict] = {}
-        self.feature_buffer: List[WebSocketFeatures] = []
+        self.user_sessions: dict[str, dict] = {}
+        self.feature_buffer: list[WebSocketFeatures] = []
         self.buffer_size = 1000  # Максимальный размер буфера
 
     def track_user_activity(
-        self, user_id: str, message_size: int, channels: List[str], ip_address: str
+        self, user_id: str, message_size: int, channels: list[str], ip_address: str
     ) -> None:
         """
         Отслеживает активность пользователя для извлечения фичей.
@@ -92,7 +92,7 @@ class FeatureExtractor:
         if user_id in self.user_sessions:
             self.user_sessions[user_id]["rate_limit_violations"] += 1
 
-    def extract_features(self, user_id: str) -> Optional[WebSocketFeatures]:
+    def extract_features(self, user_id: str) -> WebSocketFeatures | None:
         """
         Извлекает фичи для конкретного пользователя.
 
@@ -114,9 +114,7 @@ class FeatureExtractor:
             return None
 
         messages_per_minute = session["message_count"] / (connection_duration / 60)
-        avg_message_size = session["total_message_size"] / max(
-            session["message_count"], 1
-        )
+        avg_message_size = session["total_message_size"] / max(session["message_count"], 1)
         error_rate = session["errors"] / max(session["message_count"], 1)
 
         features = WebSocketFeatures(
@@ -141,7 +139,7 @@ class FeatureExtractor:
         logger.debug(f"Извлечены фичи для пользователя {user_id}: {features}")
         return features
 
-    def get_recent_features(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_recent_features(self, limit: int = 100) -> list[dict[str, Any]]:
         """
         Возвращает последние извлеченные фичи для ML-анализа.
 

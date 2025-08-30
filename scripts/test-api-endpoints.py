@@ -27,7 +27,7 @@ def test_endpoint(name, url, method="GET", data=None, expected_status=200):
         print(f"   Status: {response.status_code}")
 
         if response.status_code == expected_status:
-            print(f"   ✅ SUCCESS")
+            print("   ✅ SUCCESS")
             try:
                 result = response.json()
                 print(f"   Response: {json.dumps(result, indent=2)[:200]}...")
@@ -36,9 +36,7 @@ def test_endpoint(name, url, method="GET", data=None, expected_status=200):
                 print(f"   Response: {response.text[:200]}...")
                 return True, response.text
         else:
-            print(
-                f"   ❌ FAILED - Expected {expected_status}, got {response.status_code}"
-            )
+            print(f"   ❌ FAILED - Expected {expected_status}, got {response.status_code}")
             print(f"   Error: {response.text[:200]}...")
             return False, None
 
@@ -79,9 +77,7 @@ def main():
         ],
         "context": {"system_load": 0.7, "error_rate": 0.05, "time_of_day": "evening"},
     }
-    test_endpoint(
-        "OpenAI Log Analysis", f"{BASE_URL}/ml/openai/analyze-logs", "POST", openai_data
-    )
+    test_endpoint("OpenAI Log Analysis", f"{BASE_URL}/ml/openai/analyze-logs", "POST", openai_data)
 
     # Claude endpoints (будут работать только с реальным API ключом)
     print("\n👼 CLAUDE ENDPOINTS")

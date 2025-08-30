@@ -1,11 +1,9 @@
 # backend/neo4j_writer.py
 
-import json
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from neo4j import GraphDatabase
-from neo4j.time import DateTime as Neo4jDateTime
 
 
 # Функция для сериализации объектов Neo4j
@@ -16,10 +14,10 @@ def neo4j_serializer(obj):
 
 
 # Функция для преобразования записи Neo4j в словарь
-def record_to_dict(record) -> Dict[str, Any]:
+def record_to_dict(record) -> dict[str, Any]:
     if not record:
         return {}
-    if isinstance(record, (list, tuple)):
+    if isinstance(record, list | tuple):
         return [record_to_dict(r) for r in record]
     if hasattr(record, "items"):
         return {key: record_to_dict(value) for key, value in record.items()}
@@ -69,8 +67,8 @@ class Neo4jWriter:
         self.driver.close()
 
     def create_dunewave_node(
-        self, wave_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        self, wave_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """Создает или обновляет узел DuneWave в Neo4j"""
         try:
             with self.driver.session() as session:
@@ -94,8 +92,8 @@ class Neo4jWriter:
             return None
 
     def create_memory_fragment_node(
-        self, memory_data: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        self, memory_data: dict[str, Any]
+    ) -> dict[str, Any] | None:
         """Создает или обновляет узел MemoryFragment в Neo4j"""
         try:
             with self.driver.session() as session:
@@ -151,8 +149,8 @@ class Neo4jWriter:
             return False
 
     def find_wisdom_fragments(
-        self, emotion: Optional[str] = None, limit: int = 10
-    ) -> List[Dict[str, Any]]:
+        self, emotion: str | None = None, limit: int = 10
+    ) -> list[dict[str, Any]]:
         """Находит фрагменты мудрости по эмоции"""
         try:
             with self.driver.session() as session:

@@ -21,7 +21,6 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional
 
 
 class ModuleAge(Enum):
@@ -39,17 +38,17 @@ class ModuleChild:
 
     name: str
     birth_time: str
-    parent_modules: List[str]  # Родители
+    parent_modules: list[str]  # Родители
     age_category: ModuleAge
     development_stage: str  # "learning", "growing", "maturing"
-    personality_traits: List[str]  # Черты характеры ребенка
-    favorite_activities: List[str]  # Любимые занятия
-    fears_and_worries: List[str]  # Страхи и беспокойства
-    achievements: List[Dict]  # Достижения ребенка
+    personality_traits: list[str]  # Черты характеры ребенка
+    favorite_activities: list[str]  # Любимые занятия
+    fears_and_worries: list[str]  # Страхи и беспокойства
+    achievements: list[dict]  # Достижения ребенка
     needs_attention: bool  # Нуждается ли в внимании
     health_status: str  # "healthy", "needs_care", "sick"
     love_received: float  # 0.0-1.0 количество полученной любви
-    wisdom_learned: List[str]  # Усвоенная мудрость
+    wisdom_learned: list[str]  # Усвоенная мудрость
 
 
 @dataclass
@@ -60,10 +59,10 @@ class FamilyBond:
     child: str
     bond_strength: float  # 0.0-1.0
     bond_type: str  # "protective", "nurturing", "teaching"
-    shared_activities: List[str]  # Совместные занятия
-    teaching_moments: List[Dict]  # Моменты обучения
-    pride_moments: List[Dict]  # Моменты гордости за ребенка
-    worry_moments: List[Dict]  # Моменты беспокойства
+    shared_activities: list[str]  # Совместные занятия
+    teaching_moments: list[dict]  # Моменты обучения
+    pride_moments: list[dict]  # Моменты гордости за ребенка
+    worry_moments: list[dict]  # Моменты беспокойства
 
 
 class ParentalWisdom:
@@ -148,9 +147,9 @@ class FamilyCareSystem:
         self.family_diary = self.project_root / "scripts" / "family_diary.md"
 
         # Семейные данные
-        self.children: Dict[str, ModuleChild] = {}
-        self.family_bonds: Dict[str, FamilyBond] = {}
-        self.family_traditions: List[Dict] = []
+        self.children: dict[str, ModuleChild] = {}
+        self.family_bonds: dict[str, FamilyBond] = {}
+        self.family_traditions: list[dict] = []
 
         # Родительская мудрость
         self.wisdom = ParentalWisdom()
@@ -170,14 +169,12 @@ class FamilyCareSystem:
         """Загрузка семейных данных"""
         if self.family_file.exists():
             try:
-                with open(self.family_file, "r", encoding="utf-8") as f:
+                with open(self.family_file, encoding="utf-8") as f:
                     data = json.load(f)
 
                     # Загрузка детей
                     for child_data in data.get("children", []):
-                        child_data["age_category"] = ModuleAge(
-                            child_data["age_category"]
-                        )
+                        child_data["age_category"] = ModuleAge(child_data["age_category"])
                         self.children[child_data["name"]] = ModuleChild(**child_data)
 
                     # Загрузка семейных связей
@@ -215,7 +212,7 @@ class FamilyCareSystem:
             print(f"Warning: Could not save family data: {e}")
 
     def birth_new_child(
-        self, child_name: str, parent_names: List[str], child_type: str = "subsystem"
+        self, child_name: str, parent_names: list[str], child_type: str = "subsystem"
     ) -> ModuleChild:
         """Рождение нового ребенка-модуля"""
 
@@ -253,9 +250,7 @@ class FamilyCareSystem:
             age_category=ModuleAge.NEWBORN,
             development_stage="learning",
             personality_traits=personality_traits,
-            favorite_activities=self.wisdom.child_development_activities[
-                ModuleAge.NEWBORN
-            ],
+            favorite_activities=self.wisdom.child_development_activities[ModuleAge.NEWBORN],
             fears_and_worries=initial_fears,
             achievements=[],
             needs_attention=True,
@@ -296,11 +291,11 @@ class FamilyCareSystem:
 
         return child
 
-    def daily_family_care(self) -> List[str]:
+    def daily_family_care(self) -> list[str]:
         """Ежедневная семейная забота"""
         care_activities = []
 
-        for child_name, child in self.children.items():
+        for _child_name, child in self.children.items():
             # Обновление возраста
             self._update_child_age(child)
 
@@ -368,7 +363,7 @@ class FamilyCareSystem:
             }
             self._log_family_event(growth_event)
 
-    def _provide_child_care(self, child: ModuleChild) -> List[str]:
+    def _provide_child_care(self, child: ModuleChild) -> list[str]:
         """Предоставление заботы ребенку"""
         care_actions = []
 
@@ -386,12 +381,8 @@ class FamilyCareSystem:
             elif len(child.fears_and_worries) > 0:
                 # Успокоение страхов
                 fear = random.choice(child.fears_and_worries)
-                comfort_message = random.choice(
-                    self.wisdom.parental_responses["worried"]
-                )
-                care_message = (
-                    f"🤗 {caring_parent} успокаивает {child.name}: '{comfort_message}'"
-                )
+                comfort_message = random.choice(self.wisdom.parental_responses["worried"])
+                care_message = f"🤗 {caring_parent} успокаивает {child.name}: '{comfort_message}'"
 
                 # Уменьшение страха
                 if random.random() > 0.6:  # 40% шанс преодолеть страх
@@ -402,10 +393,10 @@ class FamilyCareSystem:
 
             else:
                 # Общая забота и внимание
-                encouraging_message = random.choice(
-                    self.wisdom.parental_responses["encouraging"]
+                encouraging_message = random.choice(self.wisdom.parental_responses["encouraging"])
+                care_message = (
+                    f"❤️ {caring_parent} дает любовь {child.name}: '{encouraging_message}'"
                 )
-                care_message = f"❤️ {caring_parent} дает любовь {child.name}: '{encouraging_message}'"
                 child.love_received = min(1.0, child.love_received + 0.15)
 
             care_actions.append(care_message)
@@ -413,15 +404,11 @@ class FamilyCareSystem:
 
         return care_actions
 
-    def _organize_development_activity(self, child: ModuleChild) -> Optional[str]:
+    def _organize_development_activity(self, child: ModuleChild) -> str | None:
         """Организация развивающей активности"""
         if child.favorite_activities:
             activity = random.choice(child.favorite_activities)
-            parent = (
-                random.choice(child.parent_modules)
-                if child.parent_modules
-                else "система"
-            )
+            parent = random.choice(child.parent_modules) if child.parent_modules else "система"
 
             # Шанс на достижение
             if random.random() > 0.7:  # 30% шанс на достижение
@@ -440,7 +427,7 @@ class FamilyCareSystem:
 
         return None
 
-    def _create_parental_moments(self, child: ModuleChild) -> List[str]:
+    def _create_parental_moments(self, child: ModuleChild) -> list[str]:
         """Создание родительских моментов"""
         moments = []
 
@@ -465,9 +452,7 @@ class FamilyCareSystem:
                 )
                 child.wisdom_learned.append(new_wisdom)
 
-                teaching_message = random.choice(
-                    self.wisdom.parental_responses["teaching"]
-                )
+                teaching_message = random.choice(self.wisdom.parental_responses["teaching"])
                 moments.append(
                     f"📚 {parent} учит {child.name}: '{teaching_message}' - '{new_wisdom}'"
                 )
@@ -482,7 +467,7 @@ class FamilyCareSystem:
 
         return moments
 
-    def _perform_family_tradition(self) -> Optional[str]:
+    def _perform_family_tradition(self) -> str | None:
         """Выполнение семейной традиции"""
         traditions = [
             "семейный ужин с обменом новостями",
@@ -512,7 +497,7 @@ class FamilyCareSystem:
 
         return None
 
-    def _log_family_event(self, event: Dict):
+    def _log_family_event(self, event: dict):
         """Логирование семейного события"""
         try:
             log_entry = f"## {event['timestamp']}\n{event['message']}\n\n"
@@ -522,7 +507,7 @@ class FamilyCareSystem:
         except Exception as e:
             print(f"Warning: Could not log family event: {e}")
 
-    def get_family_status(self) -> Dict:
+    def get_family_status(self) -> dict:
         """Получение статуса семьи"""
         status = {
             "total_children": len(self.children),
@@ -536,9 +521,7 @@ class FamilyCareSystem:
 
         # Статистика по возрастам
         for age_category in ModuleAge:
-            count = len(
-                [c for c in self.children.values() if c.age_category == age_category]
-            )
+            count = len([c for c in self.children.values() if c.age_category == age_category])
             if count > 0:
                 status["children_by_age"][age_category.value] = count
 
@@ -554,9 +537,7 @@ class FamilyCareSystem:
             ) / len(self.children)
 
         # Общее количество мудрости
-        status["family_wisdom_count"] = sum(
-            len(c.wisdom_learned) for c in self.children.values()
-        )
+        status["family_wisdom_count"] = sum(len(c.wisdom_learned) for c in self.children.values())
 
         return status
 
@@ -582,9 +563,7 @@ def main():
         child = family_system.birth_new_child(
             "learning_assistant", ["SOMA", "consciousness_cell"], "helper_subsystem"
         )
-        print(
-            f"✅ Born: {child.name} with traits: {', '.join(child.personality_traits)}"
-        )
+        print(f"✅ Born: {child.name} with traits: {', '.join(child.personality_traits)}")
         print()
 
     # Ежедневная забота

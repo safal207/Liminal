@@ -46,25 +46,18 @@ class TestJWTEdgeCases:
         async def test_ws():
             async with websockets.connect(WS_URL) as websocket:
                 # Получаем запрос аутентификации
-                auth_required = await websocket.recv()
+                await websocket.recv()
 
                 # Отправляем истекший токен
-                await websocket.send(
-                    json.dumps({"type": "auth", "token": expired_token})
-                )
+                await websocket.send(json.dumps({"type": "auth", "token": expired_token}))
 
                 # Должны получить ошибку или соединение должно закрыться
                 try:
                     response = await asyncio.wait_for(websocket.recv(), timeout=2)
                     response_data = json.loads(response)
-                    assert (
-                        "error" in response_data
-                        or "auth_error" in response_data.get("type", "")
-                    )
-                except asyncio.TimeoutError:
-                    pytest.fail(
-                        "WebSocket не вернул ошибку при отправке истекшего токена"
-                    )
+                    assert "error" in response_data or "auth_error" in response_data.get("type", "")
+                except TimeoutError:
+                    pytest.fail("WebSocket не вернул ошибку при отправке истекшего токена")
                 except websockets.exceptions.ConnectionClosedError:
                     # Соединение закрылось - это тоже валидное поведение для неверного токена
                     pass
@@ -82,36 +75,29 @@ class TestJWTEdgeCases:
 
         for invalid_token in invalid_tokens:
             # Проверка через REST API
-            response = requests.get(
-                f"{BASE_URL}/auth/me", params={"token": invalid_token}
-            )
-            assert (
-                response.status_code == 401
-            ), f"Ожидалась ошибка 401 для токена: {invalid_token}"
+            response = requests.get(f"{BASE_URL}/auth/me", params={"token": invalid_token})
+            assert response.status_code == 401, f"Ожидалась ошибка 401 для токена: {invalid_token}"
 
             # Проверка через WebSocket
             @pytest.mark.asyncio
-            async def test_ws():
+            async def test_ws(token=invalid_token):
                 async with websockets.connect(WS_URL) as websocket:
                     # Получаем запрос аутентификации
-                    auth_required = await websocket.recv()
+                    await websocket.recv()
 
                     # Отправляем неверный токен
-                    await websocket.send(
-                        json.dumps({"type": "auth", "token": invalid_token})
-                    )
+                    await websocket.send(json.dumps({"type": "auth", "token": token}))
 
                     # Должны получить ошибку или соединение должно закрыться
                     try:
                         response = await asyncio.wait_for(websocket.recv(), timeout=2)
                         response_data = json.loads(response)
-                        assert (
-                            "error" in response_data
-                            or "auth_error" in response_data.get("type", "")
+                        assert "error" in response_data or "auth_error" in response_data.get(
+                            "type", ""
                         )
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         pytest.fail(
-                            f"WebSocket не вернул ошибку для неверного токена: {invalid_token}"
+                            f"WebSocket не вернул ошибку для неверного токена: {token}"
                         )
                     except websockets.exceptions.ConnectionClosedError:
                         # Соединение закрылось - это валидное поведение для неверного токена
@@ -134,7 +120,7 @@ class TestJWTEdgeCases:
         async def test_unsubscribe():
             async with websockets.connect(WS_URL) as websocket:
                 # 1. Аутентификация
-                auth_required = await websocket.recv()
+                await websocket.recv()
                 await websocket.send(json.dumps({"type": "auth", "token": token}))
 
                 auth_response = await websocket.recv()
@@ -142,9 +128,7 @@ class TestJWTEdgeCases:
                 assert auth_data["type"] == "auth_success"
 
                 # 2. Подписываемся на канал timeline
-                await websocket.send(
-                    json.dumps({"type": "subscribe", "channel": "timeline"})
-                )
+                await websocket.send(json.dumps({"type": "subscribe", "channel": "timeline"}))
 
                 subscribe_response = await websocket.recv()
                 subscribe_data = json.loads(subscribe_response)
@@ -158,15 +142,13 @@ class TestJWTEdgeCases:
 
                 # Могут прийти данные от memory_timeline, пропускаем их
                 try:
-                    initial_data = await asyncio.wait_for(websocket.recv(), timeout=1)
-                except asyncio.TimeoutError:
+                    await asyncio.wait_for(websocket.recv(), timeout=1)
+                except TimeoutError:
                     # Если данных нет, это нормально
                     pass
 
                 # 3. Отписываемся от канала
-                await websocket.send(
-                    json.dumps({"type": "unsubscribe", "channel": "timeline"})
-                )
+                await websocket.send(json.dumps({"type": "unsubscribe", "channel": "timeline"}))
 
                 unsubscribe_response = await websocket.recv()
                 unsubscribe_data = json.loads(unsubscribe_response)

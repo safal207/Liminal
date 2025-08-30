@@ -3,6 +3,7 @@
 Minimal diagnostic script for OpenAI Wrapper
 Tests only essential functionality with detailed error handling
 """
+
 import asyncio
 import os
 import sys
@@ -145,12 +146,8 @@ async def diagnose_openai_wrapper():
             response = await llm_client.call(request)
 
             log("✓ API call successful")
-            log(
-                f"  - Model: {response.model if hasattr(response, 'model') else 'unknown'}"
-            )
-            log(
-                f"  - Mock: {response.is_mock if hasattr(response, 'is_mock') else 'unknown'}"
-            )
+            log(f"  - Model: {response.model if hasattr(response, 'model') else 'unknown'}")
+            log(f"  - Mock: {response.is_mock if hasattr(response, 'is_mock') else 'unknown'}")
             log(f"  - Content preview: {response.content[:50]}...")
 
         except Exception as e:
@@ -174,7 +171,7 @@ def load_env():
     env_path = Path(__file__).parent.parent / ".env"
     if env_path.exists():
         log(f"Loading environment from {env_path}")
-        with open(env_path, "r") as f:
+        with open(env_path) as f:
             for line in f:
                 if line.strip() and not line.startswith("#"):
                     try:
@@ -182,9 +179,7 @@ def load_env():
                         os.environ[key] = value
                         if key.endswith("API_KEY"):
                             masked = (
-                                value[:5] + "..." + value[-4:]
-                                if len(value) > 9
-                                else "[masked]"
+                                value[:5] + "..." + value[-4:] if len(value) > 9 else "[masked]"
                             )
                             log(f"  - Set {key}={masked}")
                         else:

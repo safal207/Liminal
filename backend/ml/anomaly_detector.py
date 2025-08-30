@@ -5,7 +5,7 @@ Anomaly Detector для обнаружения аномалий в WebSocket т�
 
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any
 
 from loguru import logger
 
@@ -22,7 +22,7 @@ class AnomalyAlert:
     anomaly_type: str
     severity: str  # low, medium, high, critical
     confidence: float
-    features: Dict[str, Any]
+    features: dict[str, Any]
     recommended_action: str
 
 
@@ -33,8 +33,8 @@ class AnomalyDetector:
     """
 
     def __init__(self):
-        self.alerts_buffer: List[AnomalyAlert] = []
-        self.user_baselines: Dict[str, Dict[str, float]] = {}
+        self.alerts_buffer: list[AnomalyAlert] = []
+        self.user_baselines: dict[str, dict[str, float]] = {}
         self.detection_rules = {
             "message_flood": {
                 "threshold": 100,  # сообщений в минуту
@@ -77,18 +77,14 @@ class AnomalyDetector:
                 + (1 - alpha) * baseline["avg_messages_per_minute"]
             )
             baseline["avg_message_size"] = (
-                alpha * features.avg_message_size
-                + (1 - alpha) * baseline["avg_message_size"]
+                alpha * features.avg_message_size + (1 - alpha) * baseline["avg_message_size"]
             )
             baseline["typical_channels"] = (
-                alpha * features.channels_count
-                + (1 - alpha) * baseline["typical_channels"]
+                alpha * features.channels_count + (1 - alpha) * baseline["typical_channels"]
             )
             baseline["samples_count"] = min(samples + 1, 1000)  # Ограничиваем счетчик
 
-    def detect_rule_based_anomalies(
-        self, features: WebSocketFeatures
-    ) -> List[AnomalyAlert]:
+    def detect_rule_based_anomalies(self, features: WebSocketFeatures) -> list[AnomalyAlert]:
         """
         Обнаруживает аномалии на основе эвристических правил.
 
@@ -102,10 +98,7 @@ class AnomalyDetector:
         current_time = time.time()
 
         # 1. Проверка на флуд сообщений
-        if (
-            features.messages_per_minute
-            > self.detection_rules["message_flood"]["threshold"]
-        ):
+        if features.messages_per_minute > self.detection_rules["message_flood"]["threshold"]:
             alerts.append(
                 AnomalyAlert(
                     timestamp=current_time,
@@ -133,10 +126,7 @@ class AnomalyDetector:
             )
 
         # 3. Проверка на злоупотребление rate limit
-        if (
-            features.rate_limit_violations
-            > self.detection_rules["rate_limit_abuse"]["threshold"]
-        ):
+        if features.rate_limit_violations > self.detection_rules["rate_limit_abuse"]["threshold"]:
             alerts.append(
                 AnomalyAlert(
                     timestamp=current_time,
@@ -150,10 +140,7 @@ class AnomalyDetector:
             )
 
         # 4. Проверка на подозрительное количество каналов
-        if (
-            features.channels_count
-            > self.detection_rules["suspicious_channels"]["threshold"]
-        ):
+        if features.channels_count > self.detection_rules["suspicious_channels"]["threshold"]:
             alerts.append(
                 AnomalyAlert(
                     timestamp=current_time,
@@ -168,9 +155,7 @@ class AnomalyDetector:
 
         return alerts
 
-    def detect_ml_based_anomalies(
-        self, features: WebSocketFeatures
-    ) -> List[AnomalyAlert]:
+    def detect_ml_based_anomalies(self, features: WebSocketFeatures) -> list[AnomalyAlert]:
         """
         Обнаруживает аномалии используя ML-модели.
 
@@ -217,9 +202,7 @@ class AnomalyDetector:
 
         return alerts
 
-    def detect_baseline_deviations(
-        self, features: WebSocketFeatures
-    ) -> List[AnomalyAlert]:
+    def detect_baseline_deviations(self, features: WebSocketFeatures) -> list[AnomalyAlert]:
         """
         Обнаруживает отклонения от базовой линии пользователя.
 
@@ -243,9 +226,9 @@ class AnomalyDetector:
             features.messages_per_minute - baseline["avg_messages_per_minute"]
         ) / max(baseline["avg_messages_per_minute"], 1)
 
-        channels_deviation = abs(
-            features.channels_count - baseline["typical_channels"]
-        ) / max(baseline["typical_channels"], 1)
+        channels_deviation = abs(features.channels_count - baseline["typical_channels"]) / max(
+            baseline["typical_channels"], 1
+        )
 
         # Если отклонение больше 300% от нормы
         if message_rate_deviation > 3.0:
@@ -276,7 +259,7 @@ class AnomalyDetector:
 
         return alerts
 
-    def analyze_user_activity(self, user_id: str) -> List[AnomalyAlert]:
+    def analyze_user_activity(self, user_id: str) -> list[AnomalyAlert]:
         """
         Анализирует активность пользователя на предмет аномалий.
 
@@ -325,9 +308,7 @@ class AnomalyDetector:
 
         return all_alerts
 
-    def get_recent_alerts(
-        self, limit: int = 50, min_severity: str = "low"
-    ) -> List[Dict[str, Any]]:
+    def get_recent_alerts(self, limit: int = 50, min_severity: str = "low") -> list[dict[str, Any]]:
         """
         Возвращает последние алерты.
 
@@ -348,9 +329,7 @@ class AnomalyDetector:
         ]
 
         # Сортируем по времени (новые первыми) и ограничиваем количество
-        recent_alerts = sorted(
-            filtered_alerts, key=lambda x: x.timestamp, reverse=True
-        )[:limit]
+        recent_alerts = sorted(filtered_alerts, key=lambda x: x.timestamp, reverse=True)[:limit]
 
         return [
             {

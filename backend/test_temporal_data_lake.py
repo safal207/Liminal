@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Neo4j Temporal Data Lake Демонстрация
@@ -28,10 +27,8 @@ def print_styled(title, content, style="info"):
         "end": "\033[0m",
     }
 
-    print(
-        f"\n{styles.get('bold', '')}{styles.get(style, '')}== {title} =={styles.get('end', '')}"
-    )
-    if isinstance(content, (dict, list)):
+    print(f"\n{styles.get('bold', '')}{styles.get(style, '')}== {title} =={styles.get('end', '')}")
+    if isinstance(content, dict | list):
         print(json.dumps(content, indent=2, ensure_ascii=False))
     else:
         print(content)
@@ -39,9 +36,7 @@ def print_styled(title, content, style="info"):
 
 def analyze_temporal_patterns(writer, days=7):
     """Анализ временных паттернов переходов сознания"""
-    print_styled(
-        "АНАЛИЗ ВРЕМЕННЫХ ПАТТЕРНОВ СОЗНАНИЯ", f"За последние {days} дней", "header"
-    )
+    print_styled("АНАЛИЗ ВРЕМЕННЫХ ПАТТЕРНОВ СОЗНАНИЯ", f"За последние {days} дней", "header")
 
     patterns = writer.analyze_temporal_patterns(days=days)
 
@@ -70,9 +65,7 @@ def analyze_temporal_patterns(writer, days=7):
 
 def find_resonance_moments(writer, hours=24):
     """Поиск моментов резонанса между пользователями"""
-    print_styled(
-        "ПОИСК МОМЕНТОВ РЕЗОНАНСА СОЗНАНИЯ", f"За последние {hours} часов", "header"
-    )
+    print_styled("ПОИСК МОМЕНТОВ РЕЗОНАНСА СОЗНАНИЯ", f"За последние {hours} часов", "header")
 
     resonance_moments = writer.find_resonance_moments(hours=hours)
 
@@ -84,9 +77,7 @@ def find_resonance_moments(writer, hours=24):
         )
         return
 
-    print_styled(
-        f"Найдено резонансных моментов: {len(resonance_moments)}", "", "success"
-    )
+    print_styled(f"Найдено резонансных моментов: {len(resonance_moments)}", "", "success")
 
     for i, moment in enumerate(resonance_moments[:5], 1):
         print_styled(
@@ -123,9 +114,7 @@ def get_consciousness_timeline(writer, hours=24, user_id=None):
     print(f"  Всего состояний: {meta.get('total_states', 0)}")
     print(f"  Всего переходов: {meta.get('total_transitions', 0)}")
     print(f"  Доминирующее состояние: {meta.get('dominant_state', 'н/д')}")
-    print(
-        f"  Философская интерпретация: {meta.get('philosophical_interpretation', 'н/д')}"
-    )
+    print(f"  Философская интерпретация: {meta.get('philosophical_interpretation', 'н/д')}")
 
     print_styled("Тренды:", "", "info")
     print(f"  Присутствие: {meta.get('presence_trend', 0):.2f}")
@@ -140,9 +129,7 @@ def get_consciousness_timeline(writer, hours=24, user_id=None):
     for link in links[:3]:
         print(f"  {link.get('source', '')} → {link.get('target', '')}")
         print(f"    Триггер: {link.get('trigger', 'н/д')}")
-        print(
-            f"    Философское значение: {link.get('philosophical_significance', 'н/д')}"
-        )
+        print(f"    Философское значение: {link.get('philosophical_significance', 'н/д')}")
         print(f"    Время: {link.get('timestamp', 'н/д')}")
 
     print_styled("Примеры состояний:", "", "info")
@@ -203,18 +190,15 @@ def simulate_transition_example(writer):
         home_resonance_delta=0.0,
         presence_delta=target_state.presence_level - current_state.presence_level,
         harmony_delta=target_state.harmony_index - current_state.harmony_index,
-        authenticity_delta=target_state.authenticity_score
-        - current_state.authenticity_score,
+        authenticity_delta=target_state.authenticity_score - current_state.authenticity_score,
         trigger_data={"practice_type": "mindfulness", "duration_minutes": 10},
     )
 
     # Сохраняем в Neo4j
     try:
-        node1 = writer.create_consciousness_state(current_state)
-        node2 = writer.create_consciousness_state(target_state)
-        trans = writer.create_state_transition(
-            transition, current_state.id, target_state.id
-        )
+        writer.create_consciousness_state(current_state)
+        writer.create_consciousness_state(target_state)
+        writer.create_state_transition(transition, current_state.id, target_state.id)
 
         print_styled(
             "Переход успешно создан",
@@ -232,31 +216,21 @@ def simulate_transition_example(writer):
 
 def main():
     print("Запуск Neo4j Temporal Data Lake демонстрации...")
-    parser = argparse.ArgumentParser(
-        description="Neo4j Temporal Data Lake демонстрация"
-    )
+    parser = argparse.ArgumentParser(description="Neo4j Temporal Data Lake демонстрация")
     parser.add_argument("--days", type=int, default=7, help="Период анализа в днях")
     parser.add_argument("--hours", type=int, default=24, help="Период анализа в часах")
     parser.add_argument("--user", type=str, help="ID пользователя для фильтрации")
     parser.add_argument(
         "--simulate", action="store_true", help="Симулировать переход для тестирования"
     )
-    parser.add_argument(
-        "--analyze", action="store_true", help="Анализировать временные паттерны"
-    )
-    parser.add_argument(
-        "--resonance", action="store_true", help="Искать резонансные моменты"
-    )
-    parser.add_argument(
-        "--timeline", action="store_true", help="Получить временную линию"
-    )
+    parser.add_argument("--analyze", action="store_true", help="Анализировать временные паттерны")
+    parser.add_argument("--resonance", action="store_true", help="Искать резонансные моменты")
+    parser.add_argument("--timeline", action="store_true", help="Получить временную линию")
     parser.add_argument("--all", action="store_true", help="Запустить все функции")
     parser.add_argument(
         "--docker", action="store_true", default=True, help="Использовать Docker Neo4j"
     )
-    parser.add_argument(
-        "--uri", type=str, default="bolt://localhost:7687", help="Neo4j URI"
-    )
+    parser.add_argument("--uri", type=str, default="bolt://localhost:7687", help="Neo4j URI")
     args = parser.parse_args()
     print(f"Аргументы: {vars(args)}")
 

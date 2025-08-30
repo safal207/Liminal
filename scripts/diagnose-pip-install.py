@@ -3,6 +3,7 @@
 Расширенная диагностика установки библиотек Python и сетевого доступа
 Проверяет возможные проблемы с установкой библиотек, настройками прокси и доступом к PyPI
 """
+
 import json
 import os
 import platform
@@ -31,9 +32,9 @@ class Colors:
 
 
 def print_header(text):
-    print(f"\n{Colors.BLUE}{'='*70}{Colors.ENDC}")
+    print(f"\n{Colors.BLUE}{'=' * 70}{Colors.ENDC}")
     print(f"{Colors.BLUE}{text.center(70)}{Colors.ENDC}")
-    print(f"{Colors.BLUE}{'='*70}{Colors.ENDC}\n")
+    print(f"{Colors.BLUE}{'=' * 70}{Colors.ENDC}\n")
 
 
 def print_success(text):
@@ -55,9 +56,7 @@ def print_info(text):
 def run_command(cmd, timeout=60):
     """Выполняет команду в shell и возвращает результат"""
     try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=timeout
-        )
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
         return {
             "returncode": result.returncode,
             "stdout": result.stdout.strip(),
@@ -200,11 +199,9 @@ def check_alternative_install_methods():
                 f"{sys.executable} -m pip install --force-reinstall {wheel_path}"
             )
             if install_result["success"]:
-                print_success(f"Установка из wheel файла успешна!")
+                print_success("Установка из wheel файла успешна!")
             else:
-                print_error(
-                    f"Ошибка установки из wheel файла: {install_result['stderr']}"
-                )
+                print_error(f"Ошибка установки из wheel файла: {install_result['stderr']}")
     except Exception as e:
         print_error(f"Ошибка загрузки wheel файла: {str(e)}")
 
@@ -216,21 +213,15 @@ def check_alternative_install_methods():
     if alt_install["success"]:
         print_success("Установка с альтернативного индекса успешна!")
     else:
-        print_error(
-            f"Ошибка установки с альтернативного индекса: {alt_install['stderr']}"
-        )
+        print_error(f"Ошибка установки с альтернативного индекса: {alt_install['stderr']}")
 
     # 3. Тестирование с отключением кэша pip
     print_info("\n3. Установка с отключением кэша pip")
-    no_cache_install = run_command(
-        f"{sys.executable} -m pip install openai --no-cache-dir"
-    )
+    no_cache_install = run_command(f"{sys.executable} -m pip install openai --no-cache-dir")
     if no_cache_install["success"]:
         print_success("Установка с отключением кэша успешна!")
     else:
-        print_error(
-            f"Ошибка установки с отключением кэша: {no_cache_install['stderr']}"
-        )
+        print_error(f"Ошибка установки с отключением кэша: {no_cache_install['stderr']}")
 
     # 4. Тестирование зависимостей OpenAI
     print_info("\n4. Проверка установки зависимостей OpenAI")
@@ -294,7 +285,7 @@ def check_system_info():
     # Генерируем рекомендации для установки OpenAI
     print_info("1. Создать чистое виртуальное окружение:")
     print(
-        f"""
+        """
     python -m venv venv
     venv\\Scripts\\activate  # для Windows
     """
@@ -302,21 +293,21 @@ def check_system_info():
 
     print_info("2. Попробовать установку OpenAI с опциями --no-cache-dir и --verbose:")
     print(
-        f"""
+        """
     pip install --no-cache-dir --verbose openai
     """
     )
 
     print_info("3. Установить библиотеку из GitHub репозитория:")
     print(
-        f"""
+        """
     pip install git+https://github.com/openai/openai-python.git
     """
     )
 
     print_info("4. Загрузить wheel файл и установить локально:")
     print(
-        f"""
+        """
     # Скачать с URL: https://files.pythonhosted.org/packages/32/a1/a2790e953c9e4ea91f0ef8c799ce40c555f4f193b65f93a4b931d9d7ecc7/openai-1.20.0-py3-none-any.whl
     pip install openai-1.20.0-py3-none-any.whl
     """
@@ -326,7 +317,7 @@ def check_system_info():
 
     print_info("6. Использовать мок-реализацию OpenAI для разработки:")
     print(
-        f"""
+        """
     # Мок-реализация OpenAI доступна в: backend/ml/openai_mock.py
     # Она позволяет продолжать разработку без реального API клиента
     """
@@ -344,9 +335,7 @@ def main():
 
     if network_ok and pip_ok:
         print_info("\nПопытка установки OpenAI с verbose output:")
-        install_result = run_command(
-            f"{sys.executable} -m pip install --verbose openai"
-        )
+        install_result = run_command(f"{sys.executable} -m pip install --verbose openai")
 
         if install_result["success"]:
             print_success("Установка OpenAI успешно выполнена!")

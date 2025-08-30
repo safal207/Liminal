@@ -7,7 +7,7 @@ import asyncio
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from loguru import logger
 
@@ -39,12 +39,12 @@ class MultiLLMRequest:
     """Запрос к Multi-LLM системе."""
 
     task_type: TaskType
-    data: Dict[str, Any]
-    context: Optional[Dict[str, Any]] = None
+    data: dict[str, Any]
+    context: dict[str, Any] | None = None
     preferred_provider: LLMProvider = LLMProvider.AUTO
     require_consensus: bool = False
     priority: str = "normal"
-    max_cost: Optional[float] = None
+    max_cost: float | None = None
     timeout_seconds: int = 30
 
 
@@ -55,19 +55,19 @@ class MultiLLMResponse:
     primary_analysis: str
     provider_used: str
     confidence: float
-    recommendations: List[str]
+    recommendations: list[str]
 
     # Consensus data (если использовались оба провайдера)
-    consensus_analysis: Optional[str] = None
-    openai_response: Optional[OpenAIResponse] = None
-    claude_response: Optional[ClaudeAnalysisResponse] = None
-    agreement_score: Optional[float] = None
+    consensus_analysis: str | None = None
+    openai_response: OpenAIResponse | None = None
+    claude_response: ClaudeAnalysisResponse | None = None
+    agreement_score: float | None = None
 
     # Metadata
     cost_estimate: float = 0.0
     processing_time: float = 0.0
     fallback_used: bool = False
-    errors: List[str] = None
+    errors: list[str] = None
 
 
 class MultiLLMOrchestrator:
@@ -138,9 +138,7 @@ class MultiLLMOrchestrator:
             else:
                 provider = request.preferred_provider
 
-            logger.info(
-                f"Выбран провайдер {provider.value} для задачи {request.task_type.value}"
-            )
+            logger.info(f"Выбран провайдер {provider.value} для задачи {request.task_type.value}")
 
             # Выполняем анализ
             if request.require_consensus or provider == LLMProvider.BOTH:
@@ -150,9 +148,7 @@ class MultiLLMOrchestrator:
 
             # Обновляем статистику
             response.processing_time = time.time() - start_time
-            self._update_usage_stats(
-                provider.value, response.processing_time, len(errors) > 0
-            )
+            self._update_usage_stats(provider.value, response.processing_time, len(errors) > 0)
 
             return response
 
@@ -163,16 +159,10 @@ class MultiLLMOrchestrator:
             # Пытаемся fallback
             if self.fallback_enabled and request.preferred_provider != LLMProvider.AUTO:
                 try:
-                    fallback_provider = self._get_fallback_provider(
-                        request.preferred_provider
-                    )
-                    logger.info(
-                        f"Используем fallback провайдер: {fallback_provider.value}"
-                    )
+                    fallback_provider = self._get_fallback_provider(request.preferred_provider)
+                    logger.info(f"Используем fallback провайдер: {fallback_provider.value}")
 
-                    response = await self._single_provider_analysis(
-                        request, fallback_provider
-                    )
+                    response = await self._single_provider_analysis(request, fallback_provider)
                     response.fallback_used = True
                     response.errors = errors
                     response.processing_time = time.time() - start_time
@@ -364,9 +354,7 @@ class MultiLLMOrchestrator:
             )
 
             # Вычисляем agreement score
-            agreement_score = self._calculate_agreement_score(
-                openai_response, claude_response
-            )
+            agreement_score = self._calculate_agreement_score(openai_response, claude_response)
 
             # Обновляем статистику консенсуса
             self.usage_stats["consensus"]["requests"] += 1
@@ -378,8 +366,7 @@ class MultiLLMOrchestrator:
             return MultiLLMResponse(
                 primary_analysis=consensus_analysis,
                 provider_used="consensus",
-                confidence=(openai_response.confidence + claude_response.confidence)
-                / 2,
+                confidence=(openai_response.confidence + claude_response.confidence) / 2,
                 recommendations=self._merge_recommendations(
                     openai_response.recommendations, claude_response.recommendations
                 ),
@@ -387,8 +374,7 @@ class MultiLLMOrchestrator:
                 openai_response=openai_response.openai_response,
                 claude_response=claude_response.claude_response,
                 agreement_score=agreement_score,
-                cost_estimate=openai_response.cost_estimate
-                + claude_response.cost_estimate,
+                cost_estimate=openai_response.cost_estimate + claude_response.cost_estimate,
             )
 
         except Exception as e:
@@ -430,12 +416,8 @@ class MultiLLMOrchestrator:
         jaccard_similarity = len(intersection) / len(union) if union else 0.0
 
         # Учитываем similarity в рекомендациях
-        openai_rec_words = set(
-            " ".join(openai_response.recommendations).lower().split()
-        )
-        claude_rec_words = set(
-            " ".join(claude_response.recommendations).lower().split()
-        )
+        openai_rec_words = set(" ".join(openai_response.recommendations).lower().split())
+        claude_rec_words = set(" ".join(claude_response.recommendations).lower().split())
 
         rec_intersection = openai_rec_words.intersection(claude_rec_words)
         rec_union = openai_rec_words.union(claude_rec_words)
@@ -445,9 +427,7 @@ class MultiLLMOrchestrator:
         # Взвешенная оценка
         return jaccard_similarity * 0.7 + rec_similarity * 0.3
 
-    def _merge_recommendations(
-        self, openai_recs: List[str], claude_recs: List[str]
-    ) -> List[str]:
+    def _merge_recommendations(self, openai_recs: list[str], claude_recs: list[str]) -> list[str]:
         """Объединяет рекомендации от разных провайдеров."""
 
         merged = []
@@ -477,9 +457,7 @@ class MultiLLMOrchestrator:
 
         return 0.0
 
-    def _update_usage_stats(
-        self, provider: str, processing_time: float, had_error: bool
-    ):
+    def _update_usage_stats(self, provider: str, processing_time: float, had_error: bool):
         """Обновляет статистику использования."""
 
         if provider in self.usage_stats:
@@ -491,12 +469,10 @@ class MultiLLMOrchestrator:
 
             # Обновляем среднее время
             current_avg = stats["avg_time"]
-            new_avg = (current_avg * (stats["requests"] - 1) + processing_time) / stats[
-                "requests"
-            ]
+            new_avg = (current_avg * (stats["requests"] - 1) + processing_time) / stats["requests"]
             stats["avg_time"] = new_avg
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Проверка здоровья Multi-LLM системы."""
 
         openai_health = await self.openai_service.health_check()
@@ -514,8 +490,7 @@ class MultiLLMOrchestrator:
             "providers": {"openai": openai_health, "claude": claude_health},
             "usage_stats": self.usage_stats,
             "provider_config": {
-                provider.value: config
-                for provider, config in self.provider_config.items()
+                provider.value: config for provider, config in self.provider_config.items()
             },
             "features": {
                 "consensus_analysis": True,
@@ -525,7 +500,7 @@ class MultiLLMOrchestrator:
             },
         }
 
-    def get_usage_report(self) -> Dict[str, Any]:
+    def get_usage_report(self) -> dict[str, Any]:
         """Возвращает отчет об использовании провайдеров."""
 
         total_requests = sum(stats["requests"] for stats in self.usage_stats.values())
@@ -537,8 +512,7 @@ class MultiLLMOrchestrator:
                     "requests": stats["requests"],
                     "error_rate": stats["errors"] / max(stats["requests"], 1),
                     "avg_response_time": stats["avg_time"],
-                    "usage_percentage": (stats["requests"] / max(total_requests, 1))
-                    * 100,
+                    "usage_percentage": (stats["requests"] / max(total_requests, 1)) * 100,
                 }
                 for provider, stats in self.usage_stats.items()
             },

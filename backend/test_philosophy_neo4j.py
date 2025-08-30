@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Philosophy First - Neo4j Temporal Data Lake Integration Test
@@ -30,7 +29,7 @@ def log_message(title, content=None):
     """Выводит отформатированное сообщение"""
     print(f"\n=== {title} ===")
     if content:
-        if isinstance(content, (dict, list)):
+        if isinstance(content, dict | list):
             try:
                 print(json.dumps(content, indent=2, ensure_ascii=False))
             except:
@@ -152,13 +151,11 @@ def create_philosophical_transitions(writer, users=None):
                     target_id=target_node.id,
                     trigger=trigger,
                     timestamp=datetime.now(),
-                    presence_delta=target_node.presence_level
-                    - source_node.presence_level,
+                    presence_delta=target_node.presence_level - source_node.presence_level,
                     harmony_delta=target_node.harmony_index - source_node.harmony_index,
                     authenticity_delta=target_node.authenticity_score
                     - source_node.authenticity_score,
-                    resonance_delta=target_node.resonance_strength
-                    - source_node.resonance_strength,
+                    resonance_delta=target_node.resonance_strength - source_node.resonance_strength,
                     philosophical_significance=description,
                     user_id=user_id,
                     meta={"philosophical": True},
@@ -220,21 +217,17 @@ def broadcast_transitions_to_websocket(writer, transition_ids):
                 "target_state": transition_details.get("target_state", "unknown"),
                 "trigger": transition_details.get("trigger", "UNKNOWN"),
                 "meta": {
-                    "description": transition_details.get(
-                        "philosophical_significance", ""
-                    ),
+                    "description": transition_details.get("philosophical_significance", ""),
                     "philosophical": True,
                     "presence_delta": transition_details.get("presence_delta", 0),
                     "harmony_delta": transition_details.get("harmony_delta", 0),
-                    "authenticity_delta": transition_details.get(
-                        "authenticity_delta", 0
-                    ),
+                    "authenticity_delta": transition_details.get("authenticity_delta", 0),
                     "resonance_delta": transition_details.get("resonance_delta", 0),
                 },
             }
 
             # Отправляем в WebSocket relay через HTTP
-            log_message(f"Отправка события в WebSocket", f"ID: {transition_id}")
+            log_message("Отправка события в WebSocket", f"ID: {transition_id}")
             print(json.dumps(event, indent=2, ensure_ascii=False))
 
             response = requests.post(
@@ -277,9 +270,7 @@ def analyze_philosophy_patterns(writer):
                 f"Паттерн #{i}: {pattern['source']} → {pattern['target']}",
                 f"Частота: {pattern.get('frequency')}, Тип: {pattern.get('pattern_type')}",
             )
-            print(
-                f"  Философская значимость: {pattern.get('philosophical_significance', 'Н/Д')}"
-            )
+            print(f"  Философская значимость: {pattern.get('philosophical_significance', 'Н/Д')}")
             print(f"  Первое появление: {pattern.get('first_occurrence', 'Н/Д')}")
             print(f"  Последнее появление: {pattern.get('last_occurrence', 'Н/Д')}")
 
@@ -307,12 +298,8 @@ def find_philosophy_resonance(writer):
                 f"Резонанс #{i}: {moment.get('user1')} и {moment.get('user2')}",
                 f"Состояние: {moment.get('to_state')}, Тип: {moment.get('resonance_type')}",
             )
-            print(
-                f"  Философское значение: {moment.get('philosophical_meaning', 'Н/Д')}"
-            )
-            print(
-                f"  Разница во времени: {moment.get('time_diff_seconds', 'Н/Д')} секунд"
-            )
+            print(f"  Философское значение: {moment.get('philosophical_meaning', 'Н/Д')}")
+            print(f"  Разница во времени: {moment.get('time_diff_seconds', 'Н/Д')} секунд")
             print(f"  Время 1: {moment.get('timestamp1', 'Н/Д')}")
             print(f"  Время 2: {moment.get('timestamp2', 'Н/Д')}")
 
@@ -336,9 +323,7 @@ def get_philosophy_timeline(writer):
         nodes = timeline.get("nodes", [])
         links = timeline.get("links", [])
 
-        log_message(
-            f"Временная линия содержит {len(nodes)} состояний и {len(links)} переходов"
-        )
+        log_message(f"Временная линия содержит {len(nodes)} состояний и {len(links)} переходов")
 
         if nodes and links:
             log_message("Примеры переходов:", "")
@@ -412,9 +397,7 @@ def check_websocket_relay():
         )
 
         if response.status_code == 202:
-            log_message(
-                "Endpoint событий доступен", f"Код ответа: {response.status_code}"
-            )
+            log_message("Endpoint событий доступен", f"Код ответа: {response.status_code}")
         else:
             log_message(
                 "Ошибка отправки тестового события",
@@ -431,28 +414,16 @@ def main():
     print("=== Philosophy First - Neo4j Temporal Data Lake Integration ===")
 
     parser = argparse.ArgumentParser(description="Philosophy First Neo4j Integration")
-    parser.add_argument(
-        "--uri", type=str, default="bolt://localhost:7687", help="Neo4j URI"
-    )
+    parser.add_argument("--uri", type=str, default="bolt://localhost:7687", help="Neo4j URI")
     parser.add_argument("--user", type=str, default="neo4j", help="Neo4j user")
-    parser.add_argument(
-        "--password", type=str, default="NewStrongPass123!", help="Neo4j password"
-    )
-    parser.add_argument(
-        "--create", action="store_true", help="Create philosophical transitions"
-    )
+    parser.add_argument("--password", type=str, default="NewStrongPass123!", help="Neo4j password")
+    parser.add_argument("--create", action="store_true", help="Create philosophical transitions")
     parser.add_argument(
         "--broadcast", action="store_true", help="Broadcast transitions to WebSocket"
     )
-    parser.add_argument(
-        "--analyze", action="store_true", help="Analyze philosophical patterns"
-    )
-    parser.add_argument(
-        "--resonance", action="store_true", help="Find resonance moments"
-    )
-    parser.add_argument(
-        "--timeline", action="store_true", help="Get consciousness timeline"
-    )
+    parser.add_argument("--analyze", action="store_true", help="Analyze philosophical patterns")
+    parser.add_argument("--resonance", action="store_true", help="Find resonance moments")
+    parser.add_argument("--timeline", action="store_true", help="Get consciousness timeline")
     parser.add_argument("--check", action="store_true", help="Check WebSocket relay")
     parser.add_argument("--all", action="store_true", help="Run all operations")
     args = parser.parse_args()
@@ -464,9 +435,7 @@ def main():
     # Инициализируем Neo4j writer
     try:
         log_message("ПОДКЛЮЧЕНИЕ К NEO4J", f"URI: {args.uri}")
-        writer = PhilosophyNeo4jWriter(
-            uri=args.uri, user=args.user, password=args.password
-        )
+        writer = PhilosophyNeo4jWriter(uri=args.uri, user=args.user, password=args.password)
         log_message("Neo4j подключен успешно")
     except Exception as e:
         log_message("Ошибка подключения к Neo4j", str(e))

@@ -5,7 +5,6 @@
 """
 
 import os
-from typing import Dict, List, Optional, Tuple
 
 
 class TestSettings:
@@ -14,7 +13,7 @@ class TestSettings:
     TEST_TIMEOUT = int(os.getenv("TEST_TIMEOUT", "300"))  # 5 минут по умолчанию
 
     # Настройки нагрузки
-    LOAD_PROFILES: Dict[str, Dict[str, int]] = {
+    LOAD_PROFILES: dict[str, dict[str, int]] = {
         "smoke": {"users": 10, "spawn_rate": 1, "duration_sec": 60},
         "load": {"users": 100, "spawn_rate": 10, "duration_sec": 300},
         "stress": {"users": 1000, "spawn_rate": 50, "duration_sec": 600},
@@ -41,7 +40,7 @@ class TestSettings:
     PROMETHEUS_PORT = int(os.getenv("PROMETHEUS_PORT", "9090"))
 
     @classmethod
-    def get_load_profile(cls, profile_name: str) -> Dict[str, int]:
+    def get_load_profile(cls, profile_name: str) -> dict[str, int]:
         """Получить настройки профиля нагрузки."""
         return cls.LOAD_PROFILES.get(profile_name, cls.LOAD_PROFILES["load"])
 

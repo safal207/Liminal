@@ -122,7 +122,7 @@ async def test_rinse_integration():
         mock_post.return_value = mock_response
 
         # Создаем экземпляр менеджера соединений
-        manager = ConnectionManager()
+        ConnectionManager()
 
         # Предполагаем, что есть метод для отправки данных в RINSE
         # (в реальном коде это может быть метод, который мы добавим позже)
@@ -135,9 +135,7 @@ async def test_rinse_integration():
         # result = await manager.process_with_rinse(test_data)
 
         # Для теста мы просто вызываем mock напрямую
-        response = await httpx.AsyncClient().post(
-            "http://rinse:8080/api/process", json=test_data
-        )
+        response = await httpx.AsyncClient().post("http://rinse:8080/api/process", json=test_data)
 
         result = response.json()
 
@@ -158,12 +156,8 @@ async def test_websocket_jwt_auth_valid():
         mock_connect.return_value.__aenter__.return_value = mock_ws
         mock_ws.recv.return_value = json.dumps({"type": "connection_established"})
 
-        with patch(
-            "memory_timeline.verify_jwt_token", return_value={"user_id": "test_user"}
-        ):
-            async with websockets.connect(
-                uri, extra_headers={"Authorization": valid_token}
-            ) as ws:
+        with patch("memory_timeline.verify_jwt_token", return_value={"user_id": "test_user"}):
+            async with websockets.connect(uri, extra_headers={"Authorization": valid_token}) as ws:
                 response = await ws.recv()
                 data = json.loads(response)
                 assert data.get("type") == "connection_established"

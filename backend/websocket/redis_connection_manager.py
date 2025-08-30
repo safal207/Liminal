@@ -4,7 +4,7 @@
 """
 
 import logging
-from typing import Any, Dict, Optional, Set
+from typing import Any
 
 from fastapi import WebSocket
 from loguru import logger
@@ -41,12 +41,10 @@ class RedisConnectionManager(ConnectionManager):
         self.redis = RedisClient(redis_url, redis_prefix)
         self._is_connected = False
         self._local_channels = set()  # Каналы, на которые подписан локальный экземпляр
-        self.remote_subscriptions: Dict[str, Set[str]] = {}  # Канал -> {ws_id, ...}
+        self.remote_subscriptions: dict[str, set[str]] = {}  # Канал -> {ws_id, ...}
 
         # Ключи Redis
-        self._key_global_users = (
-            "global_users"  # Список всех подключенных пользователей
-        )
+        self._key_global_users = "global_users"  # Список всех подключенных пользователей
         self._key_channel_format = "channel:{}"  # Формат для ключей каналов
         self._key_user_format = "user:{}"  # Формат для ключей пользователей
 
@@ -76,9 +74,7 @@ class RedisConnectionManager(ConnectionManager):
             await self.redis.redis.pubsub().subscribe(
                 **{broadcast_channel: self.redis._message_listener}
             )
-            self.redis.subscription_callbacks[broadcast_channel] = (
-                self._handle_remote_broadcast
-            )
+            self.redis.subscription_callbacks[broadcast_channel] = self._handle_remote_broadcast
 
             # Старые подписки оставляем для совместимости
             await self.redis.subscribe("broadcast", self._handle_remote_broadcast)
@@ -172,9 +168,7 @@ class RedisConnectionManager(ConnectionManager):
 
                 # Проверяем, есть ли у пользователя активные соединения на других экземплярах
                 user_keys_pattern = f"*:user:{user_id}"
-                other_user_connections = await self.redis.keys(
-                    user_keys_pattern, use_prefix=False
-                )
+                other_user_connections = await self.redis.keys(user_keys_pattern, use_prefix=False)
 
                 logger.debug(
                     f"Найдены другие ключи соединений для {user_id}: {other_user_connections}"
@@ -196,18 +190,12 @@ class RedisConnectionManager(ConnectionManager):
                 user_key = self._key_user_format.format(user_id)
                 instance_data = {
                     "instance_id": self.redis.instance_id,
-                    "connection_count": len(
-                        self.active_connections.get(user_id, set())
-                    ),
+                    "connection_count": len(self.active_connections.get(user_id, set())),
                 }
                 await self.redis.set(user_key, instance_data)
-                logger.debug(
-                    f"Обновлено количество соединений пользователя {user_id} в Redis"
-                )
+                logger.debug(f"Обновлено количество соединений пользователя {user_id} в Redis")
 
-    async def subscribe(
-        self, websocket: WebSocket, channel: str, user_id: Optional[str] = None
-    ):
+    async def subscribe(self, websocket: WebSocket, channel: str, user_id: str | None = None):
         """Подписывает WebSocket на канал и уведомляет другие инстансы через Redis."""
         await super().subscribe(websocket, channel, user_id)
         ws_id = self.get_websocket_id(websocket)
@@ -259,20 +247,13 @@ class RedisConnectionManager(ConnectionManager):
             await self.redis.set_remove(channel_key, ws_id)
 
             # Публикуем событие для других экземпляров
-            await self.redis.publish(
-                "unsubscribe", {"channel": channel, "ws_id": ws_id}
-            )
+            await self.redis.publish("unsubscribe", {"channel": channel, "ws_id": ws_id})
 
             # Проверяем, остались ли подписчики канала в локальном экземпляре
-            if (
-                channel in self.channel_subscriptions
-                and not self.channel_subscriptions[channel]
-            ):
+            if channel in self.channel_subscriptions and not self.channel_subscriptions[channel]:
                 self._local_channels.discard(channel)
 
-            logger.debug(
-                f"Отписка пользователя от канала {channel} синхронизирована с Redis"
-            )
+            logger.debug(f"Отписка пользователя от канала {channel} синхронизирована с Redis")
 
     async def _local_broadcast(self, channel: str, message: Any):
         """
@@ -286,13 +267,9 @@ class RedisConnectionManager(ConnectionManager):
                         try:
                             await websocket.send_json(message)
                         except Exception as e:
-                            logger.error(
-                                f"Ошибка при локальной отправке broadcast: {e}"
-                            )
+                            logger.error(f"Ошибка при локальной отправке broadcast: {e}")
 
-    async def broadcast(
-        self, channel: str, message: Any, user_id: Optional[str] = None
-    ):
+    async def broadcast(self, channel: str, message: Any, user_id: str | None = None):
         """
         Отправляет сообщение всем подписчикам канала.
         Если подключен Redis, сообщение отправляется локально и публикуется для других экземпляров.
@@ -305,20 +282,16 @@ class RedisConnectionManager(ConnectionManager):
 
             # 2. Публикуем в Redis для других экземпляров.
             # Сообщения от этого же instance_id будут игнорироваться в _message_listener.
-            await self.redis.publish(
-                "broadcast", {"channel": channel, "message": message}
-            )
+            await self.redis.publish("broadcast", {"channel": channel, "message": message})
             logger.debug(
                 f"Сообщение для канала '{channel}' отправлено локально и опубликовано в Redis"
             )
         else:
             # Redis не подключен, используем стандартный broadcast из базового класса.
             await self._local_broadcast(channel, message)
-            logger.debug(
-                f"Сообщение для канала '{channel}' отправлено локально (Redis отключен)"
-            )
+            logger.debug(f"Сообщение для канала '{channel}' отправлено локально (Redis отключен)")
 
-    async def send_personal_message(self, user_id: str, message: Dict[str, Any]):
+    async def send_personal_message(self, user_id: str, message: dict[str, Any]):
         """
         Отправляет личное сообщение пользователю с учетом его расположения на разных серверах.
 
@@ -327,11 +300,9 @@ class RedisConnectionManager(ConnectionManager):
             message: Сообщение для отправки.
         """
         # Проверяем, есть ли пользователь локально
-        local_sent = False
         if user_id in self.active_connections:
             # Отправляем локально
             await super().send_personal_message(user_id, message)
-            local_sent = True
 
         if self._is_connected:
             # Проверяем, есть ли пользователь на других серверах
@@ -354,9 +325,7 @@ class RedisConnectionManager(ConnectionManager):
             data: Словарь с данными сообщения, содержащий поля 'channel' и 'message'
         """
         if not isinstance(data, dict):
-            logger.error(
-                f"[Redis] _handle_remote_broadcast получил некорректные данные: {data}"
-            )
+            logger.error(f"[Redis] _handle_remote_broadcast получил некорректные данные: {data}")
             return
 
         channel = data.get("channel")
@@ -385,9 +354,7 @@ class RedisConnectionManager(ConnectionManager):
             data: Словарь с данными подписки, содержащий поля 'channel' и 'ws_id'
         """
         if not isinstance(data, dict):
-            logger.error(
-                f"[Redis] _handle_remote_subscribe получил некорректные данные: {data}"
-            )
+            logger.error(f"[Redis] _handle_remote_subscribe получил некорректные данные: {data}")
             return
 
         channel = data.get("channel")
@@ -401,9 +368,7 @@ class RedisConnectionManager(ConnectionManager):
         if channel not in self.remote_subscriptions:
             self.remote_subscriptions[channel] = set()
         self.remote_subscriptions[channel].add(ws_id)
-        logger.debug(
-            f"[Redis] Удаленная подписка ws {ws_id} на канал {channel} обработана"
-        )
+        logger.debug(f"[Redis] Удаленная подписка ws {ws_id} на канал {channel} обработана")
 
     async def _handle_remote_unsubscribe(self, data: dict):
         """
@@ -413,9 +378,7 @@ class RedisConnectionManager(ConnectionManager):
             data: Словарь с данными отписки, содержащий поля 'channel' и 'ws_id'
         """
         if not isinstance(data, dict):
-            logger.error(
-                f"[Redis] _handle_remote_unsubscribe получил некорректные данные: {data}"
-            )
+            logger.error(f"[Redis] _handle_remote_unsubscribe получил некорректные данные: {data}")
             return
 
         channel = data.get("channel")
@@ -426,18 +389,13 @@ class RedisConnectionManager(ConnectionManager):
             )
             return
 
-        if (
-            channel in self.remote_subscriptions
-            and ws_id in self.remote_subscriptions[channel]
-        ):
+        if channel in self.remote_subscriptions and ws_id in self.remote_subscriptions[channel]:
             self.remote_subscriptions[channel].remove(ws_id)
             if not self.remote_subscriptions[channel]:
                 del self.remote_subscriptions[channel]
-            logger.debug(
-                f"[Redis] Удаленная отписка ws {ws_id} от канала {channel} обработана"
-            )
+            logger.debug(f"[Redis] Удаленная отписка ws {ws_id} от канала {channel} обработана")
 
-    async def _handle_remote_disconnect(self, data: Dict[str, Any]):
+    async def _handle_remote_disconnect(self, data: dict[str, Any]):
         """
         Обрабатывает событие отключения пользователя от другого экземпляра.
 
@@ -447,9 +405,7 @@ class RedisConnectionManager(ConnectionManager):
         logger.debug(f"[TEST] Получено событие удаленного отключения: {data}")
 
         if not isinstance(data, dict):
-            logger.error(
-                f"[Redis] _handle_remote_disconnect получил некорректные данные: {data}"
-            )
+            logger.error(f"[Redis] _handle_remote_disconnect получил некорректные данные: {data}")
             return
 
         if not data:
@@ -464,8 +420,7 @@ class RedisConnectionManager(ConnectionManager):
 
         # Проверяем, есть ли активные соединения пользователя на этом экземпляре
         has_local_connections = (
-            user_id in self.active_connections
-            and len(self.active_connections[user_id]) > 0
+            user_id in self.active_connections and len(self.active_connections[user_id]) > 0
         )
         logger.debug(
             f"[TEST] Пользователь {user_id} имеет локальные соединения: {has_local_connections}"
@@ -487,18 +442,14 @@ class RedisConnectionManager(ConnectionManager):
                     self.channel_subscriptions[ws_channel].discard(user_id)
                     if not self.channel_subscriptions[ws_channel]:
                         del self.channel_subscriptions[ws_channel]
-                    logger.debug(
-                        f"[TEST] Удален пользователь {user_id} из канала {ws_channel}"
-                    )
+                    logger.debug(f"[TEST] Удален пользователь {user_id} из канала {ws_channel}")
 
             del self.user_channels[user_id]
-            logger.debug(
-                f"[TEST] Синхронизировано удаленное отключение пользователя {user_id}"
-            )
+            logger.debug(f"[TEST] Синхронизировано удаленное отключение пользователя {user_id}")
         else:
             logger.debug(f"[TEST] Пользователь {user_id} не найден в user_channels")
 
-    async def get_connection_stats(self) -> Dict[str, Any]:
+    async def get_connection_stats(self) -> dict[str, Any]:
         """
         Получает расширенную статистику соединений с учетом всех экземпляров.
 

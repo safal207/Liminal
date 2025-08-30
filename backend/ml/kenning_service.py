@@ -10,7 +10,7 @@ import os
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import lime
 import lime.lime_tabular
@@ -56,36 +56,30 @@ redis_client = redis.Redis(host=REDIS_HOST, port=6379, decode_responses=True)
 # Pydantic модели
 class TrainingRequest(BaseModel):
     model_name: str
-    config: Dict[str, Any]
+    config: dict[str, Any]
     data_source: str = "redis"
     auto_deploy: bool = True
 
 
 class InferenceRequest(BaseModel):
     model_name: str
-    features: Dict[str, Any]
+    features: dict[str, Any]
 
 
 class ExplanationRequest(BaseModel):
     model_name: str
-    features: Dict[str, Any]
-    prediction: Optional[Dict[str, Any]] = None
-    explanation_method: str = (
-        "shap"  # 'shap', 'lime', 'eli5', 'anchors', or 'natural_language'
-    )
-    comparison_model: Optional[str] = (
-        None  # Optional second model to compare explanations with
-    )
-    include_natural_language: bool = (
-        False  # Whether to include natural language explanation
-    )
+    features: dict[str, Any]
+    prediction: dict[str, Any] | None = None
+    explanation_method: str = "shap"  # 'shap', 'lime', 'eli5', 'anchors', or 'natural_language'
+    comparison_model: str | None = None  # Optional second model to compare explanations with
+    include_natural_language: bool = False  # Whether to include natural language explanation
 
 
 class ModelStatus(BaseModel):
     name: str
     status: str
-    accuracy: Optional[float] = None
-    last_trained: Optional[str] = None
+    accuracy: float | None = None
+    last_trained: str | None = None
     version: str = "1.0"
 
 
@@ -104,13 +98,11 @@ class MLService:
         Path(MODEL_STORAGE).mkdir(parents=True, exist_ok=True)
         Path(DATA_STORAGE).mkdir(parents=True, exist_ok=True)
 
-        logger.info(
-            f"ML Service инициализирован. Models: {MODEL_STORAGE}, Data: {DATA_STORAGE}"
-        )
+        logger.info(f"ML Service инициализирован. Models: {MODEL_STORAGE}, Data: {DATA_STORAGE}")
 
     async def load_data_from_redis(
         self, key_pattern: str = "ml:features:*"
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Загружает данные для обучения из Redis.
 
@@ -141,8 +133,8 @@ class MLService:
             return []
 
     async def prepare_training_data(
-        self, model_name: str, raw_data: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, model_name: str, raw_data: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """
         Подготавливает данные для обучения конкретной модели.
 
@@ -162,7 +154,7 @@ class MLService:
         else:
             raise ValueError(f"Неизвестная модель: {model_name}")
 
-    def _prepare_anomaly_data(self, raw_data: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _prepare_anomaly_data(self, raw_data: list[dict[str, Any]]) -> dict[str, Any]:
         """Подготовка данных для anomaly detection."""
         features = []
         labels = []
@@ -200,9 +192,7 @@ class MLService:
             ],
         }
 
-    def _prepare_load_prediction_data(
-        self, raw_data: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    def _prepare_load_prediction_data(self, raw_data: list[dict[str, Any]]) -> dict[str, Any]:
         """Подготовка данных для load prediction."""
         features = []
         targets = []
@@ -238,9 +228,7 @@ class MLService:
             ],
         }
 
-    def _prepare_user_behavior_data(
-        self, raw_data: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    def _prepare_user_behavior_data(self, raw_data: list[dict[str, Any]]) -> dict[str, Any]:
         """Подготовка данных для user behavior clustering."""
         features = []
         user_ids = []
@@ -269,10 +257,8 @@ class MLService:
         for user_id, agg in user_aggregates.items():
             if agg["sessions"] > 0:
                 feature_vector = [
-                    agg["total_messages"]
-                    / agg["sessions"],  # Среднее сообщений за сессию
-                    agg["total_duration"]
-                    / agg["sessions"],  # Средняя длительность сессии
+                    agg["total_messages"] / agg["sessions"],  # Среднее сообщений за сессию
+                    agg["total_duration"] / agg["sessions"],  # Средняя длительность сессии
                     len(agg["total_channels"]),  # Уникальные каналы
                     agg["total_errors"] / agg["sessions"],  # Средний уровень ошибок
                     agg["sessions"],  # Количество сессий
@@ -293,8 +279,8 @@ class MLService:
         }
 
     async def train_model_with_kenning(
-        self, model_name: str, training_data: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, model_name: str, training_data: dict[str, Any]
+    ) -> dict[str, Any]:
         """
         Обучает модель используя Kenning framework.
 
@@ -331,8 +317,7 @@ class MLService:
                 "name": model_name,
                 "version": "1.0",
                 "trained_at": datetime.now().isoformat(),
-                "accuracy": 0.85
-                + np.random.random() * 0.1,  # Случайная точность для демо
+                "accuracy": 0.85 + np.random.random() * 0.1,  # Случайная точность для демо
                 "features": training_data.get("feature_names", []),
                 "data_size": len(training_data.get("features", [])),
                 "config": config,
@@ -361,7 +346,7 @@ class MLService:
             logger.error(f"Ошибка обучения модели {model_name}: {e}")
             return {"status": "error", "model_name": model_name, "error": str(e)}
 
-    def _create_kenning_config(self, model_name: str, data_path: str) -> Dict[str, Any]:
+    def _create_kenning_config(self, model_name: str, data_path: str) -> dict[str, Any]:
         """Создает конфигурацию для Kenning."""
         base_config = {
             "model_name": model_name,
@@ -433,9 +418,7 @@ class MLService:
             logger.error(f"Ошибка загрузки модели {model_name}: {e}")
             return False
 
-    async def predict(
-        self, model_name: str, features: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def predict(self, model_name: str, features: dict[str, Any]) -> dict[str, Any]:
         """
         Выполняет предсказание.
         """
@@ -466,9 +449,7 @@ class MLService:
                 # Возвращаем вероятность аномалии
                 result = {
                     "anomaly_score": float(prediction),
-                    "is_anomaly": bool(
-                        prediction > 0.7
-                    ),  # Порог определяется на основе модели
+                    "is_anomaly": bool(prediction > 0.7),  # Порог определяется на основе модели
                     "threshold": 0.7,
                 }
             elif model_name == "load_prediction":
@@ -498,7 +479,7 @@ class MLService:
 
             redis_client.set(prediction_key, json.dumps(prediction_data))
             redis_client.set(
-                f"ml_predictions:latest",
+                "ml_predictions:latest",
                 json.dumps({"predictions": result, "timestamp": time.time()}),
             )
 
@@ -512,7 +493,7 @@ class MLService:
             logger.error(f"Ошибка предсказания модели {model_name}: {e}")
             return None
 
-    async def _init_explainer(self, model_name: str, features: Dict[str, Any]):
+    async def _init_explainer(self, model_name: str, features: dict[str, Any]):
         """Initialize SHAP, LIME, ELI5, or Anchors explainer for a given model
 
         Args:
@@ -524,17 +505,16 @@ class MLService:
         """
         # For this simple example, we'll just use a simple model that returns feature sum
         # In a real scenario, you would load the actual model
-        model = lambda x: np.sum(x, axis=1).reshape(-1, 1)
+        def model(x):
+            return np.sum(x, axis=1).reshape(-1, 1)
 
         # Convert features to numpy array for explanations
         feature_names = list(features.keys())
-        feature_values = list(features.values())
+        list(features.values())
 
         # For SHAP, we need a background dataset
         # In a real scenario, this would be a representative dataset
-        background_data = np.random.random(
-            (100, len(feature_names))
-        )  # Random background data
+        background_data = np.random.random((100, len(feature_names)))  # Random background data
 
         # Initialize SHAP explainer
         shap_explainer = shap.KernelExplainer(model, background_data)
@@ -553,7 +533,8 @@ class MLService:
 
         # For Anchors, we need a prediction function that returns class indices
         # In a real scenario, this would be the actual model's predict function
-        predict_fn = lambda x: (model(x) > 0.5).astype(int)  # Binarize output
+        def predict_fn(x):
+            return (model(x) > 0.5).astype(int)  # Binarize output
 
         # Initialize Anchors explainer
         anchors_explainer = AnchorTabular(predict_fn, feature_names)
@@ -565,10 +546,10 @@ class MLService:
     async def get_explanation(
         self,
         model_name: str,
-        features: Dict[str, Any],
-        prediction: Dict[str, Any],
+        features: dict[str, Any],
+        prediction: dict[str, Any],
         explanation_method: str = "shap",
-        comparison_model: Optional[str] = None,
+        comparison_model: str | None = None,
         include_natural_language: bool = False,
     ):
         """Generate explanation for a prediction
@@ -584,8 +565,8 @@ class MLService:
         Returns:
             Dict with explanation details
         """
-        feature_names = list(features.keys())
-        feature_values = np.array([list(features.values())])
+        list(features.keys())
+        np.array([list(features.values())])
 
         # Special case for natural language explanation
         if explanation_method.lower() == "natural_language":
@@ -594,8 +575,8 @@ class MLService:
             )
 
         # Initialize explainers
-        shap_explainer, lime_explainer, eli5_model, anchors_explainer = (
-            await self._init_explainer(model_name, features)
+        shap_explainer, lime_explainer, eli5_model, anchors_explainer = await self._init_explainer(
+            model_name, features
         )
 
         # Generate primary explanation
@@ -633,9 +614,7 @@ class MLService:
             )
 
             # Compare the explanations
-            comparison = self._compare_explanations(
-                primary_explanation, comparison_explanation
-            )
+            comparison = self._compare_explanations(primary_explanation, comparison_explanation)
 
             # Return both explanations and comparison
             return {
@@ -651,8 +630,8 @@ class MLService:
     def _generate_explanation(
         self,
         model_name: str,
-        features: Dict[str, Any],
-        prediction: Dict[str, Any],
+        features: dict[str, Any],
+        prediction: dict[str, Any],
         explanation_method: str,
         shap_explainer,
         lime_explainer,
@@ -682,12 +661,10 @@ class MLService:
             shap_values = shap_explainer.shap_values(feature_values)
 
             # Get feature importance
-            feature_importance = dict(zip(feature_names, np.abs(shap_values[0][0])))
+            feature_importance = dict(zip(feature_names, np.abs(shap_values[0][0]), strict=False))
 
             # Sort features by importance
-            sorted_features = sorted(
-                feature_importance.items(), key=lambda x: x[1], reverse=True
-            )
+            sorted_features = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)
             top_features = [k for k, v in sorted_features[:5]]  # Top 5 features
 
             # Generate SHAP visualization
@@ -720,7 +697,7 @@ class MLService:
 
             # Extract feature importance from LIME
             lime_weights = exp.as_list()
-            feature_importance = {feature: weight for feature, weight in lime_weights}
+            feature_importance = dict(lime_weights)
 
             # Sort features by importance
             sorted_features = sorted(
@@ -748,18 +725,16 @@ class MLService:
 
         elif explanation_method.lower() == "eli5":
             # Convert features to DataFrame for ELI5
-            features_df = pd.DataFrame([features])
+            pd.DataFrame([features])
 
             # Generate ELI5 explanation
             # For this example, we're using a simple permutation importance
             # In a real scenario, you would use the actual model
             weights = np.abs(np.array(list(features.values())))
-            feature_importance = dict(zip(feature_names, weights / np.sum(weights)))
+            feature_importance = dict(zip(feature_names, weights / np.sum(weights), strict=False))
 
             # Sort features by importance
-            sorted_features = sorted(
-                feature_importance.items(), key=lambda x: x[1], reverse=True
-            )
+            sorted_features = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)
             top_features = [k for k, v in sorted_features[:5]]  # Top 5 features
 
             # Generate ELI5 visualization
@@ -796,25 +771,19 @@ class MLService:
 
             # Create feature importance based on the anchor rules
             # Features in the anchor rules are the most important
-            feature_importance = {feature: 0.0 for feature in feature_names}
+            feature_importance = dict.fromkeys(feature_names, 0.0)
             for rule in anchor_rules:
                 feature = feature_names[int(rule.split("=")[0].strip())]
                 feature_importance[feature] = 1.0
 
             # Sort features by importance
-            sorted_features = sorted(
-                feature_importance.items(), key=lambda x: x[1], reverse=True
-            )
-            top_features = [k for k, v in sorted_features if v > 0][
-                :5
-            ]  # Top 5 features in anchors
+            sorted_features = sorted(feature_importance.items(), key=lambda x: x[1], reverse=True)
+            top_features = [k for k, v in sorted_features if v > 0][:5]  # Top 5 features in anchors
 
             # Generate visualization for Anchors
             plt.figure(figsize=(10, 6))
             plt.barh(list(feature_importance.keys()), list(feature_importance.values()))
-            plt.title(
-                f"Anchor Explanation (Precision: {precision:.2f}, Coverage: {coverage:.2f})"
-            )
+            plt.title(f"Anchor Explanation (Precision: {precision:.2f}, Coverage: {coverage:.2f})")
             plt.xlabel("Importance in Anchor")
             plt.tight_layout()
 
@@ -839,8 +808,8 @@ class MLService:
             return {"error": f"Unsupported explanation method: {explanation_method}"}
 
     def _compare_explanations(
-        self, explanation1: Dict[str, Any], explanation2: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, explanation1: dict[str, Any], explanation2: dict[str, Any]
+    ) -> dict[str, Any]:
         """Compare two explanations to identify differences
 
         Args:
@@ -860,9 +829,7 @@ class MLService:
         feature_importance2 = explanation2.get("feature_importance", {})
 
         # Get all unique features
-        all_features = set(feature_importance1.keys()).union(
-            set(feature_importance2.keys())
-        )
+        all_features = set(feature_importance1.keys()).union(set(feature_importance2.keys()))
 
         # Calculate differences in importance
         importance_diff = {}
@@ -872,17 +839,13 @@ class MLService:
             importance_diff[feature] = val1 - val2
 
         # Sort by absolute difference
-        sorted_diff = sorted(
-            importance_diff.items(), key=lambda x: abs(x[1]), reverse=True
-        )
+        sorted_diff = sorted(importance_diff.items(), key=lambda x: abs(x[1]), reverse=True)
 
         # Generate visualization comparing the two explanations
         plt.figure(figsize=(12, 8))
 
         # Get top N features with biggest difference
-        top_diff_features = [
-            k for k, v in sorted_diff[:10]
-        ]  # Top 10 different features
+        top_diff_features = [k for k, v in sorted_diff[:10]]  # Top 10 different features
 
         # Get values for these features
         feat1_values = [feature_importance1.get(f, 0) for f in top_diff_features]
@@ -944,10 +907,10 @@ class MLService:
     async def _generate_natural_language_explanation(
         self,
         model_name: str,
-        features: Dict[str, Any],
-        prediction: Dict[str, Any],
-        xai_explanation: Dict[str, Any] = None,
-    ) -> Dict[str, Any]:
+        features: dict[str, Any],
+        prediction: dict[str, Any],
+        xai_explanation: dict[str, Any] = None,
+    ) -> dict[str, Any]:
         """
         Generate a natural language explanation of a prediction using OpenAI.
 
@@ -1047,14 +1010,10 @@ async def train_model(request: TrainingRequest, background_tasks: BackgroundTask
         # Загружаем данные
         raw_data = await ml_service.load_data_from_redis()
         if len(raw_data) < 10:
-            raise HTTPException(
-                status_code=400, detail="Недостаточно данных для обучения"
-            )
+            raise HTTPException(status_code=400, detail="Недостаточно данных для обучения")
 
         # Подготавливаем данные
-        training_data = await ml_service.prepare_training_data(
-            request.model_name, raw_data
-        )
+        training_data = await ml_service.prepare_training_data(request.model_name, raw_data)
 
         # Запускаем обучение в фоне
         background_tasks.add_task(
@@ -1069,7 +1028,7 @@ async def train_model(request: TrainingRequest, background_tasks: BackgroundTask
 
     except Exception as e:
         logger.error(f"Ошибка запуска обучения: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/load/{model_name}")
@@ -1101,11 +1060,11 @@ async def predict_endpoint(request: InferenceRequest):
 
 
 @app.get("/ml_models")
-async def list_models():
+async def list_ml_models():
     """List available ML models"""
     try:
         models = []
-        for model_name, model in ml_service.models.items():
+        for model_name, _model in ml_service.models.items():
             models.append(
                 {
                     "name": model_name,
@@ -1128,7 +1087,7 @@ async def list_models():
         }
     except Exception as e:
         logger.error(f"Error listing models: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/explain")
@@ -1163,7 +1122,7 @@ async def explain_prediction(request: ExplanationRequest):
 
     except Exception as e:
         logger.error(f"Error explaining prediction: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/models")
@@ -1178,15 +1137,13 @@ async def list_models():
         metadata_file = model_dir / f"{model_name}_metadata.json"
 
         if metadata_file.exists():
-            with open(metadata_file, "r") as f:
+            with open(metadata_file) as f:
                 metadata = json.load(f)
 
             available_models.append(
                 {
                     "name": model_name,
-                    "status": (
-                        "loaded" if model_name in ml_service.models else "available"
-                    ),
+                    "status": ("loaded" if model_name in ml_service.models else "available"),
                     "accuracy": metadata.get("accuracy"),
                     "trained_at": metadata.get("trained_at"),
                     "version": metadata.get("version", "1.0"),

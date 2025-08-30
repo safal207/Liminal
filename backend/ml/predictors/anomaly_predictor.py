@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 
 """
 Предиктор аномалий с использованием Kenning
@@ -11,7 +10,7 @@ import logging
 import os
 import threading
 import time
-from typing import Any, Dict
+from typing import Any
 
 import requests
 from flask import Flask, jsonify, request
@@ -59,7 +58,7 @@ class AnomalyPredictor:
         self.prediction_store = {}  # хранилище предсказаний с ID
         self.explanation_store = {}  # хранилище объяснений с ID
 
-    def get_model_info(self) -> Dict[str, Any]:
+    def get_model_info(self) -> dict[str, Any]:
         """
         Получение информации о текущей модели из Redis
 
@@ -78,7 +77,7 @@ class AnomalyPredictor:
             logger.error(f"Failed to get model info from Redis: {e}")
             return {}
 
-    def get_latest_features(self) -> Dict[str, Any]:
+    def get_latest_features(self) -> dict[str, Any]:
         """
         Получение последних извлеченных признаков из Redis
 
@@ -97,7 +96,7 @@ class AnomalyPredictor:
             logger.error(f"Failed to get features from Redis: {e}")
             return {}
 
-    def get_latest_predictions(self) -> Dict[str, Any]:
+    def get_latest_predictions(self) -> dict[str, Any]:
         """
         Получение последних предсказаний из Redis
 
@@ -116,7 +115,7 @@ class AnomalyPredictor:
             logger.error(f"Failed to get predictions from Redis: {e}")
             return {}
 
-    def make_prediction(self, features: Dict[str, Any]) -> Dict[str, Any]:
+    def make_prediction(self, features: dict[str, Any]) -> dict[str, Any]:
         """
         Выполнение предсказания аномалий на основе признаков
 
@@ -140,7 +139,9 @@ class AnomalyPredictor:
 
                 # Создаем уникальный ID для предсказания
                 timestamp = int(time.time())
-                prediction_id = f"pred_{timestamp}_{hash(json.dumps(features, sort_keys=True)) % 10000}"
+                prediction_id = (
+                    f"pred_{timestamp}_{hash(json.dumps(features, sort_keys=True)) % 10000}"
+                )
 
                 # Добавляем ID к предсказанию
                 prediction["prediction_id"] = prediction_id
@@ -167,15 +168,11 @@ class AnomalyPredictor:
                     )
 
                     # Также сохраняем в индексе предсказаний
-                    redis_client.zadd(
-                        "anomaly:prediction:index", {prediction_id: timestamp}
-                    )
+                    redis_client.zadd("anomaly:prediction:index", {prediction_id: timestamp})
 
                 return prediction
             else:
-                logger.error(
-                    f"Error from Kenning ML: {response.status_code} - {response.text}"
-                )
+                logger.error(f"Error from Kenning ML: {response.status_code} - {response.text}")
                 return {"error": f"ML service returned status {response.status_code}"}
 
         except Exception as e:
@@ -184,12 +181,12 @@ class AnomalyPredictor:
 
     def get_explanation(
         self,
-        features: Dict[str, Any],
-        prediction: Dict[str, Any],
+        features: dict[str, Any],
+        prediction: dict[str, Any],
         explanation_method: str = "shap",
         comparison_model: str = None,
         include_natural_language: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Получение объяснения предсказания с использованием различных XAI методов
 
@@ -233,13 +230,9 @@ class AnomalyPredictor:
                 if comparison_model:
                     # Добавляем ID предсказания к объяснениям и сравнению
                     if "primary_explanation" in explanation:
-                        explanation["primary_explanation"][
-                            "prediction_id"
-                        ] = prediction_id
+                        explanation["primary_explanation"]["prediction_id"] = prediction_id
                     if "comparison_explanation" in explanation:
-                        explanation["comparison_explanation"][
-                            "prediction_id"
-                        ] = prediction_id
+                        explanation["comparison_explanation"]["prediction_id"] = prediction_id
 
                     # Сохраняем объяснение в локальном хранилище
                     self.explanation_store[prediction_id] = {
@@ -268,9 +261,7 @@ class AnomalyPredictor:
 
                 # Сохраняем объяснение в Redis, если подключен
                 if redis_client:
-                    result_key = (
-                        f"anomaly:explanation:{prediction_id}:{explanation_method}"
-                    )
+                    result_key = f"anomaly:explanation:{prediction_id}:{explanation_method}"
                     redis_client.set(
                         result_key,
                         json.dumps(
@@ -289,9 +280,7 @@ class AnomalyPredictor:
                 logger.error(
                     f"Error from Kenning ML explanation: {response.status_code} - {response.text}"
                 )
-                return {
-                    "error": f"ML explanation service returned status {response.status_code}"
-                }
+                return {"error": f"ML explanation service returned status {response.status_code}"}
 
         except Exception as e:
             logger.error(f"Failed to get explanation: {e}")
@@ -336,7 +325,7 @@ class AnomalyPredictor:
         explanation_method: str = "shap",
         comparison_model: str = None,
         include_natural_language: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Получение объяснения по ID предсказания
 
@@ -352,11 +341,9 @@ class AnomalyPredictor:
         try:
             # Если указана модель для сравнения, формируем специальный ключ
             if comparison_model:
-                cache_key = (
-                    f"{prediction_id}_{explanation_method}_vs_{comparison_model}"
-                )
+                pass
             else:
-                cache_key = f"{prediction_id}_{explanation_method}"
+                pass
 
             # Сначала проверяем локальное хранилище
             # Ищем по конкретному методу объяснения и опциональной модели сравнения
@@ -402,7 +389,7 @@ class AnomalyPredictor:
             logger.error(f"Error retrieving explanation by ID: {e}")
             return {"error": str(e)}
 
-    def get_prediction_by_id(self, prediction_id: str) -> Dict[str, Any]:
+    def get_prediction_by_id(self, prediction_id: str) -> dict[str, Any]:
         """
         Получение сохраненного предсказания по ID
 
@@ -419,9 +406,7 @@ class AnomalyPredictor:
         # Если не нашли, проверяем Redis
         if redis_client:
             try:
-                prediction_data = redis_client.get(
-                    f"anomaly:prediction:{prediction_id}"
-                )
+                prediction_data = redis_client.get(f"anomaly:prediction:{prediction_id}")
                 if prediction_data:
                     return json.loads(prediction_data)
             except Exception as e:
@@ -468,11 +453,7 @@ def get_explanation_by_id(prediction_id):
         valid_methods = ["shap", "lime", "eli5", "anchors", "natural_language"]
         if explanation_method not in valid_methods:
             return (
-                jsonify(
-                    {
-                        "error": f"Invalid explanation method. Must be one of: {valid_methods}"
-                    }
-                ),
+                jsonify({"error": f"Invalid explanation method. Must be one of: {valid_methods}"}),
                 400,
             )
 
@@ -524,17 +505,13 @@ def explain():
         # Получаем параметры из запроса
         explanation_method = data.get("explanation_method", "shap")
         comparison_model = data.get("comparison_model", None)
-        include_natural_language = data.get("include_natural_language", False)
+        data.get("include_natural_language", False)
 
         # Проверяем, что метод объяснения корректный
         valid_methods = ["shap", "lime", "eli5", "anchors", "natural_language"]
         if explanation_method not in valid_methods:
             return (
-                jsonify(
-                    {
-                        "error": f"Invalid explanation method. Must be one of: {valid_methods}"
-                    }
-                ),
+                jsonify({"error": f"Invalid explanation method. Must be one of: {valid_methods}"}),
                 400,
             )
 
@@ -579,12 +556,8 @@ def status():
 def main():
     """Точка входа для запуска сервиса предсказания"""
     parser = argparse.ArgumentParser(description="ML Anomaly Predictor Service")
-    parser.add_argument(
-        "--host", type=str, default=HOST, help=f"Host to bind (default: {HOST})"
-    )
-    parser.add_argument(
-        "--port", type=int, default=PORT, help=f"Port to bind (default: {PORT})"
-    )
+    parser.add_argument("--host", type=str, default=HOST, help=f"Host to bind (default: {HOST})")
+    parser.add_argument("--port", type=int, default=PORT, help=f"Port to bind (default: {PORT})")
     parser.add_argument(
         "--update-interval",
         type=int,

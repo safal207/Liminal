@@ -35,9 +35,7 @@ try:
         maturation.record_insight(
             insight,
             source="integration_analysis",
-            conclusions=[
-                "Построение надежного моста между языками требует четких границ"
-            ],
+            conclusions=["Построение надежного моста между языками требует четких границ"],
         )
         print(f"Recorded insight: {insight}")
 

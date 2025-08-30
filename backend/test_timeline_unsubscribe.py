@@ -74,7 +74,7 @@ async def run_test():
                 try:
                     initial_data = await asyncio.wait_for(websocket.recv(), timeout=2)
                     logger.info(f"Получено начальное сообщение: {initial_data}")
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.info("Нет больше начальных сообщений")
                     break
 
@@ -91,7 +91,7 @@ async def run_test():
             try:
                 broadcast_response = await asyncio.wait_for(websocket.recv(), timeout=2)
                 logger.info(f"Получен ответ на сообщение: {broadcast_response}")
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.info("Не получено подтверждения отправки сообщения")
 
             # 5. Отписываемся от канала timeline
@@ -114,9 +114,7 @@ async def run_test():
 
             # Проверяем, получим ли мы сообщение (не должны)
             try:
-                post_unsub_response = await asyncio.wait_for(
-                    websocket.recv(), timeout=2
-                )
+                post_unsub_response = await asyncio.wait_for(websocket.recv(), timeout=2)
                 logger.info(f"Получено сообщение после отписки: {post_unsub_response}")
                 # Проверяем, не ошибка ли это или сообщение от другого источника
                 message_data = json.loads(post_unsub_response)
@@ -128,10 +126,8 @@ async def run_test():
                     logger.warning(
                         "Получено сообщение после отписки, хотя не должны были его получить"
                     )
-            except asyncio.TimeoutError:
-                logger.info(
-                    "Не получено сообщений после отписки, это правильное поведение"
-                )
+            except TimeoutError:
+                logger.info("Не получено сообщений после отписки, это правильное поведение")
 
             # 7. Заново подписываемся, чтобы проверить, что подписка работает после отписки
             logger.info("Подписываемся снова на канал timeline...")
@@ -148,7 +144,7 @@ async def run_test():
                 logger.info(
                     f"Получено начальное сообщение при повторной подписке: {resubscribe_data}"
                 )
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.info("Нет начальных сообщений при повторной подписке")
 
             logger.info("Тест успешно завершен!")

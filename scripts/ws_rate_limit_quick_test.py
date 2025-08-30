@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import json
 import os
 import time
@@ -25,10 +26,8 @@ async def main():
         # Optional: subscribe to a channel if backend supports it
         try:
             await ws.send(json.dumps({"type": "subscribe", "channel": "test"}))
-            try:
+            with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(ws.recv(), timeout=1.0)
-            except asyncio.TimeoutError:
-                pass
         except Exception:
             pass
 
@@ -42,7 +41,7 @@ async def main():
                 text = str(resp).lower()
                 if "429" in text or "rate" in text:
                     rate_limited_hints += 1
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
             if delay:
                 await asyncio.sleep(delay)

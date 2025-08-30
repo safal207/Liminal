@@ -27,9 +27,7 @@ def test_memory_timeline_endpoint():
         print("\n2. Testing GET /timeline/memories/...")
         response = client.get("/timeline/memories/")
         print(f"   Response status: {response.status_code}")
-        assert (
-            response.status_code == 200
-        ), f"Expected status 200, got {response.status_code}"
+        assert response.status_code == 200, f"Expected status 200, got {response.status_code}"
 
         data = response.json()
         print(f"   Response data: {data}")
@@ -54,9 +52,7 @@ def test_memory_timeline_endpoint():
         print("\n4. Verifying GET /timeline/memories/ after POST...")
         response = client.get("/timeline/memories/")
         print(f"   Response status: {response.status_code}")
-        assert (
-            response.status_code == 200
-        ), f"Expected status 200, got {response.status_code}"
+        assert response.status_code == 200, f"Expected status 200, got {response.status_code}"
 
         memories = response.json()
         print(f"   Response data: {memories}")
@@ -65,9 +61,9 @@ def test_memory_timeline_endpoint():
 
         if memories:
             print(f"   First memory: {memories[0]}")
-            assert (
-                memories[0]["content"] == test_data["content"]
-            ), f"Expected content '{test_data['content']}', got '{memories[0]['content']}'"
+            assert memories[0]["content"] == test_data["content"], (
+                f"Expected content '{test_data['content']}', got '{memories[0]['content']}'"
+            )
         print("   ✓ GET /timeline/memories/ verification passed")
 
     except Exception as e:

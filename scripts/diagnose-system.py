@@ -10,6 +10,7 @@
 5. WebSocket соединения
 6. Базы данных и кэширование
 """
+
 import asyncio
 import json
 import subprocess
@@ -17,7 +18,6 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Optional
 
 import requests
 
@@ -72,9 +72,7 @@ def print_info(message: str) -> None:
 def run_command(cmd: str, timeout: int = 30) -> tuple[bool, str]:
     """Выполняет команду и возвращает результат"""
     try:
-        result = subprocess.run(
-            cmd, shell=True, capture_output=True, text=True, timeout=timeout
-        )
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=timeout)
         return result.returncode == 0, result.stdout + result.stderr
     except subprocess.TimeoutExpired:
         return False, f"Команда превысила таймаут {timeout} сек"
@@ -82,18 +80,14 @@ def run_command(cmd: str, timeout: int = 30) -> tuple[bool, str]:
         return False, str(e)
 
 
-def check_url(url: str, timeout: int = 10) -> tuple[bool, str, Optional[Dict]]:
+def check_url(url: str, timeout: int = 10) -> tuple[bool, str, dict | None]:
     """Проверяет доступность URL"""
     try:
         response = requests.get(url, timeout=timeout)
         return (
             True,
             f"HTTP {response.status_code}",
-            (
-                response.json()
-                if "json" in response.headers.get("content-type", "")
-                else None
-            ),
+            (response.json() if "json" in response.headers.get("content-type", "") else None),
         )
     except requests.exceptions.ConnectionError:
         return False, "Соединение отклонено", None
@@ -129,9 +123,7 @@ def check_docker_services():
     success, output = run_command("docker compose ps --format json")
     if success and output.strip():
         try:
-            containers = [
-                json.loads(line) for line in output.strip().split("\n") if line.strip()
-            ]
+            containers = [json.loads(line) for line in output.strip().split("\n") if line.strip()]
             for container in containers:
                 name = container.get("Name", "unknown")
                 state = container.get("State", "unknown")

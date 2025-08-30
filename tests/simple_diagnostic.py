@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Resonance Liminal - Простой диагностический инструмент для WebSocket relay
@@ -36,19 +35,15 @@ async def test_websocket_connection():
         print(f"✓ Соединение установлено за {connection_time:.2f} сек")
 
         # Отправка ping для проверки
-        await ws.send(
-            json.dumps({"type": "ping", "timestamp": datetime.now().isoformat()})
-        )
+        await ws.send(json.dumps({"type": "ping", "timestamp": datetime.now().isoformat()}))
         print("Отправлен ping...")
 
         try:
             # Пробуем получить ответ в течение 5 секунд
             response = await asyncio.wait_for(ws.recv(), timeout=5.0)
             print(f"✓ Получен ответ: {response[:100]}...")
-        except asyncio.TimeoutError:
-            print(
-                "⚠ Не получен ответ на ping (это нормально, если сервер не настроен на ответ)"
-            )
+        except TimeoutError:
+            print("⚠ Не получен ответ на ping (это нормально, если сервер не настроен на ответ)")
 
         await ws.close()
         print("✓ Соединение успешно закрыто")
@@ -103,16 +98,12 @@ def test_consciousness_graph_api():
                 print(f"{'ID':<20} | {'Название':<25} | Описание")
                 print("-" * 100)
 
-                for node in graph_data.get("nodes", [])[
-                    :5
-                ]:  # Показываем только первые 5
+                for node in graph_data.get("nodes", [])[:5]:  # Показываем только первые 5
                     desc = node.get("description", "")
                     if len(desc) > 40:
                         desc = desc[:40] + "..."
 
-                    print(
-                        f"{node.get('id', ''):<20} | {node.get('label', ''):<25} | {desc}"
-                    )
+                    print(f"{node.get('id', ''):<20} | {node.get('label', ''):<25} | {desc}")
 
             return True, f"{node_count} узлов, {link_count} связей"
         else:

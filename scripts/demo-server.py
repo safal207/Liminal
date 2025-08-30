@@ -5,7 +5,7 @@
 """
 
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI
@@ -22,27 +22,27 @@ app = FastAPI(
 class HealthResponse(BaseModel):
     status: str
     timestamp: str
-    services: Dict[str, str]
+    services: dict[str, str]
 
 
 class XAIRequest(BaseModel):
     model_name: str
-    features: Dict[str, Any]
+    features: dict[str, Any]
 
 
 class OpenAIRequest(BaseModel):
-    logs: List[str]
-    context: Dict[str, Any]
+    logs: list[str]
+    context: dict[str, Any]
 
 
 class ClaudeRequest(BaseModel):
-    ml_decision: Dict[str, Any]
-    context: Dict[str, Any]
+    ml_decision: dict[str, Any]
+    context: dict[str, Any]
 
 
 class MultiLLMRequest(BaseModel):
     task_type: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
     preferred_provider: str = "auto"
     require_consensus: bool = False
     priority: str = "normal"
@@ -86,9 +86,7 @@ async def ml_status():
 async def explain_prediction(request: XAIRequest):
     return {
         "model_name": request.model_name,
-        "prediction": (
-            "anomaly" if request.features.get("error_rate", 0) > 0.1 else "normal"
-        ),
+        "prediction": ("anomaly" if request.features.get("error_rate", 0) > 0.1 else "normal"),
         "confidence": 0.87,
         "explanation": {
             "shap_values": {

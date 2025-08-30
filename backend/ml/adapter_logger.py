@@ -18,7 +18,7 @@ import os
 import threading
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class AdapterLogger:
@@ -26,7 +26,7 @@ class AdapterLogger:
     Интеллектуальный логгер для анализа работы OpenAI адаптера
     """
 
-    def __init__(self, log_dir: Optional[str] = None):
+    def __init__(self, log_dir: str | None = None):
         """
         Инициализация логгера с указанием директории для логов
 
@@ -56,11 +56,9 @@ class AdapterLogger:
         ]:
             if not os.path.exists(path):
                 with open(path, "w", encoding="utf-8") as f:
-                    f.write(
-                        f"# {os.path.basename(path)} - создан {datetime.now().isoformat()}\n\n"
-                    )
+                    f.write(f"# {os.path.basename(path)} - создан {datetime.now().isoformat()}\n\n")
 
-    def log_error(self, error_message: str, context: Dict[str, Any] = None) -> str:
+    def log_error(self, error_message: str, context: dict[str, Any] = None) -> str:
         """
         Записывает ошибку в файл опыта (experience.log)
 
@@ -92,9 +90,7 @@ class AdapterLogger:
         # Записываем в файл опыта
         with open(self.experience_path, "a", encoding="utf-8") as f:
             f.write(f"\n## Ошибка {error_hash[:8]} ({timestamp})\n")
-            f.write(
-                f"```\n{json.dumps(log_entry, ensure_ascii=False, indent=2)}\n```\n"
-            )
+            f.write(f"```\n{json.dumps(log_entry, ensure_ascii=False, indent=2)}\n```\n")
 
         # Если ошибка повторилась, обновляем файл кармы
         if error_count > 1:
@@ -102,9 +98,7 @@ class AdapterLogger:
 
         return error_hash
 
-    def log_insight(
-        self, error_hash: str, solution: str, details: Dict[str, Any] = None
-    ) -> None:
+    def log_insight(self, error_hash: str, solution: str, details: dict[str, Any] = None) -> None:
         """
         Записывает инсайт (решение проблемы) в файл инсайтов (insights.log)
 
@@ -126,9 +120,7 @@ class AdapterLogger:
         # Записываем в файл инсайтов
         with open(self.insights_path, "a", encoding="utf-8") as f:
             f.write(f"\n## Инсайт для {error_hash[:8]} ({timestamp})\n")
-            f.write(
-                f"```\n{json.dumps(log_entry, ensure_ascii=False, indent=2)}\n```\n"
-            )
+            f.write(f"```\n{json.dumps(log_entry, ensure_ascii=False, indent=2)}\n```\n")
 
         # Обновляем реестр инсайтов
         with self._lock:
@@ -159,13 +151,9 @@ class AdapterLogger:
         # Записываем в файл гипотез
         with open(self.hypotheses_path, "a", encoding="utf-8") as f:
             f.write(f"\n## Гипотеза от {timestamp}\n")
-            f.write(
-                f"```\n{json.dumps(log_entry, ensure_ascii=False, indent=2)}\n```\n"
-            )
+            f.write(f"```\n{json.dumps(log_entry, ensure_ascii=False, indent=2)}\n```\n")
 
-    def resolve_hypothesis(
-        self, issue_description: str, result: str, is_confirmed: bool
-    ) -> None:
+    def resolve_hypothesis(self, issue_description: str, result: str, is_confirmed: bool) -> None:
         """
         Отмечает гипотезу как подтвержденную или опровергнутую
 
@@ -187,12 +175,10 @@ class AdapterLogger:
         # Записываем в файл гипотез
         with open(self.hypotheses_path, "a", encoding="utf-8") as f:
             f.write(f"\n## Результат гипотезы от {timestamp}\n")
-            f.write(
-                f"```\n{json.dumps(log_entry, ensure_ascii=False, indent=2)}\n```\n"
-            )
+            f.write(f"```\n{json.dumps(log_entry, ensure_ascii=False, indent=2)}\n```\n")
 
     def _update_karma(
-        self, error_hash: str, error_message: str, context: Dict[str, Any], count: int
+        self, error_hash: str, error_message: str, context: dict[str, Any], count: int
     ) -> None:
         """
         Обновляет файл кармы при повторной ошибке
@@ -222,13 +208,9 @@ class AdapterLogger:
         # Записываем в файл кармы
         with open(self.karma_path, "a", encoding="utf-8") as f:
             f.write(f"\n## Карма ошибки {error_hash[:8]} ({timestamp})\n")
-            f.write(
-                f"```\n{json.dumps(log_entry, ensure_ascii=False, indent=2)}\n```\n"
-            )
+            f.write(f"```\n{json.dumps(log_entry, ensure_ascii=False, indent=2)}\n```\n")
 
-    def _generate_error_hash(
-        self, error_message: str, context: Dict[str, Any] = None
-    ) -> str:
+    def _generate_error_hash(self, error_message: str, context: dict[str, Any] = None) -> str:
         """
         Генерирует уникальный хеш для ошибки на основе сообщения и контекста
 
@@ -246,7 +228,7 @@ class AdapterLogger:
         # Генерируем MD5 хеш
         return hashlib.md5(hash_input.encode("utf-8")).hexdigest()
 
-    def get_error_stats(self) -> Dict[str, Any]:
+    def get_error_stats(self) -> dict[str, Any]:
         """
         Возвращает статистику по ошибкам
 
@@ -256,9 +238,7 @@ class AdapterLogger:
         return {
             "total_errors": sum(self.error_counters.values()),
             "unique_errors": len(self.error_counters),
-            "repeating_errors": sum(
-                1 for count in self.error_counters.values() if count > 1
-            ),
+            "repeating_errors": sum(1 for count in self.error_counters.values() if count > 1),
             "solved_errors": len(self.insights_registry),
             "top_errors": sorted(
                 [(hash, count) for hash, count in self.error_counters.items()],
@@ -273,17 +253,15 @@ adapter_logger = AdapterLogger()
 
 
 # Функции для упрощенного доступа к логгеру
-def log_error(error_message: str, context: Dict[str, Any] = None) -> str:
+def log_error(error_message: str, context: dict[str, Any] = None) -> str:
     return adapter_logger.log_error(error_message, context)
 
 
-def log_insight(error_hash: str, solution: str, details: Dict[str, Any] = None) -> None:
+def log_insight(error_hash: str, solution: str, details: dict[str, Any] = None) -> None:
     adapter_logger.log_insight(error_hash, solution, details)
 
 
-def log_hypothesis(
-    issue_description: str, hypothesis: str, experiment: str = None
-) -> None:
+def log_hypothesis(issue_description: str, hypothesis: str, experiment: str = None) -> None:
     adapter_logger.log_hypothesis(issue_description, hypothesis, experiment)
 
 

@@ -5,7 +5,6 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List
 
 # Ensure src/ is importable when running from repository root
 ROOT = Path(__file__).resolve().parents[1]
@@ -14,8 +13,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from liminal.reince import InMemoryREINCE  # type: ignore  # noqa: E402
 
 
-def parse_meta(meta_items: List[str]) -> Dict[str, str]:
-    meta: Dict[str, str] = {}
+def parse_meta(meta_items: list[str]) -> dict[str, str]:
+    meta: dict[str, str] = {}
     for item in meta_items:
         if "=" in item:
             k, v = item.split("=", 1)
@@ -97,7 +96,7 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: List[str] | None = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     args.func(args)
     return 0

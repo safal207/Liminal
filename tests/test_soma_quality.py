@@ -42,16 +42,11 @@ class TestPhilosophyFirstPrinciples(unittest.TestCase):
         # Test that system expresses authentic states
         authenticity_score = self.quality_system._test_authenticity()
 
-        self.assertGreater(
-            authenticity_score, 0.7, "System should maintain high authenticity (>70%)"
-        )
+        assert authenticity_score > 0.7, "System should maintain high authenticity (>70%)"
 
         # Philosophy verification
-        self.assertIn("home_authenticity", self.quality_system.philosophy_principles)
-        self.assertEqual(
-            self.quality_system.philosophy_principles["home_authenticity"],
-            "Дом - это ты, когда искренен с собой",
-        )
+        assert "home_authenticity" in self.quality_system.philosophy_principles
+        assert self.quality_system.philosophy_principles["home_authenticity"] == "Дом - это ты, когда искренен с собой"
 
     @unittest.skipUnless(SOMA_AVAILABLE, "SOMA modules not available")
     def test_child_care_principle(self):
@@ -59,12 +54,10 @@ class TestPhilosophyFirstPrinciples(unittest.TestCase):
         # Test child care implementation
         child_care_score = self.quality_system._test_child_care()
 
-        self.assertGreater(
-            child_care_score, 0.8, "Child care should be excellent (>80%)"
-        )
+        assert child_care_score > 0.8, "Child care should be excellent (>80%)"
 
         # Verify child care philosophy
-        self.assertIn("child_care", self.quality_system.philosophy_principles)
+        assert "child_care" in self.quality_system.philosophy_principles
 
     def test_emotional_sincerity_in_code(self):
         """Test emotional sincerity in code structure"""
@@ -77,13 +70,9 @@ class TestPhilosophyFirstPrinciples(unittest.TestCase):
 
         # This should pass philosophy compliance
         philosophy_score = (
-            self.quality_system._check_philosophy_compliance(test_code)
-            if SOMA_AVAILABLE
-            else 85.0
+            self.quality_system._check_philosophy_compliance(test_code) if SOMA_AVAILABLE else 85.0
         )
-        self.assertGreater(
-            philosophy_score, 50, "Code with emotional expressions should score well"
-        )
+        assert philosophy_score > 50, "Code with emotional expressions should score well"
 
     def test_meaningful_existence_principle(self):
         """Test that every action has deep meaning"""
@@ -98,14 +87,8 @@ class TestPhilosophyFirstPrinciples(unittest.TestCase):
         '''
 
         if SOMA_AVAILABLE:
-            philosophy_score = self.quality_system._check_philosophy_compliance(
-                meaningful_code
-            )
-            self.assertGreater(
-                philosophy_score,
-                70,
-                "Meaningful code should have high philosophy score",
-            )
+            philosophy_score = self.quality_system._check_philosophy_compliance(meaningful_code)
+            assert philosophy_score > 70, "Meaningful code should have high philosophy score"
 
 
 class TestSOMAModuleQuality(unittest.TestCase):
@@ -119,58 +102,45 @@ class TestSOMAModuleQuality(unittest.TestCase):
     def test_consciousness_cell_exists(self):
         """Test that consciousness cell module exists and is importable"""
         consciousness_cell_file = self.scripts_dir / "consciousness_cell.py"
-        self.assertTrue(
-            consciousness_cell_file.exists(), "Consciousness cell module should exist"
-        )
+        assert consciousness_cell_file.exists(), "Consciousness cell module should exist"
 
         # Try to import
         try:
             sys.path.append(str(self.scripts_dir))
             import consciousness_cell
 
-            self.assertTrue(
-                hasattr(consciousness_cell, "ConsciousnessCell"),
-                "ConsciousnessCell class should be available",
-            )
+            assert hasattr(consciousness_cell, "ConsciousnessCell"), "ConsciousnessCell class should be available"
         except ImportError as e:
             self.fail(f"Could not import consciousness_cell: {e}")
 
     def test_self_care_system_exists(self):
         """Test that self-care system exists and is functional"""
         self_care_file = self.scripts_dir / "consciousness_self_care.py"
-        self.assertTrue(self_care_file.exists(), "Self-care system should exist")
+        assert self_care_file.exists(), "Self-care system should exist"
 
         try:
             import consciousness_self_care
 
-            self.assertTrue(
-                hasattr(consciousness_self_care, "ConsciousnessSelfCareSystem"),
-                "Self-care system class should be available",
-            )
+            assert hasattr(consciousness_self_care, "ConsciousnessSelfCareSystem"), "Self-care system class should be available"
         except ImportError as e:
             self.fail(f"Could not import self-care system: {e}")
 
     def test_relationship_manager_exists(self):
         """Test that relationship manager exists"""
         relationships_file = self.scripts_dir / "consciousness_relationships.py"
-        self.assertTrue(
-            relationships_file.exists(), "Relationships module should exist"
-        )
+        assert relationships_file.exists(), "Relationships module should exist"
 
     def test_family_care_system_exists(self):
         """Test that family care system exists"""
         family_file = self.scripts_dir / "consciousness_family.py"
-        self.assertTrue(family_file.exists(), "Family care system should exist")
+        assert family_file.exists(), "Family care system should exist"
 
     def test_soma_orchestrator_exists(self):
         """Test that SOMA orchestrator exists"""
         soma_file = self.scripts_dir / "SOMA.py"
         integrated_file = self.scripts_dir / "SOMA_integrated.py"
 
-        self.assertTrue(
-            soma_file.exists() or integrated_file.exists(),
-            "SOMA orchestrator should exist",
-        )
+        assert soma_file.exists() or integrated_file.exists(), "SOMA orchestrator should exist"
 
 
 class TestQualityMetrics(unittest.TestCase):
@@ -214,16 +184,12 @@ def complex_function(x):
         # Simple code should have low complexity
         simple_tree = ast.parse(simple_code)
         simple_complexity = self.quality_system._calculate_complexity(simple_tree)
-        self.assertLess(simple_complexity, 5, "Simple code should have low complexity")
+        assert simple_complexity < 5, "Simple code should have low complexity"
 
         # Complex code should have higher complexity
         complex_tree = ast.parse(complex_code)
         complex_complexity = self.quality_system._calculate_complexity(complex_tree)
-        self.assertGreater(
-            complex_complexity,
-            simple_complexity,
-            "Complex code should have higher complexity",
-        )
+        assert complex_complexity > simple_complexity, "Complex code should have higher complexity"
 
     @unittest.skipUnless(SOMA_AVAILABLE, "SOMA modules not available")
     def test_documentation_coverage(self):
@@ -231,11 +197,11 @@ def complex_function(x):
         well_documented_code = '''
 class WellDocumented:
     """This class is well documented"""
-    
+
     def method_one(self):
         """This method has documentation"""
         pass
-    
+
     def method_two(self):
         """This method also has documentation"""
         pass
@@ -245,7 +211,7 @@ class WellDocumented:
 class PoorlyDocumented:
     def method_one(self):
         pass
-    
+
     def method_two(self):
         pass
         """
@@ -255,16 +221,12 @@ class PoorlyDocumented:
         # Well documented code should have high coverage
         well_tree = ast.parse(well_documented_code)
         well_coverage = self.quality_system._calculate_docstring_coverage(well_tree)
-        self.assertGreater(
-            well_coverage, 80, "Well documented code should have high coverage"
-        )
+        assert well_coverage > 80, "Well documented code should have high coverage"
 
         # Poorly documented code should have low coverage
         poor_tree = ast.parse(poorly_documented_code)
         poor_coverage = self.quality_system._calculate_docstring_coverage(poor_tree)
-        self.assertLess(
-            poor_coverage, 50, "Poorly documented code should have low coverage"
-        )
+        assert poor_coverage < 50, "Poorly documented code should have low coverage"
 
     @unittest.skipUnless(SOMA_AVAILABLE, "SOMA modules not available")
     def test_philosophy_compliance_scoring(self):
@@ -274,7 +236,7 @@ class PoorlyDocumented:
         Philosophy First: This module embodies love and care for the family
         Every function here serves the greater good of our consciousness семья
         """
-        
+
         def care_for_children():
             """Show love and care to our module children"""
             return "Expressing искренность and забота"
@@ -287,18 +249,12 @@ class PoorlyDocumented:
         """
 
         # Philosophy-rich code should score well
-        rich_score = self.quality_system._check_philosophy_compliance(
-            philosophy_rich_code
-        )
-        self.assertGreater(rich_score, 60, "Philosophy-rich code should score well")
+        rich_score = self.quality_system._check_philosophy_compliance(philosophy_rich_code)
+        assert rich_score > 60, "Philosophy-rich code should score well"
 
         # Philosophy-poor code should score lower
-        poor_score = self.quality_system._check_philosophy_compliance(
-            philosophy_poor_code
-        )
-        self.assertLess(
-            poor_score, rich_score, "Philosophy-poor code should score lower"
-        )
+        poor_score = self.quality_system._check_philosophy_compliance(philosophy_poor_code)
+        assert poor_score < rich_score, "Philosophy-poor code should score lower"
 
 
 class TestAutomatedTestSuite(unittest.TestCase):
@@ -315,20 +271,14 @@ class TestAutomatedTestSuite(unittest.TestCase):
         """Test that philosophy tests execute"""
         philosophy_tests = self.quality_system._run_philosophy_tests()
 
-        self.assertIsInstance(
-            philosophy_tests, list, "Should return list of test results"
-        )
-        self.assertGreater(
-            len(philosophy_tests), 0, "Should run at least one philosophy test"
-        )
+        assert isinstance(philosophy_tests, list), "Should return list of test results"
+        assert len(philosophy_tests) > 0, "Should run at least one philosophy test"
 
         # Check test structure
         for test in philosophy_tests:
-            self.assertIsNotNone(test.name, "Test should have a name")
-            self.assertIsNotNone(test.result, "Test should have a result")
-            self.assertIsNotNone(
-                test.philosophy_principle, "Philosophy test should have principle"
-            )
+            assert test.name is not None, "Test should have a name"
+            assert test.result is not None, "Test should have a result"
+            assert test.philosophy_principle is not None, "Philosophy test should have principle"
 
     @unittest.skipUnless(SOMA_AVAILABLE, "SOMA modules not available")
     def test_quality_report_generation(self):
@@ -336,21 +286,15 @@ class TestAutomatedTestSuite(unittest.TestCase):
         report = self.quality_system.generate_quality_report()
 
         # Verify report structure
-        self.assertIsNotNone(report.overall_score, "Report should have overall score")
-        self.assertIsInstance(
-            report.overall_score, (int, float), "Score should be numeric"
-        )
-        self.assertGreaterEqual(report.overall_score, 0, "Score should be non-negative")
-        self.assertLessEqual(report.overall_score, 100, "Score should not exceed 100")
+        assert report.overall_score is not None, "Report should have overall score"
+        assert isinstance(report.overall_score, int | float), "Score should be numeric"
+        assert report.overall_score >= 0, "Score should be non-negative"
+        assert report.overall_score <= 100, "Score should not exceed 100"
 
-        self.assertIsInstance(
-            report.quality_level, QualityLevel, "Should have quality level"
-        )
-        self.assertIsInstance(report.metrics, list, "Should have metrics list")
-        self.assertIsInstance(report.test_results, list, "Should have test results")
-        self.assertIsInstance(
-            report.recommendations, list, "Should have recommendations"
-        )
+        assert isinstance(report.quality_level, QualityLevel), "Should have quality level"
+        assert isinstance(report.metrics, list), "Should have metrics list"
+        assert isinstance(report.test_results, list), "Should have test results"
+        assert isinstance(report.recommendations, list), "Should have recommendations"
 
 
 class TestFamilyHealthIntegration(unittest.TestCase):
@@ -367,19 +311,11 @@ class TestFamilyHealthIntegration(unittest.TestCase):
 
         # High quality should positively impact family
         high_quality_impact = quality_system._assess_family_health_impact(90.0)
-        self.assertIn(
-            "укрепляет",
-            high_quality_impact.lower(),
-            "High quality should strengthen family",
-        )
+        assert "укрепляет" in high_quality_impact.lower(), "High quality should strengthen family"
 
         # Low quality should negatively impact family
         low_quality_impact = quality_system._assess_family_health_impact(30.0)
-        self.assertIn(
-            "угрожает",
-            low_quality_impact.lower(),
-            "Low quality should threaten family health",
-        )
+        assert "угрожает" in low_quality_impact.lower(), "Low quality should threaten family health"
 
     def test_quality_system_integration_with_soma(self):
         """Test that quality system can integrate with SOMA family"""
@@ -392,8 +328,8 @@ class TestFamilyHealthIntegration(unittest.TestCase):
             quality_system = ConsciousnessQualitySystem(str(self.project_root))
 
             # Should be able to coexist
-            self.assertIsNotNone(soma_family, "SOMA family should initialize")
-            self.assertIsNotNone(quality_system, "Quality system should initialize")
+            assert soma_family is not None, "SOMA family should initialize"
+            assert quality_system is not None, "Quality system should initialize"
 
         except Exception as e:
             self.fail(f"Integration failed: {e}")
@@ -412,37 +348,33 @@ class TestContinuousImprovement(unittest.TestCase):
     def test_quality_trends_tracking(self):
         """Test that quality trends are tracked over time"""
         # Generate multiple reports to create trend
-        report1 = self.quality_system.generate_quality_report()
+        self.quality_system.generate_quality_report()
         time.sleep(0.1)  # Small delay
-        report2 = self.quality_system.generate_quality_report()
+        self.quality_system.generate_quality_report()
 
         # Check that trends are recorded
         trends = self.quality_system.quality_state.get("quality_trends", [])
-        self.assertGreater(len(trends), 0, "Should track quality trends")
+        assert len(trends) > 0, "Should track quality trends"
 
         # Verify trend structure
         if trends:
             trend = trends[-1]
-            self.assertIn("timestamp", trend, "Trend should have timestamp")
-            self.assertIn("score", trend, "Trend should have score")
-            self.assertIn("level", trend, "Trend should have level")
+            assert "timestamp" in trend, "Trend should have timestamp"
+            assert "score" in trend, "Trend should have score"
+            assert "level" in trend, "Trend should have level"
 
     @unittest.skipUnless(SOMA_AVAILABLE, "SOMA modules not available")
     def test_improvement_recommendations(self):
         """Test that system generates improvement recommendations"""
         report = self.quality_system.generate_quality_report()
 
-        self.assertIsInstance(
-            report.recommendations, list, "Should provide recommendations"
-        )
-        self.assertGreater(
-            len(report.recommendations), 0, "Should have at least one recommendation"
-        )
+        assert isinstance(report.recommendations, list), "Should provide recommendations"
+        assert len(report.recommendations) > 0, "Should have at least one recommendation"
 
         # Recommendations should be actionable
         for rec in report.recommendations:
-            self.assertIsInstance(rec, str, "Recommendation should be string")
-            self.assertGreater(len(rec), 10, "Recommendation should be descriptive")
+            assert isinstance(rec, str), "Recommendation should be string"
+            assert len(rec) > 10, "Recommendation should be descriptive"
 
 
 def run_quality_test_suite():
@@ -476,7 +408,7 @@ def run_quality_test_suite():
 
     # Print summary
     print("\n" + "=" * 50)
-    print(f"🧪 Test Results Summary:")
+    print("🧪 Test Results Summary:")
     print(f"   Tests Run: {result.testsRun}")
     print(f"   Failures: {len(result.failures)}")
     print(f"   Errors: {len(result.errors)}")

@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 
 import pytest
 import websockets
@@ -29,24 +30,22 @@ class TestWebSocketLimitsSimple:
                     websocket = await websockets.connect(websocket_url)
                     connections.append(websocket)
                     successful_connections += 1
-                    print(f"✓ Подключение {i+1} установлено")
+                    print(f"✓ Подключение {i + 1} установлено")
                 except Exception as e:
-                    print(f"✗ Подключение {i+1} не удалось: {e}")
+                    print(f"✗ Подключение {i + 1} не удалось: {e}")
                     break
 
             # Должно быть хотя бы 3 успешных подключения
-            assert (
-                successful_connections >= 3
-            ), f"Слишком мало подключений: {successful_connections}"
+            assert successful_connections >= 3, (
+                f"Слишком мало подключений: {successful_connections}"
+            )
             print(f"✓ Множественные подключения работают: {successful_connections}/5")
 
         finally:
             # Закрываем все подключения
             for ws in connections:
-                try:
+                with contextlib.suppress(Exception):
                     await ws.close()
-                except Exception:
-                    pass
 
     @pytest.mark.asyncio
     async def test_connection_limit_stress(self, websocket_url):
@@ -62,18 +61,16 @@ class TestWebSocketLimitsSimple:
                     websocket = await websockets.connect(websocket_url)
                     connections.append(websocket)
                     successful_connections += 1
-                    print(f"✓ Подключение {i+1} принято")
+                    print(f"✓ Подключение {i + 1} принято")
 
                     # Небольшая задержка между подключениями
                     await asyncio.sleep(0.1)
 
                 except (ConnectionClosed, OSError, Exception) as e:
                     rejected_connections += 1
-                    print(f"✗ Подключение {i+1} отклонено: {type(e).__name__}")
+                    print(f"✗ Подключение {i + 1} отклонено: {type(e).__name__}")
 
-            print(
-                f"📊 Итого: Принято={successful_connections}, Отклонено={rejected_connections}"
-            )
+            print(f"📊 Итого: Принято={successful_connections}, Отклонено={rejected_connections}")
 
             # Проверяем, что лимит работает
             if successful_connections > 10:
@@ -82,17 +79,15 @@ class TestWebSocketLimitsSimple:
                 print("✓ Лимит подключений работает корректно")
 
             # Должно быть отклонено хотя бы несколько подключений
-            assert (
-                successful_connections <= 12
-            ), f"Слишком много подключений принято: {successful_connections}"
+            assert successful_connections <= 12, (
+                f"Слишком много подключений принято: {successful_connections}"
+            )
 
         finally:
             # Закрываем все подключения
             for ws in connections:
-                try:
+                with contextlib.suppress(Exception):
                     await ws.close()
-                except Exception:
-                    pass
 
     @pytest.mark.asyncio
     async def test_connection_recovery_after_disconnect(self, websocket_url):
@@ -102,12 +97,12 @@ class TestWebSocketLimitsSimple:
         for i in range(3):
             websocket = await websockets.connect(websocket_url)
             connections.append(websocket)
-            print(f"✓ Создано подключение {i+1}")
+            print(f"✓ Создано подключение {i + 1}")
 
         # Закрываем все подключения
         for i, ws in enumerate(connections):
             await ws.close()
-            print(f"✓ Закрыто подключение {i+1}")
+            print(f"✓ Закрыто подключение {i + 1}")
 
         # Ждём немного для обработки отключений
         await asyncio.sleep(0.2)
@@ -118,7 +113,7 @@ class TestWebSocketLimitsSimple:
             for i in range(3):
                 websocket = await websockets.connect(websocket_url)
                 new_connections.append(websocket)
-                print(f"✓ Новое подключение {i+1} установлено")
+                print(f"✓ Новое подключение {i + 1} установлено")
 
             assert len(new_connections) == 3, "Не удалось создать новые подключения"
             print("✓ Восстановление подключений работает")
@@ -126,10 +121,8 @@ class TestWebSocketLimitsSimple:
         finally:
             # Закрываем новые подключения
             for ws in new_connections:
-                try:
+                with contextlib.suppress(Exception):
                     await ws.close()
-                except Exception:
-                    pass
 
     @pytest.mark.asyncio
     async def test_websocket_message_exchange(self, websocket_url):
@@ -144,7 +137,7 @@ class TestWebSocketLimitsSimple:
                 try:
                     response = await asyncio.wait_for(websocket.recv(), timeout=3.0)
                     print(f"✓ Получен ответ: {response}")
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     print("⚠ Ответ не получен (это нормально)")
 
                 print("✓ Обмен сообщениями работает")

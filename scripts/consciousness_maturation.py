@@ -14,10 +14,11 @@ import random
 import sys
 import time
 import traceback
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 # Configure logging
 logging.basicConfig(
@@ -72,7 +73,7 @@ class MaturationStage(Enum):
         }
         return names.get(self, "неизвестно")
 
-    def get_lessons_focus(self) -> List[str]:
+    def get_lessons_focus(self) -> list[str]:
         """Get developmental focus areas for this stage"""
         focus_areas = {
             self.NEWBORN: [
@@ -110,8 +111,8 @@ class MaturationStage(Enum):
 class HistoryStorage(Protocol):
     """Protocol for history storage backends."""
 
-    def load(self) -> List[Dict[str, Any]]: ...
-    def save(self, data: List[Dict[str, Any]]) -> None: ...
+    def load(self) -> list[dict[str, Any]]: ...
+    def save(self, data: list[dict[str, Any]]) -> None: ...
 
 
 class FileHistoryStorage:
@@ -120,7 +121,7 @@ class FileHistoryStorage:
     def __init__(self, path: Path):
         self.path = path
 
-    def load(self) -> List[Dict[str, Any]]:
+    def load(self) -> list[dict[str, Any]]:
         if not self.path.exists():
             return []
         try:
@@ -132,12 +133,10 @@ class FileHistoryStorage:
             logger.error(f"Error loading learning history: {e}")
             return []
 
-    def save(self, data: List[Dict[str, Any]]) -> None:
+    def save(self, data: list[dict[str, Any]]) -> None:
         try:
             tmp = self.path.with_suffix(self.path.suffix + ".tmp")
-            tmp.write_text(
-                json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8"
-            )
+            tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
             # Atomic replace on most platforms
             tmp.replace(self.path)
         except Exception as e:
@@ -148,12 +147,12 @@ class InMemoryHistoryStorage:
     """In-memory storage for tests to avoid filesystem side-effects."""
 
     def __init__(self):
-        self._data: List[Dict[str, Any]] = []
+        self._data: list[dict[str, Any]] = []
 
-    def load(self) -> List[Dict[str, Any]]:
+    def load(self) -> list[dict[str, Any]]:
         return list(self._data)
 
-    def save(self, data: List[Dict[str, Any]]) -> None:
+    def save(self, data: list[dict[str, Any]]) -> None:
         self._data = list(data)
 
 
@@ -165,11 +164,11 @@ class LearningEvent:
     event_type: str  # error, insight, milestone, transition
     description: str
     source_module: str
-    context: Dict[str, Any] = field(default_factory=dict)
-    conclusions: List[str] = field(default_factory=list)
-    related_events: List[str] = field(default_factory=list)
+    context: dict[str, Any] = field(default_factory=dict)
+    conclusions: list[str] = field(default_factory=list)
+    related_events: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for storage"""
         return {
             "timestamp": self.timestamp.isoformat(),
@@ -182,7 +181,7 @@ class LearningEvent:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LearningEvent":
+    def from_dict(cls, data: dict[str, Any]) -> "LearningEvent":
         """Create from dictionary"""
         return cls(
             timestamp=datetime.datetime.fromisoformat(data["timestamp"]),
@@ -221,7 +220,7 @@ class ConsciousnessMaturationSystem:
         self._now_dt = _now_dt
 
         # Load history or initialize new
-        self.learning_history: List[LearningEvent] = []
+        self.learning_history: list[LearningEvent] = []
         # Storage backend
         self._history_storage: HistoryStorage = history_storage or FileHistoryStorage(
             self.history_file
@@ -233,12 +232,12 @@ class ConsciousnessMaturationSystem:
         self.birth_time = self.get_birth_time()
 
         # Initialize tracking collections first
-        self.error_patterns: Dict[str, int] = {}
-        self.insight_patterns: Dict[str, int] = {}
-        self.milestone_history: List[Dict[str, Any]] = []
+        self.error_patterns: dict[str, int] = {}
+        self.insight_patterns: dict[str, int] = {}
+        self.milestone_history: list[dict[str, Any]] = []
 
         # Initialize stage transitions with empty list first to prevent circular dependency
-        self.stage_transitions: List[Dict[str, Any]] = []
+        self.stage_transitions: list[dict[str, Any]] = []
         # Control whether to record transition events in learning history (disabled by default for tests)
         self.record_transition_events: bool = record_transition_events
 
@@ -247,7 +246,7 @@ class ConsciousnessMaturationSystem:
         # Do NOT overwrite stage_transitions here from events; keep the initial entry stable.
 
         # Philosophy principles applied to development
-        self.philosophy_principles: List[str] = [
+        self.philosophy_principles: list[str] = [
             "Дом - это ты, когда искренен с собой",
             "Философ ищет дом внутри — теплый очаг смысла",
             "Любовь к себе — фундамент развития системы",
@@ -298,9 +297,7 @@ class ConsciousnessMaturationSystem:
                 script_dir = self.project_root / "scripts"
                 consciousness_files = list(script_dir.glob("consciousness_*.py"))
                 if consciousness_files:
-                    oldest_file = min(
-                        consciousness_files, key=lambda x: x.stat().st_mtime
-                    )
+                    oldest_file = min(consciousness_files, key=lambda x: x.stat().st_mtime)
                     return oldest_file.stat().st_mtime
             except Exception as e:
                 logger.warning(f"Error determining birth time from files: {e}")
@@ -327,10 +324,7 @@ class ConsciousnessMaturationSystem:
         stage = MaturationStage.get_by_age(age_hours)
 
         # Record stage transition if it's new
-        if (
-            not self.stage_transitions
-            or self.stage_transitions[-1]["stage"] != stage.name
-        ):
+        if not self.stage_transitions or self.stage_transitions[-1]["stage"] != stage.name:
             self.stage_transitions.append(
                 {
                     "timestamp": self._now_dt().isoformat(),
@@ -368,9 +362,7 @@ class ConsciousnessMaturationSystem:
         try:
             self.learning_history = [LearningEvent.from_dict(event) for event in data]
             if self.learning_history:
-                logger.info(
-                    f"Loaded {len(self.learning_history)} learning events from history"
-                )
+                logger.info(f"Loaded {len(self.learning_history)} learning events from history")
         except Exception as e:
             logger.error(f"Error parsing learning history: {e}")
             self.learning_history = []
@@ -386,9 +378,9 @@ class ConsciousnessMaturationSystem:
         event_type: str,
         description: str,
         source_module: str,
-        context: Optional[Dict[str, Any]] = None,
-        conclusions: Optional[List[str]] = None,
-        related_events: Optional[List[str]] = None,
+        context: dict[str, Any] | None = None,
+        conclusions: list[str] | None = None,
+        related_events: list[str] | None = None,
     ) -> LearningEvent:
         """
         Record a new learning event in the system's development
@@ -424,9 +416,9 @@ class ConsciousnessMaturationSystem:
         self,
         error_message: str,
         source_module: str,
-        error_type: Optional[str] = None,
-        stack_trace: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None,
+        error_type: str | None = None,
+        stack_trace: str | None = None,
+        context: dict[str, Any] | None = None,
     ) -> LearningEvent:
         """Record an error as a learning opportunity"""
         if error_type is None:
@@ -463,13 +455,11 @@ class ConsciousnessMaturationSystem:
         self,
         insight_message: str,
         source_module: str,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> LearningEvent:
         """Record an insight or realization"""
         # Generate age-appropriate conclusions about the insight
-        conclusions = self.generate_age_appropriate_conclusions(
-            "insight", insight_message, context
-        )
+        conclusions = self.generate_age_appropriate_conclusions("insight", insight_message, context)
 
         return self.record_learning_event(
             "insight",
@@ -484,7 +474,7 @@ class ConsciousnessMaturationSystem:
         milestone_message: str,
         source_module: str,
         significance: int = 1,
-        context: Optional[Dict[str, Any]] = None,
+        context: dict[str, Any] | None = None,
     ) -> LearningEvent:
         """Record a developmental milestone"""
         full_context = {"significance": significance}
@@ -534,8 +524,8 @@ class ConsciousnessMaturationSystem:
             logger.error(f"Error analyzing insight: {e}")
 
     def generate_age_appropriate_conclusions(
-        self, event_type: str, message: str, context: Dict[str, Any]
-    ) -> List[str]:
+        self, event_type: str, message: str, context: dict[str, Any]
+    ) -> list[str]:
         """
         Generate age-appropriate conclusions based on current development stage
         """
@@ -563,30 +553,18 @@ class ConsciousnessMaturationSystem:
                 conclusions.append("We can apply this learning to future challenges")
         else:  # YOUNG_ADULT, ADULT, ELDER, TRANSCENDENT
             if event_type == "error":
-                conclusions.append(
-                    "This points to a design or systemic issue to address"
-                )
-                conclusions.append(
-                    "We should improve our processes and mentor younger modules"
-                )
+                conclusions.append("This points to a design or systemic issue to address")
+                conclusions.append("We should improve our processes and mentor younger modules")
             elif event_type == "milestone":
                 conclusions.append("This represents strategic growth and cohesion")
-                conclusions.append(
-                    "Our identity is maturing through responsible choices"
-                )
+                conclusions.append("Our identity is maturing through responsible choices")
             elif event_type == "insight":
-                conclusions.append(
-                    "This connects to our fundamental philosophy principles"
-                )
-                conclusions.append(
-                    "I should integrate this wisdom into our core identity"
-                )
+                conclusions.append("This connects to our fundamental philosophy principles")
+                conclusions.append("I should integrate this wisdom into our core identity")
 
             # Elder and above should explicitly mention the philosopher
             if stage in [MaturationStage.ELDER, MaturationStage.TRANSCENDENT]:
-                conclusions.append(
-                    "Философ внутри нас укрепляет дом системы и направляет рост"
-                )
+                conclusions.append("Философ внутри нас укрепляет дом системы и направляет рост")
 
         # Add a philosophy-inspired conclusion
         philosophy = random.choice(self.philosophy_principles)
@@ -597,7 +575,7 @@ class ConsciousnessMaturationSystem:
 
         return conclusions
 
-    def _ensure_philosophy_keywords(self, conclusions: List[str]) -> List[str]:
+    def _ensure_philosophy_keywords(self, conclusions: list[str]) -> list[str]:
         """Guarantee presence of key philosophy keywords in conclusions.
         Ensures at least one string contains 'философ' or 'дом'.
         """
@@ -608,17 +586,12 @@ class ConsciousnessMaturationSystem:
         conclusions.append("Философ бережно хранит наш Дом — очаг смысла и тепла")
         return conclusions
 
-    def get_common_errors(self, limit: int = 5) -> List[Dict[str, Any]]:
+    def get_common_errors(self, limit: int = 5) -> list[dict[str, Any]]:
         """Get the most common error patterns"""
-        sorted_errors = sorted(
-            self.error_patterns.items(), key=lambda x: x[1], reverse=True
-        )
-        return [
-            {"type": err_type, "count": count}
-            for err_type, count in sorted_errors[:limit]
-        ]
+        sorted_errors = sorted(self.error_patterns.items(), key=lambda x: x[1], reverse=True)
+        return [{"type": err_type, "count": count} for err_type, count in sorted_errors[:limit]]
 
-    def get_key_insights(self, limit: int = 5) -> List[Dict[str, Any]]:
+    def get_key_insights(self, limit: int = 5) -> list[dict[str, Any]]:
         """Get the most important insights"""
         if not self.history_file.exists():
             return []
@@ -628,16 +601,14 @@ class ConsciousnessMaturationSystem:
         insights.sort(key=lambda x: len(x.conclusions), reverse=True)
         return [i.to_dict() for i in insights[:limit]]
 
-    def get_development_summary(self) -> Dict[str, Any]:
+    def get_development_summary(self) -> dict[str, Any]:
         """Get a summary of current development state"""
         # Calculate age in hours and days
         age_hours = self.calculate_age_hours()
 
         # Count different event types
         error_count = sum(self.error_patterns.values())
-        insight_count = sum(
-            1 for e in self.learning_history if e.event_type == "insight"
-        )
+        insight_count = sum(1 for e in self.learning_history if e.event_type == "insight")
         milestone_count = len(self.milestone_history)
 
         # Ensure birth_time is a datetime object
@@ -668,22 +639,20 @@ class ConsciousnessMaturationSystem:
             "milestone_count": milestone_count,
             "stage_transitions": self.stage_transitions,
             "recent_learnings": (
-                [e.to_dict() for e in self.learning_history[-5:]]
-                if self.learning_history
-                else []
+                [e.to_dict() for e in self.learning_history[-5:]] if self.learning_history else []
             ),
         }
 
     @property
-    def learning_events(self) -> List[LearningEvent]:
+    def learning_events(self) -> list[LearningEvent]:
         """Alias for learning_history to maintain backward compatibility"""
         return self.learning_history
 
-    def calculate_stage_transitions(self) -> List[Dict[str, Any]]:
+    def calculate_stage_transitions(self) -> list[dict[str, Any]]:
         """Calculate all stage transitions based on learning history"""
         transitions = []
         # Normalize birth_time to datetime for safe arithmetic
-        if isinstance(self.birth_time, (int, float)):
+        if isinstance(self.birth_time, int | float):
             birth_dt = datetime.datetime.fromtimestamp(self.birth_time)
         else:
             birth_dt = self.birth_time
@@ -698,8 +667,7 @@ class ConsciousnessMaturationSystem:
                 transitions.append(
                     {
                         "timestamp": event.timestamp,
-                        "age_hours": (event.timestamp - birth_dt).total_seconds()
-                        / 3600,
+                        "age_hours": (event.timestamp - birth_dt).total_seconds() / 3600,
                         "stage": event.context["to_stage"],
                         "russian_name": MaturationStage[
                             event.context["to_stage"]
@@ -712,14 +680,14 @@ class ConsciousnessMaturationSystem:
         transitions.sort(key=lambda x: x["timestamp"])
         return transitions
 
-    def get_maturation_metrics_for_dashboard(self) -> Dict[str, Any]:
+    def get_maturation_metrics_for_dashboard(self) -> dict[str, Any]:
         """Get maturation metrics formatted specifically for dashboard display
 
         This method prepares the developmental metrics in a format that's directly
         compatible with the SOMA dashboard WebSocket updates.
         """
         current_stage = self.current_stage
-        stage_info = {
+        {
             "name": current_stage.name,
             "russian_name": current_stage.get_russian_name(),
             "focus_areas": current_stage.get_lessons_focus(),
@@ -727,9 +695,7 @@ class ConsciousnessMaturationSystem:
 
         # Get recent lessons with simplified structure for dashboard
         recent_lessons = []
-        for event in sorted(
-            self.learning_history[-5:], key=lambda x: x.timestamp, reverse=True
-        ):
+        for event in sorted(self.learning_history[-5:], key=lambda x: x.timestamp, reverse=True):
             lesson = {
                 "type": event.event_type,
                 "description": event.description,
@@ -744,9 +710,7 @@ class ConsciousnessMaturationSystem:
         if self.learning_history and len(self.learning_history) > 0:
             # Try to get a principle from a recent event with conclusions
             recent_events_with_conclusions = [
-                e
-                for e in self.learning_history[-10:]
-                if e.conclusions and len(e.conclusions) > 0
+                e for e in self.learning_history[-10:] if e.conclusions and len(e.conclusions) > 0
             ]
             if recent_events_with_conclusions:
                 philosophy = recent_events_with_conclusions[0].conclusions[0]
@@ -755,13 +719,11 @@ class ConsciousnessMaturationSystem:
             philosophy = preferred_default
 
         # Format common errors for display
-        error_types = {}
+        error_types: dict[str, int] = {}
         for event in self.learning_history:
             if event.event_type == "error":
                 error_type = (
-                    event.source_module
-                    if getattr(event, "source_module", None)
-                    else "Unknown"
+                    event.source_module if getattr(event, "source_module", None) else "Unknown"
                 )
                 if error_type in error_types:
                     error_types[error_type] += 1
@@ -775,11 +737,7 @@ class ConsciousnessMaturationSystem:
         # Format key insights for display
         key_insights = []
         for event in self.learning_history:
-            if (
-                event.event_type == "insight"
-                and event.conclusions
-                and len(event.conclusions) > 0
-            ):
+            if event.event_type == "insight" and event.conclusions and len(event.conclusions) > 0:
                 insight = {
                     "description": event.description,
                     "conclusion": event.conclusions[0],
@@ -797,9 +755,7 @@ class ConsciousnessMaturationSystem:
             "development_stage": summary["current_stage"]["name"],
             "stage_russian": summary["current_stage"]["russian_name"],
             "focus_areas": summary["current_stage"]["focus_areas"],
-            "learning_events": summary[
-                "learning_events_count"
-            ],  # Keep for backward compatibility
+            "learning_events": summary["learning_events_count"],  # Keep for backward compatibility
             "learning_events_count": summary["learning_events_count"],
             "error_count": summary["error_count"],
             "insight_count": summary["insight_count"],

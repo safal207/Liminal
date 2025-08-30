@@ -60,9 +60,7 @@ class FlowCoordinator:
         translated_concept = (
             self.translate_concept(concept, from_lang="ru", to_lang="en") or concept
         )
-        translated_target = (
-            self.translate_concept(target, from_lang="ru", to_lang="en") or target
-        )
+        translated_target = self.translate_concept(target, from_lang="ru", to_lang="en") or target
 
         path = self.find_path(translated_concept, translated_target)
 

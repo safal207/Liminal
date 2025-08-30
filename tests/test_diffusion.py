@@ -3,9 +3,7 @@ from liminal.diffusion import InMemoryDiffusion, ModuleState
 
 def test_blend_weighted_average_and_notes_dedup_sorted():
     d = InMemoryDiffusion()
-    a = ModuleState(
-        name="A", traits={"calm": 0.8, "focus": 0.2}, notes=["soft", "focus"]
-    )
+    a = ModuleState(name="A", traits={"calm": 0.8, "focus": 0.2}, notes=["soft", "focus"])
     b = ModuleState(name="B", traits={"calm": 0.2, "love": 0.9}, notes=["love", "soft"])
 
     res = d.blend([a, b], weights=[0.75, 0.25], name="mix")

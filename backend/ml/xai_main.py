@@ -31,9 +31,7 @@ async def lifespan(app: FastAPI):
         if openai_key:
             logger.info("✅ OpenAI API key найден")
         else:
-            logger.warning(
-                "⚠️ OpenAI API key не найден. Некоторые функции будут недоступны."
-            )
+            logger.warning("⚠️ OpenAI API key не найден. Некоторые функции будут недоступны.")
 
         # Инициализируем XAI сервис
         logger.info("🧠 Инициализация XAI Service...")
@@ -176,7 +174,7 @@ async def explain_prediction(request: dict):
 
     except Exception as e:
         logger.error(f"Ошибка объяснения предсказания: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/explain/anomaly")
@@ -216,7 +214,7 @@ async def explain_anomaly(request: dict):
 
     except Exception as e:
         logger.error(f"Ошибка объяснения аномалии: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # =============================================================================
@@ -258,7 +256,7 @@ async def analyze_logs(request: dict):
 
     except Exception as e:
         logger.error(f"Ошибка анализа логов: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/alerts/smart")
@@ -289,7 +287,7 @@ async def generate_smart_alert(request: dict):
 
     except Exception as e:
         logger.error(f"Ошибка генерации smart alert: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.post("/analyze/performance")
@@ -323,7 +321,7 @@ async def analyze_performance(request: dict):
 
     except Exception as e:
         logger.error(f"Ошибка анализа производительности: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # =============================================================================
@@ -361,7 +359,7 @@ async def clear_cache():
 
     except Exception as e:
         logger.error(f"Ошибка очистки кэша: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @app.get("/")
@@ -386,6 +384,4 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(
-        "xai_main:app", host="0.0.0.0", port=8000, reload=True, log_level="info"
-    )
+    uvicorn.run("xai_main:app", host="0.0.0.0", port=8000, reload=True, log_level="info")

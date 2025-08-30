@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Neo4j Temporal Data Lake Diagnostic
@@ -17,7 +16,7 @@ log_file = os.path.join(os.path.dirname(__file__), "..", "neo4j_docker_diagnosti
 print(f"Writing diagnostic log to {log_file}")
 
 with open(log_file, "w", encoding="utf-8") as f:
-    f.write(f"=== Neo4j Temporal Data Lake Diagnostic Log ===\n")
+    f.write("=== Neo4j Temporal Data Lake Diagnostic Log ===\n")
     f.write(f"Time: {datetime.now().isoformat()}\n\n")
 
     # System info
@@ -73,7 +72,7 @@ with open(log_file, "w", encoding="utf-8") as f:
                 result = session.run(
                     """
                     MATCH (source:ConsciousnessNode)-[t:TRANSITIONS_TO]->(target:ConsciousnessNode)
-                    RETURN source.state as source_state, target.state as target_state, 
+                    RETURN source.state as source_state, target.state as target_state,
                            count(t) as count
                     ORDER BY count DESC
                     LIMIT 10
@@ -92,9 +91,7 @@ with open(log_file, "w", encoding="utf-8") as f:
                             "count": count,
                         }
                     )
-                    f.write(
-                        f"Transition: {source_state} → {target_state} - Count: {count}\n"
-                    )
+                    f.write(f"Transition: {source_state} → {target_state} - Count: {count}\n")
 
                 # Create new philosophical transition if none exist
                 if len(transitions) == 0:
@@ -112,9 +109,7 @@ with open(log_file, "w", encoding="utf-8") as f:
                             TransitionTrigger,
                         )
 
-                        writer = ConsciousnessNeo4jWriter(
-                            uri=uri, user=user, password=password
-                        )
+                        writer = ConsciousnessNeo4jWriter(uri=uri, user=user, password=password)
 
                         # Philosophy First transition sequence
                         transitions_to_create = [
@@ -161,12 +156,8 @@ with open(log_file, "w", encoding="utf-8") as f:
                             for user_id in users:
                                 try:
                                     # Map string names to enum values
-                                    source_state_enum = getattr(
-                                        ConsciousnessState, source_name
-                                    )
-                                    target_state_enum = getattr(
-                                        ConsciousnessState, target_name
-                                    )
+                                    source_state_enum = getattr(ConsciousnessState, source_name)
+                                    target_state_enum = getattr(ConsciousnessState, target_name)
 
                                     # Create source node
                                     source_node = ConsciousnessNode(
@@ -225,9 +216,7 @@ with open(log_file, "w", encoding="utf-8") as f:
                         f.write("Transitions created successfully\n")
 
                     except Exception as e:
-                        f.write(
-                            f"Error importing modules or creating transitions: {str(e)}\n"
-                        )
+                        f.write(f"Error importing modules or creating transitions: {str(e)}\n")
                         f.write(traceback.format_exc() + "\n")
 
                 # Try to analyze temporal patterns
@@ -235,18 +224,14 @@ with open(log_file, "w", encoding="utf-8") as f:
                 try:
                     from consciousness_neo4j import ConsciousnessNeo4jWriter
 
-                    writer = ConsciousnessNeo4jWriter(
-                        uri=uri, user=user, password=password
-                    )
+                    writer = ConsciousnessNeo4jWriter(uri=uri, user=user, password=password)
 
                     # Analyze patterns
                     patterns = writer.analyze_temporal_patterns(days=7)
                     f.write(f"Found {len(patterns)} temporal patterns\n")
 
                     for i, pattern in enumerate(patterns[:5], 1):
-                        f.write(
-                            f"Pattern #{i}: {pattern['source']} → {pattern['target']}\n"
-                        )
+                        f.write(f"Pattern #{i}: {pattern['source']} → {pattern['target']}\n")
                         f.write(f"  Frequency: {pattern.get('frequency', 'N/A')}\n")
                         f.write(f"  Type: {pattern.get('pattern_type', 'N/A')}\n")
                         f.write(
@@ -264,18 +249,14 @@ with open(log_file, "w", encoding="utf-8") as f:
                         )
                         f.write(f"  State: {moment.get('to_state', 'N/A')}\n")
                         f.write(f"  Type: {moment.get('resonance_type', 'N/A')}\n")
-                        f.write(
-                            f"  Meaning: {moment.get('philosophical_meaning', 'N/A')}\n"
-                        )
+                        f.write(f"  Meaning: {moment.get('philosophical_meaning', 'N/A')}\n")
 
                     # Get timeline
                     f.write("\n=== Getting Consciousness Timeline ===\n")
                     timeline = writer.get_consciousness_timeline(hours=24)
                     nodes = timeline.get("nodes", [])
                     links = timeline.get("links", [])
-                    f.write(
-                        f"Timeline contains {len(nodes)} states and {len(links)} transitions\n"
-                    )
+                    f.write(f"Timeline contains {len(nodes)} states and {len(links)} transitions\n")
 
                     # Close writer
                     writer.close()
@@ -308,9 +289,7 @@ with open(log_file, "w", encoding="utf-8") as f:
                     }
 
                     # Send to WebSocket relay
-                    f.write(
-                        f"Sending event to WebSocket relay at http://localhost:8080/events\n"
-                    )
+                    f.write("Sending event to WebSocket relay at http://localhost:8080/events\n")
                     response = requests.post(
                         "http://localhost:8080/events",
                         json=event,

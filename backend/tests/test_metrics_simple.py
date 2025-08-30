@@ -37,9 +37,7 @@ message_processing_time = Histogram(
     buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10),
 )
 
-connection_limits = Gauge(
-    "connection_limits", "Статистика по ограничениям соединений", ["type"]
-)
+connection_limits = Gauge("connection_limits", "Статистика по ограничениям соединений", ["type"])
 
 connection_rejections = Counter(
     "connection_rejections_total",
@@ -53,9 +51,9 @@ def print_metrics():
     metrics_data = generate_latest(REGISTRY).decode("utf-8")
     print("\n========== ТЕКУЩИЕ МЕТРИКИ ==========")
     for line in metrics_data.split("\n"):
-        if any(
-            x in line for x in ["websocket_", "http_", "connection_"]
-        ) and not line.startswith("#"):
+        if any(x in line for x in ["websocket_", "http_", "connection_"]) and not line.startswith(
+            "#"
+        ):
             if line:  # Проверка на пустую строку
                 print(line)
     print("=====================================")
@@ -84,7 +82,7 @@ def test_websocket_connections():
     for channel in channels:
         # Случайное количество подключений на канал
         count = random.randint(1, 3)
-        for i in range(count):
+        for _i in range(count):
             websocket_connections.labels(channel=channel, authenticated="true").inc()
         print(f"   Подписано {count} клиентов на канал '{channel}'")
 
@@ -92,7 +90,7 @@ def test_websocket_connections():
 
     # Имитация отключений
     print("\n3. Имитация отключения 2 клиентов...")
-    for i in range(2):
+    for _i in range(2):
         websocket_connections.labels(channel="all", authenticated="true").dec()
 
         # Отписка от случайного канала
@@ -113,20 +111,18 @@ def test_websocket_messages():
     channels = ["news", "events", "chat", "personal"]
 
     print("1. Имитация отправки сообщений разных типов...")
-    for i in range(10):
+    for _i in range(10):
         msg_type = random.choice(message_types)
         channel = random.choice(channels)
 
         # Имитация входящего сообщения
-        websocket_messages_total.labels(
-            type=msg_type, direction="in", channel=channel
-        ).inc()
+        websocket_messages_total.labels(type=msg_type, direction="in", channel=channel).inc()
 
         # Имитация исходящих сообщений (broadcast)
         recipients = random.randint(1, 5)
-        websocket_messages_total.labels(
-            type=msg_type, direction="out", channel=channel
-        ).inc(recipients)
+        websocket_messages_total.labels(type=msg_type, direction="out", channel=channel).inc(
+            recipients
+        )
 
         # Имитация времени обработки
         processing_time = random.uniform(0.01, 0.5)
@@ -146,7 +142,7 @@ def test_authentication():
 
     # Имитация успешных аутентификаций
     print("1. Имитация 8 успешных аутентификаций...")
-    for i in range(8):
+    for _i in range(8):
         websocket_auth_total.labels(status="success").inc()
 
     # Имитация неудачных аутентификаций
@@ -154,7 +150,7 @@ def test_authentication():
     failure_reasons = {"invalid_token": 3, "expired_token": 2, "missing_token": 1}
 
     for reason, count in failure_reasons.items():
-        for i in range(count):
+        for _i in range(count):
             websocket_auth_total.labels(status="failure").inc()
             connection_rejections.labels(reason=reason).inc()
         print(f"   {count} ошибок аутентификации с причиной '{reason}'")
@@ -184,11 +180,11 @@ def test_connection_limits():
             websocket_connections.labels(channel="all", authenticated="true").inc()
             connection_limits.labels(type="total").set(successful + 1)
             successful += 1
-            print(f"   Попытка {i+1}: успешно")
+            print(f"   Попытка {i + 1}: успешно")
         else:
             connection_rejections.labels(reason="max_connections_per_ip").inc()
             rejected += 1
-            print(f"   Попытка {i+1}: отклонено (превышен лимит по IP)")
+            print(f"   Попытка {i + 1}: отклонено (превышен лимит по IP)")
 
     print(f"\nРезультаты: {successful} успешных подключений, {rejected} отклонено")
     print_metrics()

@@ -8,7 +8,7 @@ driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", "test1234"
 
 # Функция загрузки .cypher построчно
 def run_cypher_file(file_path):
-    with open(file_path, "r", encoding="utf-8") as file:
+    with open(file_path, encoding="utf-8") as file:
         content = file.read()
 
     # Разделяем команды по `;`

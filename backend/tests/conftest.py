@@ -4,10 +4,14 @@
 
 import os
 import sys
+import types
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+
+# Импортируем мок-реализацию neo4j_writer
+from tests.mock_neo4j_writer import Neo4jDateTime, Neo4jWriter
 
 # Добавляем корневую директорию в PYTHONPATH
 project_root = str(Path(__file__).parent.parent)
@@ -18,12 +22,6 @@ if project_root not in sys.path:
 os.environ["TESTING"] = "1"
 
 # Монтируем мок-модуль в sys.modules до импорта приложения
-import sys
-import types
-
-# Импортируем мок-реализацию neo4j_writer
-from tests.mock_neo4j_writer import Neo4jDateTime, Neo4jWriter
-
 # Создаем мок-модуль neo4j_writer
 mock_neo4j = types.ModuleType("neo4j_writer")
 mock_neo4j.Neo4jWriter = Neo4jWriter

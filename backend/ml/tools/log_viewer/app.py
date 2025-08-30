@@ -18,7 +18,6 @@ import re
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict
 
 from endocrine import thyroid
 from flask import (
@@ -65,9 +64,9 @@ class LogAnalyzer:
                     "exists": True,
                     "size": size,
                     "entries": entries,
-                    "last_modified": datetime.fromtimestamp(
-                        os.path.getmtime(log_path)
-                    ).strftime("%Y-%m-%d %H:%M:%S"),
+                    "last_modified": datetime.fromtimestamp(os.path.getmtime(log_path)).strftime(
+                        "%Y-%m-%d %H:%M:%S"
+                    ),
                 }
             else:
                 stats[log_type] = {
@@ -82,7 +81,7 @@ class LogAnalyzer:
     def get_origin_stats(self):
         """Считает распределение событий по полю origin (external/internal/relay/unknown)"""
         counts = {"external": 0, "internal": 0, "relay": 0, "unknown": 0}
-        for lt in self.log_files.keys():
+        for lt in self.log_files:
             entries = self.parse_logs(lt)
             for e in entries:
                 origin = e.get("origin", "unknown")
@@ -94,7 +93,7 @@ class LogAnalyzer:
     def _count_log_entries(self, log_path):
         """Подсчитывает количество записей в логе (по количеству JSON блоков)"""
         try:
-            with open(log_path, "r", encoding="utf-8") as f:
+            with open(log_path, encoding="utf-8") as f:
                 content = f.read()
                 # Ищем все JSON блоки (они между ```)
                 json_blocks = re.findall(r"```\n(.*?)\n```", content, re.DOTALL)
@@ -110,18 +109,18 @@ class LogAnalyzer:
             return []
 
         try:
-            with open(log_path, "r", encoding="utf-8") as f:
+            with open(log_path, encoding="utf-8") as f:
                 content = f.read()
                 # Находим все JSON блоки и их заголовки
                 entries = []
 
                 # Ищем заголовки (## Ошибка или ## Инсайт и т.д.)
-                headers = re.findall(r"## (.*?) \((.*?)\)", content)
+                re.findall(r"## (.*?) \((.*?)\)", content)
                 # Ищем JSON блоки
                 json_blocks = re.findall(r"```\n(.*?)\n```", content, re.DOTALL)
 
                 # Объединяем заголовки и JSON
-                for i, json_str in enumerate(json_blocks):
+                for _i, json_str in enumerate(json_blocks):
                     try:
                         data = json.loads(json_str)
                         # Добавляем тип лога
@@ -130,9 +129,7 @@ class LogAnalyzer:
                     except json.JSONDecodeError:
                         print(f"Ошибка при декодировании JSON в {log_path}")
 
-                return sorted(
-                    entries, key=lambda x: x.get("timestamp", ""), reverse=True
-                )
+                return sorted(entries, key=lambda x: x.get("timestamp", ""), reverse=True)
         except Exception as e:
             print(f"Ошибка при парсинге файла {log_path}: {e}")
             return []
@@ -140,7 +137,7 @@ class LogAnalyzer:
     def get_all_logs(self):
         """Получает все логи всех типов в хронологическом порядке"""
         all_logs = []
-        for log_type in self.log_files.keys():
+        for log_type in self.log_files:
             logs = self.parse_logs(log_type)
             all_logs.extend(logs)
 
@@ -169,12 +166,8 @@ class LogAnalyzer:
                     )
 
             # Формируем список повторяющихся ошибок
-            for error_hash, count in sorted(
-                error_counts.items(), key=lambda x: x[1], reverse=True
-            ):
-                matching_logs = [
-                    log for log in karma_logs if log.get("error_hash") == error_hash
-                ]
+            for error_hash, count in sorted(error_counts.items(), key=lambda x: x[1], reverse=True):
+                matching_logs = [log for log in karma_logs if log.get("error_hash") == error_hash]
                 if matching_logs:
                     latest_log = sorted(
                         matching_logs,
@@ -212,9 +205,7 @@ class LogAnalyzer:
                         "error_message": exp_log.get("error_message", ""),
                         "solution": insights_by_hash[error_hash].get("solution", ""),
                         "error_time": exp_log.get("timestamp", ""),
-                        "solution_time": insights_by_hash[error_hash].get(
-                            "timestamp", ""
-                        ),
+                        "solution_time": insights_by_hash[error_hash].get("timestamp", ""),
                     }
                 )
             elif error_hash:
@@ -318,9 +309,9 @@ COSMIC_LAW_KEYS = [
 ]
 
 
-def compute_cosmic_scores() -> Dict[str, int]:
+def compute_cosmic_scores() -> dict[str, int]:
     """Простая эвристика для конвертации текущих метрик в оценки (0-100) для 9 законов."""
-    scores = {k: 80 for k in COSMIC_LAW_KEYS}  # базовая инициализация
+    scores = dict.fromkeys(COSMIC_LAW_KEYS, 80)  # базовая инициализация
 
     # 1. Rhythm – баланс ошибок и инсайтов
     stats = log_analyzer.get_log_stats()
@@ -449,10 +440,7 @@ def api_logs(log_type):
     ]:
         return jsonify({"error": "Invalid log type"}), 400
 
-    if log_type == "all":
-        logs = log_analyzer.get_all_logs()
-    else:
-        logs = log_analyzer.parse_logs(log_type)
+    logs = log_analyzer.get_all_logs() if log_type == "all" else log_analyzer.parse_logs(log_type)
 
     return jsonify(logs)
 
@@ -493,9 +481,7 @@ def api_chart_data(chart_id):
             earliest = end_date - datetime.timedelta(days=90)
             for error in errors:
                 if "timestamp" in error:
-                    error_date = datetime.fromisoformat(
-                        error["timestamp"].replace("Z", "+00:00")
-                    )
+                    error_date = datetime.fromisoformat(error["timestamp"].replace("Z", "+00:00"))
                     if error_date < earliest:
                         earliest = error_date
             start_date = earliest
@@ -503,9 +489,7 @@ def api_chart_data(chart_id):
         # Фильтрация и группировка по дням
         for error in errors:
             if "timestamp" in error:
-                error_date = datetime.fromisoformat(
-                    error["timestamp"].replace("Z", "+00:00")
-                )
+                error_date = datetime.fromisoformat(error["timestamp"].replace("Z", "+00:00"))
                 if start_date <= error_date <= end_date:
                     date_str = error_date.strftime("%Y-%m-%d")
                     activity_data[date_str] += 1
@@ -518,14 +502,10 @@ def api_chart_data(chart_id):
         # Для распределения типов логов, период не имеет значения, но для совместимости
         stats = analyzer.get_log_stats()
         distribution = {
-            "experience": (
-                stats["experience"]["entries"] if "experience" in stats else 0
-            ),
+            "experience": (stats["experience"]["entries"] if "experience" in stats else 0),
             "insights": stats["insights"]["entries"] if "insights" in stats else 0,
             "karma": stats["karma"]["entries"] if "karma" in stats else 0,
-            "hypotheses": (
-                stats["hypotheses"]["entries"] if "hypotheses" in stats else 0
-            ),
+            "hypotheses": (stats["hypotheses"]["entries"] if "hypotheses" in stats else 0),
             "dialogues": stats["dialogues"]["entries"] if "dialogues" in stats else 0,
         }
         return jsonify(distribution)

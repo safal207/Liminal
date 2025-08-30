@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Protocol, TypedDict
 
 from .adapters import build_state_from_reince
 from .diffusion import InMemoryDiffusion, ModuleState
@@ -14,8 +15,8 @@ from .reince import InMemoryREINCE
 class Node:
     id: str
     kind: str  # e.g., "module_state", "event", "resonance_map"
-    traits: Dict[str, float] = field(default_factory=dict)
-    notes: List[str] = field(default_factory=list)
+    traits: dict[str, float] = field(default_factory=dict)
+    notes: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -24,8 +25,64 @@ class Edge:
     target_id: str
     kind: str  # e.g., "influences", "similar_to", "merged_into"
     weight: float = 0.0  # [0..1]
-    notes: List[str] = field(default_factory=list)
-    rationale: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+    rationale: list[str] = field(default_factory=list)
+
+
+class RiskEdge(TypedDict):
+    """A dictionary representing an at-risk edge."""
+
+    sourceId: str
+    targetId: str
+    score: float
+    advice: list[str]
+    rationale: list[str]
+
+
+class RealityWeb(Protocol):
+    """Protocol defining the interface for a reality web implementation."""
+
+    def add_node(
+        self,
+        kind: str,
+        traits: dict[str, float] | None = None,
+        notes: list[str] | None = None,
+        id: str | None = None,
+    ) -> Node: ...
+
+    def add_edge(
+        self,
+        source_id: str,
+        target_id: str,
+        kind: str,
+        weight: float = 0.0,
+        notes: list[str] | None = None,
+        rationale: list[str] | None = None,
+    ) -> Edge: ...
+
+    def nodes(self) -> list[Node]: ...
+
+    def edges(self) -> list[Edge]: ...
+
+    def node_from_module_state(self, ms: ModuleState, id: str | None = None) -> Node: ...
+
+    def node_from_reince(
+        self, reince: InMemoryREINCE, name: str, top_n: int = 10, id: str | None = None
+    ) -> Node: ...
+
+    def link_similarity(self, a: Node, b: Node, kind: str = "similar_to") -> Edge: ...
+
+    def link_merge(
+        self, a: Node, b: Node, name: str = "merged", kind: str = "merged_into"
+    ) -> tuple[Node, Edge]: ...
+
+    def link_parent(self, parent: Node, child: Node) -> Edge: ...
+
+    def top_at_risk(self, limit: int = 5, threshold: float = 0.4) -> list[RiskEdge]: ...
+
+    def close(self) -> None: ...
+
+    def clear(self) -> None: ...
 
 
 class RealityWebInMemory:
@@ -35,17 +92,17 @@ class RealityWebInMemory:
     """
 
     def __init__(self) -> None:
-        self._nodes: Dict[str, Node] = {}
-        self._edges: List[Edge] = []
+        self._nodes: dict[str, Node] = {}
+        self._edges: list[Edge] = []
         self._diff = InMemoryDiffusion()
 
     # ---- Node/Edge management ----
     def add_node(
         self,
         kind: str,
-        traits: Optional[Dict[str, float]] = None,
-        notes: Optional[List[str]] = None,
-        id: Optional[str] = None,
+        traits: dict[str, float] | None = None,
+        notes: list[str] | None = None,
+        id: str | None = None,
     ) -> Node:
         nid = id or str(uuid.uuid4())
         n = Node(id=nid, kind=kind, traits=dict(traits or {}), notes=list(notes or []))
@@ -58,8 +115,8 @@ class RealityWebInMemory:
         target_id: str,
         kind: str,
         weight: float = 0.0,
-        notes: Optional[List[str]] = None,
-        rationale: Optional[List[str]] = None,
+        notes: list[str] | None = None,
+        rationale: list[str] | None = None,
     ) -> Edge:
         e = Edge(
             source_id=source_id,
@@ -72,28 +129,24 @@ class RealityWebInMemory:
         self._edges.append(e)
         return e
 
-    def nodes(self) -> List[Node]:
+    def nodes(self) -> list[Node]:
         return list(self._nodes.values())
 
-    def edges(self) -> List[Edge]:
+    def edges(self) -> list[Edge]:
         return list(self._edges)
 
     # ---- Adapters ----
-    def node_from_module_state(self, ms: ModuleState, id: Optional[str] = None) -> Node:
-        return self.add_node(
-            kind="module_state", traits=ms.traits, notes=ms.notes, id=id
-        )
+    def node_from_module_state(self, ms: ModuleState, id: str | None = None) -> Node:
+        return self.add_node(kind="module_state", traits=ms.traits, notes=ms.notes, id=id)
 
     def node_from_reince(
         self,
         reince: InMemoryREINCE,
         name: str,
         top_n: int = 10,
-        id: Optional[str] = None,
+        id: str | None = None,
     ) -> Node:
-        ms = build_state_from_reince(
-            reince, name=name, top_n=top_n, notes=["from_reince"]
-        )
+        ms = build_state_from_reince(reince, name=name, top_n=top_n, notes=["from_reince"])
         return self.node_from_module_state(ms, id=id)
 
     # ---- Relationships ----
@@ -108,7 +161,7 @@ class RealityWebInMemory:
 
     def link_merge(
         self, a: Node, b: Node, name: str = "merged", kind: str = "merged_into"
-    ) -> Tuple[Node, Edge]:
+    ) -> tuple[Node, Edge]:
         # Blend the states and create a new node representing the merge
         br = self._diff.blend(
             [
@@ -118,9 +171,7 @@ class RealityWebInMemory:
             name=name,
         )
         merged = self.node_from_module_state(br.state)
-        e = self.add_edge(
-            a.id, merged.id, kind=kind, weight=1.0, rationale=br.rationale
-        )
+        e = self.add_edge(a.id, merged.id, kind=kind, weight=1.0, rationale=br.rationale)
         self.add_edge(b.id, merged.id, kind=kind, weight=1.0, rationale=br.rationale)
         return merged, e
 
@@ -136,6 +187,20 @@ class RealityWebInMemory:
             weight=1.0,
             rationale=["family_bond=parent_child"],
         )
+
+    def top_at_risk(self, limit: int = 5, threshold: float = 0.4) -> list[RiskEdge]:
+        """STUB. In-memory version does not have an optimized implementation."""
+        # This could be implemented, but for now, we assume it's a Neo4j-specific optimization
+        return []
+
+    def close(self) -> None:
+        """STUB. In-memory version has nothing to close."""
+        pass
+
+    def clear(self) -> None:
+        """Clear all nodes and edges from the in-memory web."""
+        self._nodes.clear()
+        self._edges.clear()
 
 
 # ---- Vital signs: system pulsation/breathing ----
@@ -169,15 +234,13 @@ class SystemBreath:
 
     def __init__(
         self,
-        now_fn: Optional[Callable[[], float]] = None,
+        now_fn: Callable[[], float] | None = None,
         epsilon: float = 0.05,
         bpm: float = 6.0,
     ) -> None:
         self._now_fn = now_fn or (lambda: time.time())
         self._eps = float(epsilon)
-        self._vitals = VitalSigns(
-            phase="inhale", bpm=float(bpm), last_ts=self._now_fn(), cycles=0
-        )
+        self._vitals = VitalSigns(phase="inhale", bpm=float(bpm), last_ts=self._now_fn(), cycles=0)
 
     @property
     def vitals(self) -> VitalSigns:
@@ -212,9 +275,7 @@ class SystemBreath:
     def _clip01(x: float) -> float:
         return 0.0 if x < 0.0 else 1.0 if x > 1.0 else x
 
-    def _modulate(
-        self, web: RealityWebInMemory, keys: Tuple[str, ...], delta: float
-    ) -> None:
+    def _modulate(self, web: RealityWebInMemory, keys: tuple[str, ...], delta: float) -> None:
         for nid, n in list(web._nodes.items()):  # internal safe access
             if not n.traits:
                 continue
@@ -226,9 +287,7 @@ class SystemBreath:
                     changed = True
             if changed:
                 # replace node with updated traits (frozen dataclass → recreate)
-                web._nodes[nid] = Node(
-                    id=n.id, kind=n.kind, traits=traits, notes=n.notes
-                )
+                web._nodes[nid] = Node(id=n.id, kind=n.kind, traits=traits, notes=n.notes)
 
 
 __all__ = [

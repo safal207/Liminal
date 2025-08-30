@@ -12,4 +12,6 @@ def test_thyroid_status_endpoint():
     res = client.get("/api/thyroid_status")
     assert res.status_code == 200
     data = res.get_json()
-    assert "charge" in data and "threshold" in data and "ready" in data
+    assert "charge" in data
+    assert "threshold" in data
+    assert "ready" in data

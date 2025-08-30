@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Philosophy First - Neo4j WebSocket Relay Bridge
@@ -30,7 +29,7 @@ import sys
 import time
 import traceback
 import uuid
-from typing import Any, Dict, List
+from typing import Any
 
 import requests
 from neo4j import GraphDatabase, basic_auth
@@ -144,9 +143,7 @@ class PhilosophyWebSocketBridge:
                     redis_port,
                 )
             except Exception as re:
-                logging.warning(
-                    "Could not connect to Redis: %s — falling back to HTTP POST", re
-                )
+                logging.warning("Could not connect to Redis: %s — falling back to HTTP POST", re)
                 self.redis_client = None
         else:
             self.redis_client = None
@@ -172,9 +169,7 @@ class PhilosophyWebSocketBridge:
     def check_websocket_relay(self) -> bool:
         """Check if WebSocket relay is available"""
         try:
-            response = requests.get(
-                self.websocket_url.replace("/events", "/health"), timeout=5
-            )
+            response = requests.get(self.websocket_url.replace("/events", "/health"), timeout=5)
             if response.status_code == 200:
                 logger.info("WebSocket relay is available")
                 return True
@@ -185,7 +180,7 @@ class PhilosophyWebSocketBridge:
             logger.error(f"Failed to connect to WebSocket relay: {e}")
             return False
 
-    def get_new_transitions(self) -> List[Dict[str, Any]]:
+    def get_new_transitions(self) -> list[dict[str, Any]]:
         """
         Get new consciousness transitions from Neo4j
 
@@ -230,14 +225,10 @@ class PhilosophyWebSocketBridge:
                         "target_state": target["state"],
                         "trigger": transition["trigger"],
                         "meta": {
-                            "description": transition.get(
-                                "philosophical_significance", ""
-                            ),
+                            "description": transition.get("philosophical_significance", ""),
                             "presence_delta": transition.get("presence_delta", 0),
                             "harmony_delta": transition.get("harmony_delta", 0),
-                            "authenticity_delta": transition.get(
-                                "authenticity_delta", 0
-                            ),
+                            "authenticity_delta": transition.get("authenticity_delta", 0),
                             "resonance_delta": transition.get("resonance_delta", 0),
                         },
                     }
@@ -254,7 +245,7 @@ class PhilosophyWebSocketBridge:
             traceback.print_exc()
             return []
 
-    def send_event(self, event: Dict[str, Any]) -> bool:
+    def send_event(self, event: dict[str, Any]) -> bool:
         """
         Send event to WebSocket relay
 
@@ -297,7 +288,7 @@ class PhilosophyWebSocketBridge:
             logger.error(f"Error sending event to WebSocket relay: {e}")
             return False
 
-    def generate_simulated_event(self) -> Dict[str, Any]:
+    def generate_simulated_event(self) -> dict[str, Any]:
         """
         Generate a simulated philosophical transition event
 
@@ -331,9 +322,7 @@ class PhilosophyWebSocketBridge:
         presence_delta = random.uniform(0.1, 0.5) if random.random() > 0.3 else 0
         harmony_delta = random.uniform(0.1, 0.5) if random.random() > 0.3 else 0
         authenticity_delta = random.uniform(0.1, 0.5) if random.random() > 0.3 else 0
-        resonance_delta = (
-            random.uniform(0.1, 0.5) if target_state == "RESONANCE_MOMENT" else 0
-        )
+        resonance_delta = random.uniform(0.1, 0.5) if target_state == "RESONANCE_MOMENT" else 0
 
         # Small chance of resonance moment for other states
         if target_state != "RESONANCE_MOMENT" and random.random() < 0.1:
@@ -377,9 +366,7 @@ class PhilosophyWebSocketBridge:
                 for transition in transitions:
                     success = self.send_event(transition)
                     if not success:
-                        logger.warning(
-                            "Failed to send transition, will retry on next poll"
-                        )
+                        logger.warning("Failed to send transition, will retry on next poll")
 
                 # Wait for next poll
                 time.sleep(self.poll_interval)
@@ -398,9 +385,7 @@ class PhilosophyWebSocketBridge:
             interval: Time between events (seconds)
             count: Number of events to generate (None for infinite)
         """
-        logger.info(
-            f"Starting simulation, interval={interval}s, count={count or 'infinite'}"
-        )
+        logger.info(f"Starting simulation, interval={interval}s, count={count or 'infinite'}")
 
         try:
             generated = 0
@@ -442,9 +427,7 @@ class PhilosophyWebSocketBridge:
 
 def main():
     """Main entry point"""
-    parser = argparse.ArgumentParser(
-        description="Philosophy First - Neo4j WebSocket Bridge"
-    )
+    parser = argparse.ArgumentParser(description="Philosophy First - Neo4j WebSocket Bridge")
     parser.add_argument(
         "--mode",
         choices=["monitor", "simulate"],
@@ -487,9 +470,7 @@ def main():
 
         logger.info("Checking WebSocket relay...")
         if not bridge.check_websocket_relay():
-            logger.warning(
-                "WebSocket relay not available or not responding to health checks"
-            )
+            logger.warning("WebSocket relay not available or not responding to health checks")
             response = input("Continue anyway? (y/n): ")
             if response.lower() != "y":
                 logger.info("Exiting.")

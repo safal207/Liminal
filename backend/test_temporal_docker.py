@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 """
 Neo4j Temporal Data Lake Docker Test
@@ -39,7 +38,7 @@ def log_message(title, content=None, style="info"):
     """Simple log message without unicode styling issues"""
     print(f"\n== {title} ==")
     if content:
-        if isinstance(content, (dict, list)):
+        if isinstance(content, dict | list):
             try:
                 print(json.dumps(content, indent=2, ensure_ascii=False))
             except:
@@ -81,16 +80,14 @@ def simulate_transition_example(writer):
         "authentic_self",
     ]
 
-    for i, (source_state_name, target_state_name, description) in enumerate(
-        state_transitions
-    ):
+    for _i, (source_state_name, target_state_name, description) in enumerate(state_transitions):
         # Map string names to enum values
         try:
             source_state_enum = getattr(ConsciousnessState, source_state_name)
             target_state_enum = getattr(ConsciousnessState, target_state_name)
         except AttributeError:
             log_message(
-                f"Invalid state name",
+                "Invalid state name",
                 f"Source: {source_state_name}, Target: {target_state_name}",
                 "error",
             )
@@ -171,9 +168,7 @@ def analyze_temporal_patterns(writer, days=7):
             f"Pattern #{i}: {pattern['source']} → {pattern['target']}",
             f"Frequency: {pattern['frequency']}, Type: {pattern['pattern_type']}",
         )
-        print(
-            f"  Philosophical significance: {pattern.get('philosophical_significance', 'N/A')}"
-        )
+        print(f"  Philosophical significance: {pattern.get('philosophical_significance', 'N/A')}")
         print(f"  Median time: {pattern.get('median_hour', 'N/A')} hours")
         print(f"  First occurrence: {pattern.get('first_occurrence', 'N/A')}")
         print(f"  Last occurrence: {pattern.get('last_occurrence', 'N/A')}")
@@ -181,16 +176,12 @@ def analyze_temporal_patterns(writer, days=7):
 
 def find_resonance_moments(writer, hours=24):
     """Find moments of resonance between users"""
-    log_message(
-        "FINDING CONSCIOUSNESS RESONANCE MOMENTS", f"Over the last {hours} hours"
-    )
+    log_message("FINDING CONSCIOUSNESS RESONANCE MOMENTS", f"Over the last {hours} hours")
 
     resonance_moments = writer.find_resonance_moments(hours=hours)
 
     if not resonance_moments:
-        log_message(
-            "No resonance moments found", "Not enough data on synchronous transitions"
-        )
+        log_message("No resonance moments found", "Not enough data on synchronous transitions")
         return
 
     log_message(f"Found {len(resonance_moments)} resonance moments")
@@ -236,9 +227,7 @@ def get_consciousness_timeline(writer, hours=24, user_id=None):
 
         print(f"  {source_state} → {target_state}")
         print(f"    Trigger: {link.get('trigger', 'N/A')}")
-        print(
-            f"    Philosophical significance: {link.get('philosophical_significance', 'N/A')}"
-        )
+        print(f"    Philosophical significance: {link.get('philosophical_significance', 'N/A')}")
         print(f"    Time: {link.get('timestamp', 'N/A')}")
 
     log_message("Example states:", "")
@@ -311,32 +300,16 @@ def main():
     print("Starting Neo4j Temporal Data Lake Docker Test...")
     parser = argparse.ArgumentParser(description="Neo4j Temporal Data Lake Docker Test")
     parser.add_argument("--days", type=int, default=7, help="Analysis period in days")
-    parser.add_argument(
-        "--hours", type=int, default=24, help="Analysis period in hours"
-    )
+    parser.add_argument("--hours", type=int, default=24, help="Analysis period in hours")
     parser.add_argument("--user", type=str, help="User ID for filtering")
-    parser.add_argument(
-        "--simulate", action="store_true", help="Create example transitions"
-    )
-    parser.add_argument(
-        "--analyze", action="store_true", help="Analyze temporal patterns"
-    )
-    parser.add_argument(
-        "--resonance", action="store_true", help="Find resonance moments"
-    )
-    parser.add_argument(
-        "--timeline", action="store_true", help="Get consciousness timeline"
-    )
-    parser.add_argument(
-        "--broadcast", action="store_true", help="Broadcast to WebSocket"
-    )
+    parser.add_argument("--simulate", action="store_true", help="Create example transitions")
+    parser.add_argument("--analyze", action="store_true", help="Analyze temporal patterns")
+    parser.add_argument("--resonance", action="store_true", help="Find resonance moments")
+    parser.add_argument("--timeline", action="store_true", help="Get consciousness timeline")
+    parser.add_argument("--broadcast", action="store_true", help="Broadcast to WebSocket")
     parser.add_argument("--all", action="store_true", help="Run all functions")
-    parser.add_argument(
-        "--docker", action="store_true", default=True, help="Use Docker Neo4j"
-    )
-    parser.add_argument(
-        "--uri", type=str, default="bolt://localhost:7687", help="Neo4j URI"
-    )
+    parser.add_argument("--docker", action="store_true", default=True, help="Use Docker Neo4j")
+    parser.add_argument("--uri", type=str, default="bolt://localhost:7687", help="Neo4j URI")
     args = parser.parse_args()
     print(f"Arguments: {vars(args)}")
 

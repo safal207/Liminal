@@ -101,9 +101,7 @@ class TestWebSocketSelenium:
         submit_button.click()
 
         # Ждём, пока форма очистится (признак успешной отправки)
-        wait.until(
-            lambda d: d.find_element(By.ID, "memoryType").get_attribute("value") == ""
-        )
+        wait.until(lambda d: d.find_element(By.ID, "memoryType").get_attribute("value") == "")
 
         # Проверяем, что поля формы очистились
         assert memory_type_input.get_attribute("value") == ""
@@ -140,9 +138,7 @@ class TestWebSocketSelenium:
         try:
             wait.until(
                 lambda d: len(
-                    d.find_element(By.ID, "timeline").find_elements(
-                        By.CLASS_NAME, "memory"
-                    )
+                    d.find_element(By.ID, "timeline").find_elements(By.CLASS_NAME, "memory")
                 )
                 > memories_before
             )
@@ -159,9 +155,7 @@ class TestWebSocketSelenium:
             assert test_content in memory_text
 
         except TimeoutException:
-            pytest.fail(
-                "Новое воспоминание не появилось в таймлайне в течение 10 секунд"
-            )
+            pytest.fail("Новое воспоминание не появилось в таймлайне в течение 10 секунд")
 
     def test_websocket_real_time_updates(self, driver):
         """Тест: проверка real-time обновлений через WebSocket."""
@@ -207,9 +201,7 @@ class TestWebSocketSelenium:
 
         # Проверяем, что есть логи о подключении к WebSocket
         websocket_logs = [
-            log
-            for log in logs
-            if "WebSocket" in log["message"] or "Connected" in log["message"]
+            log for log in logs if "WebSocket" in log["message"] or "Connected" in log["message"]
         ]
 
         # Должен быть хотя бы один лог о WebSocket

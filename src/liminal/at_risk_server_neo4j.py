@@ -2,26 +2,32 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, List, Optional
+from typing import Any, Optional
 
 try:
     from starlette.applications import Starlette
     from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
     from starlette.routing import Mount, Route
+    from strawberry.asgi import GraphQL
 except Exception as e:  # pragma: no cover
-    raise SystemExit(f"Starlette is required for this server: {e}")
+    raise SystemExit(f"Starlette is required for this server: {e}") from e
 
 from .diffusion import InMemoryDiffusion, ModuleState
-from .reality_web import RealityWebInMemory, SystemBreath
+from .reality_web import RealityWeb, RealityWebInMemory, RiskEdge, SystemBreath
 from .reality_web_neo4j import RealityWebNeo4j
 
 # Setup logger
 logger = logging.getLogger("at_risk_server")
 
+# Global state variable for the reality web implementation
+WEB: RealityWeb
+
 # graphql_app (ASGI) может отсутствовать — делаем импорт опциональным и оффлайн-совместимым
+_graphql_app: Optional[GraphQL]
 try:  # pragma: no cover
-    from .graphql_schema import graphql_app as _graphql_app  # type: ignore
-except Exception:  # pragma: no cover
+    from .graphql_schema import graphql_app
+    _graphql_app = graphql_app
+except ImportError:  # pragma: no cover
     _graphql_app = None
 
 
@@ -32,7 +38,7 @@ NEO4J_USER = os.getenv("LIMINAL_NEO4J_USER", "neo4j")
 NEO4J_PASSWORD = os.getenv("LIMINAL_NEO4J_PASSWORD", "NewStrongPass123!")
 
 # ---- State initialization ----
-NEO4J_INIT_ERROR: Optional[str] = None
+NEO4J_INIT_ERROR: str | None = None
 if USE_NEO4J:
     try:
         logger.info(f"Initializing Neo4j reality web with URI: {NEO4J_URI}")
@@ -85,7 +91,7 @@ def compute_relationship_health(
     )
 
     def avg(keys: tuple[str, ...]) -> float:
-        vals: List[float] = []
+        vals: list[float] = []
         for k in keys:
             if k in a_traits or k in b_traits:
                 va = float(a_traits.get(k, 0.0))
@@ -113,7 +119,7 @@ def compute_relationship_health(
     return score, rationale
 
 
-def _compute_top_at_risk(limit: int) -> List[dict[str, Any]]:
+def _compute_top_at_risk(limit: int) -> list[RiskEdge]:
     try:
         threshold = float(os.getenv("LIMINAL_HEALTH_THRESHOLD", "0.4"))
     except ValueError:
@@ -129,7 +135,7 @@ def _compute_top_at_risk(limit: int) -> List[dict[str, Any]]:
 
     # Standard calculation
     nodes = WEB.nodes()
-    edges: List[dict[str, Any]] = []
+    edges: list[RiskEdge] = []
 
     # naive all-pairs scoring (small, deterministic)
     for i in range(len(nodes)):
@@ -138,21 +144,21 @@ def _compute_top_at_risk(limit: int) -> List[dict[str, Any]]:
             b = nodes[j]
             if a.traits or b.traits:
                 score, rationale = compute_relationship_health(a.traits, b.traits)
-                advice: List[str] = []
+                advice: list[str] = []
                 if score < threshold:
                     advice = ["breathStep", "consider_linkParent", "consider_merge"]
                 edges.append(
-                    {
-                        "sourceId": a.id,
-                        "targetId": b.id,
-                        "score": score,
-                        "advice": advice,
-                        "rationale": rationale,
-                    }
+                    RiskEdge(
+                        sourceId=a.id,
+                        targetId=b.id,
+                        score=score,
+                        advice=advice,
+                        rationale=rationale,
+                    )
                 )
 
     # lowest first
-    edges.sort(key=lambda e: e["score"])  # type: ignore[index]
+    edges.sort(key=lambda e: e["score"])
     return edges[: max(0, int(limit))]
 
 
@@ -164,7 +170,7 @@ async def at_risk(request) -> HTMLResponse:
         limit = 5
 
     try:
-        edges: List[dict[str, Any]] = _compute_top_at_risk(limit)
+        _compute_top_at_risk(limit)
     except Exception as e:
         return HTMLResponse(f"<h1>Error</h1><pre>{e}</pre>", status_code=500)
 
@@ -338,7 +344,7 @@ async def at_risk(request) -> HTMLResponse:
         </header>
         <h1>At-Risk Emotional Connections <span class="db-type">{db_type}</span></h1>
         {error_banner}
-        
+
         <div class="controls">
           <button id="refresh" title="Refresh data / Обновить данные — получить актуальные пары риска с сервера">Refresh Data</button>
           <button id="seed" title="Seed demo / Засеять демо — создать несколько примерных узлов (любовь/страх/спокойствие)">Seed Demo</button>
@@ -346,7 +352,7 @@ async def at_risk(request) -> HTMLResponse:
           <button id="reconnect" title="Reconnect / Переподключить — заново установить соединение с Neo4j без смены режима">Reconnect</button>
           <button id="simpleMode" title="Simple Mode / Простой режим — крупные кнопки, простые подсказки">Simple Mode: Off</button>
           <span id="status" style="margin-left:8px;font-size:0.9em;color:#666;">status: ...</span>
-          
+
           <!-- Sales triggers (Samcart-like) -->
           <div class="chips" id="triggerChips" aria-label="Sales Triggers"></div>
           <div class="advanced">
@@ -362,7 +368,7 @@ async def at_risk(request) -> HTMLResponse:
             <button id="exportCsv" title="Export CSV / Экспорт CSV — выгрузить текущий список рисковых связей в CSV">Export CSV</button>
           </div>
         </div>
-        
+
         <div id="onboarding" aria-live="polite">
           <strong>🎈 Simple Mode:</strong> Big friendly buttons, easy tips.
           <div>Tap Seed to create example feelings. Tap Refresh to see connections. Red cards mean “needs care” 💔, green are “doing well” 💚.</div>
@@ -377,13 +383,13 @@ async def at_risk(request) -> HTMLResponse:
           </div>
           <button id="addnode" title="Add Node / Добавить узел — создаёт узел с указанными признаками (traits)">Add Node</button>
         </div>
-        
+
         <div id="results"></div>
         <div id="toast" role="status" aria-live="polite"></div>
-        
+
         <script>
           const $ = document.querySelector.bind(document);
-          
+
           async function updateStatus() {{
             try {{
               const st = await (await fetch('/api/neo4j/status')).json();
@@ -404,7 +410,7 @@ async def at_risk(request) -> HTMLResponse:
             }};
             localStorage.setItem('at_risk_prefs', JSON.stringify(prefs));
           }}
-          
+
           // Load preferences from localStorage
           function loadPrefs() {{
             try {{
@@ -475,7 +481,7 @@ async def at_risk(request) -> HTMLResponse:
             }}
             savePrefs();
           }}
-          
+
           async function fetchEdges() {{
             const limit = $('#limit').value || 5;
             savePrefs();
@@ -483,36 +489,36 @@ async def at_risk(request) -> HTMLResponse:
             const data = await response.json();
             return data.topAtRiskEdges || [];
           }}
-          
+
           async function refresh() {{
             const results = $('#results');
             results.innerHTML = '<p>Loading...</p>';
-            
+
             try {{
               const rows = await fetchEdges();
               if (rows.length === 0) {{
                 results.innerHTML = '<p>No results found. Add some nodes and relationships.</p>';
                 return;
               }}
-              
+
               let html = '';
               const threshold = parseFloat($('#threshold').value || 0.4);
               const simple = document.body.classList.contains('simple');
               const selectedTriggers = getSelectedTriggers();
-              
+
               for (const row of rows) {{
                 const score = row.score || 0;
                 let rowClass = 'row good';
                 if (score < threshold) rowClass = 'row danger';
                 else if (score < threshold + 0.2) rowClass = 'row warning';
                 const icon = (score < threshold) ? '💔' : (score < threshold + 0.2 ? '⚠️' : '💚');
-                
+
                 const adviceList = (row.advice || []).slice();
                 // augment with sales triggers
                 adviceList.push(...triggerAdvice(selectedTriggers));
                 const advice = adviceList.join(', ');
                 const rationale = simple ? '' : (row.rationale || []).map(r => `<li>${{r}}</li>`).join('');
-                
+
                 html += `
                   <div class="${{rowClass}}">
                     <div style="display:flex;align-items:center;gap:8px;">
@@ -532,20 +538,20 @@ async def at_risk(request) -> HTMLResponse:
                   </div>
                 `;
               }}
-              
+
               results.innerHTML = html;
             }} catch (error) {{
               results.innerHTML = `<p>Error loading data: ${{error.message}}</p>`;
             }}
           }}
-          
+
           async function seedDemo() {{
             await fetch('/api/seed-demo', {{ method: 'POST' }});
             await refresh();
             await updateStatus();
             showToast('Seed Demo: done / Демоданные: добавлены');
           }}
-          
+
           function parseTraits(input) {{
             try {{
               const parsed = JSON.parse(input);
@@ -695,24 +701,15 @@ async def api_add_node(request) -> JSONResponse:
     notes = payload.get("notes") or []
     node_id = payload.get("id")
     n = WEB.add_node(kind=kind, traits=traits, notes=notes, id=node_id)
-    return JSONResponse(
-        {"id": n.id, "kind": n.kind, "traits": n.traits, "notes": n.notes}
-    )
+    return JSONResponse({"id": n.id, "kind": n.kind, "traits": n.traits, "notes": n.notes})
 
 
 async def api_seed_demo(request) -> JSONResponse:
     """Create a tiny deterministic demo: love vs fear vs calm nodes."""
-    if isinstance(WEB, RealityWebNeo4j):
-        # For Neo4j, we need to clean all nodes
-        try:
-            with WEB.driver.session() as session:
-                session.run("MATCH (n) DETACH DELETE n")
-        except Exception as e:
-            logger.error(f"Error clearing Neo4j database: {e}")
-    else:
-        # For in-memory, just clear the collections
-        WEB._nodes.clear()
-        WEB._edges.clear()
+    try:
+        WEB.clear()
+    except Exception as e:
+        logger.error(f"Error clearing reality web: {e}")
 
     # Create demo nodes
     a = WEB.add_node(kind="module_state", traits={"любовь": 0.8})
@@ -762,14 +759,10 @@ async def api_toggle_neo4j(request) -> JSONResponse:
             # Switch to in-memory
             WEB.close()
             WEB = RealityWebInMemory()
-            return JSONResponse(
-                {"status": "switched to in-memory", "using_neo4j": False}
-            )
+            return JSONResponse({"status": "switched to in-memory", "using_neo4j": False})
         else:
             # Switch to Neo4j
-            WEB = RealityWebNeo4j(
-                uri=NEO4J_URI, user=NEO4J_USER, password=NEO4J_PASSWORD
-            )
+            WEB = RealityWebNeo4j(uri=NEO4J_URI, user=NEO4J_USER, password=NEO4J_PASSWORD)
             return JSONResponse({"status": "switched to Neo4j", "using_neo4j": True})
     except Exception as e:
         return JSONResponse(
@@ -814,14 +807,12 @@ async def api_neo4j_health(request) -> JSONResponse:
     if isinstance(WEB, RealityWebNeo4j):
         try:
             # Quick ping and counts
-            with WEB.driver.session() as session:  # type: ignore[attr-defined]
+            with WEB.driver.session() as session:
                 ok = session.run("RETURN 1 as ok").single()["ok"]
-                node_count = session.run(
-                    "MATCH (n:Node) RETURN count(n) as c"
-                ).single()["c"]
-                rel_count = session.run(
-                    "MATCH ()-[r:RELATES]->() RETURN count(r) as c"
-                ).single()["c"]
+                node_count = session.run("MATCH (n:Node) RETURN count(n) as c").single()["c"]
+                rel_count = session.run("MATCH ()-[r:RELATES]->() RETURN count(r) as c").single()[
+                    "c"
+                ]
             return JSONResponse(
                 {
                     "status": "ok" if ok == 1 else "unknown",

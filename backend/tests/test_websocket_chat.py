@@ -1,3 +1,5 @@
+import builtins
+import contextlib
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -45,9 +47,7 @@ def create_user_session(user_id):
         connect_btn.click()
 
         # Ждем подключения
-        WebDriverWait(driver, 5).until(
-            EC.presence_of_element_located((By.CLASS_NAME, "system"))
-        )
+        WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.CLASS_NAME, "system")))
 
         # Подписываемся на канал
         channel_input = driver.find_element(By.ID, "channel")
@@ -89,17 +89,15 @@ def test_multiple_users_chat():
         for i, driver in enumerate(drivers):
             messages = driver.find_elements(By.CLASS_NAME, "message")
             last_message = messages[-1].text if messages else ""
-            assert (
-                "Привет от user1" in last_message
-            ), f"Сообщение не доставлено пользователю {users[i]}"
+            assert "Привет от user1" in last_message, (
+                f"Сообщение не доставлено пользователю {users[i]}"
+            )
 
     finally:
         # Закрываем все драйверы
         for driver in drivers:
-            try:
+            with contextlib.suppress(builtins.BaseException):
                 driver.quit()
-            except:
-                pass
 
 
 def test_metrics_after_chat(driver):

@@ -6,7 +6,7 @@
 import os
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 from consciousness_schema import (
@@ -38,17 +38,15 @@ class ConsciousnessNeo4jWriter:
         if self.driver:
             self.driver.close()
 
-    def create_consciousness_state(self, node: ConsciousnessNode) -> Dict[str, Any]:
+    def create_consciousness_state(self, node: ConsciousnessNode) -> dict[str, Any]:
         """Создание узла состояния сознания"""
         with self.driver.session() as session:
-            result = session.run(
-                self.queries.create_consciousness_node(), **node.to_neo4j_dict()
-            )
+            result = session.run(self.queries.create_consciousness_node(), **node.to_neo4j_dict())
             return result.single()["c"]
 
     def create_state_transition(
         self, transition: StateTransition, from_node_id: str, to_node_id: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Создание перехода между состояниями и публикация события через Redis"""
         with self.driver.session() as session:
             params = transition.to_neo4j_dict()
@@ -85,21 +83,19 @@ class ConsciousnessNeo4jWriter:
                         f"🌐 WebSocket event sent: {transition.from_state.value} -> {transition.to_state.value}"
                     )
                 else:
-                    print(
-                        f"⚠️ Error sending WebSocket event: HTTP {response.status_code}"
-                    )
+                    print(f"⚠️ Error sending WebSocket event: HTTP {response.status_code}")
             except Exception as e:
                 print(f"⚠️ Error sending WebSocket event: {str(e)}")
 
             return created_transition
 
-    def find_home_states(self) -> List[Dict[str, Any]]:
+    def find_home_states(self) -> list[dict[str, Any]]:
         """Поиск состояний 'дома' с высокой искренностью"""
         with self.driver.session() as session:
             result = session.run(self.queries.find_home_states())
             return [record["c"] for record in result]
 
-    def analyze_temporal_patterns(self, days: int = 7) -> List[Dict[str, Any]]:
+    def analyze_temporal_patterns(self, days: int = 7) -> list[dict[str, Any]]:
         """Анализ временных паттернов переходов за последние N дней
 
         Находит и анализирует паттерны переходов состояний сознания во времени,
@@ -111,19 +107,19 @@ class ConsciousnessNeo4jWriter:
             query = """
             MATCH (source:ConsciousnessState)<-[:FROM]-(t:StateTransition)-[:TO]->(target:ConsciousnessState)
             WHERE t.timestamp > datetime() - duration({days: $days})
-            WITH source.state as source_state, target.state as target_state, 
+            WITH source.state as source_state, target.state as target_state,
                  count(t) as frequency, collect(t.timestamp) as timestamps
-            WITH source_state, target_state, frequency, timestamps, 
+            WITH source_state, target_state, frequency, timestamps,
                  [ts in timestamps | duration.inSeconds(ts, datetime()).hours % 24] as hours_of_day
-            RETURN source_state, target_state, frequency, 
+            RETURN source_state, target_state, frequency,
                    apoc.agg.median(hours_of_day) as median_hour,
                    apoc.coll.frequencyDistribution(hours_of_day) as hour_distribution,
                    timestamps[0] as first_occurrence,
                    timestamps[-1] as last_occurrence,
                    CASE
-                     WHEN source_state = 'HOME_AUTHENTIC' AND target_state = 'QUESTION_SPACE' 
+                     WHEN source_state = 'HOME_AUTHENTIC' AND target_state = 'QUESTION_SPACE'
                      THEN 'philosophical_insight'
-                     WHEN source_state = 'PRESENCE_NOW' AND target_state = 'HARMONY_BALANCE' 
+                     WHEN source_state = 'PRESENCE_NOW' AND target_state = 'HARMONY_BALANCE'
                      THEN 'deepening_practice'
                      ELSE 'standard_transition'
                    END as pattern_type
@@ -191,7 +187,7 @@ class ConsciousnessNeo4jWriter:
         except KeyError:
             return "Стандартный переход между состояниями"
 
-    def find_resonance_moments(self, hours: int = 24) -> List[Dict[str, Any]]:
+    def find_resonance_moments(self, hours: int = 24) -> list[dict[str, Any]]:
         """Поиск моментов резонанса между пользователями
 
         Находит синхронные или близкие по времени переходы состояний между разными пользователями,
@@ -201,18 +197,18 @@ class ConsciousnessNeo4jWriter:
             query = """
             MATCH (u1:User)-[:EXPERIENCED]->(t1:StateTransition)
             MATCH (u2:User)-[:EXPERIENCED]->(t2:StateTransition)
-            WHERE u1 <> u2 
+            WHERE u1 <> u2
               AND t1.timestamp > datetime() - duration({hours: $hours})
               AND t2.timestamp > datetime() - duration({hours: $hours})
               AND abs(duration.inSeconds(t1.timestamp, t2.timestamp).seconds) < 300 // 5 минут
               AND t1.to_state = t2.to_state
-            WITH u1.name as user1, u2.name as user2, 
+            WITH u1.name as user1, u2.name as user2,
                  t1.from_state as from_state1, t1.to_state as to_state,
                  t1.timestamp as timestamp1, t2.timestamp as timestamp2,
                  abs(duration.inSeconds(t1.timestamp, t2.timestamp).seconds) as time_diff
-            RETURN user1, user2, from_state1, to_state, 
+            RETURN user1, user2, from_state1, to_state,
                    timestamp1, timestamp2, time_diff,
-                   CASE 
+                   CASE
                      WHEN to_state = 'HOME_AUTHENTIC' THEN 'home_resonance'
                      WHEN to_state = 'PRESENCE_NOW' THEN 'presence_resonance'
                      WHEN to_state = 'QUESTION_SPACE' THEN 'question_resonance'
@@ -232,9 +228,7 @@ class ConsciousnessNeo4jWriter:
                     "timestamp2": record["timestamp2"],
                     "time_diff_seconds": record["time_diff"],
                     "resonance_type": record["resonance_type"],
-                    "philosophical_meaning": self._get_resonance_meaning(
-                        record["to_state"]
-                    ),
+                    "philosophical_meaning": self._get_resonance_meaning(record["to_state"]),
                 }
                 for record in result
             ]
@@ -254,8 +248,8 @@ class ConsciousnessNeo4jWriter:
         return meanings.get(state, "Стандартный резонанс состояний")
 
     def get_consciousness_timeline(
-        self, hours: int = 24, user_id: Optional[str] = None
-    ) -> Dict[str, Any]:
+        self, hours: int = 24, user_id: str | None = None
+    ) -> dict[str, Any]:
         """Получение временной линии состояний за указанный период
 
         Формирует полную "летопись сознания" — временную последовательность состояний
@@ -266,9 +260,7 @@ class ConsciousnessNeo4jWriter:
             user_filter = ""
 
             if user_id:
-                user_filter = (
-                    "AND exists((u:User)-[:EXPERIENCED]->(t) WHERE u.id = $user_id)"
-                )
+                user_filter = "AND exists((u:User)-[:EXPERIENCED]->(t) WHERE u.id = $user_id)"
                 params["user_id"] = user_id
 
             query = f"""
@@ -278,37 +270,37 @@ class ConsciousnessNeo4jWriter:
             WITH t, start, end
             ORDER BY t.timestamp
             WITH collect({{transition: t, from: start, to: end}}) as timeline_items
-            
+
             UNWIND timeline_items as item
             WITH item.transition as transition,
                  item.from as source,
                  item.to as target
-            
-            RETURN {{  
-                nodes: collect(DISTINCT {{  
-                    id: source.id,  
-                    label: source.label,  
+
+            RETURN {{
+                nodes: collect(DISTINCT {{
+                    id: source.id,
+                    label: source.label,
                     state: source.state,
                     timestamp: source.timestamp,
                     presenceLevel: source.presence_level,
                     harmonyIndex: source.harmony_index,
                     authenticityScore: source.authenticity_score,
-                    colorClass: CASE 
+                    colorClass: CASE
                                 WHEN source.state = 'HOME_AUTHENTIC' THEN 'node-home'
                                 WHEN source.state = 'PRESENCE_NOW' THEN 'node-presence'
                                 WHEN source.state = 'HARMONY_BALANCE' THEN 'node-harmony'
                                 WHEN source.state = 'QUESTION_SPACE' THEN 'node-question'
                                 ELSE 'node-liminal'
                                 END
-                }}) + collect(DISTINCT {{  
-                    id: target.id,  
-                    label: target.label,  
+                }}) + collect(DISTINCT {{
+                    id: target.id,
+                    label: target.label,
                     state: target.state,
                     timestamp: target.timestamp,
                     presenceLevel: target.presence_level,
                     harmonyIndex: target.harmony_index,
                     authenticityScore: target.authenticity_score,
-                    colorClass: CASE 
+                    colorClass: CASE
                                 WHEN target.state = 'HOME_AUTHENTIC' THEN 'node-home'
                                 WHEN target.state = 'PRESENCE_NOW' THEN 'node-presence'
                                 WHEN target.state = 'HARMONY_BALANCE' THEN 'node-harmony'
@@ -316,9 +308,9 @@ class ConsciousnessNeo4jWriter:
                                 ELSE 'node-liminal'
                                 END
                 }}),
-                links: collect({{  
-                    source: source.id,  
-                    target: target.id,  
+                links: collect({{
+                    source: source.id,
+                    target: target.id,
                     id: transition.id,
                     type: 'CONSCIOUSNESS_TRANSITION',
                     timestamp: transition.timestamp,
@@ -334,7 +326,7 @@ class ConsciousnessNeo4jWriter:
                         THEN 'От присутствия к гармонии'
                         ELSE 'Стандартный переход'
                         END
-                }})  
+                }})
             }} as graph
             """
 
@@ -347,9 +339,7 @@ class ConsciousnessNeo4jWriter:
 
             return timeline
 
-    def _analyze_timeline_meta(
-        self, timeline: Dict[str, List[Dict[str, Any]]]
-    ) -> Dict[str, Any]:
+    def _analyze_timeline_meta(self, timeline: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
         """Анализ мета-информации о временной линии сознания"""
         nodes = timeline["nodes"]
         links = timeline["links"]
@@ -374,9 +364,7 @@ class ConsciousnessNeo4jWriter:
                 authenticity_trend += link.get("authenticity_delta", 0)
 
         # Определяем доминирующее состояние
-        dominant_state = (
-            max(state_counts.items(), key=lambda x: x[1])[0] if state_counts else None
-        )
+        dominant_state = max(state_counts.items(), key=lambda x: x[1])[0] if state_counts else None
 
         # Философская интерпретация временной линии
         philosophical_interpretations = {
@@ -403,7 +391,7 @@ class ConsciousnessNeo4jWriter:
             "philosophical_interpretation": interpretation,
         }
 
-    def detect_home_state_entry(self, current_metrics: Dict[str, float]) -> bool:
+    def detect_home_state_entry(self, current_metrics: dict[str, float]) -> bool:
         """Определение входа в состояние 'дома'"""
         return (
             current_metrics.get("home_resonance", 0)
@@ -412,18 +400,14 @@ class ConsciousnessNeo4jWriter:
             > PHILOSOPHICAL_THRESHOLDS["AUTHENTICITY_HONEST"]
         )
 
-    def detect_deep_presence(self, current_metrics: Dict[str, float]) -> bool:
+    def detect_deep_presence(self, current_metrics: dict[str, float]) -> bool:
         """Определение глубокого присутствия"""
-        return (
-            current_metrics.get("presence_level", 0)
-            > PHILOSOPHICAL_THRESHOLDS["PRESENCE_DEEP"]
-        )
+        return current_metrics.get("presence_level", 0) > PHILOSOPHICAL_THRESHOLDS["PRESENCE_DEEP"]
 
-    def detect_harmony_balance(self, current_metrics: Dict[str, float]) -> bool:
+    def detect_harmony_balance(self, current_metrics: dict[str, float]) -> bool:
         """Определение состояния гармонии"""
         return (
-            current_metrics.get("harmony_index", 0)
-            > PHILOSOPHICAL_THRESHOLDS["HARMONY_BALANCED"]
+            current_metrics.get("harmony_index", 0) > PHILOSOPHICAL_THRESHOLDS["HARMONY_BALANCED"]
         )
 
 
@@ -432,11 +416,9 @@ class ConsciousnessEventProcessor:
 
     def __init__(self, neo4j_writer: ConsciousnessNeo4jWriter):
         self.writer = neo4j_writer
-        self.current_state: Optional[ConsciousnessNode] = None
+        self.current_state: ConsciousnessNode | None = None
 
-    def process_thyroid_insight(
-        self, thyroid_data: Dict[str, Any]
-    ) -> Optional[StateTransition]:
+    def process_thyroid_insight(self, thyroid_data: dict[str, Any]) -> StateTransition | None:
         """Обработка инсайта от щитовидки"""
         if not self.current_state:
             return None
@@ -462,8 +444,7 @@ class ConsciousnessEventProcessor:
             trigger=TransitionTrigger.THYROID_INSIGHT,
             timestamp=datetime.now(),
             duration_seconds=2.3,  # Среднее время инсайта
-            home_resonance_delta=new_state.home_resonance
-            - self.current_state.home_resonance,
+            home_resonance_delta=new_state.home_resonance - self.current_state.home_resonance,
             presence_delta=new_state.presence_level - self.current_state.presence_level,
             harmony_delta=new_state.harmony_index - self.current_state.harmony_index,
             authenticity_delta=0.0,
@@ -472,16 +453,14 @@ class ConsciousnessEventProcessor:
 
         # Сохраняем в Neo4j
         self.writer.create_consciousness_state(new_state)
-        self.writer.create_state_transition(
-            transition, self.current_state.id, new_state.id
-        )
+        self.writer.create_state_transition(transition, self.current_state.id, new_state.id)
 
         # Обновляем текущее состояние
         self.current_state = new_state
 
         return transition
 
-    def process_question_emergence(self, question: str) -> Optional[StateTransition]:
+    def process_question_emergence(self, question: str) -> StateTransition | None:
         """Обработка появления правильного вопроса"""
         if not self.current_state:
             return None
@@ -508,22 +487,17 @@ class ConsciousnessEventProcessor:
             home_resonance_delta=0.0,
             presence_delta=new_state.presence_level - self.current_state.presence_level,
             harmony_delta=0.0,
-            authenticity_delta=new_state.authenticity_score
-            - self.current_state.authenticity_score,
+            authenticity_delta=new_state.authenticity_score - self.current_state.authenticity_score,
             trigger_data={"question": question},
         )
 
         self.writer.create_consciousness_state(new_state)
-        self.writer.create_state_transition(
-            transition, self.current_state.id, new_state.id
-        )
+        self.writer.create_state_transition(transition, self.current_state.id, new_state.id)
         self.current_state = new_state
 
         return transition
 
-    def initialize_consciousness(
-        self, initial_metrics: Dict[str, float]
-    ) -> ConsciousnessNode:
+    def initialize_consciousness(self, initial_metrics: dict[str, float]) -> ConsciousnessNode:
         """Инициализация начального состояния сознания"""
         # Определяем начальное состояние на основе метрик
         if self.writer.detect_home_state_entry(initial_metrics):

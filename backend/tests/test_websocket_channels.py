@@ -6,6 +6,9 @@ from pathlib import Path
 import pytest
 from websockets.exceptions import ConnectionClosedError
 
+# Импортируем WebSocketClient из существующего теста
+from tests.test_websocket_simple import WebSocketClient
+
 # Настройка логирования
 logging.basicConfig(
     level=logging.INFO,
@@ -19,8 +22,6 @@ project_root = str(Path(__file__).parent.parent)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-# Импортируем WebSocketClient из существующего теста
-from tests.test_websocket_simple import WebSocketClient
 
 # Базовый URL WebSocket сервера
 BASE_URL = "ws://localhost:8000"
@@ -64,17 +65,13 @@ async def test_multiple_channels():
                         response = await asyncio.wait_for(
                             client.receive_message(), timeout=MESSAGE_TIMEOUT
                         )
-                        assert (
-                            response.get("status") == "success"
-                        ), f"Subscribe failed: {response}"
-                        assert (
-                            response.get("channel") == channel
-                        ), f"Wrong channel in response: {response}"
-                        logger.info(f"User {user['id']} subscribed to {channel}")
-                    except asyncio.TimeoutError:
-                        logger.error(
-                            f"Timeout while subscribing {user['id']} to {channel}"
+                        assert response.get("status") == "success", f"Subscribe failed: {response}"
+                        assert response.get("channel") == channel, (
+                            f"Wrong channel in response: {response}"
                         )
+                        logger.info(f"User {user['id']} subscribed to {channel}")
+                    except TimeoutError:
+                        logger.error(f"Timeout while subscribing {user['id']} to {channel}")
                         raise
             except Exception as e:
                 logger.error(f"Error setting up user {user['id']}: {str(e)}")
@@ -83,9 +80,7 @@ async def test_multiple_channels():
             clients[user["id"]] = client
 
         # Даем время на подписку
-        logger.info(
-            "All users connected and subscribed, waiting for subscriptions to complete..."
-        )
+        logger.info("All users connected and subscribed, waiting for subscriptions to complete...")
         await asyncio.sleep(1)
 
         # Отправляем сообщения в разные каналы
@@ -134,7 +129,7 @@ async def test_multiple_channels():
                             logger.warning(
                                 f"Unexpected message format from {user['id']}: {response}"
                             )
-                except (asyncio.TimeoutError, ConnectionClosedError):
+                except (TimeoutError, ConnectionClosedError):
                     logger.info(f"No more messages for user {user['id']}")
                     break
                 except Exception as e:
@@ -143,25 +138,20 @@ async def test_multiple_channels():
 
             # Проверяем, что пользователь получил только сообщения из своих каналов
             user_channels = set(user["channels"])
-            logger.info(
-                f"Verifying messages for user {user['id']} (channels: {user_channels})"
-            )
+            logger.info(f"Verifying messages for user {user['id']} (channels: {user_channels})")
 
             for msg in user["messages"]:
                 msg_channel = msg.get("channel")
-                logger.debug(
-                    f"Checking message in {msg_channel} for {user['id']}: {msg}"
+                logger.debug(f"Checking message in {msg_channel} for {user['id']}: {msg}")
+                assert msg_channel in user_channels, (
+                    f"Пользователь {user['id']} получил сообщение из неподписанного канала {msg_channel}"
                 )
-                assert (
-                    msg_channel in user_channels
-                ), f"Пользователь {user['id']} получил сообщение из неподписанного канала {msg_channel}"
 
             # Проверяем, что пользователь получил все ожидаемые сообщения
             expected_messages = [
                 (ch, msg)
                 for s_id, ch, msg in test_messages
-                if ch in user_channels
-                and s_id != user["id"]  # не считаем свои же сообщения
+                if ch in user_channels and s_id != user["id"]  # не считаем свои же сообщения
             ]
 
             received_messages = [
@@ -184,9 +174,7 @@ async def test_multiple_channels():
                     f"в канале {channel}: {expected_msg}"
                 )
 
-            logger.info(
-                f"Message verification for user {user['id']} completed successfully"
-            )
+            logger.info(f"Message verification for user {user['id']} completed successfully")
 
         # Тестируем отписку от канала
         user_to_unsubscribe = users[0]  # user1
@@ -214,9 +202,9 @@ async def test_multiple_channels():
 
             logger.info(f"Unsubscribe response: {response}")
             assert response.get("status") == "success", "Unsubscribe failed"
-            assert (
-                response.get("channel") == channel_to_unsubscribe
-            ), "Wrong channel in unsubscribe response"
+            assert response.get("channel") == channel_to_unsubscribe, (
+                "Wrong channel in unsubscribe response"
+            )
 
             # Обновляем список каналов пользователя
             user_to_unsubscribe["channels"].remove(channel_to_unsubscribe)
@@ -228,9 +216,7 @@ async def test_multiple_channels():
             test_message_unsubscribed = (
                 "Это сообщение не должно дойти до отписавшегося пользователя"
             )
-            logger.info(
-                f"Sending message to unsubscribed channel {channel_to_unsubscribe}"
-            )
+            logger.info(f"Sending message to unsubscribed channel {channel_to_unsubscribe}")
             await asyncio.wait_for(
                 clients[user_to_unsubscribe["id"]].send_chat_message(
                     channel_to_unsubscribe, test_message_unsubscribed
@@ -263,7 +249,7 @@ async def test_multiple_channels():
                     print("DEBUG: user1 получил сообщение:", msg)
                     logger.info(f"DEBUG: user1 получил сообщение: {msg}")
                     debug_received.append(msg)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 print("DEBUG: user1 — больше сообщений не пришло (таймаут)")
                 logger.info("DEBUG: user1 — больше сообщений не пришло (таймаут)")
             except Exception as e:

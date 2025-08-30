@@ -1,4 +1,3 @@
-print("DEBUG: Starting api.py imports")
 import asyncio
 import json
 import logging
@@ -6,9 +5,8 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Annotated
 
-print("DEBUG: Importing FastAPI and dependencies")
 from fastapi import (
     Depends,
     FastAPI,
@@ -22,16 +20,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 # Добавляем корневую директорию в PYTHONPATH для корректного импорта
-print(f"DEBUG: Current sys.path: {sys.path}")
 sys.path.append(str(Path(__file__).parent))
-print(f"DEBUG: Updated sys.path: {sys.path}")
 
 # Условный импорт Neo4jWriter и Neo4jDateTime
-print("DEBUG: Before Neo4j imports")
-print(f"DEBUG: TESTING={os.environ.get('TESTING')}")
-
 if os.environ.get("TESTING"):
-    print("API: Running in TESTING mode. Using mock Neo4jWriter.")
 
     # Mock Neo4j classes for testing
     class Neo4jDateTime:
@@ -40,7 +32,6 @@ if os.environ.get("TESTING"):
 
     class Neo4jWriter:
         def __init__(self, *args, **kwargs):
-            print("API: Mock Neo4jWriter initialized.")
             self.driver = self
 
         def session(self):
@@ -84,58 +75,24 @@ if os.environ.get("TESTING"):
             return iter([])
 
 else:
-    print("API: Running in PRODUCTION mode. Using real Neo4jWriter.")
     # Добавляем родительскую директорию в путь для импорта neo4j_writer
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from neo4j_writer import Neo4jDateTime, Neo4jWriter
 
 
-# Функция для сериализации объектов Neo4j
-def neo4j_serializer(obj):
-    if isinstance(obj, Neo4jDateTime):
-        return obj.isoformat()
-    raise TypeError(f"Type {type(obj)} not serializable")
-
-
-# Функция для преобразования записи Neo4j в словарь
-def record_to_dict(record):
-    result = {}
-    if hasattr(record, "items"):
-        for key, value in record.items():
-            if isinstance(value, (list, dict)):
-                result[key] = json.loads(json.dumps(value, default=neo4j_serializer))
-            else:
-                result[key] = value
-    elif hasattr(record, "isoformat"):
-        return record.isoformat()
-    else:
-        return record
-    return result
-
-
-# Импорт метрик Prometheus
-print("DEBUG: Before metrics import")
 try:
-    from metrics import (
-        setup_metrics,
-    )
-
-    print("DEBUG: Successfully imported metrics")
+    from metrics import setup_metrics
 except ImportError as e:
     print(f"ERROR: Failed to import metrics: {e}")
     raise
 
-print("DEBUG: Before memory_timeline import")
 try:
     from memory_timeline import MemoryTimeline
     from memory_timeline import timeline as memory_timeline
-
-    print("DEBUG: Successfully imported memory_timeline")
 except ImportError as e:
     print(f"ERROR: Failed to import memory_timeline: {e}")
     raise
 
-print("DEBUG: Before ml_features import")
 try:
     from ml_features import (
         extract_traffic_features,
@@ -150,7 +107,6 @@ try:
 
     # Проверка, включена ли ML-функциональность
     ML_ENABLED = os.environ.get("ML_ENABLED", "false").lower() == "true"
-    print(f"DEBUG: Successfully imported ml_features. ML_ENABLED={ML_ENABLED}")
 except ImportError as e:
     print(f"ERROR: Failed to import ml_features: {e}")
     # Fallback функции для случая отсутствия ML-модуля
@@ -181,7 +137,6 @@ except ImportError as e:
         pass
 
 
-print("DEBUG: Before connection_manager import")
 try:
     # Проверяем, нужно ли использовать Redis для масштабирования
     use_redis = os.environ.get("USE_REDIS", "false").lower() == "true"
@@ -195,21 +150,14 @@ try:
             max_connections_per_ip=10,
             redis_prefix="liminal",
         )
-        print(f"DEBUG: Using Redis ConnectionManager with URL: {redis_url}")
     else:
         from backend.websocket.connection_manager import ConnectionManager
 
-        connection_manager = ConnectionManager(
-            max_connections=100, max_connections_per_ip=10
-        )
-        print("DEBUG: Using standard ConnectionManager")
-    print("DEBUG: Successfully imported and initialized connection_manager")
+        connection_manager = ConnectionManager(max_connections=100, max_connections_per_ip=10)
 except ImportError as e:
     print(f"ERROR: Failed to import connection_manager: {e}")
     raise
 
-# Импорты для аутентификации
-print("DEBUG: Before auth imports")
 try:
     from auth.jwt_utils import (
         authenticate_user,
@@ -218,16 +166,35 @@ try:
         verify_websocket_token,
     )
     from auth.models import Token, UserLogin
-
-    print("DEBUG: Successfully imported auth modules")
 except ImportError as e:
     print(f"ERROR: Failed to import auth modules: {e}")
     raise
 
-print("DEBUG: Creating FastAPI app")
-app = FastAPI(
-    title="LIMINAL API", description="API для работы с графовой базой данных LIMINAL"
-)
+
+# Функция для сериализации объектов Neo4j
+def neo4j_serializer(obj):
+    if isinstance(obj, Neo4jDateTime):
+        return obj.isoformat()
+    raise TypeError(f"Type {type(obj)} not serializable")
+
+
+# Функция для преобразования записи Neo4j в словарь
+def record_to_dict(record):
+    result = {}
+    if hasattr(record, "items"):
+        for key, value in record.items():
+            if isinstance(value, list | dict):
+                result[key] = json.loads(json.dumps(value, default=neo4j_serializer))
+            else:
+                result[key] = value
+    elif hasattr(record, "isoformat"):
+        return record.isoformat()
+    else:
+        return record
+    return result
+
+
+app = FastAPI(title="LIMINAL API", description="API для работы с графовой базой данных LIMINAL")
 
 # Инициализация логгера
 logger = logging.getLogger(__name__)
@@ -244,10 +211,11 @@ async def startup_event():
     logger.info("Prometheus metrics already initialized")
 
     # Инициализация Redis соединения, если используется RedisConnectionManager
-    if os.environ.get("USE_REDIS", "false").lower() == "true":
-        if hasattr(connection_manager, "initialize"):
-            redis_initialized = await connection_manager.initialize()
-            logger.info(f"Redis connection initialized: {redis_initialized}")
+    if os.environ.get("USE_REDIS", "false").lower() == "true" and hasattr(
+        connection_manager, "initialize"
+    ):
+        redis_initialized = await connection_manager.initialize()
+        logger.info(f"Redis connection initialized: {redis_initialized}")
 
 
 @app.on_event("shutdown")
@@ -256,19 +224,15 @@ async def shutdown_event():
     logger.info("Shutting down application")
 
     # Закрытие Redis соединения, если оно было открыто
-    if os.environ.get("USE_REDIS", "false").lower() == "true":
-        if hasattr(connection_manager, "shutdown"):
-            await connection_manager.shutdown()
-            logger.info("Redis connection closed")
+    if os.environ.get("USE_REDIS", "false").lower() == "true" and hasattr(
+        connection_manager, "shutdown"
+    ):
+        await connection_manager.shutdown()
+        logger.info("Redis connection closed")
 
 
 # Инициализация временной шкалы памяти
-print("DEBUG: Initializing MemoryTimeline")
 timeline = MemoryTimeline()
-print("DEBUG: MemoryTimeline initialized")
-
-# Обслуживание статических файлов
-import os
 
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
@@ -283,12 +247,9 @@ app.add_middleware(
 )
 
 # Настройка метрик Prometheus
-print("DEBUG: Setting up Prometheus metrics")
 try:
     setup_metrics(app)
-    print("DEBUG: Prometheus metrics initialized at /metrics endpoint")
 except Exception as e:
-    print(f"ERROR: Failed to setup Prometheus metrics: {e}")
     logger.error(f"Failed to setup Prometheus metrics: {e}")
     # Продолжаем работу даже при ошибке настройки метрик
 
@@ -323,10 +284,8 @@ class MemoryCreate(BaseModel):
     """Модель для создания нового воспоминания."""
 
     content: str = Field(..., description="Содержимое воспоминания")
-    memory_type: str = Field(
-        ..., description="Тип воспоминания (например, 'personal', 'work')"
-    )
-    metadata: Optional[Dict[str, Any]] = Field(
+    memory_type: str = Field(..., description="Тип воспоминания (например, 'personal', 'work')")
+    metadata: dict[str, Any] | None = Field(
         default_factory=dict, description="Дополнительные метаданные"
     )
 
@@ -436,14 +395,14 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
         if token:
             user_id = verify_websocket_token(token)
             if user_id:
-                authenticated = await connection_manager.authenticate_connection(
-                    websocket, user_id
-                )
+                authenticated = await connection_manager.authenticate_connection(websocket, user_id)
                 if authenticated:
                     await websocket.send_json(
                         {
                             "type": "auth_success",
-                            "message": f"Пользователь {user_id} успешно аутентифицирован через URL токен",
+                            "message": (
+                                f"Пользователь {user_id} успешно аутентифицирован через URL токен"
+                            ),
                         }
                     )
 
@@ -492,9 +451,7 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
 
                                 if message_type == "subscribe":
                                     channel = message.get("channel")
-                                    logger.debug(
-                                        f"Subscribe request for channel: {channel}"
-                                    )
+                                    logger.debug(f"Subscribe request for channel: {channel}")
                                     if channel:
                                         await connection_manager.subscribe(
                                             user_id, channel, websocket
@@ -508,21 +465,18 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
                                             "type": "subscribed",
                                             "channel": channel,
                                         }
-                                        logger.debug(
-                                            f"Sending subscribe response: {response}"
-                                        )
+                                        logger.debug(f"Sending subscribe response: {response}")
                                         await websocket.send_json(response)
                                 elif message_type == "unsubscribe":
                                     channel = message.get("channel")
                                     if channel:
-                                        await connection_manager.unsubscribe(
-                                            user_id, channel
-                                        )
+                                        await connection_manager.unsubscribe(user_id, channel)
 
                                         # Специальная обработка для канала timeline
                                         if channel == "timeline":
                                             logger.debug(
-                                                f"Unsubscribing from memory_timeline for user {user_id}"
+                                                "Unsubscribing from memory_timeline for user"
+                                                f" {user_id}"
                                             )
                                             await memory_timeline.unsubscribe(websocket)
 
@@ -530,9 +484,7 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
                                             "type": "unsubscribed",
                                             "channel": channel,
                                         }
-                                        logger.debug(
-                                            f"Sending unsubscribe response: {response}"
-                                        )
+                                        logger.debug(f"Sending unsubscribe response: {response}")
                                         await websocket.send_json(response)
                                 elif message_type == "broadcast":
                                     channel = message.get("channel")
@@ -568,14 +520,10 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
                         )
                         return
                 else:
-                    await connection_manager.reject_connection(
-                        websocket, "Invalid token"
-                    )
+                    await connection_manager.reject_connection(websocket, "Invalid token")
                     return
             else:
-                await connection_manager.reject_connection(
-                    websocket, "Invalid auth message format"
-                )
+                await connection_manager.reject_connection(websocket, "Invalid auth message format")
                 return
 
         except json.JSONDecodeError:
@@ -587,9 +535,7 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
             await memory_timeline.unsubscribe(websocket)
             await connection_manager.disconnect(websocket, user_id)
         else:
-            await connection_manager.reject_connection(
-                websocket, "Disconnected during auth"
-            )
+            await connection_manager.reject_connection(websocket, "Disconnected during auth")
     except Exception as e:
         print(f"WebSocket error: {e}")
         if authenticated and user_id:
@@ -615,7 +561,7 @@ async def get_connection_stats():
 # Memory Timeline endpoints
 @app.post(
     "/timeline/memories/",
-    response_model=Dict,
+    response_model=dict,
     status_code=status.HTTP_201_CREATED,
     responses={
         201: {"description": "Воспоминание успешно добавлено"},
@@ -641,14 +587,14 @@ async def add_memory(memory: MemoryCreate):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Ошибка при добавлении воспоминания: {str(e)}",
-        )
+        ) from e
 
 
-@app.get("/timeline/memories/", response_model=List[Dict])
+@app.get("/timeline/memories/", response_model=list[dict])
 async def get_memories(
-    start_time: Optional[datetime] = None,
-    end_time: Optional[datetime] = None,
-    memory_type: Optional[str] = None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    memory_type: str | None = None,
     limit: int = 100,
 ):
     """Возвращает отфильтрованный список воспоминаний."""
@@ -658,7 +604,7 @@ async def get_memories(
 # DuneWave endpoints
 @app.post("/waves/", response_model=dict)
 async def create_wave(
-    wave: DuneWaveCreate, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    wave: DuneWaveCreate, writer: Annotated[Neo4jWriter, Depends(get_neo4j_writer)]
 ):
     wave_data = wave.dict()
     wave_data["id"] = f"wave_{int(datetime.utcnow().timestamp())}"
@@ -670,8 +616,10 @@ async def create_wave(
     return {"status": "success", "id": node["id"]}
 
 
-@app.get("/waves/", response_model=List[dict])
-async def get_waves(limit: int = 10, writer: Neo4jWriter = Depends(get_neo4j_writer)):
+@app.get("/waves/", response_model=list[dict])
+async def get_waves(
+    writer: Annotated[Neo4jWriter, Depends(get_neo4j_writer)], limit: int = 10
+):
     try:
         with writer.driver.session() as session:
             result = session.run(
@@ -689,13 +637,14 @@ async def get_waves(limit: int = 10, writer: Neo4jWriter = Depends(get_neo4j_wri
             return waves
     except Exception as e:
         print(f"Error in get_waves: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # MemoryFragment endpoints
 @app.post("/fragments/", response_model=dict)
 async def create_fragment(
-    fragment: MemoryFragmentCreate, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    fragment: MemoryFragmentCreate,
+    writer: Annotated[Neo4jWriter, Depends(get_neo4j_writer)],
 ):
     fragment_data = fragment.dict()
     fragment_data["id"] = f"mem_{int(datetime.utcnow().timestamp())}"
@@ -707,9 +656,9 @@ async def create_fragment(
     return {"status": "success", "id": node["id"]}
 
 
-@app.get("/fragments/", response_model=List[dict])
+@app.get("/fragments/", response_model=list[dict])
 async def get_fragments(
-    limit: int = 10, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    writer: Annotated[Neo4jWriter, Depends(get_neo4j_writer)], limit: int = 10
 ):
     try:
         with writer.driver.session() as session:
@@ -728,13 +677,15 @@ async def get_fragments(
             return fragments
     except Exception as e:
         print(f"Error in get_fragments: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 # Relationships
 @app.post("/relationships/link-wave-to-memory/", response_model=dict)
 async def link_wave_to_memory(
-    wave_id: str, memory_id: str, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    wave_id: str,
+    memory_id: str,
+    writer: Annotated[Neo4jWriter, Depends(get_neo4j_writer)],
 ):
     result = writer.link_dunewave_to_memory(wave_id, memory_id)
     if not result:
@@ -744,13 +695,12 @@ async def link_wave_to_memory(
 
 @app.post("/relationships/mentorship/", response_model=dict)
 async def create_mentorship(
-    mentorship: MentorshipCreate, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    mentorship: MentorshipCreate,
+    writer: Annotated[Neo4jWriter, Depends(get_neo4j_writer)],
 ):
     result = writer.create_mentorship(mentorship.younger_id, mentorship.mentor_id)
     if not result:
-        raise HTTPException(
-            status_code=400, detail="Не удалось создать связь наставничества"
-        )
+        raise HTTPException(status_code=400, detail="Не удалось создать связь наставничества")
     return {"status": "success"}
 
 

@@ -4,10 +4,10 @@
 """
 
 import asyncio
+import contextlib
 import logging
 import time
 from datetime import datetime
-from typing import Dict, List, Optional, Set
 
 from fastapi import WebSocket
 from loguru import logger
@@ -24,7 +24,6 @@ except Exception:
 
 # Условный импорт метрик Prometheus
 try:
-    from metrics import websocket_rate_limit_total  # Новая метрика
     from metrics import (
         connection_limits,
         connection_rejections,
@@ -33,6 +32,7 @@ try:
         websocket_heartbeat_total,
         websocket_idle_disconnects_total,
         websocket_messages_total,
+        websocket_rate_limit_total,  # Новая метрика
     )
 
     METRICS_ENABLED = True
@@ -77,7 +77,7 @@ class ConnectionManager:
 
     def __init__(
         self,
-        redis_client: Optional[RedisClient] = None,
+        redis_client: RedisClient | None = None,
         max_connections: int = 100,
         max_connections_per_ip: int = 10,
         rate_limit_messages_per_second: int = 10,
@@ -92,19 +92,19 @@ class ConnectionManager:
         self.redis = getattr(redis_client, "redis", None) if redis_client else None
 
         # Хранилище активных подключений: {user_id: {websocket1, websocket2, ...}}
-        self.active_connections: Dict[str, Set[WebSocket]] = {}
+        self.active_connections: dict[str, set[WebSocket]] = {}
         # Хранилище подписок: {channel: {user_id1, user_id2, ...}}
-        self.channel_subscriptions: Dict[str, Set[str]] = {}
+        self.channel_subscriptions: dict[str, set[str]] = {}
         # Хранит каналы, на которые подписан пользователь: {user_id: {channel1, channel2, ...}}
-        self.user_channels: Dict[str, Set[str]] = {}
+        self.user_channels: dict[str, set[str]] = {}
         # Хранит WebSocket соединение для каждого пользователя: {user_id: websocket}
-        self.user_to_websocket: Dict[str, WebSocket] = {}
+        self.user_to_websocket: dict[str, WebSocket] = {}
 
         # Ограничения подключений
         self.max_connections = max_connections
         self.max_connections_per_ip = max_connections_per_ip
-        self.connections_per_ip: Dict[str, int] = {}
-        self.pending_connections: Dict[WebSocket, datetime] = {}
+        self.connections_per_ip: dict[str, int] = {}
+        self.pending_connections: dict[WebSocket, datetime] = {}
         self.auth_timeout = 30
 
         # Rate Limiting (Token Bucket)
@@ -116,9 +116,9 @@ class ConnectionManager:
         self.heartbeat_interval = heartbeat_interval
         self.heartbeat_timeout = heartbeat_timeout
         self.idle_timeout = idle_timeout
-        self._last_activity: Dict[WebSocket, float] = {}
-        self._last_pong: Dict[WebSocket, float] = {}
-        self._heartbeat_tasks: Dict[WebSocket, asyncio.Task] = {}
+        self._last_activity: dict[WebSocket, float] = {}
+        self._last_pong: dict[WebSocket, float] = {}
+        self._heartbeat_tasks: dict[WebSocket, asyncio.Task] = {}
 
         # Инициализируем метрики ограничений подключений
         if METRICS_ENABLED:
@@ -227,32 +227,22 @@ class ConnectionManager:
                 try:
                     await connection.send_json(message)
                 except Exception as e:
-                    logger.error(
-                        f"Ошибка отправки сообщения пользователю {user_id}: {e}"
-                    )
+                    logger.error(f"Ошибка отправки сообщения пользователю {user_id}: {e}")
 
     async def broadcast(self, channel: str, message: dict, sender_id: str = None):
         """
         Отправляет сообщение всем подписчикам канала.
         """
         start_time = time.time()
-        logger.info(f"--- BROADCAST START ---")
-        logger.info(
-            f"SERVER DEBUG: broadcast в канал '{channel}', sender_id='{sender_id}'"
-        )
+        logger.info("--- BROADCAST START ---")
+        logger.info(f"SERVER DEBUG: broadcast в канал '{channel}', sender_id='{sender_id}'")
         logger.info(f"SERVER DEBUG: message: {message}")
-        logger.info(
-            f"SERVER DEBUG: channel_subscriptions: {self.channel_subscriptions}"
-        )
-        logger.info(
-            f"SERVER DEBUG: active_connections: {list(self.active_connections.keys())}"
-        )
+        logger.info(f"SERVER DEBUG: channel_subscriptions: {self.channel_subscriptions}")
+        logger.info(f"SERVER DEBUG: active_connections: {list(self.active_connections.keys())}")
         logger.info(f"SERVER DEBUG: user_channels: {self.user_channels}")
 
         if channel not in self.channel_subscriptions:
-            logger.warning(
-                f"Попытка отправить сообщение в несуществующий канал: {channel}"
-            )
+            logger.warning(f"Попытка отправить сообщение в несуществующий канал: {channel}")
             return 0
 
         sent_count = 0
@@ -271,13 +261,9 @@ class ConnectionManager:
                     try:
                         await connection.send_json(message)
                         sent_count += 1
-                        logger.info(
-                            f"SERVER DEBUG: Успешно отправлено user_id='{user_id}'"
-                        )
+                        logger.info(f"SERVER DEBUG: Успешно отправлено user_id='{user_id}'")
                     except Exception as e:
-                        logger.error(
-                            f"SERVER DEBUG: Ошибка при отправке user_id='{user_id}': {e}"
-                        )
+                        logger.error(f"SERVER DEBUG: Ошибка при отправке user_id='{user_id}': {e}")
                         self.active_connections[user_id].discard(connection)
                         if not self.active_connections[user_id]:
                             del self.active_connections[user_id]
@@ -288,14 +274,14 @@ class ConnectionManager:
             websocket_messages_total.labels(
                 type=message_type, direction="out", channel=channel
             ).inc(sent_count)
-            websocket_broadcast_duration_seconds.labels(
-                message_type=message_type
-            ).observe(time.time() - start_time)
+            websocket_broadcast_duration_seconds.labels(message_type=message_type).observe(
+                time.time() - start_time
+            )
 
         logger.info(
             f"SERVER DEBUG: Сообщение отправлено {sent_count} подписчикам канала '{channel}'"
         )
-        logger.info(f"--- BROADCAST END ---")
+        logger.info("--- BROADCAST END ---")
         return sent_count
 
     def mark_activity(self, websocket: WebSocket):
@@ -327,9 +313,7 @@ class ConnectionManager:
                 await asyncio.sleep(self.heartbeat_interval)
                 # Отправляем application-level ping
                 try:
-                    await websocket.send_json(
-                        {"type": "ping", "ts": datetime.utcnow().isoformat()}
-                    )
+                    await websocket.send_json({"type": "ping", "ts": datetime.utcnow().isoformat()})
                     if METRICS_ENABLED:
                         websocket_heartbeat_total.labels(event="ping_sent").inc()
                 except Exception as e:
@@ -344,18 +328,12 @@ class ConnectionManager:
                 if now - last_pong > self.heartbeat_timeout:
                     reason = "Missing pong"
                     if METRICS_ENABLED:
-                        websocket_heartbeat_total.labels(
-                            event="timeout_disconnect"
-                        ).inc()
-                        websocket_idle_disconnects_total.labels(
-                            reason="missing_pong"
-                        ).inc()
+                        websocket_heartbeat_total.labels(event="timeout_disconnect").inc()
+                        websocket_idle_disconnects_total.labels(reason="missing_pong").inc()
                     try:
                         await websocket.close(code=1001, reason=reason)
                     finally:
-                        user_id = (
-                            self.get_user_id_from_websocket(websocket) or "unknown"
-                        )
+                        user_id = self.get_user_id_from_websocket(websocket) or "unknown"
                         await self.disconnect(websocket, user_id)
                     break
 
@@ -363,18 +341,12 @@ class ConnectionManager:
                 if now - last_act > self.idle_timeout:
                     reason = "Idle timeout"
                     if METRICS_ENABLED:
-                        websocket_heartbeat_total.labels(
-                            event="timeout_disconnect"
-                        ).inc()
-                        websocket_idle_disconnects_total.labels(
-                            reason="idle_timeout"
-                        ).inc()
+                        websocket_heartbeat_total.labels(event="timeout_disconnect").inc()
+                        websocket_idle_disconnects_total.labels(reason="idle_timeout").inc()
                     try:
                         await websocket.close(code=1001, reason=reason)
                     finally:
-                        user_id = (
-                            self.get_user_id_from_websocket(websocket) or "unknown"
-                        )
+                        user_id = self.get_user_id_from_websocket(websocket) or "unknown"
                         await self.disconnect(websocket, user_id)
                     break
         except asyncio.CancelledError:
@@ -393,8 +365,7 @@ class ConnectionManager:
             bool: True если пользователь подписан, False иначе
         """
         return (
-            channel in self.channel_subscriptions
-            and user_id in self.channel_subscriptions[channel]
+            channel in self.channel_subscriptions and user_id in self.channel_subscriptions[channel]
         )
 
     async def subscribe(self, user_id: str, channel: str, websocket: WebSocket):
@@ -435,17 +406,14 @@ class ConnectionManager:
         if not user_id or not channel:
             raise ValueError("User ID and channel are required")
 
-        logger.info(f"--- UNSUBSCRIBE START ---")
+        logger.info("--- UNSUBSCRIBE START ---")
         logger.info(f"SERVER DEBUG: Попытка отписать '{user_id}' от '{channel}'")
         logger.info(f"SERVER DEBUG: user_channels до отписки: {self.user_channels}")
-        logger.info(
-            f"SERVER DEBUG: channel_subscriptions до отписки: {self.channel_subscriptions}"
-        )
+        logger.info(f"SERVER DEBUG: channel_subscriptions до отписки: {self.channel_subscriptions}")
 
         # Проверяем, был ли пользователь подписан на канал
         was_subscribed = (
-            channel in self.channel_subscriptions
-            and user_id in self.channel_subscriptions[channel]
+            channel in self.channel_subscriptions and user_id in self.channel_subscriptions[channel]
         )
 
         if channel in self.channel_subscriptions:
@@ -467,13 +435,13 @@ class ConnectionManager:
         logger.info(
             f"SERVER DEBUG: channel_subscriptions ПОСЛЕ отписки: {self.channel_subscriptions}"
         )
-        logger.info(f"--- UNSUBSCRIBE END ---")
+        logger.info("--- UNSUBSCRIBE END ---")
 
-    def get_user_channels(self, user_id: str) -> List[str]:
+    def get_user_channels(self, user_id: str) -> list[str]:
         """Возвращает список каналов, на которые подписан пользователь."""
         return list(self.user_channels.get(user_id, set()))
 
-    def get_channel_subscribers(self, channel: str) -> List[str]:
+    def get_channel_subscribers(self, channel: str) -> list[str]:
         """Возвращает список подписчиков канала."""
         return list(self.channel_subscriptions.get(channel, set()))
 
@@ -524,9 +492,7 @@ class ConnectionManager:
         self.pending_connections[websocket] = datetime.utcnow()
         websocket.client_ip = ip_address
 
-        logger.info(
-            f"WebSocket соединение принято с IP {ip_address}. Ожидает аутентификации."
-        )
+        logger.info(f"WebSocket соединение принято с IP {ip_address}. Ожидает аутентификации.")
 
         # Запускаем таймер для автоматического отключения неаутентифицированных соединений
         asyncio.create_task(self._auth_timeout_handler(websocket))
@@ -553,9 +519,7 @@ class ConnectionManager:
         logger.info(f"Пользователь {user_id} успешно аутентифицирован")
         return True
 
-    async def reject_connection(
-        self, websocket: WebSocket, reason: str = "Authentication failed"
-    ):
+    async def reject_connection(self, websocket: WebSocket, reason: str = "Authentication failed"):
         """Отклоняет WebSocket соединение."""
         if websocket in self.pending_connections:
             del self.pending_connections[websocket]
@@ -585,7 +549,7 @@ class ConnectionManager:
         """Проверяет, аутентифицировано ли соединение."""
         return hasattr(websocket, "user_id") and websocket.user_id
 
-    def get_user_id_from_websocket(self, websocket: WebSocket) -> Optional[str]:
+    def get_user_id_from_websocket(self, websocket: WebSocket) -> str | None:
         """Получает user_id из WebSocket соединения."""
         return getattr(websocket, "user_id", None)
 
@@ -595,9 +559,9 @@ class ConnectionManager:
 
     async def is_rate_limited(
         self,
-        user_id: Optional[str] = None,
-        ip_address: Optional[str] = None,
-        websocket: Optional[WebSocket] = None,
+        user_id: str | None = None,
+        ip_address: str | None = None,
+        websocket: WebSocket | None = None,
     ) -> bool:
         """Проверяет лимиты для пользователя, IP и конкретного соединения.
 
@@ -605,21 +569,17 @@ class ConnectionManager:
         Если скрипт не загружен или Redis недоступен, возвращает False (лимитирование отключено).
         """
         # Если скрипт не загружен, не ограничиваем
-        if not self.rate_limit_script_sha or not getattr(
-            self.redis_client, "redis", None
-        ):
+        if not self.rate_limit_script_sha or not getattr(self.redis_client, "redis", None):
             return False
 
-        keys: List[str] = []
+        keys: list[str] = []
         if user_id:
             keys.append(self.redis_client._make_key(f"rate_limit:user:{user_id}"))
         if ip_address:
             keys.append(self.redis_client._make_key(f"rate_limit:ip:{ip_address}"))
         if websocket is not None:
             keys.append(
-                self.redis_client._make_key(
-                    f"rate_limit:conn:{self.get_websocket_id(websocket)}"
-                )
+                self.redis_client._make_key(f"rate_limit:conn:{self.get_websocket_id(websocket)}")
             )
 
         if not keys:
@@ -656,10 +616,8 @@ class ConnectionManager:
 
             if allowed == 0 or allowed == "0":
                 if METRICS_ENABLED and user_id:
-                    try:
+                    with contextlib.suppress(Exception):
                         websocket_rate_limit_total.labels(user_id=user_id).inc()
-                    except Exception:
-                        pass
                 return True
 
         return False
@@ -705,9 +663,7 @@ class ConnectionManager:
             end
         """
         try:
-            self.rate_limit_script_sha = await self.redis_client.redis.script_load(
-                lua_script
-            )
+            self.rate_limit_script_sha = await self.redis_client.redis.script_load(lua_script)
             logger.info(
                 f"Lua-скрипт для Rate Limiting успешно загружен. SHA: {self.rate_limit_script_sha}"
             )

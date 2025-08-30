@@ -6,6 +6,7 @@
 для API интеграций с OpenAI, Anthropic и XAI, поддерживая как реальную
 работу с API, так и мок-режим для локальной разработки.
 """
+
 import asyncio
 import json
 import os
@@ -14,7 +15,7 @@ import time
 import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Добавляем путь к бэкенду для импорта модулей
 sys.path.append(str(Path(__file__).parent.parent))
@@ -88,7 +89,7 @@ def print_info(message: str) -> None:
     print(f"{BLUE}ℹ {message}{RESET}")
 
 
-def print_json(data: Dict[str, Any]) -> None:
+def print_json(data: dict[str, Any]) -> None:
     """Печатает данные в формате JSON с красивым форматированием"""
     print(f"{CYAN}{json.dumps(data, indent=2, ensure_ascii=False)}{RESET}")
 
@@ -126,9 +127,7 @@ async def run_openai_wrapper_test():
         elapsed = time.time() - start_time
 
         if success:
-            print_success(
-                f"Клиент инициализирован в режиме реального API за {elapsed:.2f} сек"
-            )
+            print_success(f"Клиент инициализирован в режиме реального API за {elapsed:.2f} сек")
         else:
             print_warning(f"Клиент инициализирован в режиме мока за {elapsed:.2f} сек")
 
@@ -182,11 +181,7 @@ async def run_openai_wrapper_test():
                 # Выводим структуру ответа
                 print_section("Структура ответа")
                 print_json(
-                    {
-                        k: v
-                        for k, v in content_json.items()
-                        if k not in ["technical_details"]
-                    }
+                    {k: v for k, v in content_json.items() if k not in ["technical_details"]}
                 )
 
                 if "technical_details" in content_json and VERBOSE:
@@ -211,9 +206,7 @@ async def run_openai_wrapper_test():
             elapsed = time.time() - start_time
 
             if cached_response.cached:
-                print_success(
-                    f"Кэширование работает! Второй запрос выполнен за {elapsed:.2f} сек"
-                )
+                print_success(f"Кэширование работает! Второй запрос выполнен за {elapsed:.2f} сек")
             else:
                 print_warning(
                     f"Кэширование не сработало. Второй запрос выполнен за {elapsed:.2f} сек"
@@ -343,9 +336,7 @@ async def test_openai_service_integration():
             if VERBOSE:
                 print_section("Полный анализ")
                 print_info(
-                    result.analysis[:500] + "..."
-                    if len(result.analysis) > 500
-                    else result.analysis
+                    result.analysis[:500] + "..." if len(result.analysis) > 500 else result.analysis
                 )
 
         except Exception as e:
@@ -394,7 +385,7 @@ async def run_all_tests():
         total_time = time.time() - start_time
         print_header(f"Все тесты завершены за {total_time:.2f} сек")
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         print_error(f"Тесты превысили таймаут {TEST_TIMEOUT} сек")
     except Exception as e:
         print_error(f"Неожиданная ошибка в тестах: {e}")

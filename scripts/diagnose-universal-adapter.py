@@ -3,6 +3,7 @@
 Диагностический скрипт для проверки универсального OpenAI адаптера
 Проверяет работу с реальным API и в режиме мока
 """
+
 import asyncio
 import json
 import os
@@ -96,9 +97,7 @@ try:
     # Проверяем состояние клиента до инициализации
     info("\nChecking client state before initialization:")
     if hasattr(llm_client, "api_key"):
-        info(
-            f"- API key: {mask_key(llm_client.api_key) if llm_client.api_key else '[not set]'}"
-        )
+        info(f"- API key: {mask_key(llm_client.api_key) if llm_client.api_key else '[not set]'}")
     else:
         warning("- api_key attribute not found")
 
@@ -286,7 +285,7 @@ try:
 
             if response.is_mock:
                 info("\nMOCK RESPONSE DETAILS:")
-                info(f"- Response generated from mock data")
+                info("- Response generated from mock data")
                 if hasattr(llm_client, "mock_dir") and llm_client.mock_dir:
                     info(f"- Mock directory: {llm_client.mock_dir}")
 
@@ -302,9 +301,7 @@ try:
 
 except ImportError as e:
     error(f"Could not import openai_wrapper module: {e}")
-    info(
-        "Check that the backend/ml/openai_wrapper.py file exists and is correctly implemented"
-    )
+    info("Check that the backend/ml/openai_wrapper.py file exists and is correctly implemented")
 
 except Exception as e:
     error(f"Unexpected error: {e}")

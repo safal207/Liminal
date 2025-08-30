@@ -56,7 +56,7 @@ def mock_maturation_system(test_dir):
     system.birth_time = fixed_now - timedelta(days=1)
     system.current_stage = system.calculate_current_stage()
 
-    yield system
+    return system
 
 
 @pytest.fixture

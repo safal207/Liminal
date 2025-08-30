@@ -7,7 +7,7 @@ import asyncio
 import json
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import yaml
 from loguru import logger
@@ -19,16 +19,14 @@ class ModelManager:
     Поддерживает автоматическое обучение и деплой моделей.
     """
 
-    def __init__(
-        self, models_dir: str = "ml/models", kenning_config_dir: str = "ml/configs"
-    ):
+    def __init__(self, models_dir: str = "ml/models", kenning_config_dir: str = "ml/configs"):
         self.models_dir = Path(models_dir)
         self.kenning_config_dir = Path(kenning_config_dir)
         self.models_dir.mkdir(parents=True, exist_ok=True)
         self.kenning_config_dir.mkdir(parents=True, exist_ok=True)
 
         # Активные модели
-        self.active_models: Dict[str, Any] = {}
+        self.active_models: dict[str, Any] = {}
 
         # Конфигурации моделей
         self.model_configs = {
@@ -94,11 +92,7 @@ class ModelManager:
             "model": {
                 "type": config["model_type"],
                 "optimization": {
-                    "target": (
-                        "accuracy"
-                        if config["model_type"] == "classification"
-                        else "mse"
-                    ),
+                    "target": ("accuracy" if config["model_type"] == "classification" else "mse"),
                     "time_budget": 300,  # 5 минут на AutoML поиск
                     "memory_limit": "1GB",
                 },
@@ -126,7 +120,7 @@ class ModelManager:
         return str(config_path)
 
     async def train_model_with_kenning(
-        self, model_name: str, training_data: List[Dict[str, Any]]
+        self, model_name: str, training_data: list[dict[str, Any]]
     ) -> bool:
         """
         Обучает модель используя Kenning AutoML pipeline.
@@ -220,7 +214,7 @@ class ModelManager:
             logger.error(f"Ошибка загрузки модели {model_name}: {e}")
             return False
 
-    def predict(self, model_name: str, features: Dict[str, Any]) -> Optional[Any]:
+    def predict(self, model_name: str, features: dict[str, Any]) -> Any | None:
         """
         Выполняет предсказание используя загруженную модель.
 
@@ -241,9 +235,7 @@ class ModelManager:
 
             if model_name == "anomaly_detection":
                 # Простая эвристика для демонстрации
-                score = features.get("messages_per_minute", 0) * features.get(
-                    "error_rate", 0
-                )
+                score = features.get("messages_per_minute", 0) * features.get("error_rate", 0)
                 return {"is_anomaly": score > 10, "anomaly_score": score}
 
             elif model_name == "load_prediction":
@@ -257,7 +249,7 @@ class ModelManager:
             logger.error(f"Ошибка предсказания модели {model_name}: {e}")
             return None
 
-    def get_model_status(self) -> Dict[str, Any]:
+    def get_model_status(self) -> dict[str, Any]:
         """
         Возвращает статус всех моделей.
 

@@ -23,7 +23,7 @@ def exec_gql(query: str, variables: dict[str, Any] | None = None) -> dict[str, A
     res = schema.execute_sync(query, variable_values=variables)
     assert res.errors is None, f"GraphQL errors: {res.errors}"
     assert res.data is not None
-    return res.data  # type: ignore[return-value]
+    return res.data
 
 
 def setup_function(_: Any) -> None:
@@ -65,7 +65,8 @@ def test_relationship_health_bounded_and_breakdown_present() -> None:
     h = data["h"]
     assert 0.0 <= h["score"] <= 1.0
     assert any("base_similarity=" in r for r in h["rationale"])  # sanity
-    assert isinstance(h["breakdown"], list) and len(h["breakdown"]) >= 1
+    assert isinstance(h["breakdown"], list)
+    assert len(h["breakdown"]) >= 1
 
 
 def test_relationship_health_improves_with_positive_traits() -> None:
