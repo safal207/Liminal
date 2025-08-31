@@ -1,0 +1,17 @@
+# Rules configuration file for ZAP full scan
+# Format: <rule id>, <status>, <level>
+10016,IGNORE,WARN   # Including multiple parameters with the same name
+10017,IGNORE,WARN   # Cross-domain JavaScript source file inclusion
+10019,IGNORE,WARN   # Content-Type header missing
+10020,IGNORE,WARN   # X-Frame-Options header not set
+10021,IGNORE,WARN   # X-Content-Type-Options header missing
+10023,IGNORE,WARN   # Information Disclosure - Debug Error Messages
+10024,IGNORE,WARN   # Information Disclosure - Sensitive Information in URL
+10025,IGNORE,WARN   # Information Disclosure - Sensitive Information in HTTP Referrer Header
+10026,IGNORE,WARN   # HTTP Parameter Override
+10027,IGNORE,WARN   # Information Disclosure - Suspicious Comments
+10028,IGNORE,WARN   # Open Redirect
+10029,IGNORE,WARN   # Cookie Poisoning
+10030,IGNORE,WARN   # User Controllable Charset
+10031,IGNORE,WARN   # User Controllable HTML Element Attribute (Potential XSS)
+10032,IGNORE,WARN   # Viewstate without MAC signature (Unsure)
