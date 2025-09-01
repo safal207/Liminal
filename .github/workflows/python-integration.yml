@@ -1,54 +1,52 @@
-name: Python Integration (WS)
+name: Python Integration Tests
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 3 * * *'  # daily at 03:00 UTC
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  integration:
+  build:
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Python 3.11
+    - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: '3.12'
 
-    - name: Install dependencies
+    - name: Cache pip
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt', 'requirements-dev.txt') }}
+
+    - name: Install deps (prod + dev)
       run: |
-        python -m pip install --upgrade pip
         pip install -r requirements.txt
-        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+        pip install -r requirements-dev.txt
+        pip install -e .
+        python -m playwright install --with-deps || true
 
-    - name: Start backend (uvicorn on 8080) and wait readiness
-      env:
-        TESTING: 1
+    - name: Export test env
       run: |
-        export PORT=8080
-        uvicorn backend.api:app --host 0.0.0.0 --port $PORT --factory --log-level info &
-        echo $! > uvicorn.pid
-        for i in {1..60}; do
-          if curl -fsS "http://127.0.0.1:${PORT}/ready" | grep -qi "ready"; then
-            echo "API is ready"
-            break
+        echo "PORT=8080" >> $GITHUB_ENV
+        echo "LIMINAL_DB_BACKEND=mock" >> $GITHUB_ENV
+
+    - name: Run API (background)
+      run: |
+        uvicorn liminal.at_risk_server_neo4j:app --host 0.0.0.0 --port ${{ env.PORT }} &
+        for i in {1..90}; do
+          if curl -fsS "http://127.0.0.1:${PORT}/at-risk"; then
+            echo "API is ready"; break
           fi
           sleep 1
         done
         curl -fsS "http://127.0.0.1:${PORT}/health"
 
-    - name: Run WebSocket integration tests
-      env:
-        TESTING: 1
-        WS_API_URL: http://localhost:8080
-        WS_URL: ws://localhost:8080/ws
+    - name: Run tests (integration/UI)
       run: |
-        # These tests are smoke-level and skip themselves if server is down
-        python -m pytest -v -m integration --maxfail=1 --durations=10
-
-    - name: Stop backend
-      if: always()
-      run: |
-        if [ -f uvicorn.pid ]; then kill $(cat uvicorn.pid) || true; fi
+        pytest -q -m integration

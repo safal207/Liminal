@@ -39,7 +39,10 @@ NEO4J_PASSWORD = os.getenv("LIMINAL_NEO4J_PASSWORD", "NewStrongPass123!")
 
 # ---- State initialization ----
 NEO4J_INIT_ERROR: str | None = None
-if USE_NEO4J:
+if os.getenv("LIMINAL_DB_BACKEND") == "mock":
+    logger.info("Using mock in-memory reality web for CI/testing")
+    WEB = RealityWebInMemory()
+elif USE_NEO4J:
     try:
         logger.info(f"Initializing Neo4j reality web with URI: {NEO4J_URI}")
         WEB = RealityWebNeo4j(uri=NEO4J_URI, user=NEO4J_USER, password=NEO4J_PASSWORD)
