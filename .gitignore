@@ -6,9 +6,10 @@ __pycache__/
 *.so
 .venv/
 venv/
-.env
-.env.*
-backend/.env
+.env.local
+.env.production
+backend/.env.local
+backend/.env.production
 pip-wheel-metadata/
 dist/
 build/
@@ -49,6 +50,10 @@ Thumbs.db
 # Misc
 coverage/
 
+# Разрешаем .env.example файлы (шаблоны)
+!.env.example
+!backend/.env.example
+
 # Temp and backup files
 *.tmp
 .tmp*
@@ -57,3 +62,27 @@ tmp/
 *.swp
 *.orig
 temp_packages/
+
+# Additional cleanup items
+*output*.txt
+*diagnostic*.txt
+*pytest*.txt
+*.whl
+test-*.html
+debug_*.py
+simple_*.py
+
+# ML models and data
+*.pkl
+*.joblib
+models/
+data/cache/
+
+# Neo4j data
+neo4j_data/
+
+# Redis data
+redis_data/
+
+# Grafana data
+grafana_data/
