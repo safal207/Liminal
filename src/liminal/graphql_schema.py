@@ -8,10 +8,7 @@ from strawberry.scalars import JSON
 from .diffusion import InMemoryDiffusion, ModuleState
 from .reality_web import Edge as RWEdge
 from .reality_web import Node as RWNode
-from .reality_web import (
-    RealityWebInMemory,
-    SystemBreath,
-)
+from .reality_web import RealityWebInMemory, SystemBreath
 from .reince import InMemoryREINCE, ResonanceEvent
 
 # ===== Helpers to convert internal models to GraphQL types =====

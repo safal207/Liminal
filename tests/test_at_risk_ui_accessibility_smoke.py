@@ -6,6 +6,7 @@ import time
 from contextlib import contextmanager
 
 import pytest
+
 # Skip these tests gracefully if Playwright is not installed
 pytest.importorskip("playwright.sync_api", reason="playwright not installed")
 from playwright.sync_api import expect, sync_playwright

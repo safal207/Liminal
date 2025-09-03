@@ -32,11 +32,9 @@ async def diagnose_openai_wrapper():
 
         # Attempt importing the wrapper module
         try:
-            from backend.ml.openai_wrapper import (
-                LLMRequest,
-                initialize_llm_client,
-                llm_client,
-            )
+            from backend.ml.openai_wrapper import (LLMRequest,
+                                                   initialize_llm_client,
+                                                   llm_client)
 
             log("✓ Successfully imported openai_wrapper module")
         except ImportError as e:

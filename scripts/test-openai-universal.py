@@ -82,11 +82,9 @@ async def test_universal_adapter(show_response=False, mock_only=False):
     print_section("Universal Adapter Module")
 
     try:
-        from backend.ml.openai_wrapper import (
-            LLMRequest,
-            initialize_llm_client,
-            llm_client,
-        )
+        from backend.ml.openai_wrapper import (LLMRequest,
+                                               initialize_llm_client,
+                                               llm_client)
 
         print_success("Module imported successfully")
 

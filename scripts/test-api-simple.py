@@ -73,11 +73,9 @@ async def main():
     print("\n--- Тестирование openai_wrapper ---")
 
     try:
-        from backend.ml.openai_wrapper import (
-            LLMRequest,
-            initialize_llm_client,
-            llm_client,
-        )
+        from backend.ml.openai_wrapper import (LLMRequest,
+                                               initialize_llm_client,
+                                               llm_client)
 
         print_success("Модуль openai_wrapper успешно импортирован")
 

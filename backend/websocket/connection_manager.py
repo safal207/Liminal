@@ -27,15 +27,11 @@ except Exception:
 # Условный импорт метрик Prometheus
 try:
     from metrics import websocket_rate_limit_total  # Новая метрика
-    from metrics import (
-        connection_limits,
-        connection_rejections,
-        websocket_broadcast_duration_seconds,
-        websocket_connections,
-        websocket_heartbeat_total,
-        websocket_idle_disconnects_total,
-        websocket_messages_total,
-    )
+    from metrics import (connection_limits, connection_rejections,
+                         websocket_broadcast_duration_seconds,
+                         websocket_connections, websocket_heartbeat_total,
+                         websocket_idle_disconnects_total,
+                         websocket_messages_total)
 
     METRICS_ENABLED = True
     logger.info("Prometheus metrics module loaded successfully")

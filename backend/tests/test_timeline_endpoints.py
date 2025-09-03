@@ -29,7 +29,6 @@ mock_neo4j.Neo4jDateTime = Neo4jDateTime
 sys.modules["neo4j_writer"] = mock_neo4j
 
 from api import app, memory_timeline
-
 # Теперь можно импортировать приложение
 from fastapi.testclient import TestClient
 

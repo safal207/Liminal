@@ -1,9 +1,11 @@
 # Integration Tests for API functionality
 # Тесты для проверки интеграции компонентов API
 
-import pytest
 import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+
 from backend.api import app
 from backend.websocket_manager import WebSocketManager
 
@@ -23,7 +25,7 @@ class TestAPIIntegration:
         """Test API and WebSocket integration"""
         with app.test_client() as client:
             # Test WebSocket endpoint exists
-            response = client.get('/ws')
+            response = client.get("/ws")
             # WebSocket endpoint should return upgrade response
             assert response.status_code in [400, 426]  # Bad request or upgrade required
 
@@ -33,7 +35,9 @@ class TestAPIIntegration:
         # Mock user connection
         mock_connection = AsyncMock()
         mock_connection.send = AsyncMock()
-        mock_connection.receive = AsyncMock(return_value='{"type": "message", "content": "Hello"}')
+        mock_connection.receive = AsyncMock(
+            return_value='{"type": "message", "content": "Hello"}'
+        )
 
         # Test connection handling
         connection_id = "test_user_123"
@@ -51,6 +55,7 @@ class TestAPIIntegration:
         # For now, just verify the import works
         try:
             from backend.database_api import DatabaseAPI
+
             api = DatabaseAPI()
             assert api is not None
         except ImportError:
@@ -60,6 +65,7 @@ class TestAPIIntegration:
         """Test ML adapter integration"""
         try:
             from backend.personality.ml_adapter import MLAdapter
+
             adapter = MLAdapter()
             assert adapter is not None
         except ImportError:

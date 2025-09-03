@@ -15,15 +15,11 @@ import unittest
 from unittest.mock import ANY, MagicMock, patch
 
 import requests
-
-# Import the module to test
-from philosophy_websocket_bridge import (
-    CONSCIOUSNESS_STATES,
-    TRANSITION_TRIGGERS,
-    PhilosophyWebSocketBridge,
-)
-
 from neo4j import GraphDatabase
+# Import the module to test
+from philosophy_websocket_bridge import (CONSCIOUSNESS_STATES,
+                                         TRANSITION_TRIGGERS,
+                                         PhilosophyWebSocketBridge)
 
 
 class TestPhilosophyWebSocketBridge(unittest.TestCase):

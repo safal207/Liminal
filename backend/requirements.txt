@@ -1,51 +1,43 @@
-# Resonance-Liminal Backend Dependencies (2025-01-01 v2.0.0-rc1)
-# Синхронизировано с основным requirements.txt
+# Consolidated application dependencies
 
+# Core
 fastapi>=0.95.0
 uvicorn[standard]>=0.21.0
-websockets>=10.4
+websockets>=12.0
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 python-dotenv>=0.21.0
 pydantic>=2.0.0
 aiohttp>=3.8.4
 structlog>=23.1.0
-strawberry-graphql>=0.183.0
-
-# Базы данных
-redis>=4.6.0
-neo4j>=5.5.0
-
-# ML и AI зависимости
-scikit-learn>=1.3.0
-numpy>=1.24.0
-pandas>=2.0.0
-
-# Мониторинг и метрики
-prometheus-client>=0.17.0
-
-# Тестирование
-pytest>=7.0.0
-pytest-asyncio>=0.21.0
-
-# Selenium для автоматизации
-selenium>=4.0.0
-webdriver-manager>=3.8.0
-
-# Утилиты
-loguru>=0.5.3
+strawberry-graphql>=0.205.0
+httpx>=0.24.0
+requests>=2.31.0
+loguru>=0.6.0
 python-multipart>=0.0.5
 async-timeout>=4.0.0
 
-# OpenAI integration - заменено на универсальный адаптер
-# openai>=1.3.0  # Заменено на наш универсальный адаптер
-httpx>=0.24.0  # Для HTTP запросов в адаптере
-requests>=2.31.0  # Для REST API вызовов
+# Databases
+redis>=4.6.0
+neo4j>=5.5.0
+datomic>=1.0.0
 
-# Anthropic Claude integration - опционально
-# anthropic>=0.7.0
-
-# Additional ML utilities
-joblib>=1.3.0
+# ML and AI
+scikit-learn>=1.3.0
+numpy>=1.24.3
+pandas>=2.0.3
+torch>=2.0.0
+transformers>=4.30.0
+nltk>=3.8.1
+joblib>=1.3.1
 onnx>=1.14.0
 onnxruntime>=1.15.0
+pyyaml>=6.0.1
+shap==0.42.1
+lime==0.2.0.1
+
+# Monitoring
+prometheus-client>=0.17.1
+
+# Other
+flask>=2.0.0 # From predictors requirements

@@ -17,7 +17,6 @@ import uuid
 from datetime import datetime
 
 import requests
-
 from neo4j import GraphDatabase
 
 # Create output file

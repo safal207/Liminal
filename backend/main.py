@@ -12,26 +12,18 @@ import time
 from typing import Dict, Optional
 
 import uvicorn
-
 # JWT Authentication imports
 from auth.jwt_utils import jwt_manager
 from fastapi import Depends, FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
-
 # Импорт модуля health check
 from health import router as health_router
 from loguru import logger
-
 # Импорт нашего модуля метрик
-from metrics import (
-    setup_metrics,
-    websocket_auth_total,
-    websocket_connections,
-    websocket_messages_total,
-)
+from metrics import (setup_metrics, websocket_auth_total,
+                     websocket_connections, websocket_messages_total)
 from ml.anomaly_detector import anomaly_detector
-
 # Импорт ML модуля
 from ml.api import router as ml_router
 from ml.feature_extractor import feature_extractor

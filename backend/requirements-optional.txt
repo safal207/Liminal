@@ -1,0 +1,2 @@
+pydatomic==0.1.5
+edn_format==0.7.5

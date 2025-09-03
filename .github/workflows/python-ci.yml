@@ -1,54 +1,51 @@
-name: Python CI
-
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+env:
+  PYTHONUNBUFFERED: "1"
 
 jobs:
-  test:
+  lint-type-test:
     runs-on: ubuntu-latest
-    
-    # Unit tests do not require external services by default
-    
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-    
-    - name: Show requirements files
-      run: |
-        echo "requirements.txt:"
-        cat -n requirements.txt || true
-        echo "requirements-dev.txt:"
-        if [ -f requirements-dev.txt ]; then cat -n requirements-dev.txt; else echo "requirements-dev.txt not found"; fi
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+      - name: Install deps
+        run: |
+          pip install -r backend/requirements.txt
+          pip install -r backend/requirements-dev.txt
 
-    - name: Pre-commit (all files)
-      run: |
-        pre-commit run --all-files --show-diff-on-failure || true
+      - name: Check for dependency conflicts
+        run: |
+          pipdeptree --warn fail
+          pip check
 
-    - name: Lint and format (black, isort, flake8)
-      run: |
-        black --check . || true
-        isort --check-only --profile black . || true
-        flake8 || true
-    
-    - name: Type check (mypy)
-      run: |
-        mypy src tests || true
-    
-    - name: Run unit tests (skip integration)
-      run: |
-        python -m pytest -v --maxfail=1 --durations=10 -m "not integration"
-    
-    # Optional: add coverage in future when structure is stable
+      - name: Lint
+        run: |
+          flake8 .
+          black --check .
+          isort --check-only .
+
+      - name: Type check
+        run: mypy .
+
+      - name: Unit tests (без Datomic)
+        run: pytest -q -m "not datomic" --maxfail=1
+
+  datomic-integration:
+    if: ${{ secrets.DATOMIC_BASE_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install deps + optional
+        run: |
+          pip install -r backend/requirements.txt
+          pip install -r backend/requirements-dev.txt
+          pip install -r backend/requirements-optional.txt
+      - name: Export env
+        run: |
+          echo "DATOMIC_BASE_URL=${{ secrets.DATOMIC_BASE_URL }}" >> $GITHUB_ENV
+          echo "DATOMIC_DB_ALIAS=${{ secrets.DATOMIC_DB_ALIAS }}" >> $GITHUB_ENV
+      - name: Integration tests (datomic)
+        run: pytest -q -m datomic --maxfail=1

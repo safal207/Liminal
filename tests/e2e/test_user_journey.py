@@ -1,12 +1,13 @@
 # End-to-End Tests for User Journeys
 # Тесты для проверки полных пользовательских сценариев
 
-import pytest
 import time
+
+import pytest
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 
 
 class TestUserJourney:
@@ -16,9 +17,9 @@ class TestUserJourney:
     def browser(self):
         """Fixture for browser automation"""
         options = webdriver.ChromeOptions()
-        options.add_argument('--headless')  # Run headless for CI/CD
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument("--headless")  # Run headless for CI/CD
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
 
         driver = webdriver.Chrome(options=options)
         driver.implicitly_wait(10)
@@ -27,19 +28,19 @@ class TestUserJourney:
 
     def test_user_registration_journey(self, browser):
         """Test complete user registration journey"""
-        browser.get('http://localhost:5000')  # Assuming web interface runs on port 5000
+        browser.get("http://localhost:5000")  # Assuming web interface runs on port 5000
 
         # Wait for page to load
         WebDriverWait(browser, 10).until(
-            EC.presence_of_element_located((By.TAG_NAME, 'body'))
+            EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
 
         # Check if we're on the right page
-        assert 'LIMINAL' in browser.title or 'Liminal' in browser.title
+        assert "LIMINAL" in browser.title or "Liminal" in browser.title
 
     def test_emotion_analysis_journey(self, browser):
         """Test emotion analysis user journey"""
-        browser.get('http://localhost:5000')
+        browser.get("http://localhost:5000")
 
         # This would test the complete flow:
         # 1. User inputs text
@@ -52,17 +53,17 @@ class TestUserJourney:
 
     def test_websocket_connection_journey(self, browser):
         """Test WebSocket connection and real-time features"""
-        browser.get('http://localhost:5000')
+        browser.get("http://localhost:5000")
 
         # Test WebSocket connection establishment
         # This would verify real-time communication works
 
         # For now, basic connectivity test
-        assert 'localhost' in browser.current_url
+        assert "localhost" in browser.current_url
 
     def test_responsive_design_journey(self, browser):
         """Test responsive design across different screen sizes"""
-        browser.get('http://localhost:5000')
+        browser.get("http://localhost:5000")
 
         # Test mobile viewport
         browser.set_window_size(375, 667)  # iPhone size

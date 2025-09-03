@@ -6,68 +6,38 @@
 import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-
-from datomic import Client, Connection, Database
+from backend.storage.datomic_adapter import connect, _NoDatomic
 
 
 class DatomicClient:
     """Клиент для работы с Datomic базой данных."""
 
-    def __init__(
-        self,
-        uri: str = "http://localhost:8080",
-        db_name: str = "liminal",
-        storage_type: str = "dev",
-    ):
-        """
-        Инициализация клиента Datomic.
-
-        Args:
-            uri: Адрес сервера Datomic (по умолчанию: http://localhost:8080)
-            db_name: Имя базы данных (по умолчанию: liminal)
-            storage_type: Тип хранилища (по умолчанию: dev)
-        """
-        self.uri = uri
-        self.db_name = db_name
-        self.storage_type = storage_type
+    def __init__(self):
+        """Инициализация клиента Datomic."""
         self.conn = None
+        self.enabled = False
+        try:
+            self.conn = connect()
+            self.enabled = True
+            print("✅ Datomic client initialized successfully.")
+        except _NoDatomic as e:
+            print(f"⚠️ Datomic client is not available: {e}")
 
     def connect(self) -> bool:
         """Подключение к базе данных."""
-        try:
-            client = Client(self.uri, self.db_name, self.storage_type)
-            self.conn = Connection(client)
-            print(f"✅ Успешно подключено к базе данных {self.db_name}")
-            return True
-        except Exception as e:
-            print(f"❌ Ошибка подключения к Datomic: {str(e)}")
-            return False
+        return self.enabled
 
     def create_database(self) -> bool:
         """Создание новой базы данных."""
-        try:
-            client = Client(self.uri, self.db_name, self.storage_type)
-            client.create_database()
-            self.conn = Connection(client)
-            print(f"✅ База данных {self.db_name} успешно создана")
-            return True
-        except Exception as e:
-            print(f"❌ Ошибка при создании базы данных: {str(e)}")
+        if not self.enabled:
             return False
+        print("⚠️ create_database is not implemented in the adapter.")
+        return False
 
     def transact(self, data: List[Dict]) -> Dict:
-        """
-        Выполнение транзакции.
-
-        Args:
-            data: Список словарей с данными для транзакции
-
-        Returns:
-            Результат выполнения транзакции
-        """
-        if not self.conn:
-            raise ConnectionError("Сначала подключитесь к базе данных")
-
+        """Выполнение транзакции."""
+        if not self.enabled or not self.conn:
+            raise ConnectionError("Datomic client is not connected.")
         try:
             result = self.conn.transact(data)
             print("✅ Транзакция успешно выполнена")
@@ -77,19 +47,9 @@ class DatomicClient:
             raise
 
     def query(self, query: str, params: Optional[Dict] = None) -> List[Dict]:
-        """
-        Выполнение запроса к базе данных.
-
-        Args:
-            query: Datalog запрос в виде строки
-            params: Параметры запроса
-
-        Returns:
-            Список результатов запроса
-        """
-        if not self.conn:
-            raise ConnectionError("Сначала подключитесь к базе данных")
-
+        """Выполнение запроса к базе данных."""
+        if not self.enabled or not self.conn:
+            raise ConnectionError("Datomic client is not connected.")
         try:
             db = self.conn.db()
             if params:
@@ -108,21 +68,11 @@ class DatomicClient:
         intensity: float,
         timestamp: Optional[datetime] = None,
     ) -> Dict:
-        """
-        Добавление записи об эмоции.
-
-        Args:
-            user_id: ID пользователя
-            emotion: Название эмоции
-            intensity: Интенсивность эмоции (от 0.0 до 1.0)
-            timestamp: Временная метка (по умолчанию текущее время)
-
-        Returns:
-            Результат транзакции
-        """
+        """Добавление записи об эмоции."""
+        if not self.enabled:
+            return {}
         if not timestamp:
             timestamp = datetime.utcnow()
-
         data = [
             {
                 "db/id": "emotion-temp",
@@ -132,20 +82,12 @@ class DatomicClient:
                 "entry/timestamp": timestamp,
             }
         ]
-
         return self.transact(data)
 
     def get_emotion_history(self, user_id: str, limit: int = 100) -> List[Dict]:
-        """
-        Получение истории эмоций пользователя.
-
-        Args:
-            user_id: ID пользователя
-            limit: Максимальное количество записей
-
-        Returns:
-            Список записей об эмоциях
-        """
+        """Получение истории эмоций пользователя."""
+        if not self.enabled:
+            return []
         query = """
         [:find ?e ?emotion ?intensity ?timestamp
          :in $ ?user ?limit
@@ -155,9 +97,7 @@ class DatomicClient:
          [?e :entry/intensity ?intensity]
          [?e :entry/timestamp ?timestamp]]
         """
-
         results = self.query(query, {"?user": user_id, "?limit": limit})
-
         return [
             {
                 "id": str(r[0]),
@@ -176,29 +116,17 @@ class DatomicClient:
             print("🔌 Соединение с базой данных закрыто")
 
 
-# Пример использования
 if __name__ == "__main__":
-    # Инициализация клиента
     client = DatomicClient()
-
-    try:
-        # Подключение к существующей базе данных или создание новой
-        if not client.connect():
-            print("Попытка создать новую базу данных...")
-            client.create_database()
-
-        # Пример добавления записи
-        result = client.add_emotion_entry(
-            user_id="user-123", emotion="радость", intensity=0.8
-        )
-        print(f"Добавлена запись: {result}")
-
-        # Пример запроса истории
-        history = client.get_emotion_history("user-123")
-        print(f"История эмоций: {history}")
-
-    except Exception as e:
-        print(f"Произошла ошибка: {str(e)}")
-    finally:
-        # Всегда закрываем соединение
-        client.close()
+    if client.connect():
+        try:
+            result = client.add_emotion_entry(
+                user_id="user-123", emotion="радость", intensity=0.8
+            )
+            print(f"Добавлена запись: {result}")
+            history = client.get_emotion_history("user-123")
+            print(f"История эмоций: {history}")
+        except Exception as e:
+            print(f"Произошла ошибка: {str(e)}")
+        finally:
+            client.close()

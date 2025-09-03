@@ -18,13 +18,9 @@ from redis.exceptions import ConnectionError, RedisError
 
 # Условный импорт метрик Prometheus
 try:
-    from metrics import (
-        redis_connection_status,
-        redis_errors_total,
-        redis_operation_duration_seconds,
-        redis_operations_total,
-        redis_pubsub_messages_total,
-    )
+    from metrics import (redis_connection_status, redis_errors_total,
+                         redis_operation_duration_seconds,
+                         redis_operations_total, redis_pubsub_messages_total)
 
     METRICS_ENABLED = True
     logger.info("Prometheus Redis metrics module loaded successfully")

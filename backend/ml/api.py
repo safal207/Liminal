@@ -10,19 +10,12 @@ from loguru import logger
 from pydantic import BaseModel
 
 from .anomaly_detector import anomaly_detector
-from .claude_service import (
-    ClaudeAnalysisRequest,
-    ClaudeAnalysisResponse,
-    claude_service,
-)
+from .claude_service import (ClaudeAnalysisRequest, ClaudeAnalysisResponse,
+                             claude_service)
 from .feature_extractor import feature_extractor
 from .model_manager import model_manager
-from .multi_llm_orchestrator import (
-    LLMProvider,
-    MultiLLMRequest,
-    TaskType,
-    multi_llm_orchestrator,
-)
+from .multi_llm_orchestrator import (LLMProvider, MultiLLMRequest, TaskType,
+                                     multi_llm_orchestrator)
 from .openai_service import AnalysisRequest, AnalysisResponse, openai_service
 from .xai_service import ExplanationResult, xai_service
 

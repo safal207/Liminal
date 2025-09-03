@@ -5,12 +5,8 @@
 import json
 from datetime import datetime
 
-from consciousness_schema import (
-    PHILOSOPHICAL_THRESHOLDS,
-    ConsciousnessNode,
-    ConsciousnessState,
-    TransitionTrigger,
-)
+from consciousness_schema import (PHILOSOPHICAL_THRESHOLDS, ConsciousnessNode,
+                                  ConsciousnessState, TransitionTrigger)
 
 
 def test_consciousness_node():

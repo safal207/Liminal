@@ -13,7 +13,8 @@ import sys
 from datetime import datetime
 from typing import Any, Dict
 
-from consciousness_neo4j import ConsciousnessEventProcessor, ConsciousnessNeo4jWriter
+from consciousness_neo4j import (ConsciousnessEventProcessor,
+                                 ConsciousnessNeo4jWriter)
 
 
 def print_styled(title, content, style="info"):
@@ -158,12 +159,8 @@ def simulate_transition_example(writer):
     """Создание примера перехода для тестирования"""
     import uuid
 
-    from consciousness_schema import (
-        ConsciousnessNode,
-        ConsciousnessState,
-        StateTransition,
-        TransitionTrigger,
-    )
+    from consciousness_schema import (ConsciousnessNode, ConsciousnessState,
+                                      StateTransition, TransitionTrigger)
 
     print_styled("СИМУЛЯЦИЯ ПЕРЕХОДА СОЗНАНИЯ", "", "header")
 

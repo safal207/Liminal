@@ -7,7 +7,6 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Request, status
 from loguru import logger
-
 # Импортируем наш кастомный RedisClient и DummyRedis для определения деградации
 from redis_client import DummyRedis, RedisClient
 

@@ -49,13 +49,9 @@ except ImportError:
 # Импорт адаптера и логгера
 try:
     from backend.ml.adapter_logger import adapter_logger
-    from backend.ml.openai_wrapper import (
-        LLMRequest,
-        LLMResponse,
-        get_adapter_status,
-        initialize_llm_client,
-        llm_client,
-    )
+    from backend.ml.openai_wrapper import (LLMRequest, LLMResponse,
+                                           get_adapter_status,
+                                           initialize_llm_client, llm_client)
 
     logger.info("Успешно импортированы модули адаптера и логгера")
 except ImportError as e:

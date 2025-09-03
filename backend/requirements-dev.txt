@@ -1,20 +1,23 @@
-# Основные зависимости
--r requirements.txt
+# Consolidated development and testing dependencies
 
-# Тестирование
-pytest>=7.0.0
-pytest-cov>=4.0.0
-pytest-asyncio>=0.18.0
-pytest-mock>=3.10.0
-pytest-benchmark>=4.0.0
-httpx>=0.23.0
+# Testing
+pytest>=8.2
+pytest-asyncio>=0.23
+anyio>=4.5
+selenium>=4.0.0
+webdriver-manager>=3.8.0
 
-# Линтинг
-black>=22.0.0
-isort>=5.10.0
-flake8>=4.0.0
-mypy>=0.910
+# Linters and formatters
+black>=24.4
+isort>=5.13
+flake8>=7.0
+flake8-bugbear>=24.4
 
-# Документация
-mkdocs>=1.3.0
-mkdocs-material>=8.0.0
+# Type checking
+mypy>=1.10
+
+# Pre-commit
+pre-commit>=3.7
+
+# Dependency analysis
+pipdeptree==2.24.0

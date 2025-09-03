@@ -11,12 +11,8 @@ from datetime import datetime
 
 import requests
 from consciousness_neo4j import ConsciousnessNeo4jWriter
-from consciousness_schema import (
-    ConsciousnessNode,
-    ConsciousnessState,
-    StateTransition,
-    TransitionTrigger,
-)
+from consciousness_schema import (ConsciousnessNode, ConsciousnessState,
+                                  StateTransition, TransitionTrigger)
 
 
 def create_emotion_transition_path(

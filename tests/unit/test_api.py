@@ -1,8 +1,10 @@
 # Unit Tests for API functionality
 # Тесты для проверки отдельных функций API
 
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
+
 from backend.api import app
 
 
@@ -12,16 +14,16 @@ class TestAPIUnit:
     def test_health_endpoint(self):
         """Test health endpoint returns 200"""
         with app.test_client() as client:
-            response = client.get('/health')
+            response = client.get("/health")
             assert response.status_code == 200
-            assert b'OK' in response.data
+            assert b"OK" in response.data
 
     def test_websocket_connection_unit(self):
         """Test WebSocket connection establishment (unit level)"""
         # Mock WebSocket connection for unit testing
         mock_ws = Mock()
         mock_ws.send = Mock()
-        mock_ws.receive = Mock(return_value='test_message')
+        mock_ws.receive = Mock(return_value="test_message")
 
         # Test connection logic without actual network
         assert mock_ws is not None

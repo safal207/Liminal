@@ -105,13 +105,12 @@ with open(log_file, "w", encoding="utf-8") as f:
                     try:
                         import uuid
 
-                        from consciousness_neo4j import ConsciousnessNeo4jWriter
-                        from consciousness_schema import (
-                            ConsciousnessNode,
-                            ConsciousnessState,
-                            StateTransition,
-                            TransitionTrigger,
-                        )
+                        from consciousness_neo4j import \
+                            ConsciousnessNeo4jWriter
+                        from consciousness_schema import (ConsciousnessNode,
+                                                          ConsciousnessState,
+                                                          StateTransition,
+                                                          TransitionTrigger)
 
                         writer = ConsciousnessNeo4jWriter(
                             uri=uri, user=user, password=password

@@ -21,16 +21,10 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 # Import Neo4j components
 try:
-    from consciousness_neo4j import (
-        ConsciousnessEventProcessor,
-        ConsciousnessNeo4jWriter,
-    )
-    from consciousness_schema import (
-        ConsciousnessNode,
-        ConsciousnessState,
-        StateTransition,
-        TransitionTrigger,
-    )
+    from consciousness_neo4j import (ConsciousnessEventProcessor,
+                                     ConsciousnessNeo4jWriter)
+    from consciousness_schema import (ConsciousnessNode, ConsciousnessState,
+                                      StateTransition, TransitionTrigger)
 except ImportError as e:
     print(f"Error importing modules: {e}")
     print("Make sure all required modules are installed")

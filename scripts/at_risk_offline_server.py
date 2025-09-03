@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-
 # Make src importable when running from repo root
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
