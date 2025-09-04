@@ -22,15 +22,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from endocrine import thyroid
-from flask import (
-    Flask,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    send_from_directory,
-    url_for,
-)
+from flask import (Flask, jsonify, redirect, render_template, request,
+                   send_from_directory, url_for)
 
 # Для тестирования создаем заглушку вместо adapter_logger
 # В production версии здесь будет импорт реального adapter_logger
@@ -574,4 +567,6 @@ def serve_static(path):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    # Используем переменную окружения для debug режима
+    debug_mode = os.getenv('DEBUG', 'false').lower() == 'true'
+    app.run(debug=debug_mode, host="0.0.0.0", port=5000)

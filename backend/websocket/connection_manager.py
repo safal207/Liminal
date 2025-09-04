@@ -128,9 +128,14 @@ class ConnectionManager:
             connection_limits.labels(type="max_total").set(self.max_connections)
             connection_limits.labels(type="max_per_ip").set(self.max_connections_per_ip)
 
-        # Загружаем Lua-скрипт для Rate Limiting (только если доступен Redis)
+        # Lua-скрипт будет загружен при инициализации
+
+    async def initialize(self):
+        """
+        Инициализирует асинхронные компоненты, такие как загрузка Lua-скриптов.
+        """
         if self.redis_client is not None:
-            asyncio.create_task(self._load_rate_limit_script())
+            await self._load_rate_limit_script()
 
     async def connect(self, websocket: WebSocket, user_id: str):
         """Регистрирует новое подключение пользователя."""

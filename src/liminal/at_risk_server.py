@@ -5,12 +5,8 @@ from typing import Any, List
 
 try:
     from starlette.applications import Starlette
-    from starlette.responses import (
-        HTMLResponse,
-        JSONResponse,
-        PlainTextResponse,
-        RedirectResponse,
-    )
+    from starlette.responses import (HTMLResponse, JSONResponse,
+                                     PlainTextResponse, RedirectResponse)
     from starlette.routing import Mount, Route
 except Exception as e:  # pragma: no cover
     raise SystemExit(f"Starlette is required for this server: {e}")
@@ -528,12 +524,12 @@ async def at_risk(request) -> HTMLResponse:
     # Substitute placeholders
     html = html.replace("__LIMIT__", str(limit))
     html = html.replace("__THRESH__", os.getenv("LIMINAL_HEALTH_THRESHOLD", "0.4"))
-    
+
     # GraphQL status message
     if _graphql_app is not None:
         graphql_status = 'available at <a href="/graphql">/graphql</a>'
     else:
-        graphql_status = 'not available in offline mode'
+        graphql_status = "not available in offline mode"
     html = html.replace("__GRAPHQL_STATUS__", graphql_status)
     return HTMLResponse(html)
 
@@ -579,8 +575,12 @@ async def favicon(request):
     """Simple favicon response to avoid 404"""
     # Return a simple 1x1 transparent PNG as favicon
     import base64
-    tiny_png = base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==")
+
+    tiny_png = base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    )
     return Response(tiny_png, media_type="image/png")
+
 
 routes = [
     # Redirect root to main UI
@@ -600,6 +600,10 @@ routes = [
     ),
 ]
 
-app = Starlette(debug=True, routes=routes)
+import os
+
+# Используем переменную окружения для debug режима
+debug_mode = os.getenv('DEBUG', 'false').lower() == 'true'
+app = Starlette(debug=debug_mode, routes=routes)
 
 # For uvicorn: uvicorn liminal.at_risk_server:app --reload --port 8000
