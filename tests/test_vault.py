@@ -1,5 +1,6 @@
 """Тесты для Vault клиента."""
 import pytest
+pytest.importorskip("hvac", reason="Vault client requires hvac package")
 from unittest.mock import MagicMock, patch
 
 from backend.vault_client import VaultClient, VaultConfig, get_vault_client
@@ -83,12 +84,13 @@ def test_vault_client_error_handling(vault_client, mock_hvac_client):
 async def test_initialize_vault(vault_client):
     """Тест инициализации Vault."""
     from backend.vault_client import initialize_vault
-    
+
     # Мокаем метод write_secret
     vault_client.write_secret = MagicMock()
-    
+
     # Тест
-    await initialize_vault()
+    with patch("backend.vault_client.get_vault_client", return_value=vault_client):
+        await initialize_vault()
     
     # Проверяем, что все необходимые секреты были созданы
     calls = vault_client.write_secret.call_args_list

@@ -1,16 +1,90 @@
 """Тесты для системы RBAC."""
 import pytest
-from fastapi import HTTPException
+pytest.importorskip("hvac", reason="RBAC tests rely on Vault client dependencies")
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
 from backend.rbac import (
     Role,
     Permission,
     Resource,
+    User,
     check_permission,
+    get_current_user,
+    oauth2_scheme,
     rbac_matrix,
-    User
+    require_permission,
 )
+
+
+@pytest.fixture
+def admin_token() -> str:
+    """Токен администратора."""
+    return "admin-token"
+
+
+@pytest.fixture
+def user_token() -> str:
+    """Токен обычного пользователя."""
+    return "user-token"
+
+
+@pytest.fixture
+def app(admin_token: str, user_token: str) -> FastAPI:
+    """Минимальное приложение FastAPI с RBAC-декораторами для тестов."""
+    test_app = FastAPI()
+
+    async def override_current_user(
+        security_scopes,
+        token: str = Depends(oauth2_scheme),
+    ) -> User:
+        users = {
+            admin_token: User(username="admin", role=Role.ADMIN, disabled=False),
+            user_token: User(username="user", role=Role.USER, disabled=False),
+        }
+
+        user = users.get(token)
+        if user is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        return user
+
+    test_app.dependency_overrides[get_current_user] = override_current_user
+
+    @test_app.get("/api/system/settings")
+    @require_permission(Resource.SYSTEM, Permission.WRITE)
+    async def system_settings():
+        return {"status": "ok"}
+
+    @test_app.post("/api/users", status_code=201)
+    @require_permission(Resource.USERS, Permission.WRITE)
+    async def create_user():
+        return {"status": "created"}
+
+    @test_app.get("/api/ml/models")
+    @require_permission(Resource.ML_MODELS, Permission.READ)
+    async def list_models():
+        return {"models": []}
+
+    @test_app.post("/api/ml/models")
+    @require_permission(Resource.ML_MODELS, Permission.WRITE)
+    async def create_model():
+        return {"status": "created"}
+
+    yield test_app
+
+    test_app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def client(app: FastAPI) -> TestClient:
+    """Тестовый клиент FastAPI."""
+    with TestClient(app) as test_client:
+        yield test_client
 
 def test_rbac_matrix():
     """Тест матрицы прав доступа."""
@@ -76,23 +150,21 @@ def test_permission_checking():
     assert not check_permission(Resource.SYSTEM, Permission.WRITE, user)
 
 @pytest.mark.asyncio
-async def test_require_permission_decorator(client: TestClient):
+async def test_require_permission_decorator(client: TestClient, user_token: str):
     """Тест декоратора проверки прав."""
-    from backend.api import app
-    from backend.rbac import require_permission
-    
-    @app.get("/test-endpoint")
-    @require_permission(Resource.ML_MODELS, Permission.READ)
-    async def test_endpoint():
-        return {"message": "success"}
-    
-    # Тест с токеном пользователя
+
     response = client.get(
-        "/test-endpoint",
-        headers={"Authorization": f"Bearer {user_token}"}
+        "/api/ml/models",
+        headers={"Authorization": f"Bearer {user_token}"},
     )
     assert response.status_code == 200
-    
-    # Тест без токена
-    response = client.get("/test-endpoint")
+
+    response = client.post(
+        "/api/ml/models",
+        headers={"Authorization": f"Bearer {user_token}"},
+        json={"name": "test_model"},
+    )
+    assert response.status_code == 403
+
+    response = client.get("/api/ml/models")
     assert response.status_code == 401

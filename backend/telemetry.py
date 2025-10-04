@@ -1,4 +1,5 @@
 """OpenTelemetry configuration and utilities."""
+import asyncio
 import os
 from functools import wraps
 from typing import Callable, TypeVar

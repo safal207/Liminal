@@ -157,7 +157,7 @@ async def get_current_user(
         token_scopes = payload.get("scopes", [])
         role = Role(payload.get("role", Role.USER))
         token_data = TokenData(username=username, scopes=token_scopes, role=role)
-    except (JWTError, ValidationError):
+    except (JWTError, ValidationError, ValueError):
         raise credentials_exception
         
     # Здесь должна быть логика получения пользователя из БД
