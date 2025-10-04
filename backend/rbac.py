@@ -214,18 +214,28 @@ def require_permission(resource: Resource, permission: Permission):
         async def wrapper(
             *, user: User = Depends(_permission_dependency), **kwargs,
         ):
-            return await func(**kwargs)
+            call_kwargs = dict(kwargs)
+            if "user" in signature.parameters:
+                call_kwargs["user"] = user
+            return await func(**call_kwargs)
 
-        wrapper.__signature__ = signature.replace(
-            parameters=[
-                *signature.parameters.values(),
+        parameters = list(signature.parameters.values())
+        if "user" in signature.parameters:
+            user_param = signature.parameters["user"]
+            user_index = parameters.index(user_param)
+            parameters[user_index] = user_param.replace(
+                default=Depends(_permission_dependency)
+            )
+        else:
+            parameters.append(
                 inspect.Parameter(
                     "user",
                     kind=inspect.Parameter.KEYWORD_ONLY,
                     default=Depends(_permission_dependency),
-                ),
-            ]
-        )
+                )
+            )
+
+        wrapper.__signature__ = signature.replace(parameters=parameters)
 
         return wrapper
 
