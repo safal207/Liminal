@@ -267,16 +267,21 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
                     await websocket.send_json(
                         {"type": "auth_success", "message": msg}
                     )
+                    await handle_websocket_messages(websocket, user_id)
+                    return
         if not authenticated:
             msg = "Необходима аутентификация. Отправьте JWT токен."
             await websocket.send_json(
                 {"type": "auth_required", "message": msg}
             )
             auth_data = await websocket.receive_text()
-        else:
-            auth_data = None
-        try:
-            auth_message = json.loads(auth_data)
+            try:
+                auth_message = json.loads(auth_data)
+            except (json.JSONDecodeError, TypeError):
+                await connection_manager.reject_connection(
+                    websocket, "Invalid JSON format"
+                )
+                return
             if auth_message.get("type") == "auth" and "token" in auth_message:
                 token = auth_message["token"]
                 user_id = verify_websocket_token(token)
@@ -303,10 +308,6 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
                 await connection_manager.reject_connection(
                     websocket, "Invalid auth message format"
                 )
-        except (json.JSONDecodeError, AttributeError):
-            await connection_manager.reject_connection(
-                websocket, "Invalid JSON format"
-            )
     except WebSocketDisconnect:
         if authenticated and user_id:
             await memory_timeline.unsubscribe(websocket)
