@@ -1,6 +1,24 @@
 """Тесты для Vault клиента."""
+import sys
+import types
+
 import pytest
 from unittest.mock import MagicMock, patch
+
+if "hvac" not in sys.modules:  # pragma: no cover - ветка зависит от окружения
+    try:
+        import hvac  # type: ignore
+    except ModuleNotFoundError:  # pragma: no cover - среда без hvac
+        hvac_stub = types.ModuleType("hvac")
+
+        class _VaultError(Exception):
+            """Заглушка для исключения hvac."""
+
+            pass
+
+        hvac_stub.Client = object()
+        hvac_stub.exceptions = types.SimpleNamespace(VaultError=_VaultError)
+        sys.modules["hvac"] = hvac_stub
 
 from backend.vault_client import VaultClient, VaultConfig, get_vault_client
 
@@ -83,12 +101,13 @@ def test_vault_client_error_handling(vault_client, mock_hvac_client):
 async def test_initialize_vault(vault_client):
     """Тест инициализации Vault."""
     from backend.vault_client import initialize_vault
-    
+
     # Мокаем метод write_secret
     vault_client.write_secret = MagicMock()
-    
+
     # Тест
-    await initialize_vault()
+    with patch("backend.vault_client.get_vault_client", return_value=vault_client):
+        await initialize_vault()
     
     # Проверяем, что все необходимые секреты были созданы
     calls = vault_client.write_secret.call_args_list

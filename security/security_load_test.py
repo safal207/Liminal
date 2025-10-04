@@ -8,7 +8,9 @@ from typing import List, Optional
 
 import aiohttp
 import pytest
-from locust import HttpUser, TaskSet, between, task
+
+pytest.importorskip("locust", reason="Security load tests require locust to be installed")
+from locust import HttpUser, between, task
 
 # Тестовые данные
 SQL_INJECTION_PAYLOADS = [

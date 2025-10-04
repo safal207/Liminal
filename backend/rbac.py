@@ -1,5 +1,7 @@
 """RBAC система для Liminal."""
+import inspect
 from enum import Enum
+from functools import wraps
 from typing import Dict, List, Optional, Set
 
 from fastapi import Depends, HTTPException, Security, status
@@ -157,7 +159,7 @@ async def get_current_user(
         token_scopes = payload.get("scopes", [])
         role = Role(payload.get("role", Role.USER))
         token_data = TokenData(username=username, scopes=token_scopes, role=role)
-    except (JWTError, ValidationError):
+    except (JWTError, ValidationError, ValueError):
         raise credentials_exception
         
     # Здесь должна быть логика получения пользователя из БД
@@ -194,13 +196,37 @@ def check_permission(
 # Декоратор для проверки прав доступа
 def require_permission(resource: Resource, permission: Permission):
     """Декоратор для проверки прав доступа."""
+
+    async def _permission_dependency(
+        user: User = Security(get_current_user, scopes=["user"])
+    ) -> User:
+        if not check_permission(resource, permission, user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions",
+            )
+        return user
+
     def decorator(func):
-        async def wrapper(*args, user: User = Security(get_current_user, scopes=["user"]), **kwargs):
-            if not check_permission(resource, permission, user):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Not enough permissions",
-                )
-            return await func(*args, user=user, **kwargs)
+        signature = inspect.signature(func)
+
+        @wraps(func)
+        async def wrapper(
+            *, user: User = Depends(_permission_dependency), **kwargs,
+        ):
+            return await func(**kwargs)
+
+        wrapper.__signature__ = signature.replace(
+            parameters=[
+                *signature.parameters.values(),
+                inspect.Parameter(
+                    "user",
+                    kind=inspect.Parameter.KEYWORD_ONLY,
+                    default=Depends(_permission_dependency),
+                ),
+            ]
+        )
+
         return wrapper
+
     return decorator

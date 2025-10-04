@@ -1,6 +1,13 @@
 """Фаззинг-тесты для критических компонентов."""
 import sys
-from pythonfuzz.main import PythonFuzz
+
+import pytest
+
+pythonfuzz_main = pytest.importorskip(
+    "pythonfuzz.main",
+    reason="Fuzz tests require pythonfuzz to be installed",
+)
+PythonFuzz = pythonfuzz_main.PythonFuzz
 
 from backend.rbac import RBACMatrix, Role, Permission, Resource
 from backend.vault_client import VaultClient, VaultConfig

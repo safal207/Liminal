@@ -5,7 +5,6 @@ import socket
 from datetime import datetime
 from typing import Any, Dict, Optional
 
-import requests
 from elasticsearch import Elasticsearch
 from pydantic import BaseModel
 
@@ -37,20 +36,40 @@ class ELKLogger:
         """Инициализация логгера."""
         self.logstash_host = logstash_host
         self.logstash_port = logstash_port
-        
+
+        # Настройка стандартного логгера
+        self.logger = logging.getLogger("security")
+        self.logger.setLevel(logging.INFO)
+
         # Настройка Elasticsearch
         self.es = Elasticsearch(
             [f"http://{elasticsearch_host}:{elasticsearch_port}"],
             basic_auth=(elasticsearch_user, elasticsearch_password)
         )
-        
-        # Настройка TCP соединения для Logstash
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.connect((logstash_host, logstash_port))
-        
-        # Настройка стандартного логгера
-        self.logger = logging.getLogger("security")
-        self.logger.setLevel(logging.INFO)
+
+        # Настройка TCP соединения для Logstash выполняется лениво
+        self._socket_factory = lambda: socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock: Optional[socket.socket] = None
+
+    def _ensure_socket(self) -> None:
+        """Подключение к Logstash при необходимости."""
+        if self.sock is not None:
+            return
+
+        try:
+            sock = self._socket_factory()
+            sock.settimeout(5)
+            sock.connect((self.logstash_host, self.logstash_port))
+        except OSError as exc:
+            self.logger.warning(
+                "Unable to connect to Logstash at %s:%s: %s",
+                self.logstash_host,
+                self.logstash_port,
+                exc,
+            )
+        else:
+            sock.settimeout(None)
+            self.sock = sock
 
     def log_security_event(self, event: SecurityEvent) -> None:
         """Логирование события безопасности."""
@@ -58,7 +77,20 @@ class ELKLogger:
             # Отправка в Logstash
             event_dict = event.dict()
             event_dict["type"] = "security"
-            self.sock.send(json.dumps(event_dict).encode() + b'\n')
+
+            self._ensure_socket()
+            if self.sock is not None:
+                try:
+                    self.sock.send(json.dumps(event_dict).encode() + b"\n")
+                except OSError as exc:
+                    self.logger.warning(
+                        "Lost connection to Logstash at %s:%s: %s",
+                        self.logstash_host,
+                        self.logstash_port,
+                        exc,
+                    )
+                    self.sock.close()
+                    self.sock = None
             
             # Сохранение в Elasticsearch
             if event.severity in ["ERROR", "CRITICAL"]:
@@ -150,7 +182,9 @@ class ELKLogger:
 
     def close(self) -> None:
         """Закрытие соединений."""
-        self.sock.close()
+        if self.sock is not None:
+            self.sock.close()
+            self.sock = None
 
 
 # Глобальный экземпляр логгера

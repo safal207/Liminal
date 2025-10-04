@@ -1,10 +1,47 @@
 """Модуль для работы с HashiCorp Vault."""
+import importlib
 import os
 from functools import lru_cache
 from typing import Dict, Optional
 
-import hvac
+try:  # pragma: no cover - тонкая проверка импорта
+    import hvac  # type: ignore
+except ModuleNotFoundError:  # pragma: no cover - зависит от окружения
+    hvac = None  # type: ignore
+
 from pydantic import BaseModel
+
+
+class VaultUnavailableError(RuntimeError):
+    """Исключение при отсутствии клиента Vault."""
+
+    def __init__(self) -> None:
+        super().__init__(
+            "hvac library is required to interact with Vault. "
+            "Install the optional dependency or override get_vault_client() "
+            "with a test double."
+        )
+
+
+class _FallbackVaultError(Exception):
+    """Запасной тип исключения при отсутствии hvac."""
+
+
+if hvac is not None:  # pragma: no branch - выбираем тип исключения
+    VaultError = hvac.exceptions.VaultError  # type: ignore[attr-defined]
+else:  # pragma: no cover - используется только без hvac
+    VaultError = _FallbackVaultError
+
+
+def _ensure_hvac_available():
+    """Гарантирует наличие клиента hvac, подгружая его при необходимости."""
+
+    global hvac, VaultError
+    if hvac is None:  # pragma: no branch - проверяем только при отсутствии
+        hvac = importlib.import_module("hvac")  # type: ignore[assignment]
+        VaultError = getattr(  # type: ignore[assignment]
+            hvac.exceptions, "VaultError", _FallbackVaultError  # type: ignore[attr-defined]
+        )
 
 
 class VaultConfig(BaseModel):
@@ -21,6 +58,9 @@ class VaultClient:
     def __init__(self, config: Optional[VaultConfig] = None):
         """Инициализация клиента."""
         self.config = config or VaultConfig()
+        _ensure_hvac_available()
+        if hvac is None:  # pragma: no cover - защита на случай неудачного импорта
+            raise VaultUnavailableError()
         self.client = hvac.Client(
             url=self.config.url,
             token=self.config.token
@@ -38,8 +78,10 @@ class VaultClient:
                 mount_point=self.config.mount_point
             )
             return secret["data"]["data"]
-        except hvac.exceptions.VaultError as e:
+        except VaultError as e:
             raise ValueError(f"Ошибка при чтении секрета: {e}")
+        except Exception as e:  # pragma: no cover - защита для тестовых заглушек
+            raise ValueError(f"Ошибка при чтении секрета: {e}") from e
 
     def write_secret(self, path: str, data: Dict) -> None:
         """Запись секрета."""
@@ -49,8 +91,10 @@ class VaultClient:
                 secret=data,
                 mount_point=self.config.mount_point
             )
-        except hvac.exceptions.VaultError as e:
+        except VaultError as e:
             raise ValueError(f"Ошибка при записи секрета: {e}")
+        except Exception as e:  # pragma: no cover - защита для тестовых заглушек
+            raise ValueError(f"Ошибка при записи секрета: {e}") from e
 
     def delete_secret(self, path: str) -> None:
         """Удаление секрета."""
@@ -59,8 +103,10 @@ class VaultClient:
                 path=self._get_full_path(path),
                 mount_point=self.config.mount_point
             )
-        except hvac.exceptions.VaultError as e:
+        except VaultError as e:
             raise ValueError(f"Ошибка при удалении секрета: {e}")
+        except Exception as e:  # pragma: no cover - защита для тестовых заглушек
+            raise ValueError(f"Ошибка при удалении секрета: {e}") from e
 
 
 @lru_cache()
