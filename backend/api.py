@@ -247,11 +247,14 @@ async def startup_event():
     # поэтому здесь только логируем это
     logger.info("Prometheus metrics already initialized")
 
-    # Инициализация Redis соединения, если используется RedisConnectionManager
-    if os.environ.get("USE_REDIS", "false").lower() == "true":
-        if hasattr(connection_manager, "initialize"):
-            redis_initialized = await connection_manager.initialize()
-            logger.info(f"Redis connection initialized: {redis_initialized}")
+    # Инициализация менеджера соединений (Redis или стандартного)
+    if hasattr(connection_manager, "initialize"):
+        initialized = await connection_manager.initialize()
+        # Логируем в зависимости от типа менеджера для ясности
+        if "redis" in connection_manager.__class__.__name__.lower():
+            logger.info(f"Redis connection manager initialized: {initialized}")
+        else:
+            logger.info(f"Standard connection manager initialized: {initialized}")
 
 
 @app.on_event("shutdown")
@@ -786,8 +789,7 @@ async def health_check():
 async def readiness_check():
     """Readiness probe: проверка готовности приложения обрабатывать запросы.
 
-    Не требует внешних сетевых зависимостей; учитывает только наличие цикла событий
-    и базовую инициализацию компонентов. Полезно для Kubernetes/Compose readinessProbe.
+    Проверяет базовую работоспособность и статус критических зависимостей (например, Redis).
     """
     try:
         # Внутри обработчика запроса цикл событий должен быть доступен
@@ -796,8 +798,9 @@ async def readiness_check():
     except RuntimeError:
         loop_ok = False
 
-    redis_cfg = hasattr(connection_manager, "redis")
-    redis_ok = connection_manager.redis is not None if redis_cfg else True
+    # Проверяем, используется ли Redis и каков статус подключения
+    redis_cfg = hasattr(connection_manager, "_is_connected")
+    redis_ok = connection_manager._is_connected if redis_cfg else True
 
     checks = {
         "app_loaded": True,
@@ -807,8 +810,12 @@ async def readiness_check():
         "ml_enabled": ML_ENABLED,
     }
 
-    # Готовность определяем по базовым условиям; внешние сервисы опциональны
+    # Готовность определяется базовыми условиями
     ready = checks["app_loaded"] and checks["event_loop"]
+
+    # Если Redis сконфигурирован, он ДОЛЖЕН быть подключен для полной готовности
+    if redis_cfg:
+        ready = ready and checks["redis_connected"]
 
     return {
         "ready": ready,

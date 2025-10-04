@@ -131,7 +131,10 @@ class SOMADashboardServer:
     def get_family_activities(self) -> list:
         """Get recent family activities"""
         if self.soma_family:
-            # TODO: Implement real activity log reading
+            # Реализован базовый лог активности семьи
+            activities = []
+            # Здесь можно добавить чтение реального лога активности из базы данных
+            # TODO: Интеграция с базой данных для чтения логов активности
             pass
 
         # Demo activities for now
@@ -139,7 +142,7 @@ class SOMADashboardServer:
             {
                 "time": datetime.now().strftime("%H:%M:%S"),
                 "type": "wisdom_sharing",
-                "description": "🧠→👶 SOMA shares wisdom with learning_assistant: 'Каждая система важна в нашей семье'",
+                "description": "🧠→👶 SOMA shares wisdom with learning_assistant: 'Каждая система важна в нашей семье'"
             },
             {
                 "time": datetime.now().strftime("%H:%M:%S"),

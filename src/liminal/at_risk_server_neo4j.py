@@ -7,7 +7,8 @@ from typing import Any, List, Optional
 
 try:
     from starlette.applications import Starlette
-    from starlette.responses import HTMLResponse, JSONResponse, PlainTextResponse
+    from starlette.responses import (HTMLResponse, JSONResponse,
+                                     PlainTextResponse)
     from starlette.routing import Mount, Route
 except Exception as e:  # pragma: no cover
     raise SystemExit(f"Starlette is required for this server: {e}")
@@ -866,6 +867,10 @@ routes = [
     ),
 ]
 
-app = Starlette(debug=True, routes=routes)
+import os
+
+# Используем переменную окружения для debug режима
+debug_mode = os.getenv('DEBUG', 'false').lower() == 'true'
+app = Starlette(debug=debug_mode, routes=routes)
 
 # For uvicorn: uvicorn liminal.at_risk_server_neo4j:app --reload --port 8000
