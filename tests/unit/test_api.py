@@ -5,6 +5,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from fastapi.testclient import TestClient
+
 from backend.api import app
 
 
@@ -13,10 +15,11 @@ class TestAPIUnit:
 
     def test_health_endpoint(self):
         """Test health endpoint returns 200"""
-        with app.test_client() as client:
-            response = client.get("/health")
-            assert response.status_code == 200
-            assert b"OK" in response.data
+        client = TestClient(app)
+        response = client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"].lower() == "ok"
 
     def test_websocket_connection_unit(self):
         """Test WebSocket connection establishment (unit level)"""

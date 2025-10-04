@@ -1,53 +1,61 @@
 # Integration Tests for API functionality
 # Тесты для проверки интеграции компонентов API
 
-import asyncio
-from unittest.mock import AsyncMock, Mock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
+from fastapi.testclient import TestClient
 
-from backend.api import app
-from backend.websocket_manager import WebSocketManager
+from backend.api import app, connection_manager
 
 
 class TestAPIIntegration:
     """Integration tests for API components"""
 
     @pytest.fixture
-    async def websocket_manager(self):
-        """Fixture for WebSocket manager"""
-        manager = WebSocketManager()
-        yield manager
-        # Cleanup after test
-        await manager.cleanup()
+    def client(self):
+        """Provide a FastAPI test client instance."""
+        with TestClient(app) as client:
+            yield client
 
-    def test_api_websocket_integration(self, websocket_manager):
-        """Test API and WebSocket integration"""
-        with app.test_client() as client:
-            # Test WebSocket endpoint exists
-            response = client.get("/ws")
-            # WebSocket endpoint should return upgrade response
-            assert response.status_code in [400, 426]  # Bad request or upgrade required
+    def test_health_endpoint_integration(self, client):
+        """Health endpoint should respond with application status."""
+        response = client.get("/health")
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["status"].lower() == "ok"
+        assert "ml_enabled" in payload
+
+    def test_ready_endpoint_integration(self, client):
+        """Readiness endpoint should expose readiness checks."""
+        response = client.get("/ready")
+        assert response.status_code == 200
+        payload = response.json()
+        assert "checks" in payload
+        assert isinstance(payload["checks"], dict)
+
+    def test_websocket_auth_flow_integration(self, client):
+        """WebSocket connection without token should request authentication."""
+        with client.websocket_connect("/ws/timeline") as websocket:
+            message = websocket.receive_json()
+            assert message["type"] == "auth_required"
+            assert "token" not in message
 
     @pytest.mark.asyncio
-    async def test_full_user_flow_integration(self, websocket_manager):
-        """Test complete user flow from connection to message processing"""
-        # Mock user connection
-        mock_connection = AsyncMock()
-        mock_connection.send = AsyncMock()
-        mock_connection.receive = AsyncMock(
-            return_value='{"type": "message", "content": "Hello"}'
-        )
+    async def test_connection_manager_pending_acceptance(self):
+        """Connection manager should accept pending connections for auth."""
+        class DummyWebSocket:
+            def __init__(self):
+                self.client = SimpleNamespace(host="127.0.0.1")
+                self.accept = AsyncMock()
+                self.close = AsyncMock()
 
-        # Test connection handling
-        connection_id = "test_user_123"
-        websocket_manager.connections[connection_id] = mock_connection
-
-        # Verify connection is stored
-        assert connection_id in websocket_manager.connections
-
-        # Cleanup
-        del websocket_manager.connections[connection_id]
+        websocket = DummyWebSocket()
+        result = await connection_manager.accept_pending_connection(websocket)
+        assert result is True
+        assert websocket in connection_manager.pending_connections
+        await connection_manager.reject_connection(websocket, "test cleanup")
 
     def test_database_api_integration(self):
         """Test database and API integration"""

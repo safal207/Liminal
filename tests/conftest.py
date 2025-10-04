@@ -2,6 +2,7 @@
 SOMA Project - Common test fixtures and utilities
 """
 
+import importlib
 import os
 import sys
 import time
@@ -16,6 +17,20 @@ sys.path.append(str(Path(__file__).parent.parent))
 sys.path.append(str(Path(__file__).parent.parent / "scripts"))
 # Add src/ for packages like rince
 sys.path.append(str(Path(__file__).parent.parent / "src"))
+
+# Ensure legacy "auth" package imports resolve to backend.auth for compatibility
+backend_auth_pkg = importlib.import_module("backend.auth")
+sys.modules.setdefault("auth", backend_auth_pkg)
+sys.modules.setdefault(
+    "auth.jwt_utils", importlib.import_module("backend.auth.jwt_utils")
+)
+sys.modules.setdefault(
+    "auth.models", importlib.import_module("backend.auth.models")
+)
+sys.modules.setdefault(
+    "memory_timeline", importlib.import_module("backend.memory_timeline")
+)
+sys.modules.setdefault("metrics", importlib.import_module("backend.metrics"))
 
 # Import SOMA modules
 from scripts.consciousness_maturation import (ConsciousnessMaturationSystem,
