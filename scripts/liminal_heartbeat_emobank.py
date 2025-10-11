@@ -317,7 +317,7 @@ def train_model(
 
             optimizer.zero_grad()
             y_init = torch.zeros(len(batch_x), 128, device=DEVICE)
-            _, _, pad_pred = model(batch_x, y_init, batch_y, K=config.K)
+            _, _, pad_pred = model(batch_x, y_init, affect_vec=None, K=config.K)
             loss = F.mse_loss(pad_pred, batch_y)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -327,7 +327,12 @@ def train_model(
         model.eval()
         with torch.no_grad():
             y_init = torch.zeros(len(splits.test_X), 128, device=DEVICE)
-            _, _, val_pad_pred = model(splits.test_X, y_init, splits.test_y, K=config.K)
+            _, _, val_pad_pred = model(
+                splits.test_X,
+                y_init,
+                affect_vec=None,
+                K=config.K,
+            )
             val_loss = F.mse_loss(val_pad_pred, splits.test_y).item()
 
         train_loss = float(np.mean(epoch_losses))
@@ -360,7 +365,12 @@ def evaluate_model(
     model.eval()
     with torch.no_grad():
         y_init = torch.zeros(len(splits.test_X), 128, device=DEVICE)
-        _, confs, pad_pred = model(splits.test_X, y_init, splits.test_y, K=K)
+        _, confs, pad_pred = model(
+            splits.test_X,
+            y_init,
+            affect_vec=None,
+            K=K,
+        )
 
     return (
         splits.test_y.detach().cpu().numpy(),
