@@ -14,32 +14,41 @@ from typing import Dict, Optional
 import uvicorn
 
 # JWT Authentication imports
-from auth.jwt_utils import jwt_manager
-from fastapi import Depends, FastAPI, Request, WebSocket, WebSocketDisconnect
+from .auth.jwt_utils import jwt_manager
+from fastapi import (
+    Depends,
+    FastAPI,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 # Импорт модуля health check
-from health import router as health_router
+from .health import readiness_check as health_readiness_check
+from .health import router as health_router
 from loguru import logger
 
 # Импорт нашего модуля метрик
-from metrics import (
+from .metrics import (
     setup_metrics,
     websocket_auth_total,
     websocket_connections,
     websocket_messages_total,
 )
-from ml.anomaly_detector import anomaly_detector
+# Импорт ML компонентов
+from .ml.anomaly_detector import anomaly_detector
 
-# Импорт ML модуля
-from ml.api import router as ml_router
-from ml.feature_extractor import feature_extractor
-from ml.metrics_exporter import ml_metrics_collector
-from ml.metrics_exporter import router as ml_metrics_router
-from redis_client import RedisClient
-from websocket.connection_manager import ConnectionManager
-from websocket.handlers import handle_message, register_handlers
+# Импорт ML модулей
+from .ml.api import router as ml_router
+from .ml.feature_extractor import feature_extractor
+from .ml.metrics_exporter import ml_metrics_collector
+from .ml.metrics_exporter import router as ml_metrics_router
+from .redis_client import RedisClient
+from .websocket.connection_manager import ConnectionManager
+from .websocket.handlers import handle_message, register_handlers
 
 # Создание Redis клиента
 redis_client = RedisClient()
@@ -356,6 +365,31 @@ logging.basicConfig(handlers=[InterceptHandler()], level=0)
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+
+@app.get("/ready")
+async def readiness_check(request: Request):
+    """Compatibility readiness probe for infrastructure checks.
+
+    Delegates to the detailed health readiness router and normalises the
+    response shape so callers can rely on the ``ready`` boolean while
+    preserving component diagnostics.
+    """
+
+    try:
+        payload = await health_readiness_check(request)
+    except HTTPException as exc:  # pragma: no cover - exercised in integration
+        if isinstance(exc.detail, dict):
+            detail = dict(exc.detail)
+        else:
+            detail = {"status": "not_ready", "message": str(exc.detail)}
+        detail.setdefault("components", {})
+        content = {"ready": False, **detail}
+        return JSONResponse(status_code=exc.status_code, content=content)
+
+    status_value = payload.get("status", "ready")
+    components = payload.get("components", {})
+    return {"ready": True, "status": status_value, "components": components}
 
 
 # Метрики
