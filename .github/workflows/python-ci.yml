@@ -31,7 +31,10 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        # Local shim packages rely on the workspace sources, so disable build
+        # isolation to prevent pip from attempting to download setuptools in
+        # air-gapped CI environments.
+        pip install --no-build-isolation -r requirements-dev.txt
 
     - name: Pre-commit (all files)
       run: |

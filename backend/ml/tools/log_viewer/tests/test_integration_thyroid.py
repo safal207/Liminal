@@ -1,7 +1,17 @@
 """Integration test: 5 errors should trigger insight hormone write."""
 
 import importlib
+import sys
 from pathlib import Path
+
+
+# Match the sys.path adjustment applied in the API test so that ``backend`` resolves
+# correctly when pytest's ``rootdir`` is set to ``backend/``. CI previously reported a
+# ModuleNotFoundError during collection because the repository root was missing from
+# ``sys.path``.
+REPO_ROOT = Path(__file__).resolve().parents[5]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
 
 
 def test_hormone_trigger(tmp_path, monkeypatch):
