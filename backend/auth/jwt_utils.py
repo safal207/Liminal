@@ -10,22 +10,12 @@ from typing import Any, Dict, Optional
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
 
-# Безопасный импорт CryptContext с обработкой ошибок
-try:
-    from passlib.context import CryptContext
+logger = logging.getLogger("auth.jwt_utils")
 
-    # Проверка, что bcrypt работает корректно
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    CRYPTO_ENABLED = True
-except (ImportError, AttributeError) as e:
-    logger = logging.getLogger("auth.jwt_utils")
-    logger.warning(f"Ошибка при импорте passlib/bcrypt: {e}")
-    logger.warning(
-        "JWT аутентификация будет работать в тестовом режиме без проверки паролей"
-    )
-    CRYPTO_ENABLED = False
 
-    # Заглушка для CryptContext
+def _create_dummy_context():
+    """Возвращает упрощенный контекст для тестов и fallback-режима."""
+
     class DummyCryptContext:
         def __init__(self, **kwargs):
             pass
@@ -38,9 +28,33 @@ except (ImportError, AttributeError) as e:
             # В тестовом режиме просто возвращаем хеш-подобную строку
             return f"$2b$12$DUMMY_HASH_FOR_TESTING_{password[:5]}"
 
-    pwd_context = DummyCryptContext()
+    return DummyCryptContext()
 
-logger = logging.getLogger("auth.jwt_utils")
+
+# Безопасный импорт CryptContext с обработкой ошибок
+try:
+    from passlib.context import CryptContext
+
+    try:
+        # Проверка, что bcrypt работает корректно
+        pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        # Выполняем пробное хеширование, чтобы убедиться, что backend работоспособен
+        pwd_context.hash("liminal-self-test")
+        CRYPTO_ENABLED = True
+    except Exception as e:  # pragma: no cover - защитный fallback
+        logger.warning(f"Ошибка при инициализации passlib/bcrypt: {e}")
+        logger.warning(
+            "JWT аутентификация будет работать в тестовом режиме без проверки паролей"
+        )
+        CRYPTO_ENABLED = False
+        pwd_context = _create_dummy_context()
+except (ImportError, AttributeError) as e:
+    logger.warning(f"Ошибка при импорте passlib/bcrypt: {e}")
+    logger.warning(
+        "JWT аутентификация будет работать в тестовом режиме без проверки паролей"
+    )
+    CRYPTO_ENABLED = False
+    pwd_context = _create_dummy_context()
 
 # Конфигурация JWT
 SECRET_KEY = os.getenv(
