@@ -2,7 +2,15 @@ import importlib
 import sys
 from pathlib import Path
 
-sys.path.append(str(Path(__file__).parents[2]))
+
+# Ensure the repository root (which contains the ``backend`` package) is available on
+# the Python path when pytest sets ``rootdir`` to ``backend/``. Without this adjustment
+# the import below fails with ``ModuleNotFoundError('backend')`` during test collection
+# in isolated CI environments.
+REPO_ROOT = Path(__file__).resolve().parents[5]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
+
 app_module = importlib.import_module("backend.ml.tools.log_viewer.app")
 app = app_module.app
 
