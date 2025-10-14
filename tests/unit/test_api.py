@@ -1,8 +1,14 @@
-# Unit Tests for API functionality
-# Тесты для проверки отдельных функций API
+"""Unit tests for API functionality."""
+
+import os
+from unittest.mock import Mock
 
 import pytest
-from unittest.mock import Mock, patch
+from fastapi.testclient import TestClient
+
+# Ensure backend operates in testing mode to avoid heavy integrations
+os.environ.setdefault("TESTING", "1")
+
 from backend.api import app
 
 
@@ -11,10 +17,12 @@ class TestAPIUnit:
 
     def test_health_endpoint(self):
         """Test health endpoint returns 200"""
-        with app.test_client() as client:
+        with TestClient(app) as client:
             response = client.get('/health')
             assert response.status_code == 200
-            assert b'OK' in response.data
+            payload = response.json()
+            assert payload["status"] == "ok"
+            assert "timestamp" in payload
 
     def test_websocket_connection_unit(self):
         """Test WebSocket connection establishment (unit level)"""

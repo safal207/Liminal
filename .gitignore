@@ -24,6 +24,7 @@ htmlcov/
 # Logs
 logs/
 *.log
+.pre-commit-hooks.log
 
 # Node / Frontend
 node_modules/
