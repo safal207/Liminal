@@ -1,31 +1,38 @@
-# Integration Tests for API functionality
-# Тесты для проверки интеграции компонентов API
+"""Integration tests for API functionality."""
+
+import os
+from unittest.mock import AsyncMock
 
 import pytest
-import asyncio
-from unittest.mock import Mock, patch, AsyncMock
+from fastapi.testclient import TestClient
+
+# Ensure backend operates in testing mode for predictable dependencies
+os.environ.setdefault("TESTING", "1")
+
 from backend.api import app
-from backend.websocket_manager import WebSocketManager
+from backend.websocket.connection_manager import ConnectionManager
 
 
 class TestAPIIntegration:
     """Integration tests for API components"""
 
     @pytest.fixture
-    async def websocket_manager(self):
-        """Fixture for WebSocket manager"""
-        manager = WebSocketManager()
-        yield manager
-        # Cleanup after test
-        await manager.cleanup()
+    def websocket_manager(self):
+        """Fixture for WebSocket connection manager"""
+        return ConnectionManager()
 
-    def test_api_websocket_integration(self, websocket_manager):
+    @pytest.fixture
+    def test_client(self):
+        """Fixture providing FastAPI test client"""
+        with TestClient(app) as client:
+            yield client
+
+    def test_api_websocket_integration(self, test_client):
         """Test API and WebSocket integration"""
-        with app.test_client() as client:
-            # Test WebSocket endpoint exists
-            response = client.get('/ws')
-            # WebSocket endpoint should return upgrade response
-            assert response.status_code in [400, 426]  # Bad request or upgrade required
+        with test_client.websocket_connect("/ws/timeline") as websocket:
+            message = websocket.receive_json()
+            assert message["type"] == "auth_required"
+            assert "message" in message
 
     @pytest.mark.asyncio
     async def test_full_user_flow_integration(self, websocket_manager):
@@ -37,13 +44,13 @@ class TestAPIIntegration:
 
         # Test connection handling
         connection_id = "test_user_123"
-        websocket_manager.connections[connection_id] = mock_connection
+        websocket_manager.active_connections[connection_id] = {mock_connection}
 
         # Verify connection is stored
-        assert connection_id in websocket_manager.connections
+        assert connection_id in websocket_manager.active_connections
 
         # Cleanup
-        del websocket_manager.connections[connection_id]
+        del websocket_manager.active_connections[connection_id]
 
     def test_database_api_integration(self):
         """Test database and API integration"""
