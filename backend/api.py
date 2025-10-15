@@ -215,13 +215,13 @@ except ImportError as e:
 # Импорты для аутентификации
 print("DEBUG: Before auth imports")
 try:
-    from auth.jwt_utils import (
+    from backend.auth.jwt_utils import (
         authenticate_user,
         create_access_token_for_user,
         jwt_manager,
         verify_websocket_token,
     )
-    from auth.models import Token, UserLogin, WebSocketAuthMessage
+    from backend.auth.models import Token, UserLogin, WebSocketAuthMessage
 
     print("DEBUG: Successfully imported auth modules")
 except ImportError as e:
