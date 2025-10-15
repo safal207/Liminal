@@ -1,159 +1,153 @@
-// @ts-check
-const { test, expect } = require('@playwright/test');
+#!/usr/bin/env node
+const assert = require('assert');
+const fs = require('fs');
+const path = require('path');
+const vm = require('vm');
 
-test.describe('Thyroid Endocrine System Dashboard', () => {
-  test.beforeEach(async ({ page }) => {
-    // Navigate to the dashboard
-    await page.goto('/');
-    
-    // Wait for the dashboard to load
-    await page.waitForLoadState('networkidle');
-    
-    // Wait for thyroid data to be fetched
-    await page.waitForTimeout(2000);
-  });
+const tests = [];
+function test(name, fn) {
+  tests.push({ name, fn });
+}
 
-  test('should display thyroid status section', async ({ page }) => {
-    // Check if thyroid section exists
-    const thyroidSection = page.locator('.card-header:has-text("Endocrine Stress Level")');
-    await expect(thyroidSection).toBeVisible();
-    
-    // Check if progress bar exists
-    const progressBar = page.locator('#thyroidBar');
-    await expect(progressBar).toBeVisible();
-    
-    // Check if label exists
-    const statusText = page.locator('#thyroidLabel');
-    await expect(statusText).toBeVisible();
-    
-    // Take screenshot of normal state
-    await page.screenshot({ 
-      path: 'test-results/thyroid-normal-state.png',
-      fullPage: true 
-    });
-  });
+function flushMicrotasks() {
+  return new Promise(resolve => setImmediate(resolve));
+}
 
-  test('should show thyroid charge and threshold', async ({ page }) => {
-    // Wait for thyroid data to load
-    await page.waitForSelector('#thyroidBar');
-    
-    // Check if progress bar has width (indicating data loaded)
-    const progressBar = page.locator('#thyroidBar');
-    const width = await progressBar.getAttribute('style');
-    expect(width).toContain('width');
-    
-    // Check if label shows percentage
-    const labelElement = page.locator('#thyroidLabel');
-    const labelText = await labelElement.textContent();
-    expect(labelText).toMatch(/\d+%/); // Should contain percentage
-    
-    // Take screenshot showing values
-    await page.screenshot({ 
-      path: 'test-results/thyroid-values.png',
-      clip: { x: 0, y: 400, width: 800, height: 300 }
-    });
-  });
+function createDashboardSandbox(overrides = {}) {
+  const bar = { style: {}, className: 'progress-bar bg-info' };
+  const label = { textContent: '' };
+  const fetchCalls = [];
+  const listeners = {};
 
-  test('should simulate stress state with pulse animation', async ({ page }) => {
-    // Mock high stress thyroid data
-    await page.evaluate(() => {
-      // Simulate API response with high charge
-      // @ts-ignore
-      window.thyroidData = {
-        charge: 95,
-        threshold: 100,
-        ready: false,
-        last_total_errors: 150
-      };
-      
-      // Trigger update if function exists
-      // @ts-ignore
-      if (window.updateThyroidStatus) {
-        // @ts-ignore
-        window.updateThyroidStatus();
+  const context = {
+    console,
+    window: {},
+    setTimeout,
+    clearTimeout,
+    fetch: (url) => {
+      fetchCalls.push(url);
+      if (typeof overrides.fetch === 'function') {
+        return overrides.fetch(url, { bar, label });
       }
-    });
-    
-    // Wait for UI update
-    await page.waitForTimeout(1000);
-    
-    // Check if progress bar has pulse class
-    const progressBar = page.locator('#thyroidBar');
-    const hasAnimation = await progressBar.evaluate(el => {
-      const style = window.getComputedStyle(el);
-      return style.animationName !== 'none' || el.classList.contains('pulse');
-    });
-    
-    // Take screenshot of stress state
-    await page.screenshot({ 
-      path: 'test-results/thyroid-stress-state.png',
-      fullPage: true 
-    });
-    
-    // Verify stress indicators
-    expect(hasAnimation).toBeTruthy();
-  });
+      return Promise.resolve({
+        json: () => Promise.resolve({ charge: 40, threshold: 80, ready: false })
+      });
+    },
+    document: {
+      addEventListener: (event, handler) => {
+        listeners[event] = handler;
+      },
+      getElementById: (id) => {
+        if (typeof overrides.getElementById === 'function') {
+          const override = overrides.getElementById(id, { bar, label });
+          if (override !== undefined) {
+            return override;
+          }
+        }
+        if (id === 'thyroidBar') return bar;
+        if (id === 'thyroidLabel') return label;
+        return null;
+      },
+      querySelectorAll: () => ({ forEach: () => {} })
+    },
+    Chart: function () {}
+  };
 
-  test('should fetch thyroid data from API', async ({ page, request }) => {
-    // Test API endpoint directly
-    const response = await request.get('/thyroid/status');
-    expect(response.ok()).toBeTruthy();
-    
-    const data = await response.json();
-    expect(data).toHaveProperty('charge');
-    expect(data).toHaveProperty('threshold');
-    expect(data).toHaveProperty('ready');
-    
-    // Verify API data matches UI
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    
-    // Check if UI reflects API data (progress bar width should reflect charge/threshold ratio)
-    const progressBar = page.locator('#thyroidBar');
-    const ariaValue = await progressBar.getAttribute('aria-valuenow');
-    if (ariaValue) {
-      const expectedPercentage = Math.round((data.charge / data.threshold) * 100);
-      expect(parseInt(ariaValue)).toBeCloseTo(expectedPercentage, 10);
-    }
-  });
+  context.window.document = context.document;
 
-  test('should be responsive on mobile', async ({ page }) => {
-    // Set mobile viewport
-    await page.setViewportSize({ width: 375, height: 667 });
-    
-    // Navigate and wait for load
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
-    
-    // Check if thyroid section is still visible
-    const thyroidSection = page.locator('.card-header:has-text("Endocrine Stress Level")');
-    await expect(thyroidSection).toBeVisible();
-    
-    // Take mobile screenshot
-    await page.screenshot({ 
-      path: 'test-results/thyroid-mobile.png',
-      fullPage: true 
-    });
-  });
+  const scriptPath = path.join(__dirname, '../../backend/ml/tools/log_viewer/static/js/dashboard.js');
+  const script = fs.readFileSync(scriptPath, 'utf-8');
+  vm.runInNewContext(script, context);
 
-  test('should handle loading states gracefully', async ({ page }) => {
-    // Intercept API call to simulate slow response
-    await page.route('/thyroid/status', async route => {
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      await route.continue();
-    });
-    
-    await page.goto('/');
-    
-    // Check if loading state is handled
-    const thyroidSection = page.locator('.card-header:has-text("Endocrine Stress Level")');
-    await expect(thyroidSection).toBeVisible();
-    
-    // Wait for data to eventually load
-    await page.waitForTimeout(4000);
-    
-    // Verify data loaded
-    const progressBar = page.locator('#thyroidBar');
-    await expect(progressBar).toBeVisible();
-  });
+  return { context, bar, label, fetchCalls, listeners };
+}
+
+test('Thyroid card markup exists in dashboard template', () => {
+  const templatePath = path.join(__dirname, '../../backend/ml/tools/log_viewer/templates/index.html');
+  const html = fs.readFileSync(templatePath, 'utf-8');
+
+  assert.ok(html.includes('Endocrine Stress Level'), 'Card header should mention endocrine stress');
+  assert.ok(/id="thyroidBar"/.test(html), 'Progress bar element is missing');
+  assert.ok(/id="thyroidLabel"/.test(html), 'Progress label element is missing');
 });
+
+test('initThyroidBar fetches thyroid status and updates DOM', async () => {
+  const overrides = {
+    fetch: () => Promise.resolve({
+      json: () => Promise.resolve({ charge: 50, threshold: 200, ready: true })
+    })
+  };
+
+  const { context, bar, label, fetchCalls } = createDashboardSandbox(overrides);
+
+  assert.strictEqual(typeof context.initThyroidBar, 'function', 'initThyroidBar should be defined');
+  context.initThyroidBar();
+  await flushMicrotasks();
+
+  assert.strictEqual(fetchCalls[0], '/api/thyroid_status', 'initThyroidBar should request thyroid API endpoint');
+  assert.strictEqual(bar.style.width, '25%', 'Progress bar width should reflect charge ratio');
+  assert.ok(bar.className.includes('progress-bar'), 'Progress bar class should be preserved');
+  assert.ok(bar.className.includes('bg-danger'), 'Ready state should apply danger styling');
+  assert.ok(bar.className.includes('pulse'), 'Ready state should apply pulse animation');
+  assert.strictEqual(label.textContent, '25%', 'Label should show rounded percentage');
+});
+
+test('initThyroidBar clamps percentage to 100%', async () => {
+  const overrides = {
+    fetch: () => Promise.resolve({
+      json: () => Promise.resolve({ charge: 500, threshold: 100, ready: true })
+    })
+  };
+
+  const { context, bar, label } = createDashboardSandbox(overrides);
+  context.initThyroidBar();
+  await flushMicrotasks();
+
+  assert.strictEqual(bar.style.width, '100%', 'Progress bar width should not exceed 100%');
+  assert.strictEqual(label.textContent, '100%', 'Label should be clamped to 100%');
+});
+
+test('DOMContentLoaded listener initialises thyroid bar when present', async () => {
+  let initCalled = false;
+  const overrides = {
+    getElementById: (id, elements) => {
+      if (id === 'thyroidBar') {
+        initCalled = true;
+        return elements.bar;
+      }
+      if (id === 'thyroidLabel') {
+        return elements.label;
+      }
+      return undefined;
+    }
+  };
+
+  const { listeners } = createDashboardSandbox(overrides);
+  assert.ok(typeof listeners.DOMContentLoaded === 'function', 'DOMContentLoaded handler should be registered');
+
+  // Simulate DOM ready
+  await listeners.DOMContentLoaded();
+
+  assert.ok(initCalled, 'initThyroidBar should be invoked when thyroid elements exist');
+});
+
+(async () => {
+  let failed = 0;
+  for (const { name, fn } of tests) {
+    try {
+      await fn();
+      console.log(`\x1b[32m✓\x1b[0m ${name}`);
+    } catch (error) {
+      failed += 1;
+      console.error(`\x1b[31m✗\x1b[0m ${name}`);
+      console.error(error);
+    }
+  }
+
+  if (failed) {
+    console.error(`\n${failed} test(s) failed.`);
+    process.exit(1);
+  } else {
+    console.log(`\nAll ${tests.length} test(s) passed.`);
+  }
+})();
