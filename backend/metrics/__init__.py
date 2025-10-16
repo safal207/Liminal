@@ -26,6 +26,7 @@ from .redis_metrics import (
     redis_operations_total,
     redis_pubsub_messages_total,
 )
+from .registry import REGISTRY
 from .setup import prometheus_middleware, setup_metrics
 
 __all__ = [
@@ -50,4 +51,6 @@ __all__ = [
     "redis_operation_duration_seconds",
     "redis_pubsub_messages_total",
     "redis_errors_total",
+    # Registry
+    "REGISTRY",
 ]

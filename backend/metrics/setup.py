@@ -1,6 +1,4 @@
-"""
-Настройка и инициализация метрик Prometheus
-"""
+"""Настройка и инициализация метрик Prometheus."""
 
 import time
 from typing import Callable
@@ -12,6 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response as StarletteResponse
 
 from .collectors import connection_limits, http_requests_total, websocket_connections
+from .registry import REGISTRY
 
 
 def setup_metrics(app: FastAPI) -> None:
@@ -22,7 +21,10 @@ def setup_metrics(app: FastAPI) -> None:
     # Добавляем эндпоинт для метрик
     @app.get("/metrics")
     async def metrics():
-        return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+        return Response(
+            content=generate_latest(REGISTRY),
+            media_type=CONTENT_TYPE_LATEST,
+        )
 
     # Инициализируем начальные значения для метрик лимитов соединений
     connection_limits.labels(type="total").set(0)

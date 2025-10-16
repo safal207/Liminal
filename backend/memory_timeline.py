@@ -13,7 +13,10 @@ import json
 
 from fastapi import HTTPException, WebSocket
 
-from auth.jwt_utils import jwt_manager
+try:  # pragma: no cover - compatibility shim for package layout
+    from auth.jwt_utils import jwt_manager
+except ImportError:  # pragma: no cover
+    from backend.auth.jwt_utils import jwt_manager
 
 print("DEBUG: All imports completed in memory_timeline.py")
 
