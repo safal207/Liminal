@@ -1,7 +1,7 @@
 """ML integration helpers for FastAPI routes."""
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from backend.ml.client import MLInferenceClient
 
