@@ -124,7 +124,12 @@ class ConsciousnessQualitySystem:
         self.project_root = Path(project_root)
         self.scripts_dir = self.project_root / "scripts"
         self.tests_dir = self.project_root / "tests"
-        self.quality_data_file = self.scripts_dir / "quality_metrics.json"
+        quality_override = os.getenv("LIMINAL_QUALITY_STATE_PATH")
+        self.quality_data_file = (
+            Path(quality_override)
+            if quality_override
+            else self.scripts_dir / "quality_metrics.json"
+        )
 
         # Quality consciousness state
         self.quality_state = {

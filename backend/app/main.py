@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Dict
 
@@ -22,9 +23,23 @@ from .dependencies import (
 )
 from .routes import auth, debug, fragments, waves, ws
 
+
+@asynccontextmanager
+async def app_lifespan(app: FastAPI):
+    """Manage startup and shutdown lifecycle hooks for the FastAPI app."""
+
+    await init_services()
+    app.state.startup_complete = True
+    try:
+        yield
+    finally:
+        await shutdown_services()
+
+
 app = FastAPI(
     title="LIMINAL API",
     description="API для работы с графовой базой данных LIMINAL",
+    lifespan=app_lifespan,
 )
 
 # Static files ---------------------------------------------------------
@@ -69,18 +84,6 @@ app.state.ml_service = get_ml_service()
 app.state.startup_complete = False
 
 
-# Lifespan events ------------------------------------------------------
-@app.on_event("startup")
-async def on_startup():
-    await init_services()
-    app.state.startup_complete = True
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    await shutdown_services()
-
-
 # Routes ---------------------------------------------------------------
 @app.get("/")
 async def root() -> Dict[str, str]:
@@ -123,5 +126,5 @@ async def readiness_check(manager=Depends(get_connection_manager)):
     return {
         "ready": ready,
         "checks": checks,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }

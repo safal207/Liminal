@@ -2,6 +2,7 @@
 SOMA Project - Common test fixtures and utilities
 """
 
+import inspect
 import os
 import sys
 import time
@@ -24,6 +25,17 @@ from scripts.consciousness_maturation import (
     LearningEvent,
     MaturationStage,
 )
+
+
+def pytest_configure(config):
+    """Register custom markers so ``--strict-markers`` accepts the suite."""
+
+    config.addinivalue_line(
+        "markers", "integration: tests that require running external services"
+    )
+    config.addinivalue_line(
+        "markers", "e2e: browser-driven or full system end-to-end checks"
+    )
 
 
 @pytest.fixture
@@ -79,4 +91,43 @@ def sample_learning_event():
         context={"key": "value"},
         conclusions=["conclusion1", "conclusion2"],
         related_events=["event1", "event2"],
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Normalise collection behaviour for heterogeneous test suites."""
+
+    allow_integration = os.getenv("RUN_INTEGRATION_TESTS")
+    allow_e2e = os.getenv("RUN_E2E_TESTS")
+
+    for item in items:
+        node_path = str(item.fspath)
+
+        if item.get_closest_marker("integration") and not allow_integration:
+            item.add_marker(
+                pytest.mark.skip(
+                    reason="Integration tests require RUN_INTEGRATION_TESTS=1"
+                )
+            )
+            continue
+
+        if ("/tests/e2e/" in node_path or item.get_closest_marker("e2e")) and not allow_e2e:
+            item.add_marker(
+                pytest.mark.skip(reason="E2E tests require RUN_E2E_TESTS=1")
+            )
+            continue
+
+        test_func = getattr(item, "obj", None)
+        if test_func and inspect.iscoroutinefunction(test_func):
+            item.add_marker(pytest.mark.asyncio)
+
+
+@pytest.fixture(autouse=True)
+def _sandbox_persistent_state(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Redirect persistent artefacts into a disposable sandbox during tests."""
+
+    sandbox = tmp_path_factory.mktemp("liminal_state")
+    monkeypatch.setenv("LIMINAL_INSIGHTS_PATH", str(sandbox / "insights.jsonl"))
+    monkeypatch.setenv(
+        "LIMINAL_QUALITY_STATE_PATH", str(sandbox / "quality_metrics.json")
     )

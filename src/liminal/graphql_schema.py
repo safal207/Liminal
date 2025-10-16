@@ -458,7 +458,7 @@ class Mutation:
         if score < threshold:
             advice = ["breathStep", "consider_linkParent", "consider_merge"]
             record = {
-                "ts": datetime.utcnow().isoformat() + "Z",
+                "ts": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
                 "type": "relationship_low_health",
                 "source_id": a.id,
                 "target_id": b.id,
@@ -500,5 +500,5 @@ except Exception:  # pragma: no cover - allow import without ASGI extras install
 
 import json
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path

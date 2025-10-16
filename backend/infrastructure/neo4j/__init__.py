@@ -41,6 +41,9 @@ def _build_default_gateway() -> Neo4jGateway:
     user = os.getenv("NEO4J_USER", "neo4j")
     password = os.getenv("NEO4J_PASSWORD", "password")
 
+    if os.getenv("NEO4J_USE_MOCK", "false").lower() == "true" or os.getenv("TESTING"):
+        return MockNeo4jGateway()
+
     try:
         return Neo4jClient(uri=uri, user=user, password=password)
     except Exception:

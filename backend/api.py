@@ -3,7 +3,8 @@ import asyncio
 import json
 import logging
 import os
-from datetime import datetime
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 
 print("DEBUG: Importing FastAPI and dependencies")
@@ -161,44 +162,39 @@ except ImportError as e:
     raise
 
 print("DEBUG: Creating FastAPI app")
-app = FastAPI(
-    title="LIMINAL API", description="API для работы с графовой базой данных LIMINAL"
-)
-
-# Инициализация логгера
 logger = logging.getLogger(__name__)
 
 
-# События для инициализации и завершения работы приложения
-@app.on_event("startup")
-async def startup_event():
-    """Инициализация сервисов при запуске приложения"""
-    logger.info("Starting application")
+@asynccontextmanager
+async def app_lifespan(app: FastAPI):
+    """Управление жизненным циклом приложения."""
 
-    # Метрики уже инициализированы во время импортов,
-    # поэтому здесь только логируем это
+    logger.info("Starting application")
     logger.info("Prometheus metrics already initialized")
 
-    # Инициализация менеджера соединений (Redis или стандартного)
     if hasattr(connection_manager, "initialize"):
         initialized = await connection_manager.initialize()
-        # Логируем в зависимости от типа менеджера для ясности
-        if "redis" in connection_manager.__class__.__name__.lower():
+        manager_name = connection_manager.__class__.__name__.lower()
+        if "redis" in manager_name:
             logger.info(f"Redis connection manager initialized: {initialized}")
         else:
             logger.info(f"Standard connection manager initialized: {initialized}")
 
+    try:
+        yield
+    finally:
+        logger.info("Shutting down application")
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Корректное завершение работы при остановке приложения"""
-    logger.info("Shutting down application")
+        if os.environ.get("USE_REDIS", "false").lower() == "true":
+            if hasattr(connection_manager, "shutdown"):
+                await connection_manager.shutdown()
+                logger.info("Redis connection closed")
 
-    # Закрытие Redis соединения, если оно было открыто
-    if os.environ.get("USE_REDIS", "false").lower() == "true":
-        if hasattr(connection_manager, "shutdown"):
-            await connection_manager.shutdown()
-            logger.info("Redis connection closed")
+
+app = FastAPI(
+    title="LIMINAL API", description="API для работы с графовой базой данных LIMINAL",
+    lifespan=app_lifespan,
+)
 
 
 # Инициализация временной шкалы памяти
@@ -207,8 +203,6 @@ timeline = MemoryTimeline()
 print("DEBUG: MemoryTimeline initialized")
 
 # Обслуживание статических файлов
-import os
-
 static_dir = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
@@ -458,7 +452,7 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
                                                 "type": "message",
                                                 "content": content,
                                                 "sender": user_id,
-                                                "timestamp": datetime.utcnow().isoformat(),
+                                                "timestamp": datetime.now(UTC).isoformat(),
                                             },
                                             sender_id=user_id,
                                         )
@@ -575,8 +569,8 @@ async def create_wave(
     wave: DuneWaveCreate, writer: Neo4jGateway = Depends(get_neo4j_gateway)
 ):
     wave_data = wave.dict()
-    wave_data["id"] = f"wave_{int(datetime.utcnow().timestamp())}"
-    wave_data["timestamp"] = datetime.utcnow().isoformat()
+    wave_data["id"] = f"wave_{int(datetime.now(UTC).timestamp())}"
+    wave_data["timestamp"] = datetime.now(UTC).isoformat()
 
     node = writer.create_dunewave_node(wave_data)
     if not node:
@@ -601,8 +595,8 @@ async def create_fragment(
     fragment: MemoryFragmentCreate, writer: Neo4jGateway = Depends(get_neo4j_gateway)
 ):
     fragment_data = fragment.dict()
-    fragment_data["id"] = f"mem_{int(datetime.utcnow().timestamp())}"
-    fragment_data["timestamp"] = datetime.utcnow().isoformat()
+    fragment_data["id"] = f"mem_{int(datetime.now(UTC).timestamp())}"
+    fragment_data["timestamp"] = datetime.now(UTC).isoformat()
 
     node = writer.create_memory_fragment_node(fragment_data)
     if not node:
@@ -661,7 +655,7 @@ async def health_check():
     """Health check endpoint для мониторинга состояния сервиса"""
     return {
         "status": "ok",
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "ml_enabled": ML_ENABLED,
         "redis_connected": hasattr(connection_manager, "redis")
         and connection_manager.redis is not None,
@@ -703,7 +697,7 @@ async def readiness_check():
     return {
         "ready": ready,
         "checks": checks,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
