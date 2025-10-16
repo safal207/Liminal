@@ -43,7 +43,9 @@ async def run_test():
 
     # 2. Подключаемся к WebSocket
     try:
-        async with websockets.connect(WS_URL) as websocket:
+        async with websockets.connect(
+            WS_URL, extra_headers={"Authorization": f"Bearer {token}"}
+        ) as websocket:
             logger.info("Подключено к WebSocket серверу")
 
             # Получаем сообщение о необходимости аутентификации
