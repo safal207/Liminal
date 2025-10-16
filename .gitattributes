@@ -12,8 +12,14 @@
 *.py text eol=lf
 
 # Markdown keep default normalization
-*.md text=auto
+*.md text eol=lf
 
 # Ensure YAML is normalized
 *.yml text eol=lf
 *.yaml text eol=lf
+
+# JSON snapshots should stay text for readable diffs
+*.json text eol=lf
+
+# Force adapter logs to be treated as UTF-8 text
+docs/research/ADAPTER_CHECK_RESULTS_20250803.md text eol=lf
