@@ -6,12 +6,19 @@ Model Manager для интеграции с AutoML for Embedded (Kenning).
 import asyncio
 import json
 import os
-import subprocess
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Dict, List, Optional
 
 import yaml
 from loguru import logger
+
+from .observability import (
+    mark_success,
+    ml_pipeline_run_duration_seconds,
+    ml_pipeline_runs_total,
+    set_queue_depth,
+)
 
 
 class ModelManager:
@@ -139,6 +146,10 @@ class ModelManager:
         Returns:
             True если обучение успешно
         """
+        stage = "train"
+        start_time = perf_counter()
+        set_queue_depth(model_name, "training_data", len(training_data))
+
         try:
             # Сохраняем данные для обучения
             data_path = self.models_dir / f"{model_name}_training_data.json"
@@ -180,14 +191,30 @@ class ModelManager:
             if process.returncode == 0:
                 logger.info(f"Модель {model_name} успешно обучена")
                 logger.debug(f"Kenning output: {stdout.decode()}")
+                ml_pipeline_runs_total.labels(
+                    pipeline=model_name, stage=stage, status="success"
+                ).inc()
+                mark_success(model_name, stage)
                 return True
             else:
                 logger.error(f"Ошибка обучения модели {model_name}: {stderr.decode()}")
+                ml_pipeline_runs_total.labels(
+                    pipeline=model_name, stage=stage, status="error"
+                ).inc()
                 return False
 
         except Exception as e:
             logger.error(f"Исключение при обучении модели {model_name}: {e}")
+            ml_pipeline_runs_total.labels(
+                pipeline=model_name, stage=stage, status="exception"
+            ).inc()
             return False
+        finally:
+            duration = perf_counter() - start_time
+            ml_pipeline_run_duration_seconds.labels(
+                pipeline=model_name, stage=stage
+            ).observe(duration)
+            set_queue_depth(model_name, "training_data", 0)
 
     def load_model(self, model_name: str) -> bool:
         """
@@ -201,11 +228,18 @@ class ModelManager:
         """
         model_path = self.models_dir / model_name / "model.onnx"
 
-        if not model_path.exists():
-            logger.warning(f"Модель {model_name} не найдена по пути {model_path}")
-            return False
+        stage = "load"
+        start_time = perf_counter()
+        status: Optional[str] = None
 
         try:
+            if not model_path.exists():
+                logger.warning(
+                    f"Модель {model_name} не найдена по пути {model_path}"
+                )
+                status = "missing_artifact"
+                return False
+
             # Здесь должна быть логика загрузки ONNX модели
             # Для демонстрации просто помечаем как загруженную
             self.active_models[model_name] = {
@@ -215,11 +249,27 @@ class ModelManager:
             }
 
             logger.info(f"Модель {model_name} успешно загружена")
+            status = "success"
             return True
 
         except Exception as e:
             logger.error(f"Ошибка загрузки модели {model_name}: {e}")
+            status = "error"
             return False
+        finally:
+            if status is None:
+                status = "unknown"
+
+            ml_pipeline_runs_total.labels(
+                pipeline=model_name, stage=stage, status=status
+            ).inc()
+            if status == "success":
+                mark_success(model_name, stage)
+
+            duration = perf_counter() - start_time
+            ml_pipeline_run_duration_seconds.labels(
+                pipeline=model_name, stage=stage
+            ).observe(duration)
 
     def predict(self, model_name: str, features: Dict[str, Any]) -> Optional[Any]:
         """
@@ -232,11 +282,16 @@ class ModelManager:
         Returns:
             Результат предсказания или None при ошибке
         """
-        if model_name not in self.active_models:
-            logger.warning(f"Модель {model_name} не загружена")
-            return None
+        stage = "inference"
+        start_time = perf_counter()
+        status: Optional[str] = None
 
         try:
+            if model_name not in self.active_models:
+                logger.warning(f"Модель {model_name} не загружена")
+                status = "skipped"
+                return None
+
             # Здесь должна быть логика инференса ONNX модели
             # Для демонстрации возвращаем заглушку
 
@@ -245,18 +300,37 @@ class ModelManager:
                 score = features.get("messages_per_minute", 0) * features.get(
                     "error_rate", 0
                 )
-                return {"is_anomaly": score > 10, "anomaly_score": score}
+                result = {"is_anomaly": score > 10, "anomaly_score": score}
+                status = "success"
+                return result
 
             elif model_name == "load_prediction":
                 # Предсказание нагрузки
                 predicted_load = features.get("messages_per_minute", 0) * 1.2
-                return {"predicted_load": predicted_load}
+                result = {"predicted_load": predicted_load}
+                status = "success"
+                return result
 
+            status = "success"
             return {"prediction": "model_placeholder"}
 
         except Exception as e:
             logger.error(f"Ошибка предсказания модели {model_name}: {e}")
+            status = "error"
             return None
+        finally:
+            if status is None:
+                status = "unknown"
+
+            ml_pipeline_runs_total.labels(
+                pipeline=model_name, stage=stage, status=status
+            ).inc()
+            if status == "success":
+                mark_success(model_name, stage)
+
+            ml_pipeline_run_duration_seconds.labels(
+                pipeline=model_name, stage=stage
+            ).observe(perf_counter() - start_time)
 
     def get_model_status(self) -> Dict[str, Any]:
         """

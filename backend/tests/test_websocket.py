@@ -11,10 +11,13 @@ import pytest
 import websockets
 from fastapi.testclient import TestClient
 
-from auth.jwt_utils import create_access_token_for_user, verify_websocket_token
-from main import app
-from websocket.connection_manager import ConnectionManager
-from websocket.redis_connection_manager import RedisConnectionManager
+from backend.auth.jwt_utils import (
+    create_access_token_for_user,
+    verify_websocket_token,
+)
+from backend.main import app
+from backend.websocket.connection_manager import ConnectionManager
+from backend.websocket.redis_connection_manager import RedisConnectionManager
 
 
 @pytest.fixture
@@ -77,7 +80,9 @@ async def test_websocket_broadcast():
 async def test_redis_integration():
     """Тест интеграции с Redis для синхронизации между экземплярами."""
     # Создаем два экземпляра RedisConnectionManager для имитации распределенной системы
-    with patch("websocket.redis_connection_manager.RedisClient") as mock_redis_client:
+    with patch(
+        "backend.websocket.redis_connection_manager.RedisClient"
+    ) as mock_redis_client:
         # Настраиваем mock для Redis клиента
         mock_redis = AsyncMock()
         mock_pubsub = AsyncMock()

@@ -8,8 +8,8 @@ import sys
 import uuid
 
 from loguru import logger
-from websocket.redis_client import RedisClient
-from websocket.redis_connection_manager import RedisConnectionManager
+from backend.websocket.redis_client import RedisClient
+from backend.websocket.redis_connection_manager import RedisConnectionManager
 
 # Настраиваем вывод логов
 logger.remove()
