@@ -6,6 +6,7 @@ MemoryTimeline - динамически обновляемая временна�
 print("DEBUG: Starting memory_timeline.py imports")
 import asyncio
 from datetime import datetime
+from time import perf_counter
 from typing import Any, Dict, List, Optional
 
 print("DEBUG: Importing fastapi.WebSocket")
@@ -14,6 +15,12 @@ import json
 from fastapi import HTTPException, WebSocket
 
 from auth.jwt_utils import jwt_manager
+from backend.metrics.collectors import (
+    memory_timeline_backlog_size,
+    memory_timeline_events_total,
+    memory_timeline_processing_seconds,
+    memory_timeline_subscribers,
+)
 
 print("DEBUG: All imports completed in memory_timeline.py")
 
@@ -41,6 +48,7 @@ class MemoryTimeline:
         self, content: str, memory_type: str, metadata: Optional[Dict] = None
     ) -> Dict[str, Any]:
         """Добавляет новое воспоминание в таймлайн."""
+        start_time = perf_counter()
         memory = {
             "id": f"mem_{len(self.timeline) + 1}",
             "timestamp": datetime.utcnow().astimezone().isoformat(),
@@ -51,7 +59,15 @@ class MemoryTimeline:
 
         async with self._lock:
             self.timeline.append(memory)
-            await self._notify_subscribers("memory_added", memory)
+            backlog_size = len(self.timeline)
+
+        memory_timeline_backlog_size.set(backlog_size)
+        await self._notify_subscribers("memory_added", memory)
+
+        memory_timeline_events_total.labels(event_type="memory_added").inc()
+        memory_timeline_processing_seconds.labels(operation="add_memory").observe(
+            perf_counter() - start_time
+        )
 
         return memory
 
@@ -70,7 +86,9 @@ class MemoryTimeline:
 
         async with self._lock:
             self._subscribers.append(websocket)
+            memory_timeline_subscribers.set(len(self._subscribers))
 
+        memory_timeline_events_total.labels(event_type="subscriber_joined").inc()
         # Отправляем историю при подключении
         await websocket.send_json(
             {
@@ -84,13 +102,17 @@ class MemoryTimeline:
         async with self._lock:
             if websocket in self._subscribers:
                 self._subscribers.remove(websocket)
+                memory_timeline_subscribers.set(len(self._subscribers))
+                memory_timeline_events_total.labels(event_type="subscriber_left").inc()
 
     async def _notify_subscribers(self, event_type: str, data: Dict):
         """Отправляет уведомление всем подписчикам."""
         # Если нет подписчиков, не создаем сообщение и не блокируем
         if not self._subscribers:
+            memory_timeline_events_total.labels(event_type="notification_skipped").inc()
             return
 
+        start_time = perf_counter()
         message = {
             "event": event_type,
             "data": data,
@@ -99,24 +121,45 @@ class MemoryTimeline:
 
         message_json = json.dumps(message)
 
+        delivered = 0
+        failed = 0
         async with self._lock:
             # Проверяем снова под локом, так как список мог измениться
             if not self._subscribers:
+                memory_timeline_events_total.labels(event_type="notification_skipped").inc()
                 return
 
             disconnected = []
             for subscriber in self._subscribers:
                 try:
                     await subscriber.send_text(message_json)
+                    delivered += 1
                 except Exception as e:
                     print(f"Error sending to WebSocket: {e}")
                     disconnected.append(subscriber)
+                    failed += 1
 
             # Удаляем отключившихся подписчиков, если они еще не были удалены
             if disconnected:
                 self._subscribers = [
                     sub for sub in self._subscribers if sub not in disconnected
                 ]
+                memory_timeline_events_total.labels(
+                    event_type="subscriber_dropped"
+                ).inc(len(disconnected))
+                memory_timeline_subscribers.set(len(self._subscribers))
+
+        if delivered:
+            memory_timeline_events_total.labels(event_type="notification_sent").inc(
+                delivered
+            )
+        if failed:
+            memory_timeline_events_total.labels(event_type="notification_failed").inc(
+                failed
+            )
+        memory_timeline_processing_seconds.labels(
+            operation="notify_subscribers"
+        ).observe(perf_counter() - start_time)
 
     def get_timeline(
         self,
