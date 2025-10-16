@@ -81,7 +81,8 @@ class Neo4jClient(Neo4jGateway):
             SET mf.content = $content,
                 mf.type = $type,
                 mf.growth_stage = $growth_stage,
-                mf.timestamp = datetime($timestamp)
+                mf.timestamp = datetime($timestamp),
+                mf.metadata = $metadata
             RETURN mf
             """
             result = session.run(query, **memory_data)

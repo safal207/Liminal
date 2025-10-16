@@ -1,7 +1,7 @@
 """Routes for memory fragments and the memory timeline."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -16,9 +16,9 @@ router = APIRouter(tags=["fragments"])
 async def create_fragment(
     fragment: MemoryFragmentCreate, service=Depends(get_neo4j_service)
 ):
-    fragment_data = fragment.dict()
-    fragment_data["id"] = f"mem_{int(datetime.utcnow().timestamp())}"
-    fragment_data["timestamp"] = datetime.utcnow().isoformat()
+    fragment_data = fragment.model_dump()
+    fragment_data["id"] = f"mem_{int(datetime.now(UTC).timestamp())}"
+    fragment_data["timestamp"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     node = service.create_fragment(fragment_data)
     if not node:
         raise HTTPException(status_code=500, detail="Не удалось создать MemoryFragment")
