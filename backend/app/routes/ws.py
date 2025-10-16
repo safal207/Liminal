@@ -7,7 +7,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
-from backend.auth.jwt_utils import verify_websocket_token
+from backend.auth.dependencies import token_verifier
 
 from ..dependencies import (
     get_connection_manager,
@@ -35,7 +35,10 @@ async def websocket_timeline(
 
     try:
         if token:
-            user_id = verify_websocket_token(token)
+            payload = await token_verifier.ensure_websocket(websocket, token)
+            if payload is None:
+                return
+            user_id = payload.get("sub")
             if user_id:
                 authenticated = await manager.authenticate_connection(websocket, user_id)
                 if authenticated:
@@ -66,7 +69,11 @@ async def websocket_timeline(
 
             if payload.get("type") == "auth" and "token" in payload:
                 candidate = payload["token"]
-                user_id = verify_websocket_token(candidate)
+                token_payload = await token_verifier.ensure_websocket(websocket, candidate)
+                if token_payload is None:
+                    ml_service.register_auth_event(user_id or "unknown", False)
+                    return
+                user_id = token_payload.get("sub")
                 if user_id:
                     authenticated = await manager.authenticate_connection(websocket, user_id)
                     if authenticated:
