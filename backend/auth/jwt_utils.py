@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
 
-from core.settings import settings
+from backend.core.settings import settings
 
 # Безопасный импорт CryptContext с обработкой ошибок
 try:
