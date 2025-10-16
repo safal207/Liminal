@@ -1,7 +1,6 @@
 """Routes for working with dune waves and relationships."""
 from __future__ import annotations
 
-from datetime import datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,13 +13,10 @@ router = APIRouter(tags=["waves"])
 
 @router.post("/waves/", response_model=dict)
 async def create_wave(wave: DuneWaveCreate, service=Depends(get_neo4j_service)):
-    wave_data = wave.dict()
-    wave_data["id"] = f"wave_{int(datetime.utcnow().timestamp())}"
-    wave_data["timestamp"] = datetime.utcnow().isoformat()
-    node = service.create_wave(wave_data)
+    node = service.create_wave(wave.dict())
     if not node:
         raise HTTPException(status_code=500, detail="Не удалось создать DuneWave")
-    return {"status": "success", "id": node.get("id", wave_data["id"]) }
+    return {"status": "success", "id": node.get("id")}
 
 
 @router.get("/waves/", response_model=List[dict])

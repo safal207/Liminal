@@ -70,7 +70,7 @@ Think of tests as daily diagnostics of a living system:
 ## API Health/Readiness Quick Checks
 
 - Start server:
-  - `python -m uvicorn backend.api:app --reload --port 8000`
+  - `python -m uvicorn backend.app.main:app --reload --port 8000`
 - PowerShell:
   - `Invoke-RestMethod http://127.0.0.1:8000/health | ConvertTo-Json -Depth 5`
   - `Invoke-RestMethod http://127.0.0.1:8000/ready  | ConvertTo-Json -Depth 5`
@@ -121,7 +121,7 @@ Notes:
 - Q: Startup fails due to `metrics` import.
   A: Install dev deps from `requirements-dev.txt` or disable metrics; check Python version and working directory.
 - Q: Port busy.
-  A: Change port: `python -m uvicorn backend.api:app --port 8080`.
+  A: Change port: `python -m uvicorn backend.app.main:app --port 8080`.
 
 ## Уверенный коммит на Windows
 

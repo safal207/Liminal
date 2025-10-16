@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Dict
+from typing import Awaitable, Callable, Dict, AsyncIterator
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -16,15 +17,32 @@ from backend.metrics import setup_metrics
 
 from .dependencies import (
     get_connection_manager,
+    get_memory_service,
     get_ml_service,
+    get_websocket_service,
     init_services,
     shutdown_services,
 )
 from .routes import auth, debug, fragments, waves, ws
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Initialise and tear down shared application services."""
+
+    await init_services()
+    app.state.startup_complete = True
+    try:
+        yield
+    finally:
+        app.state.startup_complete = False
+        await shutdown_services()
+
+
 app = FastAPI(
     title="LIMINAL API",
     description="API для работы с графовой базой данных LIMINAL",
+    lifespan=lifespan,
 )
 
 # Static files ---------------------------------------------------------
@@ -46,11 +64,14 @@ setup_metrics(app)
 
 
 @app.middleware("http")
-async def ml_data_collector(request: Request, call_next):
+async def ml_data_collector(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
     client_host = request.client.host if request.client else "unknown"
-    get_ml_service().register_ip_address(client_host)
-    response = await call_next(request)
-    return response
+    ml_service = getattr(request.app.state, "ml_service", get_ml_service())
+    ml_service.register_ip_address(client_host)
+    return await call_next(request)
 
 
 # Routers --------------------------------------------------------------
@@ -66,19 +87,9 @@ app.include_router(ws.router)
 app.state.redis_client = RedisClient()
 app.state.connection_manager = get_connection_manager()
 app.state.ml_service = get_ml_service()
+app.state.websocket_service = get_websocket_service()
+app.state.memory_service = get_memory_service()
 app.state.startup_complete = False
-
-
-# Lifespan events ------------------------------------------------------
-@app.on_event("startup")
-async def on_startup():
-    await init_services()
-    app.state.startup_complete = True
-
-
-@app.on_event("shutdown")
-async def on_shutdown():
-    await shutdown_services()
 
 
 # Routes ---------------------------------------------------------------
