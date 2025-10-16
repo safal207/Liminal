@@ -1,4 +1,3 @@
-print("DEBUG: Starting api.py imports")
 import asyncio
 import json
 import logging
@@ -6,7 +5,8 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-print("DEBUG: Importing FastAPI and dependencies")
+logger = logging.getLogger(__name__)
+
 from fastapi import (
     Depends,
     FastAPI,
@@ -47,7 +47,6 @@ def record_to_dict(record):
 
 
 # Импорт метрик Prometheus
-print("DEBUG: Before metrics import")
 try:
     from backend.metrics import (
         setup_metrics,
@@ -56,22 +55,18 @@ try:
         websocket_messages_total,
     )
 
-    print("DEBUG: Successfully imported metrics")
 except ImportError as e:
-    print(f"ERROR: Failed to import metrics: {e}")
+    logger.exception("Failed to import metrics module")
     raise
 
-print("DEBUG: Before memory_timeline import")
 try:
     from backend.memory_timeline import MemoryTimeline
     from backend.memory_timeline import timeline as memory_timeline
 
-    print("DEBUG: Successfully imported memory_timeline")
 except ImportError as e:
-    print(f"ERROR: Failed to import memory_timeline: {e}")
+    logger.exception("Failed to import memory timeline")
     raise
 
-print("DEBUG: Before ml_features import")
 try:
     from backend.ml_features import (
         extract_traffic_features,
@@ -86,9 +81,8 @@ try:
 
     # Проверка, включена ли ML-функциональность
     ML_ENABLED = os.environ.get("ML_ENABLED", "false").lower() == "true"
-    print(f"DEBUG: Successfully imported ml_features. ML_ENABLED={ML_ENABLED}")
 except ImportError as e:
-    print(f"ERROR: Failed to import ml_features: {e}")
+    logger.exception("Failed to import ml_features")
     # Fallback функции для случая отсутствия ML-модуля
     ML_ENABLED = False
 
@@ -117,7 +111,6 @@ except ImportError as e:
         pass
 
 
-print("DEBUG: Before connection_manager import")
 try:
     # Проверяем, нужно ли использовать Redis для масштабирования
     use_redis = os.environ.get("USE_REDIS", "false").lower() == "true"
@@ -131,21 +124,19 @@ try:
             max_connections_per_ip=10,
             redis_prefix="liminal",
         )
-        print(f"DEBUG: Using Redis ConnectionManager with URL: {redis_url}")
+        logger.debug("Using Redis ConnectionManager", extra={"redis_url": redis_url})
     else:
         from backend.websocket.connection_manager import ConnectionManager
 
         connection_manager = ConnectionManager(
             max_connections=100, max_connections_per_ip=10
         )
-        print("DEBUG: Using standard ConnectionManager")
-    print("DEBUG: Successfully imported and initialized connection_manager")
+        logger.debug("Using in-memory ConnectionManager")
 except ImportError as e:
-    print(f"ERROR: Failed to import connection_manager: {e}")
+    logger.exception("Failed to import connection manager")
     raise
 
 # Импорты для аутентификации
-print("DEBUG: Before auth imports")
 try:
     from backend.auth.jwt_utils import (
         authenticate_user,
@@ -155,18 +146,13 @@ try:
     )
     from backend.auth.models import Token, UserLogin, WebSocketAuthMessage
 
-    print("DEBUG: Successfully imported auth modules")
 except ImportError as e:
-    print(f"ERROR: Failed to import auth modules: {e}")
+    logger.exception("Failed to import auth modules")
     raise
 
-print("DEBUG: Creating FastAPI app")
 app = FastAPI(
     title="LIMINAL API", description="API для работы с графовой базой данных LIMINAL"
 )
-
-# Инициализация логгера
-logger = logging.getLogger(__name__)
 
 
 # События для инициализации и завершения работы приложения
@@ -202,9 +188,7 @@ async def shutdown_event():
 
 
 # Инициализация временной шкалы памяти
-print("DEBUG: Initializing MemoryTimeline")
 timeline = MemoryTimeline()
-print("DEBUG: MemoryTimeline initialized")
 
 # Обслуживание статических файлов
 import os
@@ -222,12 +206,10 @@ app.add_middleware(
 )
 
 # Настройка метрик Prometheus
-print("DEBUG: Setting up Prometheus metrics")
 try:
     setup_metrics(app)
-    print("DEBUG: Prometheus metrics initialized at /metrics endpoint")
+    logger.debug("Prometheus metrics initialized at /metrics endpoint")
 except Exception as e:
-    print(f"ERROR: Failed to setup Prometheus metrics: {e}")
     logger.error(f"Failed to setup Prometheus metrics: {e}")
     # Продолжаем работу даже при ошибке настройки метрик
 
@@ -505,7 +487,7 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
                 websocket, "Disconnected during auth"
             )
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        logger.exception("Unhandled WebSocket error")
         if authenticated and user_id:
             await memory_timeline.unsubscribe(websocket)
             await connection_manager.disconnect(websocket, user_id)
@@ -591,7 +573,7 @@ async def get_waves(
     try:
         return writer.list_dunewaves(limit=limit)
     except Exception as e:
-        print(f"Error in get_waves: {e}")
+        logger.exception("Failed to fetch waves")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -617,7 +599,7 @@ async def get_fragments(
     try:
         return writer.list_memory_fragments(limit=limit)
     except Exception as e:
-        print(f"Error in get_fragments: {e}")
+        logger.exception("Failed to fetch memory fragments")
         raise HTTPException(status_code=500, detail=str(e))
 
 
