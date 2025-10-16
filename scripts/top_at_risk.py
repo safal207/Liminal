@@ -1,115 +1,70 @@
+#!/usr/bin/env python3
+"""CLI wrapper for the Top At-Risk Prefect workflow."""
 from __future__ import annotations
 
 import argparse
-import json
-import os
-import pathlib
 import sys
+from pathlib import Path
 from typing import Any, List
 
-# Ensure `src` is on sys.path for local execution
-_ROOT = pathlib.Path(__file__).resolve().parents[1]
-_SRC = _ROOT / "src"
-if str(_SRC) not in sys.path:
-    sys.path.insert(0, str(_SRC))
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
-# Try to import schema for in-process GraphQL execution; fall back to HTTP if unavailable
-_schema = None
-try:  # pragma: no cover - import path may vary in local dev
-    from liminal.graphql_schema import schema as _schema  # type: ignore
-except Exception:
-    _schema = None
+from liminal.workflows.prefect_flows import top_at_risk_flow
 
 
-def gql(query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
-    if _schema is not None:
-        res = _schema.execute_sync(query, variable_values=variables)
-        if res.errors:
-            raise SystemExit(f"GraphQL errors: {res.errors}")
-        assert res.data is not None
-        return res.data  # type: ignore[return-value]
-    # HTTP fallback to running server
-    import urllib.error
-    import urllib.request
-
-    url = os.getenv("LIMINAL_GRAPHQL_URL", "http://127.0.0.1:8000/graphql")
-    payload = json.dumps({"query": query, "variables": variables or {}}).encode("utf-8")
-    req = urllib.request.Request(
-        url, data=payload, headers={"Content-Type": "application/json"}, method="POST"
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            body = resp.read().decode("utf-8")
-    except urllib.error.URLError as e:  # pragma: no cover
-        # Fall back to REST when GraphQL unreachable
-        return {"__rest_fallback__": True}
-    try:
-        js = json.loads(body)
-    except Exception as e:  # pragma: no cover
-        raise SystemExit(f"Invalid JSON from GraphQL endpoint: {e}\nRaw: {body[:300]}")
-    if js.get("errors"):
-        # Indicate failure so caller can fallback to REST
-        return {"__rest_fallback__": True}
-    return js.get("data", {})
-
-
-def main() -> None:
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Show top at-risk edges (weak relationships)"
+        description="Show top at-risk edges using the declarative Prefect workflow."
     )
     parser.add_argument(
         "--limit",
         "-l",
         type=int,
         default=5,
-        help="Number of pairs to show (default: 5)",
+        help="Number of pairs to show (default: 5).",
     )
     parser.add_argument(
         "--threshold",
         "-t",
         type=float,
         default=None,
-        help="Override LIMINAL_HEALTH_THRESHOLD for this run",
+        help="Override LIMINAL_HEALTH_THRESHOLD for this run.",
     )
-    args = parser.parse_args()
-
-    if args.threshold is not None:
-        os.environ["LIMINAL_HEALTH_THRESHOLD"] = str(args.threshold)
-
-    data = gql(
-        "query($n:Int!){ topAtRiskEdges(limit:$n){ sourceId targetId score advice } }",
-        {"n": int(args.limit)},
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit raw JSON instead of a table.",
     )
-    rows: List[dict[str, Any]]
-    if data.get("__rest_fallback__"):
-        # REST fallback
-        import urllib.error
-        import urllib.request
+    return parser.parse_args()
 
-        rest_base = os.getenv("LIMINAL_REST_URL", "http://127.0.0.1:8000")
-        rest_url = f"{rest_base}/api/top-at-risk?limit={int(args.limit)}"
-        try:
-            with urllib.request.urlopen(rest_url, timeout=10) as resp:
-                body = resp.read().decode("utf-8")
-                js = json.loads(body)
-        except Exception as e:
-            raise SystemExit(f"REST fallback failed at {rest_url}: {e}")
-        rows = js.get("topAtRiskEdges", [])
-    else:
-        rows = data["topAtRiskEdges"]
+
+def render_table(rows: List[dict[str, Any]]) -> None:
+    print("Top at-risk edges")
+    print("-" * 72)
+    print(f"{'Source':<12} {'Target':<12} {'Score':<8} Advice")
+    print("-" * 72)
+    for row in rows:
+        advice = ", ".join(row.get("advice", []))
+        print(f"{row['sourceId']:<12} {row['targetId']:<12} {row['score']:<8.3f} {advice}")
+
+
+def main() -> None:
+    args = parse_args()
+    rows = top_at_risk_flow(limit=args.limit, threshold=args.threshold)
 
     if not rows:
         print("No pairs found. Add nodes via GraphQL or code to see at-risk edges.")
         return
 
-    # Pretty table
-    print("Top at-risk edges")
-    print("-" * 72)
-    print(f"{'Source':<12} {'Target':<12} {'Score':<8} Advice")
-    print("-" * 72)
-    for r in rows:
-        advice = ", ".join(r.get("advice", []))
-        print(f"{r['sourceId']:<12} {r['targetId']:<12} {r['score']:<8.3f} {advice}")
+    if args.json:
+        import json
+
+        print(json.dumps(rows, ensure_ascii=False, indent=2))
+    else:
+        render_table(rows)
 
 
 if __name__ == "__main__":
