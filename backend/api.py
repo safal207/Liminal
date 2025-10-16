@@ -3,9 +3,7 @@ import asyncio
 import json
 import logging
 import os
-import sys
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 print("DEBUG: Importing FastAPI and dependencies")
@@ -22,78 +20,12 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-# Добавляем корневую директорию в PYTHONPATH для корректного импорта
-print(f"DEBUG: Current sys.path: {sys.path}")
-sys.path.append(str(Path(__file__).parent))
-print(f"DEBUG: Updated sys.path: {sys.path}")
-
-# Условный импорт Neo4jWriter и Neo4jDateTime
-print("DEBUG: Before Neo4j imports")
-print(f"DEBUG: TESTING={os.environ.get('TESTING')}")
-
-if os.environ.get("TESTING"):
-    print("API: Running in TESTING mode. Using mock Neo4jWriter.")
-
-    # Mock Neo4j classes for testing
-    class Neo4jDateTime:
-        def isoformat(self):
-            return datetime.now().isoformat() + "Z"
-
-    class Neo4jWriter:
-        def __init__(self, *args, **kwargs):
-            print("API: Mock Neo4jWriter initialized.")
-            self.driver = self
-
-        def session(self):
-            return self
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            pass
-
-        def run(self, *args, **kwargs):
-            return MockResult()
-
-        def create_indexes(self):
-            pass
-
-        def close(self):
-            pass
-
-        def create_dunewave_node(self, data):
-            return {"id": "mock_wave_id", "type": "DuneWave", **data}
-
-        def create_memory_fragment_node(self, data):
-            return {"id": "mock_mem_id", "type": "MemoryFragment", **data}
-
-        def link_dunewave_to_memory(self, wave_id, memory_id):
-            return True
-
-        def create_mentorship(self, younger_id, mentor_id):
-            return True
-
-        def find_wisdom_fragments(self, emotion=None, limit=10):
-            return []
-
-    class MockResult:
-        def single(self):
-            return None
-
-        def __iter__(self):
-            return iter([])
-
-else:
-    print("API: Running in PRODUCTION mode. Using real Neo4jWriter.")
-    # Добавляем родительскую директорию в путь для импорта neo4j_writer
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from neo4j_writer import Neo4jDateTime, Neo4jWriter
+from backend.infrastructure.neo4j import Neo4jGateway, get_default_gateway
 
 
 # Функция для сериализации объектов Neo4j
 def neo4j_serializer(obj):
-    if isinstance(obj, Neo4jDateTime):
+    if hasattr(obj, "isoformat"):
         return obj.isoformat()
     raise TypeError(f"Type {type(obj)} not serializable")
 
@@ -117,7 +49,7 @@ def record_to_dict(record):
 # Импорт метрик Prometheus
 print("DEBUG: Before metrics import")
 try:
-    from metrics import (
+    from backend.metrics import (
         setup_metrics,
         websocket_auth_total,
         websocket_connections,
@@ -131,8 +63,8 @@ except ImportError as e:
 
 print("DEBUG: Before memory_timeline import")
 try:
-    from memory_timeline import MemoryTimeline
-    from memory_timeline import timeline as memory_timeline
+    from backend.memory_timeline import MemoryTimeline
+    from backend.memory_timeline import timeline as memory_timeline
 
     print("DEBUG: Successfully imported memory_timeline")
 except ImportError as e:
@@ -141,7 +73,7 @@ except ImportError as e:
 
 print("DEBUG: Before ml_features import")
 try:
-    from ml_features import (
+    from backend.ml_features import (
         extract_traffic_features,
         extract_user_patterns,
         get_current_anomaly_scores,
@@ -308,17 +240,11 @@ class DuneWaveCreate(BaseModel):
     context: str
     source: str
 
-    class Config:
-        json_encoders = {Neo4jDateTime: lambda v: v.isoformat() if v else None}
-
 
 class MemoryFragmentCreate(BaseModel):
     content: str
     type: str
     growth_stage: str
-
-    class Config:
-        json_encoders = {Neo4jDateTime: lambda v: v.isoformat() if v else None}
 
 
 class MentorshipCreate(BaseModel):
@@ -339,31 +265,12 @@ class MemoryCreate(BaseModel):
 
 
 # Ленивая инициализация подключения к Neo4j
-_neo4j_writer = None
 
 
-def get_neo4j_writer():
-    """Возвращает экземпляр Neo4jWriter с ленивой инициализацией."""
-    global _neo4j_writer
+def get_neo4j_gateway() -> Neo4jGateway:
+    """Return the configured Neo4j gateway instance."""
 
-    if _neo4j_writer is None:
-        try:
-            # В тестовом режиме используем мок
-            if os.environ.get("TESTING"):
-                _neo4j_writer = Neo4jWriter()
-            else:
-                # В продакшене используем реальное подключение
-                _neo4j_writer = Neo4jWriter(
-                    uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-                    user=os.getenv("NEO4J_USER", "neo4j"),
-                    password=os.getenv("NEO4J_PASSWORD", "password"),
-                )
-        except Exception as e:
-            print(f"Ошибка при подключении к Neo4j: {e}")
-            # Возвращаем мок в случае ошибки
-            _neo4j_writer = Neo4jWriter()
-
-    return _neo4j_writer
+    return get_default_gateway()
 
 
 # Эндпоинты API
@@ -665,7 +572,7 @@ async def get_memories(
 # DuneWave endpoints
 @app.post("/waves/", response_model=dict)
 async def create_wave(
-    wave: DuneWaveCreate, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    wave: DuneWaveCreate, writer: Neo4jGateway = Depends(get_neo4j_gateway)
 ):
     wave_data = wave.dict()
     wave_data["id"] = f"wave_{int(datetime.utcnow().timestamp())}"
@@ -678,22 +585,11 @@ async def create_wave(
 
 
 @app.get("/waves/", response_model=List[dict])
-async def get_waves(limit: int = 10, writer: Neo4jWriter = Depends(get_neo4j_writer)):
+async def get_waves(
+    limit: int = 10, writer: Neo4jGateway = Depends(get_neo4j_gateway)
+):
     try:
-        with writer.driver.session() as session:
-            result = session.run(
-                "MATCH (d:DuneWave) RETURN d ORDER BY d.timestamp DESC LIMIT $limit",
-                limit=limit,
-            )
-            waves = []
-            for record in result:
-                wave = dict(record["d"])
-                # Преобразуем объекты Neo4j DateTime в строки
-                for key, value in wave.items():
-                    if hasattr(value, "isoformat"):
-                        wave[key] = value.isoformat()
-                waves.append(wave)
-            return waves
+        return writer.list_dunewaves(limit=limit)
     except Exception as e:
         print(f"Error in get_waves: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -702,7 +598,7 @@ async def get_waves(limit: int = 10, writer: Neo4jWriter = Depends(get_neo4j_wri
 # MemoryFragment endpoints
 @app.post("/fragments/", response_model=dict)
 async def create_fragment(
-    fragment: MemoryFragmentCreate, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    fragment: MemoryFragmentCreate, writer: Neo4jGateway = Depends(get_neo4j_gateway)
 ):
     fragment_data = fragment.dict()
     fragment_data["id"] = f"mem_{int(datetime.utcnow().timestamp())}"
@@ -716,23 +612,10 @@ async def create_fragment(
 
 @app.get("/fragments/", response_model=List[dict])
 async def get_fragments(
-    limit: int = 10, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    limit: int = 10, writer: Neo4jGateway = Depends(get_neo4j_gateway)
 ):
     try:
-        with writer.driver.session() as session:
-            result = session.run(
-                "MATCH (m:MemoryFragment) RETURN m ORDER BY m.timestamp DESC LIMIT $limit",
-                limit=limit,
-            )
-            fragments = []
-            for record in result:
-                fragment = dict(record["m"])
-                # Преобразуем объекты Neo4j DateTime в строки
-                for key, value in fragment.items():
-                    if hasattr(value, "isoformat"):
-                        fragment[key] = value.isoformat()
-                fragments.append(fragment)
-            return fragments
+        return writer.list_memory_fragments(limit=limit)
     except Exception as e:
         print(f"Error in get_fragments: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -741,7 +624,7 @@ async def get_fragments(
 # Relationships
 @app.post("/relationships/link-wave-to-memory/", response_model=dict)
 async def link_wave_to_memory(
-    wave_id: str, memory_id: str, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    wave_id: str, memory_id: str, writer: Neo4jGateway = Depends(get_neo4j_gateway)
 ):
     result = writer.link_dunewave_to_memory(wave_id, memory_id)
     if not result:
@@ -751,7 +634,7 @@ async def link_wave_to_memory(
 
 @app.post("/relationships/mentorship/", response_model=dict)
 async def create_mentorship(
-    mentorship: MentorshipCreate, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    mentorship: MentorshipCreate, writer: Neo4jGateway = Depends(get_neo4j_gateway)
 ):
     result = writer.create_mentorship(mentorship.younger_id, mentorship.mentor_id)
     if not result:
