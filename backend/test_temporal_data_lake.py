@@ -13,7 +13,16 @@ import sys
 from datetime import datetime
 from typing import Any, Dict
 
-from consciousness_neo4j import ConsciousnessEventProcessor, ConsciousnessNeo4jWriter
+try:
+    from backend.consciousness_neo4j import (
+        ConsciousnessEventProcessor,
+        ConsciousnessNeo4jWriter,
+    )
+except ModuleNotFoundError:  # pragma: no cover - compatibility with legacy layout
+    from consciousness_neo4j import (  # type: ignore[no-redef]
+        ConsciousnessEventProcessor,
+        ConsciousnessNeo4jWriter,
+    )
 
 
 def print_styled(title, content, style="info"):

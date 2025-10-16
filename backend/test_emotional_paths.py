@@ -10,7 +10,11 @@ import uuid
 from datetime import datetime
 
 import requests
-from consciousness_neo4j import ConsciousnessNeo4jWriter
+
+try:
+    from backend.consciousness_neo4j import ConsciousnessNeo4jWriter
+except ModuleNotFoundError:  # pragma: no cover - support legacy module path
+    from consciousness_neo4j import ConsciousnessNeo4jWriter
 from consciousness_schema import (
     ConsciousnessNode,
     ConsciousnessState,

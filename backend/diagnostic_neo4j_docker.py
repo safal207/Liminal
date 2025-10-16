@@ -105,7 +105,14 @@ with open(log_file, "w", encoding="utf-8") as f:
                     try:
                         import uuid
 
-                        from consciousness_neo4j import ConsciousnessNeo4jWriter
+                        try:
+                            from backend.consciousness_neo4j import (
+                                ConsciousnessNeo4jWriter,
+                            )
+                        except ModuleNotFoundError:
+                            from consciousness_neo4j import (  # type: ignore[no-redef]
+                                ConsciousnessNeo4jWriter,
+                            )
                         from consciousness_schema import (
                             ConsciousnessNode,
                             ConsciousnessState,
@@ -234,7 +241,14 @@ with open(log_file, "w", encoding="utf-8") as f:
                 # Try to analyze temporal patterns
                 f.write("\n=== Analyzing Temporal Patterns ===\n")
                 try:
-                    from consciousness_neo4j import ConsciousnessNeo4jWriter
+                    try:
+                        from backend.consciousness_neo4j import (
+                            ConsciousnessNeo4jWriter,
+                        )
+                    except ModuleNotFoundError:
+                        from consciousness_neo4j import (  # type: ignore[no-redef]
+                            ConsciousnessNeo4jWriter,
+                        )
 
                     writer = ConsciousnessNeo4jWriter(
                         uri=uri, user=user, password=password
