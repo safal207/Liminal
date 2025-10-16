@@ -16,7 +16,9 @@ from backend.metrics import setup_metrics
 
 from .dependencies import (
     get_connection_manager,
+    get_memory_service,
     get_ml_service,
+    get_websocket_service,
     init_services,
     shutdown_services,
 )
@@ -66,6 +68,8 @@ app.include_router(ws.router)
 app.state.redis_client = RedisClient()
 app.state.connection_manager = get_connection_manager()
 app.state.ml_service = get_ml_service()
+app.state.websocket_service = get_websocket_service()
+app.state.memory_service = get_memory_service()
 app.state.startup_complete = False
 
 

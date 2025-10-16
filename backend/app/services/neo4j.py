@@ -2,15 +2,16 @@
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List
 
 
 class Neo4jService:
     """Wrapper around the Neo4j writer implementation with graceful fallbacks."""
 
-    def __init__(self) -> None:
-        self._writer = None
-        self._use_mock = False
+    def __init__(self, writer: Any | None = None) -> None:
+        self._writer = writer
+        self._use_mock = writer is not None
 
     def _create_writer(self):
         if os.environ.get("TESTING"):
@@ -40,20 +41,36 @@ class Neo4jService:
 
     # Utility helpers -------------------------------------------------
     def create_wave(self, wave_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        payload = {**wave_data}
+        payload.setdefault("id", f"wave_{int(datetime.utcnow().timestamp())}")
+        payload.setdefault("timestamp", datetime.utcnow().isoformat())
+
         writer = self.get_writer()
-        return writer.create_dunewave_node(wave_data)
+        if hasattr(writer, "create_dunewave_node"):
+            return writer.create_dunewave_node(payload)
+        raise AttributeError("Configured writer does not support dune wave creation")
 
     def create_fragment(self, fragment_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        payload = {**fragment_data}
+        payload.setdefault("id", f"mem_{int(datetime.utcnow().timestamp())}")
+        payload.setdefault("timestamp", datetime.utcnow().isoformat())
+
         writer = self.get_writer()
-        return writer.create_memory_fragment_node(fragment_data)
+        if hasattr(writer, "create_memory_fragment_node"):
+            return writer.create_memory_fragment_node(payload)
+        raise AttributeError("Configured writer does not support memory fragments")
 
     def link_wave_to_memory(self, wave_id: str, memory_id: str) -> bool:
         writer = self.get_writer()
-        return writer.link_dunewave_to_memory(wave_id, memory_id)
+        if hasattr(writer, "link_dunewave_to_memory"):
+            return bool(writer.link_dunewave_to_memory(wave_id, memory_id))
+        raise AttributeError("Configured writer does not support linking waves to memories")
 
     def create_mentorship(self, younger_id: str, mentor_id: str) -> bool:
         writer = self.get_writer()
-        return writer.create_mentorship(younger_id, mentor_id)
+        if hasattr(writer, "create_mentorship"):
+            return bool(writer.create_mentorship(younger_id, mentor_id))
+        raise AttributeError("Configured writer does not support mentorship relationships")
 
     def list_waves(self, limit: int = 10) -> List[Dict[str, Any]]:
         writer = self.get_writer()
@@ -75,6 +92,8 @@ class Neo4jService:
             except Exception:
                 # fall back to mock behaviour
                 pass
+        if hasattr(writer, "list_dunewaves"):
+            return writer.list_dunewaves(limit)  # type: ignore[attr-defined]
         if hasattr(writer, "get_waves"):
             return writer.get_waves(limit)  # type: ignore[attr-defined]
         return []
@@ -98,6 +117,8 @@ class Neo4jService:
                     return fragments
             except Exception:
                 pass
+        if hasattr(writer, "list_memory_fragments"):
+            return writer.list_memory_fragments(limit)  # type: ignore[attr-defined]
         if hasattr(writer, "get_memories"):
             return writer.get_memories(limit)  # type: ignore[attr-defined]
         return []
