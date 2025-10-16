@@ -1,8 +1,6 @@
-"""
-Pydantic модели для аутентификации.
-"""
+"""Pydantic models for authentication workflows used by the backend."""
 
-from typing import Annotated, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 
