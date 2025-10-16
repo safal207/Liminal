@@ -1,9 +1,8 @@
-# Unit Tests for API functionality
 # Тесты для проверки отдельных функций API
 
-import pytest
-from unittest.mock import Mock, patch
-from backend.api import app
+from fastapi.testclient import TestClient
+
+from backend.app.main import app
 
 
 class TestAPIUnit:
@@ -11,27 +10,21 @@ class TestAPIUnit:
 
     def test_health_endpoint(self):
         """Test health endpoint returns 200"""
-        with app.test_client() as client:
-            response = client.get('/health')
-            assert response.status_code == 200
-            assert b'OK' in response.data
+        client = TestClient(app)
+        response = client.get("/health")
+        assert response.status_code == 200
+        json_data = response.json()
+        assert json_data["status"] == "ok"
 
     def test_websocket_connection_unit(self):
         """Test WebSocket connection establishment (unit level)"""
-        # Mock WebSocket connection for unit testing
-        mock_ws = Mock()
-        mock_ws.send = Mock()
-        mock_ws.receive = Mock(return_value='test_message')
-
-        # Test connection logic without actual network
-        assert mock_ws is not None
+        # WebSocket connections require async test frameworks; here we just
+        # ensure the route is registered on the application.
+        routes = {route.path for route in app.routes}
+        assert "/ws/timeline" in routes
 
     def test_emotion_analysis_unit(self):
-        """Test emotion analysis function (unit level)"""
-        # Mock emotion analysis without external dependencies
+        """Placeholder unit test for emotion analysis logic"""
         test_text = "I am happy today"
-        expected_emotion = "joy"
-
-        # This would test the emotion analysis logic
         assert isinstance(test_text, str)
-        assert len(test_text) > 0
+        assert test_text
