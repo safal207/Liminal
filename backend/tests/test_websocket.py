@@ -10,6 +10,8 @@ from unittest.mock import AsyncMock, patch
 import pytest
 import websockets
 from fastapi.testclient import TestClient
+
+from auth.jwt_utils import create_access_token_for_user, verify_websocket_token
 from main import app
 from websocket.connection_manager import ConnectionManager
 from websocket.redis_connection_manager import RedisConnectionManager
@@ -26,9 +28,17 @@ async def test_websocket_connection():
     uri = "ws://localhost:8000/ws"
 
     # Используем mock вместо реального соединения для тестирования
-    with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
+    with patch("websockets.connect") as mock_connect:
         mock_ws = AsyncMock()
-        mock_connect.return_value.__aenter__.return_value = mock_ws
+
+        class _AsyncContext:
+            async def __aenter__(self):
+                return mock_ws
+
+            async def __aexit__(self, exc_type, exc, tb):
+                return None
+
+        mock_connect.return_value = _AsyncContext()
         mock_ws.recv.return_value = json.dumps({"type": "connection_established"})
 
         try:
@@ -52,7 +62,7 @@ async def test_websocket_broadcast():
 
     # Подписываемся на канал
     channel = "test_channel"
-    await connection_manager.connect(mock_websocket)
+    await connection_manager.connect(mock_websocket, user_id="test_user")
     await connection_manager.subscribe(mock_websocket, channel)
 
     # Отправляем сообщение в канал
@@ -70,6 +80,10 @@ async def test_redis_integration():
     with patch("websocket.redis_connection_manager.RedisClient") as mock_redis_client:
         # Настраиваем mock для Redis клиента
         mock_redis = AsyncMock()
+        mock_pubsub = AsyncMock()
+        mock_redis.pubsub.return_value = mock_pubsub
+        mock_pubsub.subscribe = AsyncMock()
+        mock_pubsub.unsubscribe = AsyncMock()
         mock_redis_client.return_value = mock_redis
 
         # Первый экземпляр
@@ -136,9 +150,16 @@ async def test_rinse_integration():
         # result = await manager.process_with_rinse(test_data)
 
         # Для теста мы просто вызываем mock напрямую
-        response = await httpx.AsyncClient().post(
-            "http://rinse:8080/api/process", json=test_data
-        )
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.post.return_value = mock_response
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.__aexit__.return_value = AsyncMock(return_value=None)
+            mock_client_cls.return_value = mock_client
+
+            response = await mock_client.post(
+                "http://rinse:8080/api/process", json=test_data
+            )
 
         result = response.json()
 
@@ -152,42 +173,18 @@ async def test_rinse_integration():
 async def test_websocket_jwt_auth_valid():
     """Тест успешного подключения с валидным JWT токеном."""
     uri = "ws://localhost:8000/ws"
-    valid_token = "Bearer valid.jwt.token"
+    user_data = {"user_id": "test_user", "username": "test_user"}
+    access_token = create_access_token_for_user(user_data)
 
-    with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
-        mock_ws = AsyncMock()
-        mock_connect.return_value.__aenter__.return_value = mock_ws
-        mock_ws.recv.return_value = json.dumps({"type": "connection_established"})
-
-        with patch(
-            "memory_timeline.verify_jwt_token", return_value={"user_id": "test_user"}
-        ):
-            async with websockets.connect(
-                uri, extra_headers={"Authorization": valid_token}
-            ) as ws:
-                response = await ws.recv()
-                data = json.loads(response)
-                assert data.get("type") == "connection_established"
+    assert verify_websocket_token(access_token) == user_data["user_id"]
 
 
 @pytest.mark.asyncio
 async def test_websocket_jwt_auth_invalid():
     """Тест отказа в подключении с недействительным JWT токеном."""
     uri = "ws://localhost:8000/ws"
-    invalid_token = "Bearer invalid.jwt.token"
+    user_data = {"user_id": "test_user", "username": "test_user"}
+    valid_token = create_access_token_for_user(user_data)
+    invalid_token = f"Bearer {valid_token}invalid"
 
-    with patch("websockets.connect", new_callable=AsyncMock) as mock_connect:
-        mock_ws = AsyncMock()
-        mock_connect.return_value.__aenter__.return_value = mock_ws
-
-        with patch(
-            "memory_timeline.verify_jwt_token",
-            side_effect=HTTPException(status_code=401, detail="Invalid token"),
-        ):
-            try:
-                async with websockets.connect(
-                    uri, extra_headers={"Authorization": invalid_token}
-                ) as ws:
-                    await ws.recv()
-            except Exception as e:
-                assert "Invalid token" in str(e)
+    assert verify_websocket_token(invalid_token) is None

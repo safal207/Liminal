@@ -4,12 +4,13 @@ JWT Authentication utilities for WebSocket and API endpoints.
 
 import hashlib
 import logging
-import os
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
+
+from core.settings import settings
 
 # Безопасный импорт CryptContext с обработкой ошибок
 try:
@@ -43,13 +44,6 @@ except (ImportError, AttributeError) as e:
 
 logger = logging.getLogger("auth.jwt_utils")
 
-# Конфигурация JWT
-SECRET_KEY = os.getenv(
-    "JWT_SECRET_KEY", "resonance-liminal-secret-key-change-in-production"
-)
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
 # pwd_context уже определен выше в блоке импорта
 
 
@@ -57,9 +51,16 @@ class JWTManager:
     """Менеджер для работы с JWT токенами."""
 
     def __init__(self):
-        self.secret_key = SECRET_KEY
-        self.algorithm = ALGORITHM
-        self.access_token_expire_minutes = ACCESS_TOKEN_EXPIRE_MINUTES
+        self.secret_key = settings.jwt_secret_key
+        self.algorithm = settings.jwt_algorithm
+        self.access_token_expire_minutes = settings.jwt_access_token_expire_minutes
+
+    def _strip_bearer_prefix(self, token: str) -> str:
+        """Remove a Bearer prefix if present."""
+
+        if token.lower().startswith("bearer "):
+            return token.split(" ", 1)[1].strip()
+        return token
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Проверяет пароль против хеша."""
@@ -120,7 +121,14 @@ class JWTManager:
             Dict[str, Any]: Payload токена или None если токен недействителен
         """
         try:
-            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
+            if not token:
+                logger.warning("Попытка проверить пустой JWT токен")
+                return None
+
+            normalized_token = self._strip_bearer_prefix(token)
+            payload = jwt.decode(
+                normalized_token, self.secret_key, algorithms=[self.algorithm]
+            )
             user_id: str = payload.get("sub")
             if user_id is None:
                 logger.warning("JWT токен не содержит user_id")
@@ -204,7 +212,9 @@ def create_access_token_for_user(user_data: Dict[str, Any]) -> str:
     Returns:
         str: JWT токен
     """
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(
+        minutes=jwt_manager.access_token_expire_minutes
+    )
     access_token = jwt_manager.create_access_token(
         data={"sub": user_data["user_id"], "username": user_data["username"]},
         expires_delta=access_token_expires,
@@ -222,4 +232,7 @@ def verify_websocket_token(token: str) -> Optional[str]:
     Returns:
         str: user_id или None если токен недействителен
     """
+    if not token:
+        return None
+
     return jwt_manager.extract_user_id_from_token(token)

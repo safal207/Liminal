@@ -6,26 +6,22 @@ MemoryTimeline - динамически обновляемая временна�
 print("DEBUG: Starting memory_timeline.py imports")
 import asyncio
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 print("DEBUG: Importing fastapi.WebSocket")
 import json
 
-from fastapi import Depends, HTTPException, WebSocket
-from jose import JWTError, jwt
+from fastapi import HTTPException, WebSocket
+
+from auth.jwt_utils import jwt_manager
 
 print("DEBUG: All imports completed in memory_timeline.py")
 
-SECRET_KEY = "your_secret_key"
-ALGORITHM = "HS256"
-
-
 def verify_jwt_token(token: str):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except JWTError:
+    payload = jwt_manager.verify_token(token)
+    if not payload:
         raise HTTPException(status_code=401, detail="Invalid token")
+    return payload
 
 
 class MemoryTimeline:
@@ -62,14 +58,14 @@ class MemoryTimeline:
     async def subscribe(self, websocket: WebSocket):
         """Подписывает WebSocket на обновления таймлайна."""
         token = websocket.headers.get("Authorization")
-        if not token:
+        if token:
+            try:
+                verify_jwt_token(token)
+            except HTTPException as e:
+                await websocket.close(code=1008, reason=e.detail)
+                return
+        elif not getattr(websocket, "user_id", None):
             await websocket.close(code=1008, reason="Authorization token missing")
-            return
-
-        try:
-            verify_jwt_token(token)
-        except HTTPException as e:
-            await websocket.close(code=1008, reason=e.detail)
             return
 
         async with self._lock:
