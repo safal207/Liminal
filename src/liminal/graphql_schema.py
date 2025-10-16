@@ -8,10 +8,8 @@ from strawberry.scalars import JSON
 from .diffusion import InMemoryDiffusion, ModuleState
 from .reality_web import Edge as RWEdge
 from .reality_web import Node as RWNode
-from .reality_web import (
-    RealityWebInMemory,
-    SystemBreath,
-)
+from .di import get_container
+from .reality_web import SystemBreath
 from .reince import InMemoryREINCE, ResonanceEvent
 
 # ===== Helpers to convert internal models to GraphQL types =====
@@ -484,9 +482,10 @@ class Mutation:
         )
 
 
-# Module-level singletons for in-memory web and system breath
-WEB = RealityWebInMemory()
-BREATH = SystemBreath()
+# Module-level singletons sourced from the dependency container
+_container = get_container()
+WEB = _container.reality_web()
+BREATH = _container.system_breath()
 
 schema = strawberry.Schema(query=Query, mutation=Mutation)
 
