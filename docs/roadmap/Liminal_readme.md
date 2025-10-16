@@ -45,9 +45,9 @@ graph TD
 - Клиент: Flutter/Elm
 
 ## 📚 Быстрая навигация по документации
-- Архитектура экосистемы: `ECOSYSTEM_ARCHITECTURE.md`
+- Архитектура экосистемы: `../research/ECOSYSTEM_ARCHITECTURE.md`
 - Подсистема SOMA (полная дока): `docs/SOMA_Documentation.md`
-- Быстрый старт SOMA: `README_SOMA.md`
+- Быстрый старт SOMA: `../research/README_SOMA.md`
 - Бэклог (общий): `BACKLOG.md`
 - Бэклог 2025: `PROJECT_BACKLOG_2025.md`
 - Планы спринтов: `SPRINT_3_PLAN.md`, `SPRINT_4_PLAN.md`
