@@ -3,16 +3,27 @@ from __future__ import annotations
 
 import asyncio
 
-from .services.memory import MemoryTimelineService
-from .services.ml import MLService
-from .services.neo4j import Neo4jService
-from .services.websocket import ConnectionManagerService
+from .services import (
+    AuthService,
+    ConnectionManagerService,
+    MemoryTimelineService,
+    MLService,
+    Neo4jService,
+    TimelineWebSocketService,
+)
 
 
 _neo4j_service = Neo4jService()
 _memory_service = MemoryTimelineService()
 _ml_service = MLService()
+_auth_service = AuthService()
 _connection_manager_service = ConnectionManagerService()
+_websocket_service = TimelineWebSocketService(
+    manager_service=_connection_manager_service,
+    memory_service=_memory_service,
+    ml_service=_ml_service,
+    auth_service=_auth_service,
+)
 
 
 def get_neo4j_service() -> Neo4jService:
@@ -25,6 +36,11 @@ def get_neo4j_writer():
     return _neo4j_service.get_writer()
 
 
+def get_memory_service() -> MemoryTimelineService:
+    """Return the memory timeline service."""
+    return _memory_service
+
+
 def get_memory_timeline():
     """Return the shared memory timeline instance."""
     return _memory_service.get_timeline()
@@ -35,9 +51,24 @@ def get_ml_service() -> MLService:
     return _ml_service
 
 
+def get_auth_service() -> AuthService:
+    """Return the authentication service."""
+    return _auth_service
+
+
 def get_connection_manager():
     """Provide the configured WebSocket connection manager."""
     return _connection_manager_service.get_manager()
+
+
+def get_connection_manager_service() -> ConnectionManagerService:
+    """Return the connection manager service wrapper."""
+    return _connection_manager_service
+
+
+def get_websocket_service() -> TimelineWebSocketService:
+    """Return the orchestrator for timeline WebSocket connections."""
+    return _websocket_service
 
 
 async def init_services() -> None:
