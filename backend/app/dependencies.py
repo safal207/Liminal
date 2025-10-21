@@ -74,6 +74,11 @@ def get_neo4j_writer():
     return get_neo4j_service().get_writer()
 
 
+def get_memory_service() -> MemoryTimelineService:
+    """Return the memory timeline service."""
+    return _memory_service
+
+
 def get_memory_timeline():
     """Return the shared memory timeline instance."""
     memory_service: MemoryTimelineService = _container().memory_timeline_service()
@@ -85,10 +90,25 @@ def get_ml_service() -> MLService:
     return _container().ml_service()
 
 
+def get_auth_service() -> AuthService:
+    """Return the authentication service."""
+    return _auth_service
+
+
 def get_connection_manager():
     """Provide the configured WebSocket connection manager."""
     service: ConnectionManagerService = _container().connection_manager_service()
     return service.get_manager()
+
+
+def get_connection_manager_service() -> ConnectionManagerService:
+    """Return the connection manager service wrapper."""
+    return _connection_manager_service
+
+
+def get_websocket_service() -> TimelineWebSocketService:
+    """Return the orchestrator for timeline WebSocket connections."""
+    return _websocket_service
 
 
 async def init_services() -> None:

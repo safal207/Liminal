@@ -1,30 +1,25 @@
 import os
 
-from fastapi.testclient import TestClient
-
 # Ensure test-friendly environment
 os.environ.setdefault("TEST_MODE", "true")
 
-from backend.main import app  # noqa: E402
+from backend.app.main import app  # noqa: E402
 from backend.redis_client import DummyRedis  # noqa: E402
 
-client = TestClient(app)
-
-
-def test_health_live_ok():
+def test_health_live_ok(client):
     r = client.get("/health/live")
     assert r.status_code == 200
     assert r.json().get("status") == "alive"
 
 
-def test_health_startup_flag():
+def test_health_startup_flag(client):
     # TestClient triggers startup events automatically
     r = client.get("/health/startup")
     assert r.status_code == 200
     assert r.json().get("status") == "started"
 
 
-def test_health_ready_dep_checks():
+def test_health_ready_dep_checks(client):
     # Readiness should be 503 if Redis runs in Dummy mode, otherwise 200
     is_dummy = isinstance(getattr(app.state.redis_client, "client", None), DummyRedis)
     r = client.get("/health/ready")
