@@ -1,6 +1,5 @@
 """Event-emitting memory timeline with WebSocket broadcasting support."""
 
-print("DEBUG: Starting memory_timeline.py imports")
 import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -17,7 +16,7 @@ from fastapi import WebSocket
 from backend.auth.dependencies import token_verifier
 from backend.core.settings import get_settings
 
-print("DEBUG: All imports completed in memory_timeline.py")
+logger = logging.getLogger(__name__)
 
 class MemoryTimeline:
     def __init__(self):
