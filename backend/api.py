@@ -1,14 +1,12 @@
-print("DEBUG: Starting api.py imports")
 import asyncio
 import json
 import logging
 import os
-import sys
 from datetime import datetime
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-print("DEBUG: Importing FastAPI and dependencies")
+logger = logging.getLogger(__name__)
+
 from fastapi import (
     Depends,
     FastAPI,
@@ -22,78 +20,14 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-# Добавляем корневую директорию в PYTHONPATH для корректного импорта
-print(f"DEBUG: Current sys.path: {sys.path}")
-sys.path.append(str(Path(__file__).parent))
-print(f"DEBUG: Updated sys.path: {sys.path}")
-
-# Условный импорт Neo4jWriter и Neo4jDateTime
-print("DEBUG: Before Neo4j imports")
-print(f"DEBUG: TESTING={os.environ.get('TESTING')}")
-
-if os.environ.get("TESTING"):
-    print("API: Running in TESTING mode. Using mock Neo4jWriter.")
-
-    # Mock Neo4j classes for testing
-    class Neo4jDateTime:
-        def isoformat(self):
-            return datetime.now().isoformat() + "Z"
-
-    class Neo4jWriter:
-        def __init__(self, *args, **kwargs):
-            print("API: Mock Neo4jWriter initialized.")
-            self.driver = self
-
-        def session(self):
-            return self
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            pass
-
-        def run(self, *args, **kwargs):
-            return MockResult()
-
-        def create_indexes(self):
-            pass
-
-        def close(self):
-            pass
-
-        def create_dunewave_node(self, data):
-            return {"id": "mock_wave_id", "type": "DuneWave", **data}
-
-        def create_memory_fragment_node(self, data):
-            return {"id": "mock_mem_id", "type": "MemoryFragment", **data}
-
-        def link_dunewave_to_memory(self, wave_id, memory_id):
-            return True
-
-        def create_mentorship(self, younger_id, mentor_id):
-            return True
-
-        def find_wisdom_fragments(self, emotion=None, limit=10):
-            return []
-
-    class MockResult:
-        def single(self):
-            return None
-
-        def __iter__(self):
-            return iter([])
-
-else:
-    print("API: Running in PRODUCTION mode. Using real Neo4jWriter.")
-    # Добавляем родительскую директорию в путь для импорта neo4j_writer
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from neo4j_writer import Neo4jDateTime, Neo4jWriter
+from backend.auth.dependencies import token_verifier
+from backend.core.settings import get_settings
+from backend.infrastructure.neo4j import Neo4jGateway, get_default_gateway
 
 
 # Функция для сериализации объектов Neo4j
 def neo4j_serializer(obj):
-    if isinstance(obj, Neo4jDateTime):
+    if hasattr(obj, "isoformat"):
         return obj.isoformat()
     raise TypeError(f"Type {type(obj)} not serializable")
 
@@ -115,33 +49,31 @@ def record_to_dict(record):
 
 
 # Импорт метрик Prometheus
-print("DEBUG: Before metrics import")
 try:
-    from metrics import (
+    from backend.metrics import (
         setup_metrics,
         websocket_auth_total,
         websocket_connections,
         websocket_messages_total,
     )
 
-    print("DEBUG: Successfully imported metrics")
 except ImportError as e:
-    print(f"ERROR: Failed to import metrics: {e}")
+    logger.exception("Failed to import metrics module")
     raise
 
-print("DEBUG: Before memory_timeline import")
 try:
-    from memory_timeline import MemoryTimeline
-    from memory_timeline import timeline as memory_timeline
+    from backend.memory_timeline import MemoryTimeline
+    from backend.memory_timeline import timeline as memory_timeline
 
-    print("DEBUG: Successfully imported memory_timeline")
 except ImportError as e:
-    print(f"ERROR: Failed to import memory_timeline: {e}")
+    logger.exception("Failed to import memory timeline")
     raise
+
+settings = get_settings()
 
 print("DEBUG: Before ml_features import")
 try:
-    from ml_features import (
+    from backend.ml_features import (
         extract_traffic_features,
         extract_user_patterns,
         get_current_anomaly_scores,
@@ -152,12 +84,10 @@ try:
         register_user_request,
     )
 
-    # Проверка, включена ли ML-функциональность
-    ML_ENABLED = os.environ.get("ML_ENABLED", "false").lower() == "true"
+    ML_ENABLED = settings.integrations.ml_enabled
     print(f"DEBUG: Successfully imported ml_features. ML_ENABLED={ML_ENABLED}")
 except ImportError as e:
     print(f"ERROR: Failed to import ml_features: {e}")
-    # Fallback функции для случая отсутствия ML-модуля
     ML_ENABLED = False
 
     def extract_user_patterns():
@@ -185,56 +115,46 @@ except ImportError as e:
         pass
 
 
-print("DEBUG: Before connection_manager import")
 try:
     # Проверяем, нужно ли использовать Redis для масштабирования
-    use_redis = os.environ.get("USE_REDIS", "false").lower() == "true"
+    use_redis = settings.integrations.use_redis
     if use_redis:
         from backend.websocket.redis_connection_manager import RedisConnectionManager
 
-        redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        redis_url = settings.integrations.redis_url
         connection_manager = RedisConnectionManager(
             redis_url=redis_url,
             max_connections=100,
             max_connections_per_ip=10,
             redis_prefix="liminal",
         )
-        print(f"DEBUG: Using Redis ConnectionManager with URL: {redis_url}")
+        logger.debug("Using Redis ConnectionManager", extra={"redis_url": redis_url})
     else:
         from backend.websocket.connection_manager import ConnectionManager
 
         connection_manager = ConnectionManager(
             max_connections=100, max_connections_per_ip=10
         )
-        print("DEBUG: Using standard ConnectionManager")
-    print("DEBUG: Successfully imported and initialized connection_manager")
+        logger.debug("Using in-memory ConnectionManager")
 except ImportError as e:
-    print(f"ERROR: Failed to import connection_manager: {e}")
+    logger.exception("Failed to import connection manager")
     raise
 
 # Импорты для аутентификации
-print("DEBUG: Before auth imports")
 try:
-    from auth.jwt_utils import (
+    from backend.auth.jwt_utils import (
         authenticate_user,
         create_access_token_for_user,
-        jwt_manager,
-        verify_websocket_token,
     )
-    from auth.models import Token, UserLogin, WebSocketAuthMessage
+    from backend.auth.models import Token, UserLogin
 
-    print("DEBUG: Successfully imported auth modules")
 except ImportError as e:
-    print(f"ERROR: Failed to import auth modules: {e}")
+    logger.exception("Failed to import auth modules")
     raise
 
-print("DEBUG: Creating FastAPI app")
 app = FastAPI(
     title="LIMINAL API", description="API для работы с графовой базой данных LIMINAL"
 )
-
-# Инициализация логгера
-logger = logging.getLogger(__name__)
 
 
 # События для инициализации и завершения работы приложения
@@ -263,16 +183,14 @@ async def shutdown_event():
     logger.info("Shutting down application")
 
     # Закрытие Redis соединения, если оно было открыто
-    if os.environ.get("USE_REDIS", "false").lower() == "true":
+    if settings.integrations.use_redis:
         if hasattr(connection_manager, "shutdown"):
             await connection_manager.shutdown()
             logger.info("Redis connection closed")
 
 
 # Инициализация временной шкалы памяти
-print("DEBUG: Initializing MemoryTimeline")
 timeline = MemoryTimeline()
-print("DEBUG: MemoryTimeline initialized")
 
 # Обслуживание статических файлов
 import os
@@ -290,12 +208,10 @@ app.add_middleware(
 )
 
 # Настройка метрик Prometheus
-print("DEBUG: Setting up Prometheus metrics")
 try:
     setup_metrics(app)
-    print("DEBUG: Prometheus metrics initialized at /metrics endpoint")
+    logger.debug("Prometheus metrics initialized at /metrics endpoint")
 except Exception as e:
-    print(f"ERROR: Failed to setup Prometheus metrics: {e}")
     logger.error(f"Failed to setup Prometheus metrics: {e}")
     # Продолжаем работу даже при ошибке настройки метрик
 
@@ -308,17 +224,11 @@ class DuneWaveCreate(BaseModel):
     context: str
     source: str
 
-    class Config:
-        json_encoders = {Neo4jDateTime: lambda v: v.isoformat() if v else None}
-
 
 class MemoryFragmentCreate(BaseModel):
     content: str
     type: str
     growth_stage: str
-
-    class Config:
-        json_encoders = {Neo4jDateTime: lambda v: v.isoformat() if v else None}
 
 
 class MentorshipCreate(BaseModel):
@@ -339,31 +249,12 @@ class MemoryCreate(BaseModel):
 
 
 # Ленивая инициализация подключения к Neo4j
-_neo4j_writer = None
 
 
-def get_neo4j_writer():
-    """Возвращает экземпляр Neo4jWriter с ленивой инициализацией."""
-    global _neo4j_writer
+def get_neo4j_gateway() -> Neo4jGateway:
+    """Return the configured Neo4j gateway instance."""
 
-    if _neo4j_writer is None:
-        try:
-            # В тестовом режиме используем мок
-            if os.environ.get("TESTING"):
-                _neo4j_writer = Neo4jWriter()
-            else:
-                # В продакшене используем реальное подключение
-                _neo4j_writer = Neo4jWriter(
-                    uri=os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-                    user=os.getenv("NEO4J_USER", "neo4j"),
-                    password=os.getenv("NEO4J_PASSWORD", "password"),
-                )
-        except Exception as e:
-            print(f"Ошибка при подключении к Neo4j: {e}")
-            # Возвращаем мок в случае ошибки
-            _neo4j_writer = Neo4jWriter()
-
-    return _neo4j_writer
+    return get_default_gateway()
 
 
 # Эндпоинты API
@@ -390,15 +281,8 @@ async def login(user_data: UserLogin):
 
 
 @app.get("/auth/me")
-async def get_current_user(token: str):
+async def get_current_user(payload: Dict[str, Any] = Depends(token_verifier)):
     """Получение информации о текущем пользователе по токену."""
-    payload = jwt_manager.verify_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Недействительный токен",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
     return {
         "user_id": payload.get("sub"),
@@ -430,18 +314,21 @@ async def login_for_access_token(form_data: UserLogin):
 # WebSocket endpoint с JWT аутентификацией
 @app.websocket("/ws/timeline")
 async def websocket_timeline(websocket: WebSocket, token: str = None):
-    # Принимаем соединение и помещаем в ожидание аутентификации
+    # Принимаем соединение и помещаем его в ожидание аутентификации
     connection_accepted = await connection_manager.accept_pending_connection(websocket)
     if not connection_accepted:
         return  # Подключение отклонено из-за лимитов
 
     authenticated = False
-    user_id = None
+    user_id: Optional[str] = None
 
     try:
-        # Проверяем, передан ли токен в URL
+        # Попытка аутентификации через параметр токена
         if token:
-            user_id = verify_websocket_token(token)
+            payload = await token_verifier.ensure_websocket(websocket, token)
+            if payload is None:
+                return
+            user_id = payload.get("sub")
             if user_id:
                 authenticated = await connection_manager.authenticate_connection(
                     websocket, user_id
@@ -455,7 +342,6 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
                     )
 
         if not authenticated:
-            # Если аутентификация через URL не удалась, запрашиваем токен через сообщение
             await websocket.send_json(
                 {
                     "type": "auth_required",
@@ -463,131 +349,119 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
                 }
             )
 
-            # Ожидаем сообщение с токеном
             auth_data = await websocket.receive_text()
-        else:
-            # Если уже аутентифицированы через URL, переходим к приёму сообщений
-            auth_data = None
-
-        try:
-            auth_message = json.loads(auth_data)
-            if auth_message.get("type") == "auth" and "token" in auth_message:
-                token = auth_message["token"]
-                user_id = verify_websocket_token(token)
-
-                if user_id:
-                    # Аутентификация успешна
-                    authenticated = await connection_manager.authenticate_connection(
-                        websocket, user_id
-                    )
-                    if authenticated:
-                        await websocket.send_json(
-                            {
-                                "type": "auth_success",
-                                "message": f"Пользователь {user_id} успешно аутентифицирован",
-                            }
-                        )
-
-                        # Основной цикл обработки сообщений
-                        while True:
-                            data = await websocket.receive_text()
-                            logger.debug(f"WebSocket received message: {data}")
-                            try:
-                                message = json.loads(data)
-                                message_type = message.get("type")
-                                logger.debug(f"Parsed message type: {message_type}")
-
-                                if message_type == "subscribe":
-                                    channel = message.get("channel")
-                                    logger.debug(
-                                        f"Subscribe request for channel: {channel}"
-                                    )
-                                    if channel:
-                                        await connection_manager.subscribe(
-                                            user_id, channel, websocket
-                                        )
-
-                                        # Специальная обработка для канала timeline
-                                        if channel == "timeline":
-                                            await memory_timeline.subscribe(websocket)
-
-                                        response = {
-                                            "type": "subscribed",
-                                            "channel": channel,
-                                        }
-                                        logger.debug(
-                                            f"Sending subscribe response: {response}"
-                                        )
-                                        await websocket.send_json(response)
-                                elif message_type == "unsubscribe":
-                                    channel = message.get("channel")
-                                    if channel:
-                                        await connection_manager.unsubscribe(
-                                            user_id, channel
-                                        )
-
-                                        # Специальная обработка для канала timeline
-                                        if channel == "timeline":
-                                            logger.debug(
-                                                f"Unsubscribing from memory_timeline for user {user_id}"
-                                            )
-                                            await memory_timeline.unsubscribe(websocket)
-
-                                        response = {
-                                            "type": "unsubscribed",
-                                            "channel": channel,
-                                        }
-                                        logger.debug(
-                                            f"Sending unsubscribe response: {response}"
-                                        )
-                                        await websocket.send_json(response)
-                                elif message_type == "broadcast":
-                                    channel = message.get("channel")
-                                    content = message.get("content")
-                                    if channel and content:
-                                        await connection_manager.broadcast(
-                                            channel,
-                                            {
-                                                "type": "message",
-                                                "content": content,
-                                                "sender": user_id,
-                                                "timestamp": datetime.utcnow().isoformat(),
-                                            },
-                                            sender_id=user_id,
-                                        )
-
-                            except json.JSONDecodeError:
-                                logger.error("JSON decode error in WebSocket message")
-                                await websocket.send_json(
-                                    {"type": "error", "message": "Неверный формат JSON"}
-                                )
-                            except Exception as e:
-                                logger.error(f"Error processing WebSocket message: {e}")
-                                await websocket.send_json(
-                                    {
-                                        "type": "error",
-                                        "message": f"Ошибка обработки сообщения: {str(e)}",
-                                    }
-                                )
-                    else:
-                        await connection_manager.reject_connection(
-                            websocket, "Authentication failed"
-                        )
-                        return
-                else:
-                    await connection_manager.reject_connection(
-                        websocket, "Invalid token"
-                    )
-                    return
-            else:
+            try:
+                auth_message = json.loads(auth_data)
+            except (TypeError, json.JSONDecodeError):
                 await connection_manager.reject_connection(
                     websocket, "Invalid auth message format"
                 )
                 return
 
-        except json.JSONDecodeError:
-            await connection_manager.reject_connection(websocket, "Invalid JSON format")
+            if auth_message.get("type") != "auth" or "token" not in auth_message:
+                await connection_manager.reject_connection(
+                    websocket, "Invalid auth message format"
+                )
+                return
+
+            payload = await token_verifier.ensure_websocket(
+                websocket, auth_message.get("token")
+            )
+            if payload is None:
+                return
+
+            user_id = payload.get("sub")
+            if not user_id:
+                await connection_manager.reject_connection(
+                    websocket, "Invalid token payload"
+                )
+                return
+
+            authenticated = await connection_manager.authenticate_connection(
+                websocket, user_id
+            )
+            if not authenticated:
+                await connection_manager.reject_connection(
+                    websocket, "Authentication failed"
+                )
+                return
+
+            await websocket.send_json(
+                {
+                    "type": "auth_success",
+                    "message": f"Пользователь {user_id} успешно аутентифицирован",
+                }
+            )
+
+        if not authenticated or not user_id:
+            await connection_manager.reject_connection(
+                websocket, "Authentication failed"
+            )
             return
+
+        # Основной цикл обработки сообщений
+        while True:
+            data = await websocket.receive_text()
+            logger.debug(f"WebSocket received message: {data}")
+            try:
+                message = json.loads(data)
+                message_type = message.get("type")
+                logger.debug(f"Parsed message type: {message_type}")
+
+                if message_type == "subscribe":
+                    channel = message.get("channel")
+                    logger.debug(f"Subscribe request for channel: {channel}")
+                    if channel:
+                        await connection_manager.subscribe(user_id, channel, websocket)
+
+                        if channel == "timeline":
+                            await memory_timeline.subscribe(websocket)
+
+                        response = {"type": "subscribed", "channel": channel}
+                        logger.debug(f"Sending subscribe response: {response}")
+                        await websocket.send_json(response)
+                elif message_type == "unsubscribe":
+                    channel = message.get("channel")
+                    if channel:
+                        await connection_manager.unsubscribe(user_id, channel)
+
+                        if channel == "timeline":
+                            logger.debug(
+                                f"Unsubscribing from memory_timeline for user {user_id}"
+                            )
+                            await memory_timeline.unsubscribe(websocket)
+
+                        response = {"type": "unsubscribed", "channel": channel}
+                        logger.debug(f"Sending unsubscribe response: {response}")
+                        await websocket.send_json(response)
+                elif message_type == "broadcast":
+                    channel = message.get("channel")
+                    content = message.get("content")
+                    if channel and content:
+                        await connection_manager.broadcast(
+                            channel,
+                            {
+                                "type": "message",
+                                "content": content,
+                                "sender": user_id,
+                                "timestamp": datetime.utcnow().isoformat(),
+                            },
+                            sender_id=user_id,
+                        )
+
+            except json.JSONDecodeError:
+                logger.error("JSON decode error in WebSocket message")
+                await websocket.send_json(
+                    {"type": "error", "message": "Неверный формат JSON"}
+                )
+            except Exception as e:
+                logger.error(f"Error processing WebSocket message: {e}")
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "message": f"Ошибка обработки сообщения: {str(e)}",
+                    }
+                )
 
     except WebSocketDisconnect:
         if authenticated and user_id:
@@ -598,7 +472,7 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
                 websocket, "Disconnected during auth"
             )
     except Exception as e:
-        print(f"WebSocket error: {e}")
+        logger.exception("Unhandled WebSocket error")
         if authenticated and user_id:
             await memory_timeline.unsubscribe(websocket)
             await connection_manager.disconnect(websocket, user_id)
@@ -665,7 +539,7 @@ async def get_memories(
 # DuneWave endpoints
 @app.post("/waves/", response_model=dict)
 async def create_wave(
-    wave: DuneWaveCreate, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    wave: DuneWaveCreate, writer: Neo4jGateway = Depends(get_neo4j_gateway)
 ):
     wave_data = wave.dict()
     wave_data["id"] = f"wave_{int(datetime.utcnow().timestamp())}"
@@ -678,31 +552,20 @@ async def create_wave(
 
 
 @app.get("/waves/", response_model=List[dict])
-async def get_waves(limit: int = 10, writer: Neo4jWriter = Depends(get_neo4j_writer)):
+async def get_waves(
+    limit: int = 10, writer: Neo4jGateway = Depends(get_neo4j_gateway)
+):
     try:
-        with writer.driver.session() as session:
-            result = session.run(
-                "MATCH (d:DuneWave) RETURN d ORDER BY d.timestamp DESC LIMIT $limit",
-                limit=limit,
-            )
-            waves = []
-            for record in result:
-                wave = dict(record["d"])
-                # Преобразуем объекты Neo4j DateTime в строки
-                for key, value in wave.items():
-                    if hasattr(value, "isoformat"):
-                        wave[key] = value.isoformat()
-                waves.append(wave)
-            return waves
+        return writer.list_dunewaves(limit=limit)
     except Exception as e:
-        print(f"Error in get_waves: {e}")
+        logger.exception("Failed to fetch waves")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # MemoryFragment endpoints
 @app.post("/fragments/", response_model=dict)
 async def create_fragment(
-    fragment: MemoryFragmentCreate, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    fragment: MemoryFragmentCreate, writer: Neo4jGateway = Depends(get_neo4j_gateway)
 ):
     fragment_data = fragment.dict()
     fragment_data["id"] = f"mem_{int(datetime.utcnow().timestamp())}"
@@ -716,32 +579,19 @@ async def create_fragment(
 
 @app.get("/fragments/", response_model=List[dict])
 async def get_fragments(
-    limit: int = 10, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    limit: int = 10, writer: Neo4jGateway = Depends(get_neo4j_gateway)
 ):
     try:
-        with writer.driver.session() as session:
-            result = session.run(
-                "MATCH (m:MemoryFragment) RETURN m ORDER BY m.timestamp DESC LIMIT $limit",
-                limit=limit,
-            )
-            fragments = []
-            for record in result:
-                fragment = dict(record["m"])
-                # Преобразуем объекты Neo4j DateTime в строки
-                for key, value in fragment.items():
-                    if hasattr(value, "isoformat"):
-                        fragment[key] = value.isoformat()
-                fragments.append(fragment)
-            return fragments
+        return writer.list_memory_fragments(limit=limit)
     except Exception as e:
-        print(f"Error in get_fragments: {e}")
+        logger.exception("Failed to fetch memory fragments")
         raise HTTPException(status_code=500, detail=str(e))
 
 
 # Relationships
 @app.post("/relationships/link-wave-to-memory/", response_model=dict)
 async def link_wave_to_memory(
-    wave_id: str, memory_id: str, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    wave_id: str, memory_id: str, writer: Neo4jGateway = Depends(get_neo4j_gateway)
 ):
     result = writer.link_dunewave_to_memory(wave_id, memory_id)
     if not result:
@@ -751,7 +601,7 @@ async def link_wave_to_memory(
 
 @app.post("/relationships/mentorship/", response_model=dict)
 async def create_mentorship(
-    mentorship: MentorshipCreate, writer: Neo4jWriter = Depends(get_neo4j_writer)
+    mentorship: MentorshipCreate, writer: Neo4jGateway = Depends(get_neo4j_gateway)
 ):
     result = writer.create_mentorship(mentorship.younger_id, mentorship.mentor_id)
     if not result:

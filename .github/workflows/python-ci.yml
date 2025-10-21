@@ -9,17 +9,17 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     # Unit tests do not require external services by default
-    
+
     steps:
     - uses: actions/checkout@v3
-    
+
     - name: Set up Python 3.11
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-    
+
     - name: Show requirements files
       run: |
         echo "requirements.txt:"
@@ -29,9 +29,9 @@ jobs:
 
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip wheel setuptools
         pip install -r requirements.txt
-        pip install -r requirements-dev.txt
+        pip install --no-build-isolation -r requirements-dev.txt
 
     - name: Pre-commit (all files)
       run: |
@@ -42,13 +42,17 @@ jobs:
         black --check . || true
         isort --check-only --profile black . || true
         flake8 || true
-    
+
     - name: Type check (mypy)
       run: |
         mypy src tests || true
-    
+
     - name: Run unit tests (skip integration)
       run: |
         python -m pytest -v --maxfail=1 --durations=10 -m "not integration"
-    
+
+    - name: Smoke test Prometheus metrics registry
+      run: |
+        python tools/metrics_smoke_test.py
+
     # Optional: add coverage in future when structure is stable

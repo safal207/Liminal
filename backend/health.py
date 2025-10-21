@@ -9,7 +9,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from loguru import logger
 
 # Импортируем наш кастомный RedisClient и DummyRedis для определения деградации
-from redis_client import DummyRedis, RedisClient
+from backend.redis_client import DummyRedis, RedisClient
 
 router = APIRouter(prefix="/health", tags=["health"])
 

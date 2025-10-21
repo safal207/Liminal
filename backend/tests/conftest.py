@@ -1,46 +1,69 @@
-"""
-Конфигурация тестов для работы с FastAPI приложением.
-"""
+"""Test configuration for the refactored backend FastAPI app."""
+from __future__ import annotations
 
-import os
-import sys
-from pathlib import Path
+from typing import Iterator
 
 import pytest
 from fastapi.testclient import TestClient
 
-# Добавляем корневую директорию в PYTHONPATH
-project_root = str(Path(__file__).parent.parent)
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-# Устанавливаем переменную окружения для тестового режима
-os.environ["TESTING"] = "1"
-
-# Монтируем мок-модуль в sys.modules до импорта приложения
-import sys
-import types
-
-# Импортируем мок-реализацию neo4j_writer
-from tests.mock_neo4j_writer import Neo4jDateTime, Neo4jWriter
-
-# Создаем мок-модуль neo4j_writer
-mock_neo4j = types.ModuleType("neo4j_writer")
-mock_neo4j.Neo4jWriter = Neo4jWriter
-mock_neo4j.Neo4jDateTime = Neo4jDateTime
-sys.modules["neo4j_writer"] = mock_neo4j
-
-# Теперь можно импортировать приложение
-from api import app, memory_timeline
+from backend.app.dependencies import (
+    get_memory_service,
+    get_neo4j_service,
+)
+from backend.app.main import app
+from backend.app.services.neo4j import Neo4jService
+from backend.infrastructure.neo4j.mock import MockNeo4jGateway
 
 
-# Фикстура для тестового клиента
+@pytest.fixture(autouse=True)
+def override_neo4j_service() -> Iterator[MockNeo4jGateway]:
+    """Inject the in-memory Neo4j gateway for every test."""
+
+    gateway = MockNeo4jGateway()
+    service = Neo4jService(writer=gateway)
+    app.dependency_overrides[get_neo4j_service] = lambda: service
+    try:
+        yield gateway
+    finally:
+        app.dependency_overrides.pop(get_neo4j_service, None)
+
+
 @pytest.fixture
-def client():
-    """Создает тестовый клиент для FastAPI приложения."""
-    # Очищаем временную шкалу перед каждым тестом
-    memory_timeline.timeline = []
+def client(override_neo4j_service: MockNeo4jGateway) -> Iterator[TestClient]:
+    """Create a TestClient and reset timeline state between tests."""
 
-    # Возвращаем тестовый клиент
+    memory_service = get_memory_service()
+    timeline = memory_service.get_timeline()
+    timeline.timeline.clear()
+    if hasattr(timeline, "_subscribers"):
+        timeline._subscribers.clear()  # type: ignore[attr-defined]
+
+    original_subscribe = getattr(timeline, "subscribe", None)
+    original_unsubscribe = getattr(timeline, "unsubscribe", None)
+
+    async def _test_subscribe(websocket):  # type: ignore[no-untyped-def]
+        if hasattr(timeline, "_subscribers"):
+            timeline._subscribers.append(websocket)  # type: ignore[attr-defined]
+        await websocket.send_json({"event": "initial_state", "data": []})
+
+    async def _test_unsubscribe(websocket):  # type: ignore[no-untyped-def]
+        if hasattr(timeline, "_subscribers"):
+            try:
+                timeline._subscribers.remove(websocket)  # type: ignore[attr-defined]
+            except ValueError:
+                pass
+
+    if original_subscribe is not None:
+        timeline.subscribe = _test_subscribe  # type: ignore[attr-defined]
+    if original_unsubscribe is not None:
+        timeline.unsubscribe = _test_unsubscribe  # type: ignore[attr-defined]
+
     with TestClient(app) as test_client:
         yield test_client
+
+    if original_subscribe is not None:
+        timeline.subscribe = original_subscribe  # type: ignore[attr-defined]
+    if original_unsubscribe is not None:
+        timeline.unsubscribe = original_unsubscribe  # type: ignore[attr-defined]
+
+

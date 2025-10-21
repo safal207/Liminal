@@ -1,4 +1,7 @@
-from pythia_graph.pythia_graph import translate_concept
+try:
+    from backend.pythia_graph.pythia_graph import translate_concept
+except ModuleNotFoundError:  # pragma: no cover - legacy fallback
+    from pythia_graph.pythia_graph import translate_concept
 
 
 def test_translation():
