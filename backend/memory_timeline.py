@@ -1,7 +1,4 @@
-"""
-MemoryTimeline - динамически обновляемая временная шкала для работы с памятью.
-Поддерживает подписку на обновления в реальном времени.
-"""
+"""Event-emitting memory timeline with WebSocket broadcasting support."""
 
 print("DEBUG: Starting memory_timeline.py imports")
 import asyncio
@@ -9,8 +6,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
-print("DEBUG: Importing fastapi.WebSocket")
+import asyncio
 import json
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from fastapi import WebSocket
 
@@ -21,7 +21,6 @@ print("DEBUG: All imports completed in memory_timeline.py")
 
 class MemoryTimeline:
     def __init__(self):
-        print("DEBUG: Initializing MemoryTimeline instance")
         self.timeline: List[Dict[str, Any]] = []
         self._subscribers: List[WebSocket] = []
         self._lock = asyncio.Lock()
@@ -42,7 +41,7 @@ class MemoryTimeline:
         start_time = perf_counter()
         memory = {
             "id": f"mem_{len(self.timeline) + 1}",
-            "timestamp": datetime.utcnow().astimezone().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
             "content": content,
             "type": memory_type,
             "metadata": metadata or {},
@@ -105,7 +104,7 @@ class MemoryTimeline:
         message = {
             "event": event_type,
             "data": data,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         }
 
         message_json = json.dumps(message)
@@ -180,6 +179,36 @@ class MemoryTimeline:
             except Exception as exc:  # pragma: no cover - defensive logging
                 print(f"Error emitting event {event.type}: {exc}")
 
+    def register_listener(self, listener: MemoryTimelineEventListener) -> None:
+        """Register a coroutine listener for timeline events."""
+
+        if listener not in self._event_listeners:
+            self._event_listeners.append(listener)
+
+    def remove_listener(self, listener: MemoryTimelineEventListener) -> None:
+        """Remove a previously registered listener."""
+
+        self._event_listeners = [
+            existing for existing in self._event_listeners if existing != listener
+        ]
+
+    def clear_listeners(self) -> None:
+        """Remove all registered event listeners."""
+
+        self._event_listeners.clear()
+
+    async def _emit_event(self, event: TimelineEvent) -> None:
+        """Dispatch an event to all registered listeners."""
+
+        if not self._event_listeners:
+            return
+
+        for listener in list(self._event_listeners):
+            try:
+                await listener(event)
+            except Exception as exc:  # pragma: no cover - defensive logging
+                print(f"Error emitting event {event.type}: {exc}")
+
     def get_timeline(
         self,
         start_time: Optional[datetime] = None,
@@ -208,6 +237,4 @@ class MemoryTimeline:
 
 
 # Глобальный экземпляр таймлайна
-print("DEBUG: Creating global timeline instance")
 timeline = MemoryTimeline()
-print("DEBUG: Global timeline instance created")

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 
 from . import Neo4jGateway
@@ -34,7 +34,7 @@ class MockNeo4jGateway(Neo4jGateway):
         return None
 
     def _timestamp(self) -> str:
-        return datetime.utcnow().isoformat()
+        return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
     def create_dunewave_node(self, wave_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         node = {
