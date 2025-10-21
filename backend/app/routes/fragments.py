@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from ..dependencies import get_memory_timeline, get_neo4j_service
+from ..dependencies import get_memory_service, get_neo4j_service
 from ..schemas import MemoryCreate, MemoryFragmentCreate
 
 router = APIRouter(tags=["fragments"])
@@ -16,13 +16,10 @@ router = APIRouter(tags=["fragments"])
 async def create_fragment(
     fragment: MemoryFragmentCreate, service=Depends(get_neo4j_service)
 ):
-    fragment_data = fragment.model_dump()
-    fragment_data["id"] = f"mem_{int(datetime.now(UTC).timestamp())}"
-    fragment_data["timestamp"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
-    node = service.create_fragment(fragment_data)
+    node = service.create_fragment(fragment.dict())
     if not node:
         raise HTTPException(status_code=500, detail="Не удалось создать MemoryFragment")
-    return {"status": "success", "id": node.get("id", fragment_data["id"]) }
+    return {"status": "success", "id": node.get("id")}
 
 
 @router.get("/fragments/", response_model=List[dict])
@@ -42,9 +39,9 @@ async def get_fragments(limit: int = 10, service=Depends(get_neo4j_service)):
         422: {"description": "Ошибка валидации входных данных"},
     },
 )
-async def add_memory(memory: MemoryCreate, timeline=Depends(get_memory_timeline)):
+async def add_memory(memory: MemoryCreate, service=Depends(get_memory_service)):
     try:
-        return await timeline.add_memory(
+        return await service.add_memory(
             content=memory.content,
             memory_type=memory.memory_type,
             metadata=memory.metadata or {},
@@ -62,6 +59,6 @@ async def get_memories(
     end_time: Optional[datetime] = None,
     memory_type: Optional[str] = None,
     limit: int = 100,
-    timeline=Depends(get_memory_timeline),
+    service=Depends(get_memory_service),
 ):
-    return timeline.get_timeline(start_time, end_time, memory_type, limit)
+    return service.list_memories(start_time, end_time, memory_type, limit)

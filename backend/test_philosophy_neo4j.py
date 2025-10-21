@@ -18,14 +18,25 @@ import uuid
 from datetime import datetime
 
 import requests
-from philosophy_neo4j import PhilosophyNeo4jWriter
-from philosophy_schema import (
-    ConsciousnessNode,
-    ConsciousnessState,
-    StateTransition,
-    TransitionTrigger,
-    create_consciousness_event,
-)
+
+try:
+    from backend.philosophy_neo4j import PhilosophyNeo4jWriter
+    from backend.philosophy_schema import (
+        ConsciousnessNode,
+        ConsciousnessState,
+        StateTransition,
+        TransitionTrigger,
+        create_consciousness_event,
+    )
+except ModuleNotFoundError:  # pragma: no cover - support legacy invocation
+    from philosophy_neo4j import PhilosophyNeo4jWriter
+    from philosophy_schema import (  # type: ignore[no-redef]
+        ConsciousnessNode,
+        ConsciousnessState,
+        StateTransition,
+        TransitionTrigger,
+        create_consciousness_event,
+    )
 
 
 def log_message(title, content=None):
