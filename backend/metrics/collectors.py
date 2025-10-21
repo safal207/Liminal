@@ -72,3 +72,63 @@ websocket_idle_disconnects_total = Counter(
     "Connections closed due to idle timeout or missing pong",
     ["reason"],  # idle_timeout, missing_pong
 )
+
+# Memory timeline observability
+memory_timeline_events_total = Counter(
+    "memory_timeline_events_total",
+    "Количество обработанных событий таймлайна памяти",
+    ["event_type"],
+)
+
+memory_timeline_processing_seconds = Histogram(
+    "memory_timeline_processing_seconds",
+    "Время обработки ключевых операций таймлайна памяти",
+    ["operation"],
+    buckets=(
+        0.001,
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1,
+        2.5,
+        5,
+    ),
+)
+
+memory_timeline_backlog_size = Gauge(
+    "memory_timeline_backlog_size",
+    "Размер буфера таймлайна памяти (количество воспоминаний)",
+)
+
+memory_timeline_subscribers = Gauge(
+    "memory_timeline_subscribers",
+    "Количество активных подписчиков таймлайна памяти",
+)
+
+# Neo4j saturation metrics
+neo4j_operations_total = Counter(
+    "neo4j_operations_total",
+    "Количество операций Neo4j по статусам",
+    ["operation", "status"],
+)
+
+neo4j_operation_duration_seconds = Histogram(
+    "neo4j_operation_duration_seconds",
+    "Длительность операций Neo4j",
+    ["operation"],
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10),
+)
+
+neo4j_active_sessions = Gauge(
+    "neo4j_active_sessions",
+    "Количество активных сессий Neo4j",
+)
+
+neo4j_saturation_ratio = Gauge(
+    "neo4j_saturation_ratio",
+    "Отношение активных сессий Neo4j к предельному размеру пула",
+)

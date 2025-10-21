@@ -51,4 +51,8 @@ jobs:
       run: |
         python -m pytest -v --maxfail=1 --durations=10 -m "not integration"
 
+    - name: Smoke test Prometheus metrics registry
+      run: |
+        python tools/metrics_smoke_test.py
+
     # Optional: add coverage in future when structure is stable
