@@ -554,12 +554,19 @@ class TestPhilosophyPipeline(unittest.TestCase):
     def _check_bridge_module():
         """Check if the bridge module is available"""
         try:
-            from philosophy_websocket_bridge import PhilosophyWebSocketBridge
+            from backend.philosophy_websocket_bridge import (
+                PhilosophyWebSocketBridge,
+            )
 
             return True
         except ImportError:
-            logger.warning("Philosophy WebSocket Bridge module not available")
-            return False
+            try:
+                from philosophy_websocket_bridge import PhilosophyWebSocketBridge  # type: ignore[no-redef]
+
+                return True
+            except ImportError:
+                logger.warning("Philosophy WebSocket Bridge module not available")
+                return False
 
     @classmethod
     def _start_bridge_simulation(cls):

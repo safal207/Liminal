@@ -16,15 +16,24 @@ import uuid
 from datetime import datetime
 from typing import Any, Dict
 
-# Set UTF-8 encoding for stdout
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+# Set UTF-8 encoding for stdout when running standalone scripts. Under pytest
+# we rely on its capture machinery and avoid reassigning ``sys.stdout``.
+if __name__ == "__main__" and hasattr(sys.stdout, "buffer"):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
 
 # Import Neo4j components
 try:
-    from consciousness_neo4j import (
-        ConsciousnessEventProcessor,
-        ConsciousnessNeo4jWriter,
-    )
+    try:
+        from backend.consciousness_neo4j import (
+            ConsciousnessEventProcessor,
+            ConsciousnessNeo4jWriter,
+        )
+    except ModuleNotFoundError:
+        from consciousness_neo4j import (  # type: ignore[no-redef]
+            ConsciousnessEventProcessor,
+            ConsciousnessNeo4jWriter,
+        )
+
     from consciousness_schema import (
         ConsciousnessNode,
         ConsciousnessState,

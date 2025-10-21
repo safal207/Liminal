@@ -5,8 +5,9 @@ MemoryTimeline - динамически обновляемая временна�
 
 print("DEBUG: Starting memory_timeline.py imports")
 import asyncio
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 print("DEBUG: Importing fastapi.WebSocket")
 import json
@@ -51,6 +52,16 @@ class MemoryTimeline:
             if len(self.timeline) > self._max_retained_events:
                 self.timeline = self.timeline[-self._max_retained_events :]
             await self._notify_subscribers("memory_added", memory)
+
+        await self._emit_event(
+            TimelineEvent(
+                type="memory.fragment.created",
+                payload={
+                    **memory,
+                    "metadata": metadata or {},
+                },
+            )
+        )
 
         return memory
 
@@ -110,6 +121,36 @@ class MemoryTimeline:
                 self._subscribers = [
                     sub for sub in self._subscribers if sub not in disconnected
                 ]
+
+    def register_listener(self, listener: MemoryTimelineEventListener) -> None:
+        """Register a coroutine listener for timeline events."""
+
+        if listener not in self._event_listeners:
+            self._event_listeners.append(listener)
+
+    def remove_listener(self, listener: MemoryTimelineEventListener) -> None:
+        """Remove a previously registered listener."""
+
+        self._event_listeners = [
+            existing for existing in self._event_listeners if existing != listener
+        ]
+
+    def clear_listeners(self) -> None:
+        """Remove all registered event listeners."""
+
+        self._event_listeners.clear()
+
+    async def _emit_event(self, event: TimelineEvent) -> None:
+        """Dispatch an event to all registered listeners."""
+
+        if not self._event_listeners:
+            return
+
+        for listener in list(self._event_listeners):
+            try:
+                await listener(event)
+            except Exception as exc:  # pragma: no cover - defensive logging
+                print(f"Error emitting event {event.type}: {exc}")
 
     def get_timeline(
         self,
