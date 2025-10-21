@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-import os
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Protocol
+
+from backend.core.settings import get_settings
 
 
 class Neo4jGateway(Protocol):
@@ -37,9 +38,13 @@ def _build_default_gateway() -> Neo4jGateway:
     from .client import Neo4jClient
     from .mock import MockNeo4jGateway
 
-    uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
-    user = os.getenv("NEO4J_USER", "neo4j")
-    password = os.getenv("NEO4J_PASSWORD", "password")
+    integrations = get_settings().integrations
+    uri = integrations.neo4j_uri
+    user = integrations.neo4j_user
+    password = integrations.neo4j_password
+
+    if os.getenv("NEO4J_USE_MOCK", "false").lower() == "true" or os.getenv("TESTING"):
+        return MockNeo4jGateway()
 
     try:
         return Neo4jClient(uri=uri, user=user, password=password)

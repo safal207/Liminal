@@ -57,6 +57,7 @@ class MockNeo4jGateway(Neo4jGateway):
             **memory_data,
             "id": memory_data.get("id", f"mem_{len(self.memory_fragments) + 1}"),
             "timestamp": memory_data.get("timestamp", self._timestamp()),
+            "metadata": memory_data.get("metadata", {}),
         }
         self.memory_fragments.append(node)
         return node

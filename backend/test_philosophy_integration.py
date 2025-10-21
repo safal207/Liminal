@@ -44,13 +44,13 @@ logger = logging.getLogger(__name__)
 
 # Import modules to test
 try:
-    from philosophy_schema import (
+    from backend.philosophy_schema import (
         ConsciousnessNode,
         ConsciousnessState,
         StateTransition,
         TransitionTrigger,
     )
-    from philosophy_websocket_bridge import PhilosophyWebSocketBridge
+    from backend.philosophy_websocket_bridge import PhilosophyWebSocketBridge
 
     bridge_imported = True
 except ImportError:

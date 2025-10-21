@@ -1,10 +1,11 @@
-"""Тесты для эндпоинтов временной шкалы памяти."""
+"""Tests for timeline-related REST endpoints."""
+from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from backend.api import memory_timeline
+from backend.memory_timeline import timeline as memory_timeline
 
 TEST_MEMORY = {
     "content": "Тестовое воспоминание",
