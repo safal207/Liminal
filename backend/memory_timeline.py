@@ -18,6 +18,22 @@ from backend.core.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
+@dataclass
+class TimelineEvent:
+    """Structured message emitted by the memory timeline."""
+
+    type: str
+    payload: Dict[str, Any]
+    source: str = "memory.timeline"
+    version: str = "1.0"
+    occurred_at: str = field(
+        default_factory=lambda: datetime.now(UTC).isoformat().replace("+00:00", "Z")
+    )
+
+
+MemoryTimelineEventListener = Callable[[TimelineEvent], Awaitable[None]]
+
+
 class MemoryTimeline:
     def __init__(self):
         self.timeline: List[Dict[str, Any]] = []
@@ -147,6 +163,36 @@ class MemoryTimeline:
         memory_timeline_processing_seconds.labels(
             operation="notify_subscribers"
         ).observe(perf_counter() - start_time)
+
+    def register_listener(self, listener: MemoryTimelineEventListener) -> None:
+        """Register a coroutine listener for timeline events."""
+
+        if listener not in self._event_listeners:
+            self._event_listeners.append(listener)
+
+    def remove_listener(self, listener: MemoryTimelineEventListener) -> None:
+        """Remove a previously registered listener."""
+
+        self._event_listeners = [
+            existing for existing in self._event_listeners if existing != listener
+        ]
+
+    def clear_listeners(self) -> None:
+        """Remove all registered event listeners."""
+
+        self._event_listeners.clear()
+
+    async def _emit_event(self, event: TimelineEvent) -> None:
+        """Dispatch an event to all registered listeners."""
+
+        if not self._event_listeners:
+            return
+
+        for listener in list(self._event_listeners):
+            try:
+                await listener(event)
+            except Exception as exc:  # pragma: no cover - defensive logging
+                print(f"Error emitting event {event.type}: {exc}")
 
     def register_listener(self, listener: MemoryTimelineEventListener) -> None:
         """Register a coroutine listener for timeline events."""
