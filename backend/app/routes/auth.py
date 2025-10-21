@@ -1,13 +1,10 @@
 """Authentication API routes."""
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from backend.auth.jwt_utils import (
-    authenticate_user,
-    create_access_token_for_user,
-    jwt_manager,
-)
+from backend.auth.dependencies import token_verifier
+from backend.auth.jwt_utils import authenticate_user, create_access_token_for_user
 from backend.auth.models import Token, UserLogin
 
 router = APIRouter(tags=["auth"])
@@ -27,14 +24,7 @@ async def login(user_data: UserLogin) -> Token:
 
 
 @router.get("/auth/me")
-async def get_current_user(token: str):
-    payload = jwt_manager.verify_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Недействительный токен",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+async def get_current_user(payload: dict = Depends(token_verifier)):
     return {
         "user_id": payload.get("sub"),
         "username": payload.get("username"),

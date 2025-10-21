@@ -12,32 +12,12 @@ from typing import Any, Awaitable, Callable, Dict, List, Optional
 print("DEBUG: Importing fastapi.WebSocket")
 import json
 
-from fastapi import HTTPException, WebSocket
+from fastapi import WebSocket
 
-from backend.auth.jwt_utils import jwt_manager
+from backend.auth.dependencies import token_verifier
+from backend.core.settings import get_settings
 
 print("DEBUG: All imports completed in memory_timeline.py")
-
-def verify_jwt_token(token: str):
-    payload = jwt_manager.verify_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return payload
-
-
-@dataclass
-class TimelineEvent:
-    """Structured message emitted by the memory timeline."""
-
-    type: str
-    payload: Dict[str, Any]
-    source: str = "memory.timeline"
-    version: str = "1.0"
-    occurred_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
-
-
-MemoryTimelineEventListener = Callable[[TimelineEvent], Awaitable[None]]
-
 
 class MemoryTimeline:
     def __init__(self):
@@ -45,7 +25,9 @@ class MemoryTimeline:
         self.timeline: List[Dict[str, Any]] = []
         self._subscribers: List[WebSocket] = []
         self._lock = asyncio.Lock()
-        self._event_listeners: List[MemoryTimelineEventListener] = []
+        settings = get_settings()
+        self._initial_state_limit = settings.memory_timeline.initial_state_limit
+        self._max_retained_events = settings.memory_timeline.max_retained_events
         print("DEBUG: MemoryTimeline instance initialized")
 
     @property
@@ -67,6 +49,8 @@ class MemoryTimeline:
 
         async with self._lock:
             self.timeline.append(memory)
+            if len(self.timeline) > self._max_retained_events:
+                self.timeline = self.timeline[-self._max_retained_events :]
             await self._notify_subscribers("memory_added", memory)
 
         await self._emit_event(
@@ -84,14 +68,8 @@ class MemoryTimeline:
     async def subscribe(self, websocket: WebSocket):
         """Подписывает WebSocket на обновления таймлайна."""
         token = websocket.headers.get("Authorization")
-        if token:
-            try:
-                verify_jwt_token(token)
-            except HTTPException as e:
-                await websocket.close(code=1008, reason=e.detail)
-                return
-        elif not getattr(websocket, "user_id", None):
-            await websocket.close(code=1008, reason="Authorization token missing")
+        payload = await token_verifier.ensure_websocket(websocket, token)
+        if payload is None and not getattr(websocket, "user_id", None):
             return
 
         async with self._lock:
@@ -101,7 +79,7 @@ class MemoryTimeline:
         await websocket.send_json(
             {
                 "event": "initial_state",
-                "data": self.timeline[-100:],  # Последние 100 записей
+                "data": self.timeline[-self._initial_state_limit :],
             }
         )
 
@@ -179,7 +157,7 @@ class MemoryTimeline:
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         memory_type: Optional[str] = None,
-        limit: int = 100,
+        limit: Optional[int] = None,
     ) -> List[Dict]:
         """Возвращает отфильтрованный таймлайн."""
         result = self.timeline
@@ -197,7 +175,8 @@ class MemoryTimeline:
         if memory_type:
             result = [m for m in result if m["type"] == memory_type]
 
-        return result[-limit:]
+        effective_limit = limit if limit is not None else self._initial_state_limit
+        return result[-effective_limit:]
 
 
 # Глобальный экземпляр таймлайна
