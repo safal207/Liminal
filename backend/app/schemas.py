@@ -18,6 +18,9 @@ class MemoryFragmentCreate(BaseModel):
     content: str = Field(..., description="Content of the memory fragment")
     type: str = Field(..., description="Type of fragment")
     growth_stage: str = Field(..., description="Growth stage metadata")
+    metadata: Optional[Dict[str, Any]] = Field(
+        default_factory=dict, description="Additional metadata for the fragment"
+    )
 
 
 class MentorshipCreate(BaseModel):

@@ -1,19 +1,17 @@
-"""
-JWT Authentication utilities for WebSocket and API endpoints.
-"""
+"""JWT Authentication utilities for WebSocket and API endpoints."""
+
+from __future__ import annotations
 
 import hashlib
 import logging
+from functools import lru_cache
 from datetime import datetime, timedelta
 from typing import Any, Dict, Optional
 
 from fastapi import HTTPException, status
 from jose import JWTError, jwt
 
-try:  # pragma: no cover - compatibility shim for different PYTHONPATH setups
-    from core.settings import settings
-except ImportError:  # pragma: no cover - fallback for package usage
-    from backend.core.settings import settings
+from backend.core.settings import Settings, get_settings
 
 # Безопасный импорт CryptContext с обработкой ошибок
 try:
@@ -53,10 +51,20 @@ logger = logging.getLogger("auth.jwt_utils")
 class JWTManager:
     """Менеджер для работы с JWT токенами."""
 
-    def __init__(self):
-        self.secret_key = settings.jwt_secret_key
-        self.algorithm = settings.jwt_algorithm
-        self.access_token_expire_minutes = settings.jwt_access_token_expire_minutes
+    def __init__(self, config: Settings):
+        self._config = config
+
+    @property
+    def secret_key(self) -> str:
+        return self._config.jwt.secret_key
+
+    @property
+    def algorithm(self) -> str:
+        return self._config.jwt.algorithm
+
+    @property
+    def access_token_expire_minutes(self) -> int:
+        return self._config.jwt.access_token_expire_minutes
 
     def _strip_bearer_prefix(self, token: str) -> str:
         """Remove a Bearer prefix if present."""
@@ -159,8 +167,17 @@ class JWTManager:
         return None
 
 
-# Глобальный экземпляр JWT менеджера
-jwt_manager = JWTManager()
+# Глобальный провайдер JWT менеджера
+
+
+@lru_cache()
+def get_jwt_manager() -> JWTManager:
+    """Return a cached JWT manager configured from application settings."""
+
+    return JWTManager(get_settings())
+
+
+jwt_manager = get_jwt_manager()
 
 # Временное хранилище пользователей (в продакшене заменить на БД)
 fake_users_db = {
