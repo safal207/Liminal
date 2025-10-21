@@ -20,6 +20,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from backend.auth.dependencies import token_verifier
+from backend.core.settings import get_settings
 from backend.infrastructure.neo4j import Neo4jGateway, get_default_gateway
 
 
@@ -67,6 +69,9 @@ except ImportError as e:
     logger.exception("Failed to import memory timeline")
     raise
 
+settings = get_settings()
+
+print("DEBUG: Before ml_features import")
 try:
     from backend.ml_features import (
         extract_traffic_features,
@@ -79,11 +84,10 @@ try:
         register_user_request,
     )
 
-    # Проверка, включена ли ML-функциональность
-    ML_ENABLED = os.environ.get("ML_ENABLED", "false").lower() == "true"
+    ML_ENABLED = settings.integrations.ml_enabled
+    print(f"DEBUG: Successfully imported ml_features. ML_ENABLED={ML_ENABLED}")
 except ImportError as e:
-    logger.exception("Failed to import ml_features")
-    # Fallback функции для случая отсутствия ML-модуля
+    print(f"ERROR: Failed to import ml_features: {e}")
     ML_ENABLED = False
 
     def extract_user_patterns():
@@ -113,11 +117,11 @@ except ImportError as e:
 
 try:
     # Проверяем, нужно ли использовать Redis для масштабирования
-    use_redis = os.environ.get("USE_REDIS", "false").lower() == "true"
+    use_redis = settings.integrations.use_redis
     if use_redis:
         from backend.websocket.redis_connection_manager import RedisConnectionManager
 
-        redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        redis_url = settings.integrations.redis_url
         connection_manager = RedisConnectionManager(
             redis_url=redis_url,
             max_connections=100,
@@ -141,10 +145,8 @@ try:
     from backend.auth.jwt_utils import (
         authenticate_user,
         create_access_token_for_user,
-        jwt_manager,
-        verify_websocket_token,
     )
-    from backend.auth.models import Token, UserLogin, WebSocketAuthMessage
+    from backend.auth.models import Token, UserLogin
 
 except ImportError as e:
     logger.exception("Failed to import auth modules")
@@ -181,7 +183,7 @@ async def shutdown_event():
     logger.info("Shutting down application")
 
     # Закрытие Redis соединения, если оно было открыто
-    if os.environ.get("USE_REDIS", "false").lower() == "true":
+    if settings.integrations.use_redis:
         if hasattr(connection_manager, "shutdown"):
             await connection_manager.shutdown()
             logger.info("Redis connection closed")
@@ -279,15 +281,8 @@ async def login(user_data: UserLogin):
 
 
 @app.get("/auth/me")
-async def get_current_user(token: str):
+async def get_current_user(payload: Dict[str, Any] = Depends(token_verifier)):
     """Получение информации о текущем пользователе по токену."""
-    payload = jwt_manager.verify_token(token)
-    if not payload:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Недействительный токен",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
     return {
         "user_id": payload.get("sub"),
@@ -319,18 +314,21 @@ async def login_for_access_token(form_data: UserLogin):
 # WebSocket endpoint с JWT аутентификацией
 @app.websocket("/ws/timeline")
 async def websocket_timeline(websocket: WebSocket, token: str = None):
-    # Принимаем соединение и помещаем в ожидание аутентификации
+    # Принимаем соединение и помещаем его в ожидание аутентификации
     connection_accepted = await connection_manager.accept_pending_connection(websocket)
     if not connection_accepted:
         return  # Подключение отклонено из-за лимитов
 
     authenticated = False
-    user_id = None
+    user_id: Optional[str] = None
 
     try:
-        # Проверяем, передан ли токен в URL
+        # Попытка аутентификации через параметр токена
         if token:
-            user_id = verify_websocket_token(token)
+            payload = await token_verifier.ensure_websocket(websocket, token)
+            if payload is None:
+                return
+            user_id = payload.get("sub")
             if user_id:
                 authenticated = await connection_manager.authenticate_connection(
                     websocket, user_id
@@ -344,7 +342,6 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
                     )
 
         if not authenticated:
-            # Если аутентификация через URL не удалась, запрашиваем токен через сообщение
             await websocket.send_json(
                 {
                     "type": "auth_required",
@@ -352,131 +349,119 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
                 }
             )
 
-            # Ожидаем сообщение с токеном
             auth_data = await websocket.receive_text()
-        else:
-            # Если уже аутентифицированы через URL, переходим к приёму сообщений
-            auth_data = None
-
-        try:
-            auth_message = json.loads(auth_data)
-            if auth_message.get("type") == "auth" and "token" in auth_message:
-                token = auth_message["token"]
-                user_id = verify_websocket_token(token)
-
-                if user_id:
-                    # Аутентификация успешна
-                    authenticated = await connection_manager.authenticate_connection(
-                        websocket, user_id
-                    )
-                    if authenticated:
-                        await websocket.send_json(
-                            {
-                                "type": "auth_success",
-                                "message": f"Пользователь {user_id} успешно аутентифицирован",
-                            }
-                        )
-
-                        # Основной цикл обработки сообщений
-                        while True:
-                            data = await websocket.receive_text()
-                            logger.debug(f"WebSocket received message: {data}")
-                            try:
-                                message = json.loads(data)
-                                message_type = message.get("type")
-                                logger.debug(f"Parsed message type: {message_type}")
-
-                                if message_type == "subscribe":
-                                    channel = message.get("channel")
-                                    logger.debug(
-                                        f"Subscribe request for channel: {channel}"
-                                    )
-                                    if channel:
-                                        await connection_manager.subscribe(
-                                            user_id, channel, websocket
-                                        )
-
-                                        # Специальная обработка для канала timeline
-                                        if channel == "timeline":
-                                            await memory_timeline.subscribe(websocket)
-
-                                        response = {
-                                            "type": "subscribed",
-                                            "channel": channel,
-                                        }
-                                        logger.debug(
-                                            f"Sending subscribe response: {response}"
-                                        )
-                                        await websocket.send_json(response)
-                                elif message_type == "unsubscribe":
-                                    channel = message.get("channel")
-                                    if channel:
-                                        await connection_manager.unsubscribe(
-                                            user_id, channel
-                                        )
-
-                                        # Специальная обработка для канала timeline
-                                        if channel == "timeline":
-                                            logger.debug(
-                                                f"Unsubscribing from memory_timeline for user {user_id}"
-                                            )
-                                            await memory_timeline.unsubscribe(websocket)
-
-                                        response = {
-                                            "type": "unsubscribed",
-                                            "channel": channel,
-                                        }
-                                        logger.debug(
-                                            f"Sending unsubscribe response: {response}"
-                                        )
-                                        await websocket.send_json(response)
-                                elif message_type == "broadcast":
-                                    channel = message.get("channel")
-                                    content = message.get("content")
-                                    if channel and content:
-                                        await connection_manager.broadcast(
-                                            channel,
-                                            {
-                                                "type": "message",
-                                                "content": content,
-                                                "sender": user_id,
-                                                "timestamp": datetime.utcnow().isoformat(),
-                                            },
-                                            sender_id=user_id,
-                                        )
-
-                            except json.JSONDecodeError:
-                                logger.error("JSON decode error in WebSocket message")
-                                await websocket.send_json(
-                                    {"type": "error", "message": "Неверный формат JSON"}
-                                )
-                            except Exception as e:
-                                logger.error(f"Error processing WebSocket message: {e}")
-                                await websocket.send_json(
-                                    {
-                                        "type": "error",
-                                        "message": f"Ошибка обработки сообщения: {str(e)}",
-                                    }
-                                )
-                    else:
-                        await connection_manager.reject_connection(
-                            websocket, "Authentication failed"
-                        )
-                        return
-                else:
-                    await connection_manager.reject_connection(
-                        websocket, "Invalid token"
-                    )
-                    return
-            else:
+            try:
+                auth_message = json.loads(auth_data)
+            except (TypeError, json.JSONDecodeError):
                 await connection_manager.reject_connection(
                     websocket, "Invalid auth message format"
                 )
                 return
 
-        except json.JSONDecodeError:
-            await connection_manager.reject_connection(websocket, "Invalid JSON format")
+            if auth_message.get("type") != "auth" or "token" not in auth_message:
+                await connection_manager.reject_connection(
+                    websocket, "Invalid auth message format"
+                )
+                return
+
+            payload = await token_verifier.ensure_websocket(
+                websocket, auth_message.get("token")
+            )
+            if payload is None:
+                return
+
+            user_id = payload.get("sub")
+            if not user_id:
+                await connection_manager.reject_connection(
+                    websocket, "Invalid token payload"
+                )
+                return
+
+            authenticated = await connection_manager.authenticate_connection(
+                websocket, user_id
+            )
+            if not authenticated:
+                await connection_manager.reject_connection(
+                    websocket, "Authentication failed"
+                )
+                return
+
+            await websocket.send_json(
+                {
+                    "type": "auth_success",
+                    "message": f"Пользователь {user_id} успешно аутентифицирован",
+                }
+            )
+
+        if not authenticated or not user_id:
+            await connection_manager.reject_connection(
+                websocket, "Authentication failed"
+            )
             return
+
+        # Основной цикл обработки сообщений
+        while True:
+            data = await websocket.receive_text()
+            logger.debug(f"WebSocket received message: {data}")
+            try:
+                message = json.loads(data)
+                message_type = message.get("type")
+                logger.debug(f"Parsed message type: {message_type}")
+
+                if message_type == "subscribe":
+                    channel = message.get("channel")
+                    logger.debug(f"Subscribe request for channel: {channel}")
+                    if channel:
+                        await connection_manager.subscribe(user_id, channel, websocket)
+
+                        if channel == "timeline":
+                            await memory_timeline.subscribe(websocket)
+
+                        response = {"type": "subscribed", "channel": channel}
+                        logger.debug(f"Sending subscribe response: {response}")
+                        await websocket.send_json(response)
+                elif message_type == "unsubscribe":
+                    channel = message.get("channel")
+                    if channel:
+                        await connection_manager.unsubscribe(user_id, channel)
+
+                        if channel == "timeline":
+                            logger.debug(
+                                f"Unsubscribing from memory_timeline for user {user_id}"
+                            )
+                            await memory_timeline.unsubscribe(websocket)
+
+                        response = {"type": "unsubscribed", "channel": channel}
+                        logger.debug(f"Sending unsubscribe response: {response}")
+                        await websocket.send_json(response)
+                elif message_type == "broadcast":
+                    channel = message.get("channel")
+                    content = message.get("content")
+                    if channel and content:
+                        await connection_manager.broadcast(
+                            channel,
+                            {
+                                "type": "message",
+                                "content": content,
+                                "sender": user_id,
+                                "timestamp": datetime.utcnow().isoformat(),
+                            },
+                            sender_id=user_id,
+                        )
+
+            except json.JSONDecodeError:
+                logger.error("JSON decode error in WebSocket message")
+                await websocket.send_json(
+                    {"type": "error", "message": "Неверный формат JSON"}
+                )
+            except Exception as e:
+                logger.error(f"Error processing WebSocket message: {e}")
+                await websocket.send_json(
+                    {
+                        "type": "error",
+                        "message": f"Ошибка обработки сообщения: {str(e)}",
+                    }
+                )
 
     except WebSocketDisconnect:
         if authenticated and user_id:

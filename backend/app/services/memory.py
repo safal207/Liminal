@@ -1,9 +1,14 @@
 """Memory timeline utilities."""
 from __future__ import annotations
 
-from typing import Optional
+from datetime import datetime
+from typing import Dict, List, Optional
 
-from backend.memory_timeline import MemoryTimeline, timeline as global_timeline
+from backend.memory_timeline import (
+    MemoryTimeline,
+    MemoryTimelineEventListener,
+    timeline as global_timeline,
+)
 
 
 class MemoryTimelineService:
@@ -14,3 +19,12 @@ class MemoryTimelineService:
 
     def get_timeline(self) -> MemoryTimeline:
         return self._timeline
+
+    def register_listener(self, listener: MemoryTimelineEventListener) -> None:
+        self._timeline.register_listener(listener)
+
+    def remove_listener(self, listener: MemoryTimelineEventListener) -> None:
+        self._timeline.remove_listener(listener)
+
+    def clear_listeners(self) -> None:
+        self._timeline.clear_listeners()

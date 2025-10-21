@@ -130,21 +130,21 @@ class Neo4jClient(Neo4jGateway):
     def create_memory_fragment_node(
         self, memory_data: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
-        with self._track_operation("create_memory_fragment_node"):
-            with self.driver.session() as session:
-                query = """
-                MERGE (mf:MemoryFragment {id: $id})
-                SET mf.content = $content,
-                    mf.type = $type,
-                    mf.growth_stage = $growth_stage,
-                    mf.timestamp = datetime($timestamp)
-                RETURN mf
-                """
-                result = session.run(query, **memory_data)
-                record = result.single()
-                if record and "mf" in record:
-                    return _serialize_node(dict(record["mf"]))
-                return None
+        with self.driver.session() as session:
+            query = """
+            MERGE (mf:MemoryFragment {id: $id})
+            SET mf.content = $content,
+                mf.type = $type,
+                mf.growth_stage = $growth_stage,
+                mf.timestamp = datetime($timestamp),
+                mf.metadata = $metadata
+            RETURN mf
+            """
+            result = session.run(query, **memory_data)
+            record = result.single()
+            if record and "mf" in record:
+                return _serialize_node(dict(record["mf"]))
+            return None
 
     def list_memory_fragments(self, limit: int = 10) -> List[Dict[str, Any]]:
         with self._track_operation("list_memory_fragments"):

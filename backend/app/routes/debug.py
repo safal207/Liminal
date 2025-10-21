@@ -4,8 +4,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from ..dependencies import (
-    get_connection_manager,
-    get_memory_timeline,
+    get_connection_manager_service,
+    get_memory_service,
     get_ml_service,
 )
 
@@ -13,19 +13,13 @@ router = APIRouter(tags=["debug"])
 
 
 @router.get("/debug/subscribers/count")
-async def get_subscribers_count(timeline=Depends(get_memory_timeline)):
-    if hasattr(timeline, "subscribers"):
-        count = len(timeline.subscribers)
-    elif hasattr(timeline, "_subscribers"):
-        count = len(timeline._subscribers)
-    else:
-        count = 0
-    return {"count": count}
+async def get_subscribers_count(service=Depends(get_memory_service)):
+    return {"count": service.subscriber_count()}
 
 
 @router.get("/debug/connections/stats")
-async def get_connection_stats(manager=Depends(get_connection_manager)):
-    return manager.get_connection_stats()
+async def get_connection_stats(service=Depends(get_connection_manager_service)):
+    return service.get_connection_stats()
 
 
 @router.get("/ml_metrics")

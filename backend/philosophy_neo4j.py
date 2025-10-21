@@ -21,12 +21,20 @@ except ImportError:
     print("Neo4j driver не установлен. Установите: pip install neo4j")
     raise
 
-from philosophy_schema import (
-    ConsciousnessNode,
-    ConsciousnessState,
-    StateTransition,
-    TransitionTrigger,
-)
+try:
+    from backend.philosophy_schema import (
+        ConsciousnessNode,
+        ConsciousnessState,
+        StateTransition,
+        TransitionTrigger,
+    )
+except ModuleNotFoundError:  # pragma: no cover - allow running as standalone script
+    from philosophy_schema import (  # type: ignore[no-redef]
+        ConsciousnessNode,
+        ConsciousnessState,
+        StateTransition,
+        TransitionTrigger,
+    )
 
 
 class PhilosophyNeo4jWriter:
