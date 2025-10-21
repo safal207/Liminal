@@ -9,7 +9,7 @@
 
 ### 1) Локальный запуск
 1. Запустите сервер:
-   - `uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000`
+   - `uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000`
 2. В другом терминале выполните:
    - `powershell -ExecutionPolicy Bypass -File scripts/ws-burst.ps1`
 
@@ -34,7 +34,7 @@
 
 ### 1) Local run
 1. Start server:
-   - `uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000`
+   - `uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000`
 2. In another terminal:
    - `powershell -ExecutionPolicy Bypass -File scripts/ws-burst.ps1`
 

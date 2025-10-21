@@ -1,0 +1,35 @@
+{
+  "node_count": 3,
+  "edge_count": 1,
+  "nodes": [
+    {
+      "id": "99064d1d-dac5-4180-a597-a5afc96516b3",
+      "kind": "module_state",
+      "traits": {
+        "спокойствие": 0.7
+      }
+    },
+    {
+      "id": "63b684c1-6267-43e5-b801-44736a2bad92",
+      "kind": "module_state",
+      "traits": {
+        "страх": 0.9
+      }
+    },
+    {
+      "id": "15e38e4e-0d9a-41bc-b2ed-6c5216318748",
+      "kind": "module_state",
+      "traits": {
+        "любовь": 0.8
+      }
+    }
+  ],
+  "relations": [
+    {
+      "source": "15e38e4e-0d9a-41bc-b2ed-6c5216318748",
+      "target": "99064d1d-dac5-4180-a597-a5afc96516b3",
+      "kind": "parent",
+      "weight": 1.0
+    }
+  ]
+}

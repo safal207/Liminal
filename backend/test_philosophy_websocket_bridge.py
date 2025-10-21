@@ -17,11 +17,22 @@ from unittest.mock import ANY, MagicMock, patch
 import requests
 
 # Import the module to test
-from philosophy_websocket_bridge import (
-    CONSCIOUSNESS_STATES,
-    TRANSITION_TRIGGERS,
-    PhilosophyWebSocketBridge,
-)
+try:
+    from backend.philosophy_websocket_bridge import (
+        CONSCIOUSNESS_STATES,
+        TRANSITION_TRIGGERS,
+        PhilosophyWebSocketBridge,
+    )
+
+    BRIDGE_MODULE_PATH = "backend.philosophy_websocket_bridge"
+except ModuleNotFoundError:  # pragma: no cover - fallback for legacy setups
+    from philosophy_websocket_bridge import (  # type: ignore[no-redef]
+        CONSCIOUSNESS_STATES,
+        TRANSITION_TRIGGERS,
+        PhilosophyWebSocketBridge,
+    )
+
+    BRIDGE_MODULE_PATH = "philosophy_websocket_bridge"
 
 from neo4j import GraphDatabase
 
@@ -50,7 +61,7 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
     def test_connect_success(self):
         """Test successful Neo4j connection"""
         # Mock Neo4j driver and session
-        with patch("philosophy_websocket_bridge.GraphDatabase") as mock_db:
+        with patch(f"{BRIDGE_MODULE_PATH}.GraphDatabase") as mock_db:
             mock_db.driver.return_value = self.mock_driver
             self.mock_session.run.return_value.single.return_value = {"count": 42}
 
@@ -63,7 +74,7 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
 
     def test_connect_failure(self):
         """Test Neo4j connection failure"""
-        with patch("philosophy_websocket_bridge.GraphDatabase") as mock_db:
+        with patch(f"{BRIDGE_MODULE_PATH}.GraphDatabase") as mock_db:
             mock_db.driver.side_effect = Exception("Connection refused")
 
             # Call connect method
@@ -74,7 +85,7 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
 
     def test_check_websocket_relay_success(self):
         """Test successful WebSocket relay check"""
-        with patch("philosophy_websocket_bridge.requests.get") as mock_get:
+        with patch(f"{BRIDGE_MODULE_PATH}.requests.get") as mock_get:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_get.return_value = mock_response
@@ -88,7 +99,7 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
 
     def test_check_websocket_relay_failure(self):
         """Test WebSocket relay check failure"""
-        with patch("philosophy_websocket_bridge.requests.get") as mock_get:
+        with patch(f"{BRIDGE_MODULE_PATH}.requests.get") as mock_get:
             # Test with HTTP error status
             mock_response = MagicMock()
             mock_response.status_code = 500
@@ -143,7 +154,7 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
 
     def test_send_event_to_websocket_success(self):
         """Test successful event sending to WebSocket relay"""
-        with patch("philosophy_websocket_bridge.requests.post") as mock_post:
+        with patch(f"{BRIDGE_MODULE_PATH}.requests.post") as mock_post:
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_post.return_value = mock_response
@@ -170,7 +181,7 @@ class TestPhilosophyWebSocketBridge(unittest.TestCase):
 
     def test_send_event_to_websocket_failure(self):
         """Test failed event sending to WebSocket relay"""
-        with patch("philosophy_websocket_bridge.requests.post") as mock_post:
+        with patch(f"{BRIDGE_MODULE_PATH}.requests.post") as mock_post:
             # Test with HTTP error status
             mock_response = MagicMock()
             mock_response.status_code = 500
