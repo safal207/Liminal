@@ -5,27 +5,19 @@ MemoryTimeline - динамически обновляемая временна�
 
 print("DEBUG: Starting memory_timeline.py imports")
 import asyncio
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 print("DEBUG: Importing fastapi.WebSocket")
 import json
 
-from fastapi import HTTPException, WebSocket
+from fastapi import WebSocket
 
-try:  # pragma: no cover - compatibility shim for package layout
-    from auth.jwt_utils import jwt_manager
-except ImportError:  # pragma: no cover
-    from backend.auth.jwt_utils import jwt_manager
+from backend.auth.dependencies import token_verifier
+from backend.core.settings import get_settings
 
 print("DEBUG: All imports completed in memory_timeline.py")
-
-def verify_jwt_token(token: str):
-    payload = jwt_manager.verify_token(token)
-    if not payload:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return payload
-
 
 class MemoryTimeline:
     def __init__(self):
@@ -33,6 +25,9 @@ class MemoryTimeline:
         self.timeline: List[Dict[str, Any]] = []
         self._subscribers: List[WebSocket] = []
         self._lock = asyncio.Lock()
+        settings = get_settings()
+        self._initial_state_limit = settings.memory_timeline.initial_state_limit
+        self._max_retained_events = settings.memory_timeline.max_retained_events
         print("DEBUG: MemoryTimeline instance initialized")
 
     @property
@@ -54,21 +49,27 @@ class MemoryTimeline:
 
         async with self._lock:
             self.timeline.append(memory)
+            if len(self.timeline) > self._max_retained_events:
+                self.timeline = self.timeline[-self._max_retained_events :]
             await self._notify_subscribers("memory_added", memory)
+
+        await self._emit_event(
+            TimelineEvent(
+                type="memory.fragment.created",
+                payload={
+                    **memory,
+                    "metadata": metadata or {},
+                },
+            )
+        )
 
         return memory
 
     async def subscribe(self, websocket: WebSocket):
         """Подписывает WebSocket на обновления таймлайна."""
         token = websocket.headers.get("Authorization")
-        if token:
-            try:
-                verify_jwt_token(token)
-            except HTTPException as e:
-                await websocket.close(code=1008, reason=e.detail)
-                return
-        elif not getattr(websocket, "user_id", None):
-            await websocket.close(code=1008, reason="Authorization token missing")
+        payload = await token_verifier.ensure_websocket(websocket, token)
+        if payload is None and not getattr(websocket, "user_id", None):
             return
 
         async with self._lock:
@@ -78,7 +79,7 @@ class MemoryTimeline:
         await websocket.send_json(
             {
                 "event": "initial_state",
-                "data": self.timeline[-100:],  # Последние 100 записей
+                "data": self.timeline[-self._initial_state_limit :],
             }
         )
 
@@ -121,12 +122,42 @@ class MemoryTimeline:
                     sub for sub in self._subscribers if sub not in disconnected
                 ]
 
+    def register_listener(self, listener: MemoryTimelineEventListener) -> None:
+        """Register a coroutine listener for timeline events."""
+
+        if listener not in self._event_listeners:
+            self._event_listeners.append(listener)
+
+    def remove_listener(self, listener: MemoryTimelineEventListener) -> None:
+        """Remove a previously registered listener."""
+
+        self._event_listeners = [
+            existing for existing in self._event_listeners if existing != listener
+        ]
+
+    def clear_listeners(self) -> None:
+        """Remove all registered event listeners."""
+
+        self._event_listeners.clear()
+
+    async def _emit_event(self, event: TimelineEvent) -> None:
+        """Dispatch an event to all registered listeners."""
+
+        if not self._event_listeners:
+            return
+
+        for listener in list(self._event_listeners):
+            try:
+                await listener(event)
+            except Exception as exc:  # pragma: no cover - defensive logging
+                print(f"Error emitting event {event.type}: {exc}")
+
     def get_timeline(
         self,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
         memory_type: Optional[str] = None,
-        limit: int = 100,
+        limit: Optional[int] = None,
     ) -> List[Dict]:
         """Возвращает отфильтрованный таймлайн."""
         result = self.timeline
@@ -144,7 +175,8 @@ class MemoryTimeline:
         if memory_type:
             result = [m for m in result if m["type"] == memory_type]
 
-        return result[-limit:]
+        effective_limit = limit if limit is not None else self._initial_state_limit
+        return result[-effective_limit:]
 
 
 # Глобальный экземпляр таймлайна
