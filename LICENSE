@@ -2,91 +2,93 @@ LIMINAL PROPRIETARY LICENSE
 
 Copyright (c) 2024-2025 LIMINAL Project. All Rights Reserved.
 
-ВАЖНО: Этот программный продукт и вся связанная с ним документация являются
-собственностью правообладателей проекта LIMINAL и защищены законами об
-авторском праве и интеллектуальной собственности.
+IMPORTANT: This software and all associated documentation are the property
+of the LIMINAL Project copyright holders and are protected by copyright and
+intellectual property laws.
 
 ================================================================================
-УСЛОВИЯ ИСПОЛЬЗОВАНИЯ
+TERMS OF USE
 ================================================================================
 
-1. ОГРАНИЧЕНИЯ НА ИСПОЛЬЗОВАНИЕ
+1. USAGE RESTRICTIONS
 
-   Настоящим ЗАПРЕЩАЕТСЯ без письменного разрешения правообладателей:
+   Without prior written permission from the copyright holders, the following
+   are STRICTLY PROHIBITED:
 
-   a) Копирование, воспроизведение или дублирование исходного кода полностью
-      или частично;
+   a) Copying, reproducing, or duplicating the source code in whole or in part;
 
-   b) Модификация, изменение, адаптация или создание производных работ на
-      основе данного программного обеспечения;
+   b) Modifying, altering, adapting, or creating derivative works based on
+      this software;
 
-   c) Распространение, публикация, передача третьим лицам или публичная
-      демонстрация исходного кода или его частей;
+   c) Distributing, publishing, transferring to third parties, or publicly
+      displaying the source code or any portions thereof;
 
-   d) Обратная разработка (reverse engineering), декомпиляция или
-      дизассемблирование программного обеспечения;
+   d) Reverse engineering, decompiling, or disassembling the software;
 
-   e) Коммерческое использование или использование в коммерческих продуктах
-      без явного письменного разрешения;
+   e) Commercial use or use in commercial products without explicit written
+      permission;
 
-   f) Удаление или изменение любых уведомлений об авторских правах,
-      товарных знаках или других правах собственности.
+   f) Removing or altering any copyright notices, trademarks, or other
+      proprietary rights notices.
 
-2. РАЗРЕШЕННОЕ ИСПОЛЬЗОВАНИЕ
+2. PERMITTED USE
 
-   a) Просмотр исходного кода только в образовательных целях;
+   The following are permitted:
 
-   b) Запуск программного обеспечения в личных некоммерческих целях только
-      при наличии явного разрешения правообладателей;
+   a) Viewing the source code for educational purposes only;
 
-   c) Создание issue и pull request в официальном репозитории проекта с
-      автоматической передачей всех прав на предложенные изменения
-      правообладателям проекта LIMINAL.
+   b) Running the software for personal non-commercial purposes only with
+      explicit permission from the copyright holders;
 
-3. ВКЛАД В ПРОЕКТ (CONTRIBUTIONS)
+   c) Creating issues and pull requests in the official project repository,
+      with automatic transfer of all rights to the proposed changes to the
+      LIMINAL Project copyright holders.
 
-   Любой вклад в этот проект (pull requests, patches, suggestions)
-   автоматически передается правообладателям проекта LIMINAL со всеми
-   авторскими правами. Отправляя вклад, вы подтверждаете, что:
+3. CONTRIBUTIONS
 
-   a) Вы являетесь автором этого вклада;
-   b) Вы передаете все права на этот вклад проекту LIMINAL;
-   c) Вы отказываетесь от любых претензий на авторство или использование
-      этого вклада.
+   Any contribution to this project (pull requests, patches, suggestions)
+   is automatically transferred to the LIMINAL Project copyright holders
+   with all associated rights. By submitting a contribution, you confirm that:
 
-4. ОТКАЗ ОТ ГАРАНТИЙ
+   a) You are the author of this contribution;
+   b) You transfer all rights to this contribution to the LIMINAL Project;
+   c) You waive any claims to authorship or use of this contribution.
 
-   ДАННОЕ ПРОГРАММНОЕ ОБЕСПЕЧЕНИЕ ПРЕДОСТАВЛЯЕТСЯ "КАК ЕСТЬ", БЕЗ КАКИХ-ЛИБО
-   ГАРАНТИЙ, ЯВНЫХ ИЛИ ПОДРАЗУМЕВАЕМЫХ, ВКЛЮЧАЯ, НО НЕ ОГРАНИЧИВАЯСЬ
-   ГАРАНТИЯМИ ТОВАРНОЙ ПРИГОДНОСТИ, СООТВЕТСТВИЯ ОПРЕДЕЛЕННОЙ ЦЕЛИ И
-   НЕНАРУШЕНИЯ ПРАВ. НИ ПРИ КАКИХ ОБСТОЯТЕЛЬСТВАХ АВТОРЫ ИЛИ ПРАВООБЛАДАТЕЛИ
-   НЕ НЕСУТ ОТВЕТСТВЕННОСТИ ЗА ЛЮБЫЕ ПРЕТЕНЗИИ, УЩЕРБ ИЛИ ДРУГИЕ ОБЯЗАТЕЛЬСТВА.
+4. DISCLAIMER OF WARRANTIES
 
-5. НАРУШЕНИЕ ЛИЦЕНЗИИ
+   THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+   THE SOFTWARE.
 
-   Любое нарушение условий данной лицензии:
+5. LICENSE VIOLATION
 
-   a) Автоматически прекращает все права, предоставленные вам этой лицензией;
-   b) Может повлечь за собой судебное преследование в соответствии с
-      применимым законодательством об авторском праве;
-   c) Обязывает нарушителя возместить все убытки, включая упущенную выгоду.
+   Any violation of the terms of this license:
 
-6. ПОЛУЧЕНИЕ РАЗРЕШЕНИЙ
+   a) Automatically terminates all rights granted to you under this license;
+   b) May result in legal prosecution under applicable copyright law;
+   c) Obligates the violator to compensate for all damages, including lost
+      profits.
 
-   Для получения разрешения на использование, коммерциализацию или любое
-   другое использование данного программного обеспечения свяжитесь с
-   правообладателями через официальный репозиторий проекта:
+6. OBTAINING PERMISSIONS
+
+   To obtain permission for use, commercialization, or any other use of this
+   software, contact the copyright holders through the official project
+   repository:
    https://github.com/safal207/Liminal
 
-7. ПРИМЕНИМОЕ ЗАКОНОДАТЕЛЬСТВО
+7. GOVERNING LAW
 
-   Данная лицензия регулируется и толкуется в соответствии с законодательством
-   об авторском праве и интеллектуальной собственности применимой юрисдикции.
+   This license is governed by and construed in accordance with copyright and
+   intellectual property laws of the applicable jurisdiction.
 
 ================================================================================
 
-УВЕДОМЛЕНИЕ: Использование данного программного обеспечения означает ваше
-согласие со всеми условиями данной лицензии. Если вы не согласны с этими
-условиями, вы не имеете права использовать это программное обеспечение.
+NOTICE: Use of this software constitutes your acceptance of all terms of this
+license. If you do not agree to these terms, you have no right to use this
+software.
 
-Все права защищены. LIMINAL (c) 2024-2025.
+All rights reserved. LIMINAL (c) 2024-2025.
