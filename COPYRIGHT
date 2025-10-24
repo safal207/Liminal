@@ -6,62 +6,61 @@ Copyright (c) 2024-2025 LIMINAL Project Team. All Rights Reserved.
 
 ================================================================================
 
-Настоящее уведомление применяется ко всем исходным кодам, документации,
-конфигурационным файлам, базам данных, графическим материалам, алгоритмам,
-моделям машинного обучения и любым другим материалам, содержащимся в этом
-репозитории и связанных с ним ресурсах.
+This notice applies to all source code, documentation, configuration files,
+databases, graphic materials, algorithms, machine learning models, and any
+other materials contained in this repository and associated resources.
 
-АВТОРСКИЕ ПРАВА
+COPYRIGHT OWNERSHIP
 
-Все права на данное программное обеспечение и связанные с ним материалы
-принадлежат правообладателям проекта LIMINAL. Любое несанкционированное
-использование, копирование, модификация или распространение строго запрещено.
+All rights to this software and associated materials are owned by the
+copyright holders of the LIMINAL Project. Any unauthorized use, copying,
+modification, or distribution is strictly prohibited.
 
-ЗАЩИЩЕННЫЕ КОМПОНЕНТЫ
+PROTECTED COMPONENTS
 
-Следующие компоненты и концепции являются собственностью LIMINAL:
+The following components and concepts are the property of LIMINAL:
 
 1. SOMA Framework (System Organic Mind Awakening)
-2. Consciousness Schema и State Machine
+2. Consciousness Schema and State Machine
 3. Temporal Consciousness Lake Architecture
 4. Multi-LLM Orchestrator
 5. Inner Council System
 6. Timeline Bridge Technology
 7. Pythia Flow & Pythia Graph Engines
 8. Agent Manager Framework
-9. Все алгоритмы машинного обучения и модели
-10. Все архитектурные решения и дизайн-паттерны
-11. Вся документация и исследовательские материалы
-12. Графические интерфейсы и визуализации
-13. База данных и структуры данных
-14. API дизайн и протоколы взаимодействия
+9. All machine learning algorithms and models
+10. All architectural decisions and design patterns
+11. All documentation and research materials
+12. Graphical interfaces and visualizations
+13. Database schemas and data structures
+14. API design and interaction protocols
 
-ТОРГОВЫЕ МАРКИ
+TRADEMARKS
 
-"LIMINAL", "Resonance Liminal Platform", "SOMA", "Inner Council" и связанные
-логотипы являются торговыми марками правообладателей проекта LIMINAL.
+"LIMINAL", "Resonance Liminal Platform", "SOMA", "Inner Council", and
+associated logos are trademarks of the LIMINAL Project copyright holders.
 
-НАРУШЕНИЕ АВТОРСКИХ ПРАВ
+COPYRIGHT INFRINGEMENT
 
-Любое нарушение авторских прав, включая, но не ограничиваясь:
-- Копирование исходного кода или его частей
-- Использование алгоритмов или архитектурных решений
-- Создание производных продуктов
-- Распространение без разрешения
-- Коммерческое использование без лицензии
+Any infringement of copyright, including but not limited to:
+- Copying source code or portions thereof
+- Using algorithms or architectural solutions
+- Creating derivative products
+- Distribution without permission
+- Commercial use without license
 
-влечет за собой юридическую ответственность в соответствии с применимым
-законодательством об авторском праве и интеллектуальной собственности.
+shall result in legal liability under applicable copyright and intellectual
+property laws.
 
-КОНТАКТНАЯ ИНФОРМАЦИЯ
+CONTACT INFORMATION
 
-Для получения разрешений на использование или лицензирования:
+To obtain permissions for use or licensing:
 - GitHub: https://github.com/safal207/Liminal
 - Email: safal0645@gmail.com
 
 ================================================================================
 
-ДАННОЕ УВЕДОМЛЕНИЕ ДОЛЖНО ПРИСУТСТВОВАТЬ ВО ВСЕХ КОПИЯХ ИЛИ СУЩЕСТВЕННЫХ
-ЧАСТЯХ ПРОГРАММНОГО ОБЕСПЕЧЕНИЯ.
+THIS NOTICE MUST BE PRESENT IN ALL COPIES OR SUBSTANTIAL PORTIONS OF THE
+SOFTWARE.
 
 All Rights Reserved. LIMINAL (c) 2024-2025.
