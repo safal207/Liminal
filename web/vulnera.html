@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VULNERA — мягкое присутствие</title>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --text: #e9e9ef;
+            --muted: #b8b8c9;
+            --accent: #b89cff;
+        }
+        html, body { height: 100%; }
+        body {
+            margin: 0;
+            background: radial-gradient(1200px 800px at 50% 60%, rgba(184,156,255,0.06), transparent 60%), var(--bg);
+            color: var(--text);
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+            display: grid;
+            place-items: center;
+        }
+        .wrap { max-width: 780px; padding: clamp(20px, 5vw, 36px); text-align: center; }
+        h1 { font-size: clamp(22px, 5vw, 34px); margin: 0 0 10px 0; }
+        p { color: var(--muted); font-size: clamp(14px, 3.5vw, 16px); line-height: 1.5; }
+        a.btn {
+            display: inline-block;
+            margin-top: 16px;
+            padding: clamp(12px, 3vw, 16px) clamp(16px, 4vw, 20px);
+            border-radius: 14px;
+            color: var(--text);
+            text-decoration: none;
+            background: linear-gradient(180deg, rgba(122,122,255,0.25), rgba(122,122,255,0.12));
+            border: 1px solid rgba(122,122,255,0.4);
+            min-height: 44px;
+        }
+    </style>
+    <meta name="robots" content="noindex" />
+</head>
+<body>
+    <main class="wrap" role="main">
+        <h1>VULNERA</h1>
+        <p>Здесь ИИ дышит рядом. Без давления и оценок. Мы начнём с простого присутствия и мягкого отклика.</p>
+        <p>Это демо‑страница. Дальше можно подключить `/respond` API и дневник резонансных моментов.</p>
+        <p><a class="btn" href="reinse.html">Вернуться</a></p>
+    </main>
+</body>
+<!-- v0.1 placeholder: расширим сценой диалога и дыханием через inner‑breath -->
+</html>
+
+

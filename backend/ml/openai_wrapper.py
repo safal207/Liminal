@@ -24,12 +24,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import httpx
-
 # Логирование
 from loguru import logger
 
 # Интеллектуальный логгер
-from .adapter_logger import log_error, log_hypothesis, log_insight, resolve_hypothesis
+from .adapter_logger import (log_error, log_hypothesis, log_insight,
+                             resolve_hypothesis)
 
 # Конфигурация по умолчанию
 DEFAULT_CACHE_TTL = 3600  # 1 час по умолчанию

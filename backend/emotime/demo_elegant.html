@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotime - The Hidden Intelligence</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #0a0a0a;
+            color: #ffffff;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 30% 20%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                        radial-gradient(circle at 70% 80%, rgba(255, 119, 198, 0.3) 0%, transparent 50%);
+            z-index: 1;
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+        }
+
+        .hero h1 {
+            font-size: clamp(3rem, 8vw, 6rem);
+            font-weight: 800;
+            line-height: 0.9;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, #ffffff 0%, #a8a8a8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            color: #a8a8a8;
+            margin-bottom: 3rem;
+            max-width: 600px;
+        }
+
+        /* Provocative Questions */
+        .provocative-section {
+            padding: 120px 0;
+            background: #111111;
+        }
+
+        .provocative-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 40px;
+            margin-top: 60px;
+        }
+
+        .provocative-card {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+            border: 1px solid #333;
+            border-radius: 20px;
+            padding: 40px;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .provocative-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #7877c6, #ff77c6);
+            transform: scaleX(0);
+            transition: transform 0.4s ease;
+        }
+
+        .provocative-card:hover {
+            transform: translateY(-10px);
+            border-color: #7877c6;
+            box-shadow: 0 20px 40px rgba(120, 119, 198, 0.2);
+        }
+
+        .provocative-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .provocative-card h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        .provocative-card p {
+            color: #a8a8a8;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+
+        .reveal-btn {
+            background: linear-gradient(135deg, #7877c6, #ff77c6);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .reveal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(120, 119, 198, 0.3);
+        }
+
+        /* Demo Section */
+        .demo-section {
+            padding: 120px 0;
+            background: #0a0a0a;
+        }
+
+        .demo-container {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+            border-radius: 24px;
+            padding: 60px;
+            border: 1px solid #333;
+        }
+
+        .demo-input {
+            width: 100%;
+            background: #0a0a0a;
+            border: 2px solid #333;
+            border-radius: 12px;
+            padding: 20px;
+            color: white;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 120px;
+            transition: border-color 0.3s ease;
+        }
+
+        .demo-input:focus {
+            outline: none;
+            border-color: #7877c6;
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, #7877c6, #ff77c6);
+            color: white;
+            border: none;
+            padding: 18px 36px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(120, 119, 198, 0.3);
+        }
+
+        /* Results */
+        .results {
+            margin-top: 40px;
+            display: none;
+        }
+
+        .emotion-insight {
+            background: #0a0a0a;
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 20px;
+            border: 1px solid #333;
+        }
+
+        .insight-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .insight-icon {
+            font-size: 2rem;
+            margin-right: 15px;
+        }
+
+        .insight-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .insight-description {
+            color: #a8a8a8;
+            margin-bottom: 20px;
+        }
+
+        .emotion-bars {
+            display: grid;
+            gap: 15px;
+        }
+
+        .emotion-bar {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .emotion-label {
+            width: 80px;
+            font-weight: 500;
+            color: #ffffff;
+        }
+
+        .emotion-progress {
+            flex: 1;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .emotion-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7877c6, #ff77c6);
+            transition: width 0.8s ease;
+        }
+
+        .emotion-value {
+            width: 60px;
+            text-align: right;
+            font-weight: 600;
+            color: #7877c6;
+        }
+
+        /* Pricing */
+        .pricing-section {
+            padding: 120px 0;
+            background: #111111;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-top: 60px;
+        }
+
+        .pricing-card {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+            border: 1px solid #333;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.4s ease;
+        }
+
+        .pricing-card.featured {
+            border-color: #7877c6;
+            transform: scale(1.05);
+            position: relative;
+        }
+
+        .pricing-card.featured::before {
+            content: 'MOST POPULAR';
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #7877c6, #ff77c6);
+            color: white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .plan-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+
+        .plan-price {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #7877c6;
+            margin-bottom: 20px;
+        }
+
+        .plan-features {
+            list-style: none;
+            margin-bottom: 30px;
+        }
+
+        .plan-features li {
+            padding: 8px 0;
+            color: #a8a8a8;
+            border-bottom: 1px solid #333;
+        }
+
+        .plan-features li:last-child {
+            border-bottom: none;
+        }
+
+        .cta-btn {
+            background: linear-gradient(135deg, #7877c6, #ff77c6);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .cta-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(120, 119, 198, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 3rem;
+            }
+            
+            .demo-container {
+                padding: 30px;
+            }
+            
+            .provocative-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .fade-in-up {
+            animation: fadeInUp 0.8s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-content">
+                <h1 class="fade-in-up">The Hidden Intelligence</h1>
+                <p class="hero-subtitle fade-in-up">
+                    What your data isn't telling you. What your competitors already know. 
+                    What you're missing between the lines.
+                </p>
+            </div>
+        </section>
+
+        <!-- Provocative Questions -->
+        <section class="provocative-section">
+            <div class="provocative-grid">
+                <div class="provocative-card fade-in-up">
+                    <h3>Why is your team 3x slower on Fridays?</h3>
+                    <p>
+                        Your Slack shows "everything's fine" but AI sees what you're missing. 
+                        The hidden patterns that predict turnover before it happens.
+                    </p>
+                    <button class="reveal-btn" onclick="revealInsight('hr')">Reveal the Truth</button>
+                </div>
+
+                <div class="provocative-card fade-in-up">
+                    <h3>Your best customer is leaving. Do you know why?</h3>
+                    <p>
+                        They said "thanks for the help" but AI detected 73% dissatisfaction. 
+                        The warning signs you're trained to ignore.
+                    </p>
+                    <button class="reveal-btn" onclick="revealInsight('support')">See the Signs</button>
+                </div>
+
+                <div class="provocative-card fade-in-up">
+                    <h3>Why 80% of your marketing campaigns fail?</h3>
+                    <p>
+                        You got 1000 likes but AI sees 89% negative emotions. 
+                        You're spending money on anti-advertising.
+                    </p>
+                    <button class="reveal-btn" onclick="revealInsight('marketing')">Discover the Truth</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Demo Section -->
+        <section class="demo-section">
+            <div class="demo-container">
+                <h2 style="font-size: 2.5rem; margin-bottom: 20px; text-align: center;">
+                    See What You're Missing
+                </h2>
+                <p style="text-align: center; color: #a8a8a8; margin-bottom: 40px; font-size: 1.2rem;">
+                    Paste any text and discover the hidden emotional intelligence
+                </p>
+                
+                <textarea 
+                    class="demo-input" 
+                    id="text-input" 
+                    placeholder="Example: 'Everything is fine, really. No problems at all. The project is going great and I'm very happy with the progress.'"
+                ></textarea>
+
+                <button class="analyze-btn" onclick="analyzeText()">
+                    🔍 Reveal Hidden Truths
+                </button>
+
+                <div class="results" id="results">
+                    <div class="emotion-insight">
+                        <div class="insight-header">
+                            <div class="insight-icon">⚠️</div>
+                            <div class="insight-title">Hidden Warning Detected</div>
+                        </div>
+                        <div class="insight-description" id="insight-description">
+                            <!-- Insight will be populated here -->
+                        </div>
+                        
+                        <div class="emotion-bars" id="emotion-bars">
+                            <!-- Emotion bars will be populated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing -->
+        <section class="pricing-section">
+            <h2 style="font-size: 3rem; text-align: center; margin-bottom: 20px;">
+                Start Seeing What Others Can't
+            </h2>
+            <p style="text-align: center; color: #a8a8a8; margin-bottom: 60px; font-size: 1.2rem;">
+                Join companies that already know what you don't
+            </p>
+            
+            <div class="pricing-grid">
+                <div class="pricing-card">
+                    <div class="plan-name">Starter</div>
+                    <div class="plan-price">$99</div>
+                    <div style="color: #a8a8a8; margin-bottom: 20px;">per month</div>
+                    <ul class="plan-features">
+                        <li>10,000 insights/month</li>
+                        <li>Basic emotional intelligence</li>
+                        <li>Email support</li>
+                        <li>Standard integrations</li>
+                    </ul>
+                    <button class="cta-btn" onclick="contactSales('starter')">Get Started</button>
+                </div>
+
+                <div class="pricing-card featured">
+                    <div class="plan-name">Professional</div>
+                    <div class="plan-price">$299</div>
+                    <div style="color: #a8a8a8; margin-bottom: 20px;">per month</div>
+                    <ul class="plan-features">
+                        <li>100,000 insights/month</li>
+                        <li>Advanced pattern detection</li>
+                        <li>Priority support</li>
+                        <li>Custom integrations</li>
+                        <li>Predictive analytics</li>
+                    </ul>
+                    <button class="cta-btn" onclick="contactSales('professional')">Most Popular</button>
+                </div>
+
+                <div class="pricing-card">
+                    <div class="plan-name">Enterprise</div>
+                    <div class="plan-price">$999</div>
+                    <div style="color: #a8a8a8; margin-bottom: 20px;">per month</div>
+                    <ul class="plan-features">
+                        <li>Unlimited insights</li>
+                        <li>Custom AI models</li>
+                        <li>Dedicated support</li>
+                        <li>SLA guarantees</li>
+                        <li>On-premise options</li>
+                    </ul>
+                    <button class="cta-btn" onclick="contactSales('enterprise')">Contact Sales</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // Provocative insights for each category
+        const insights = {
+            hr: {
+                title: "Your Team is Burning Out",
+                description: "AI detected 87% probability of team burnout. The 'everything is fine' messages are actually distress signals. Your top performers are 3x more likely to leave within 2 months.",
+                emotions: { "sadness": 0.6, "fear": 0.4, "anger": 0.2, "neutral": 0.1, "joy": 0.05, "surprise": 0.03, "disgust": 0.02 }
+            },
+            support: {
+                title: "Customer Dissatisfaction Hidden in Plain Sight",
+                description: "The 'thank you' message contains 73% negative emotions. This customer is already looking for alternatives. You're losing revenue while thinking everything is fine.",
+                emotions: { "anger": 0.5, "sadness": 0.3, "fear": 0.2, "neutral": 0.1, "joy": 0.05, "surprise": 0.03, "disgust": 0.02 }
+            },
+            marketing: {
+                title: "Your Campaign is Backfiring",
+                description: "89% negative emotions detected in your 'successful' campaign. You're spending money to damage your brand. The likes are from people who want to see you fail.",
+                emotions: { "disgust": 0.6, "anger": 0.3, "sadness": 0.2, "neutral": 0.1, "joy": 0.05, "fear": 0.03, "surprise": 0.02 }
+            }
+        };
+
+        function revealInsight(category) {
+            const insight = insights[category];
+            const textInput = document.getElementById('text-input');
+            
+            // Set example text based on category
+            const examples = {
+                hr: "Everything is fine, really. No problems at all. The project is going great and I'm very happy with the progress. Don't worry about anything.",
+                support: "Thank you for your help. I appreciate the assistance. Everything is resolved now. Have a great day.",
+                marketing: "Amazing product! Love it so much! Best purchase ever! Highly recommend to everyone!"
+            };
+            
+            textInput.value = examples[category];
+            
+            // Analyze the text
+            analyzeText();
+            
+            // Scroll to demo section
+            document.querySelector('.demo-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function analyzeText() {
+            const text = document.getElementById('text-input').value.trim();
+            if (!text) return;
+
+            // Show results
+            const results = document.getElementById('results');
+            results.style.display = 'block';
+
+            // Analyze emotions (simplified version)
+            const emotions = analyzeEmotions(text);
+            
+            // Generate insight
+            const insight = generateInsight(emotions, text);
+            
+            // Update UI
+            document.getElementById('insight-description').textContent = insight;
+            displayEmotions(emotions);
+            
+            // Scroll to results
+            results.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function analyzeEmotions(text) {
+            const emotions = {
+                joy: 0.0, sadness: 0.0, anger: 0.0, 
+                fear: 0.0, surprise: 0.0, disgust: 0.0, neutral: 0.0
+            };
+            
+            const textLower = text.toLowerCase();
+            
+            // Enhanced emotion detection
+            const joyWords = ["happy", "joy", "excited", "great", "wonderful", "amazing", "fantastic", "excellent", "love", "best"];
+            const sadnessWords = ["sad", "depressed", "unhappy", "miserable", "grief", "sorrow", "melancholy", "worried", "concerned"];
+            const angerWords = ["angry", "mad", "furious", "rage", "hate", "annoyed", "irritated", "frustrated", "upset"];
+            const fearWords = ["afraid", "scared", "terrified", "anxious", "worried", "fearful", "nervous", "concerned"];
+            const surpriseWords = ["surprised", "shocked", "amazed", "astonished", "stunned", "incredible", "unbelievable"];
+            const disgustWords = ["disgusted", "revolted", "sickened", "appalled", "repulsed", "horrible"];
+            
+            // Count emotions with context
+            joyWords.forEach(word => {
+                if (textLower.includes(word)) emotions.joy += 0.3;
+            });
+            sadnessWords.forEach(word => {
+                if (textLower.includes(word)) emotions.sadness += 0.3;
+            });
+            angerWords.forEach(word => {
+                if (textLower.includes(word)) emotions.anger += 0.3;
+            });
+            fearWords.forEach(word => {
+                if (textLower.includes(word)) emotions.fear += 0.3;
+            });
+            surpriseWords.forEach(word => {
+                if (textLower.includes(word)) emotions.surprise += 0.3;
+            });
+            disgustWords.forEach(word => {
+                if (textLower.includes(word)) emotions.disgust += 0.3;
+            });
+            
+            // Detect sarcasm and hidden meanings
+            if (textLower.includes("really") && textLower.includes("fine")) {
+                emotions.sadness += 0.4;
+                emotions.anger += 0.3;
+            }
+            
+            if (textLower.includes("everything") && textLower.includes("great")) {
+                emotions.sadness += 0.3;
+            }
+            
+            // Normalize
+            const total = Object.values(emotions).reduce((sum, val) => sum + val, 0);
+            if (total === 0) {
+                emotions.neutral = 1.0;
+            } else {
+                emotions.neutral = Math.max(0, 1.0 - total);
+                Object.keys(emotions).forEach(emotion => {
+                    if (emotion !== 'neutral') {
+                        emotions[emotion] = Math.min(1.0, emotions[emotion] / total);
+                    }
+                });
+            }
+            
+            return emotions;
+        }
+
+        function generateInsight(emotions, text) {
+            const topEmotion = Object.entries(emotions)
+                .filter(([emotion, score]) => emotion !== 'neutral')
+                .sort(([,a], [,b]) => b - a)[0];
+            
+            const emotion = topEmotion[0];
+            const score = topEmotion[1];
+            
+            if (score > 0.5) {
+                if (emotion === 'sadness') {
+                    return "High levels of sadness detected. This person is likely experiencing distress or burnout. The positive language may be masking deeper issues.";
+                } else if (emotion === 'anger') {
+                    return "Significant anger detected beneath the surface. The polite tone is misleading - this person is frustrated and may take action soon.";
+                } else if (emotion === 'fear') {
+                    return "Fear and anxiety detected. The reassuring words are actually signs of concern and uncertainty about the future.";
+                }
+            }
+            
+            if (emotions.neutral > 0.7) {
+                return "Overwhelmingly neutral response detected. This suggests disengagement, lack of enthusiasm, or potential dishonesty about true feelings.";
+            }
+            
+            return "Mixed emotional signals detected. The text contains contradictions that suggest the person may not be expressing their true feelings.";
+        }
+
+        function displayEmotions(emotions) {
+            const emotionBars = document.getElementById('emotion-bars');
+            emotionBars.innerHTML = '';
+            
+            Object.entries(emotions).forEach(([emotion, score]) => {
+                const bar = document.createElement('div');
+                bar.className = 'emotion-bar';
+                
+                bar.innerHTML = `
+                    <div class="emotion-label">${emotion}</div>
+                    <div class="emotion-progress">
+                        <div class="emotion-fill" style="width: ${score * 100}%"></div>
+                    </div>
+                    <div class="emotion-value">${(score * 100).toFixed(1)}%</div>
+                `;
+                
+                emotionBars.appendChild(bar);
+            });
+        }
+
+        function contactSales(plan) {
+            const subject = `Emotime ${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan Inquiry`;
+            const body = `Hi, I'm interested in the ${plan} plan for Emotime. I want to see what I'm missing in my data.`;
+            
+            window.open(`mailto:sales@emotime.ai?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+        }
+
+        // Auto-analyze on Enter key
+        document.getElementById('text-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                analyzeText();
+            }
+        });
+
+        // Intersection Observer for animations
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('fade-in-up');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.provocative-card, .pricing-card').forEach(card => {
+            observer.observe(card);
+        });
+    </script>
+</body>
+</html>

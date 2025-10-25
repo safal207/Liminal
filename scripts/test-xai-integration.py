@@ -90,11 +90,8 @@ else:
 print_section("Импорт ML и OpenAI сервисов")
 
 try:
-    from backend.ml.openai_service import (
-        AnalysisResponse,
-        OpenAIService,
-        openai_service,
-    )
+    from backend.ml.openai_service import (AnalysisResponse, OpenAIService,
+                                           openai_service)
 
     print_success("OpenAI сервис импортирован")
 except ImportError as e:

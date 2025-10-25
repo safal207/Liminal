@@ -1,0 +1,84 @@
+# Testing Requirements for LIMINAL Production Deployment
+# Install with: pip install -r test-requirements.txt
+
+# Core Testing Framework
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.11.0
+pytest-cov>=4.1.0
+pytest-benchmark>=4.0.0
+pytest-xdist>=3.3.0  # Parallel test execution
+
+# HTTP Testing
+httpx>=0.24.0
+aiohttp>=3.8.0
+requests>=2.31.0
+
+# API Testing
+fastapi[all]>=0.103.0
+starlette>=0.27.0
+
+# Mock and Fixtures
+responses>=0.23.0
+factory-boy>=3.3.0
+faker>=19.0.0
+
+# Load Testing
+locust>=2.16.0
+
+# E2E Testing
+playwright>=1.37.0
+selenium>=4.11.0
+
+# Database Testing
+pytest-postgresql>=5.0.0
+pytest-redis>=3.0.0
+
+# WebSocket Testing
+websockets>=11.0.0
+websocket-client>=1.6.0
+
+# Security Testing
+bandit>=1.7.0  # Security linter
+safety>=2.3.0  # Vulnerability scanner
+
+# Performance Testing
+memory-profiler>=0.61.0
+py-spy>=0.3.0  # Sampling profiler
+psutil>=5.9.0
+
+# Data Generation and Validation
+hypothesis>=6.82.0  # Property-based testing
+pydantic[dotenv]>=2.0.0
+
+# Monitoring Testing
+prometheus-client>=0.17.0
+
+# ML Testing
+scikit-learn>=1.3.0
+numpy>=1.24.0
+
+# Async Testing Utilities
+aiofiles>=23.0.0
+asyncio-mqtt>=0.13.0
+
+# Test Reporting
+pytest-html>=3.2.0
+pytest-json-report>=1.5.0
+allure-pytest>=2.13.0
+
+# CI/CD Testing
+tox>=4.6.0
+pre-commit>=3.3.0
+
+# Chaos Engineering
+chaos-toolkit>=1.16.0
+toxiproxy-python>=0.1.0
+
+# Container Testing  
+testcontainers>=3.7.0
+docker>=6.1.0
+
+# Performance Monitoring
+py-monitor>=1.0.0
+line-profiler>=4.0.0

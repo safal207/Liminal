@@ -1,0 +1,69 @@
+config:
+  target: 'http://localhost:8000'
+  phases:
+    - duration: 60
+      arrivalRate: 10
+      name: "HTTP API Load Test"
+    - duration: 120
+      arrivalRate: 50
+      name: "Increased Load"
+    - duration: 60
+      arrivalRate: 100
+      name: "Peak Load"
+
+scenarios:
+  - name: "Health checks performance"
+    weight: 40
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/health/live"
+          expect:
+            - statusCode: 200
+      - get:
+          url: "/health/ready"
+          # Может вернуть 503 если Redis/Neo4j не подключены
+      - wait: 1
+
+  - name: "Home State Detection API"
+    weight: 40
+    flow:
+      - post:
+          url: "/home-state/analyze/perf_test_user_{{ $randomInt(1, 100) }}"
+          headers:
+            Content-Type: "application/json"
+          json:
+            text: "{{ $randomString() }} - честно говоря, я тестирую аутентичность системы. Понимаю, что сейчас провожу нагрузочное тестирование"
+            timestamp: "{{ $timestamp }}"
+            user_id: "perf_test_{{ $randomInt(1, 100) }}"
+            response_time: "{{ $randomFloat(0.5, 5.0) }}"
+          expect:
+            - statusCode: 200
+            - hasProperty: "authenticity_level"
+            - hasProperty: "home_state_label"
+            - hasProperty: "is_home"
+      - wait: 
+          min: 0.1
+          max: 1
+
+  - name: "Metrics endpoint stress"
+    weight: 20
+    flow:
+      - get:
+          url: "/metrics"
+          expect:
+            - statusCode: 200
+            - contentType: text/plain
+      - wait: 2
+
+# Мониторинг performance
+metrics:
+  - name: response_time_p95
+    unit: ms
+  - name: response_time_p99 
+    unit: ms
+  - name: errors_rate
+    unit: "%"

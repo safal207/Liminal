@@ -7,13 +7,11 @@ import asyncio
 import sys
 import uuid
 
-from loguru import logger
+from logging_config import get_logger
 from websocket.redis_client import RedisClient
 from websocket.redis_connection_manager import RedisConnectionManager
 
-# Настраиваем вывод логов
-logger.remove()
-logger.add(sys.stdout, level="INFO")
+logger = get_logger(__name__)
 
 
 async def test_redis_client_pubsub():

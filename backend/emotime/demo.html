@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emotime - AI Emotion Analysis Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .input-group textarea {
+            width: 100%;
+            height: 120px;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        .input-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .emotion-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .emotion-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .emotion-card.high {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+
+        .emotion-card.medium {
+            border-color: #ffc107;
+            background: #fff3cd;
+        }
+
+        .emotion-card.low {
+            border-color: #6c757d;
+            background: #e9ecef;
+        }
+
+        .emotion-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-transform: capitalize;
+        }
+
+        .emotion-score {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .confidence {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .confidence h3 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .pricing {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .pricing-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-10px);
+        }
+
+        .pricing-card.featured {
+            border: 3px solid #667eea;
+            transform: scale(1.05);
+        }
+
+        .plan-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .plan-price {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .plan-features {
+            list-style: none;
+            margin-bottom: 30px;
+        }
+
+        .plan-features li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .plan-features li:last-child {
+            border-bottom: none;
+        }
+
+        .cta-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+
+        .cta-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .demo-section {
+                padding: 20px;
+            }
+            
+            .emotion-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Emotime</h1>
+            <p>AI-Powered Emotion Analysis in Real-Time</p>
+        </div>
+
+        <div class="demo-section">
+            <h2 style="margin-bottom: 20px; color: #333;">Try It Now - Free Demo</h2>
+            
+            <div class="input-group">
+                <label for="text-input">Enter your text to analyze emotions:</label>
+                <textarea 
+                    id="text-input" 
+                    placeholder="Example: I am so happy today! This is amazing news that makes me feel wonderful and excited about the future."
+                ></textarea>
+            </div>
+
+            <button class="analyze-btn" onclick="analyzeEmotions()">
+                🧠 Analyze Emotions
+            </button>
+
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing emotions...</p>
+            </div>
+
+            <div class="error" id="error"></div>
+
+            <div class="results" id="results">
+                <h3 style="margin-bottom: 20px; color: #333;">Emotion Analysis Results</h3>
+                
+                <div class="emotion-grid" id="emotion-grid">
+                    <!-- Emotions will be populated here -->
+                </div>
+
+                <div class="confidence" id="confidence">
+                    <!-- Confidence score will be shown here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2 style="margin-bottom: 30px; color: #333; text-align: center;">Choose Your Plan</h2>
+            
+            <div class="pricing">
+                <div class="pricing-card">
+                    <div class="plan-name">Starter</div>
+                    <div class="plan-price">$29</div>
+                    <div style="color: #666; margin-bottom: 20px;">per month</div>
+                    <ul class="plan-features">
+                        <li>1,000 API calls/month</li>
+                        <li>Basic emotion analysis</li>
+                        <li>Email support</li>
+                        <li>JSON API responses</li>
+                    </ul>
+                    <button class="cta-btn" onclick="contactSales('starter')">Get Started</button>
+                </div>
+
+                <div class="pricing-card featured">
+                    <div class="plan-name">Growth</div>
+                    <div class="plan-price">$99</div>
+                    <div style="color: #666; margin-bottom: 20px;">per month</div>
+                    <ul class="plan-features">
+                        <li>10,000 API calls/month</li>
+                        <li>Advanced emotion analysis</li>
+                        <li>Priority support</li>
+                        <li>Webhook notifications</li>
+                        <li>Custom integrations</li>
+                    </ul>
+                    <button class="cta-btn" onclick="contactSales('growth')">Most Popular</button>
+                </div>
+
+                <div class="pricing-card">
+                    <div class="plan-name">Enterprise</div>
+                    <div class="plan-price">$299</div>
+                    <div style="color: #666; margin-bottom: 20px;">per month</div>
+                    <ul class="plan-features">
+                        <li>100,000 API calls/month</li>
+                        <li>Custom ML models</li>
+                        <li>Dedicated support</li>
+                        <li>SLA guarantees</li>
+                        <li>On-premise options</li>
+                    </ul>
+                    <button class="cta-btn" onclick="contactSales('enterprise')">Contact Sales</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo API endpoint (replace with your actual API)
+        const API_BASE = 'http://localhost:8000';
+        
+        async function analyzeEmotions() {
+            const textInput = document.getElementById('text-input');
+            const text = textInput.value.trim();
+            
+            if (!text) {
+                showError('Please enter some text to analyze.');
+                return;
+            }
+            
+            // Show loading
+            showLoading(true);
+            hideError();
+            hideResults();
+            
+            try {
+                // For demo purposes, we'll simulate the API call
+                // In production, this would call your actual API
+                const emotions = simulateEmotionAnalysis(text);
+                
+                // Show results
+                displayResults(emotions);
+                showResults();
+                
+            } catch (error) {
+                showError('Error analyzing emotions: ' + error.message);
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        function simulateEmotionAnalysis(text) {
+            // Simulate API processing time
+            const startTime = Date.now();
+            
+            const emotions = {
+                joy: 0.0,
+                sadness: 0.0,
+                anger: 0.0,
+                fear: 0.0,
+                surprise: 0.0,
+                disgust: 0.0,
+                neutral: 0.0
+            };
+            
+            const textLower = text.toLowerCase();
+            
+            // Simple keyword-based analysis (same logic as your API)
+            const joyWords = ["happy", "joy", "excited", "great", "wonderful", "amazing", "fantastic", "excellent"];
+            const sadnessWords = ["sad", "depressed", "unhappy", "miserable", "grief", "sorrow", "melancholy"];
+            const angerWords = ["angry", "mad", "furious", "rage", "hate", "annoyed", "irritated", "frustrated"];
+            const fearWords = ["afraid", "scared", "terrified", "anxious", "worried", "fearful", "nervous"];
+            const surpriseWords = ["surprised", "shocked", "amazed", "astonished", "stunned", "incredible"];
+            const disgustWords = ["disgusted", "revolted", "sickened", "appalled", "repulsed"];
+            
+            // Count emotions
+            joyWords.forEach(word => {
+                if (textLower.includes(word)) emotions.joy += 0.3;
+            });
+            sadnessWords.forEach(word => {
+                if (textLower.includes(word)) emotions.sadness += 0.3;
+            });
+            angerWords.forEach(word => {
+                if (textLower.includes(word)) emotions.anger += 0.3;
+            });
+            fearWords.forEach(word => {
+                if (textLower.includes(word)) emotions.fear += 0.3;
+            });
+            surpriseWords.forEach(word => {
+                if (textLower.includes(word)) emotions.surprise += 0.3;
+            });
+            disgustWords.forEach(word => {
+                if (textLower.includes(word)) emotions.disgust += 0.3;
+            });
+            
+            // Normalize
+            const total = Object.values(emotions).reduce((sum, val) => sum + val, 0);
+            if (total === 0) {
+                emotions.neutral = 1.0;
+            } else {
+                emotions.neutral = Math.max(0, 1.0 - total);
+                Object.keys(emotions).forEach(emotion => {
+                    if (emotion !== 'neutral') {
+                        emotions[emotion] = Math.min(1.0, emotions[emotion] / total);
+                    }
+                });
+            }
+            
+            return {
+                emotions: emotions,
+                confidence: 0.85 + (Math.random() * 0.1), // Simulate confidence
+                processingTime: (Date.now() - startTime) / 1000
+            };
+        }
+        
+        function displayResults(analysis) {
+            const emotionGrid = document.getElementById('emotion-grid');
+            const confidenceDiv = document.getElementById('confidence');
+            
+            // Clear previous results
+            emotionGrid.innerHTML = '';
+            
+            // Display emotions
+            Object.entries(analysis.emotions).forEach(([emotion, score]) => {
+                const emotionCard = document.createElement('div');
+                emotionCard.className = 'emotion-card';
+                
+                let intensity = 'low';
+                if (score > 0.5) intensity = 'high';
+                else if (score > 0.2) intensity = 'medium';
+                
+                emotionCard.classList.add(intensity);
+                
+                emotionCard.innerHTML = `
+                    <div class="emotion-name">${emotion}</div>
+                    <div class="emotion-score">${(score * 100).toFixed(1)}%</div>
+                `;
+                
+                emotionGrid.appendChild(emotionCard);
+            });
+            
+            // Display confidence
+            confidenceDiv.innerHTML = `
+                <h3>Analysis Confidence</h3>
+                <p style="font-size: 1.5rem; font-weight: bold; color: #1976d2;">
+                    ${(analysis.confidence * 100).toFixed(1)}%
+                </p>
+                <p style="color: #666; margin-top: 10px;">
+                    Processing time: ${analysis.processingTime.toFixed(3)}s
+                </p>
+            `;
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+        
+        function showResults() {
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function hideResults() {
+            document.getElementById('results').style.display = 'none';
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function contactSales(plan) {
+            const subject = `Emotime ${plan.charAt(0).toUpperCase() + plan.slice(1)} Plan Inquiry`;
+            const body = `Hi, I'm interested in the ${plan} plan for Emotime. Please provide more information.`;
+            
+            window.open(`mailto:sales@emotime.ai?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+        }
+        
+        // Auto-analyze on Enter key
+        document.getElementById('text-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                analyzeEmotions();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -102,13 +102,10 @@ async def test_api_adapter():
     log("\n--- Импорт универсального адаптера ---")
 
     try:
-        from backend.ml.openai_wrapper import (
-            FALLBACK_TO_LOCAL,
-            MOCK_ONLY,
-            LLMRequest,
-            initialize_llm_client,
-            llm_client,
-        )
+        from backend.ml.openai_wrapper import (FALLBACK_TO_LOCAL, MOCK_ONLY,
+                                               LLMRequest,
+                                               initialize_llm_client,
+                                               llm_client)
 
         log("✓ Универсальный адаптер успешно импортирован")
         log(

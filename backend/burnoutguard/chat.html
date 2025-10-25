@@ -1,0 +1,469 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>BurnoutGuard Chat</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Inter", "Segoe UI", sans-serif;
+            background: radial-gradient(circle at top, #1e293b 0%, #0f172a 45%, #020617 100%);
+            color: #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            padding: 24px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.2rem;
+            letter-spacing: 0.04em;
+        }
+
+        header p {
+            margin-top: 8px;
+            color: #94a3b8;
+        }
+
+        main {
+            flex: 1;
+            width: min(960px, 100%);
+            margin: 0 auto;
+            padding: 0 20px 28px;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 18px;
+        }
+
+        .settings-card,
+        .chat-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 18px;
+            padding: 20px;
+            box-shadow: 0 16px 40px rgba(8, 11, 26, 0.45);
+        }
+
+        .settings {
+            display: grid;
+            gap: 16px;
+        }
+
+        .settings-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .settings-row label {
+            flex: 1;
+            min-width: 220px;
+            display: flex;
+            flex-direction: column;
+            font-size: 0.9rem;
+            color: #cbd5f5;
+        }
+
+        input {
+            margin-top: 6px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: inherit;
+            font-size: 0.95rem;
+        }
+
+        input:focus {
+            outline: 2px solid #38bdf8;
+            border-color: transparent;
+        }
+
+        .chat-window {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            height: 420px;
+            overflow-y: auto;
+            padding-right: 6px;
+        }
+
+        .message {
+            max-width: 78%;
+            padding: 14px 16px;
+            border-radius: 16px;
+            line-height: 1.45;
+            display: inline-flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.35);
+        }
+
+        .message.user {
+            align-self: flex-end;
+            background: linear-gradient(135deg, #38bdf8, #6366f1);
+            color: #0b1130;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: rgba(30, 41, 59, 0.85);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+        }
+
+        .message .label {
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            opacity: 0.7;
+        }
+
+        .message .content {
+            font-size: 0.95rem;
+        }
+
+        .badge-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            color: #bfdbfe;
+        }
+
+        form.chat-input {
+            display: flex;
+            gap: 12px;
+        }
+
+        textarea {
+            flex: 1;
+            resize: none;
+            min-height: 80px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            border-radius: 10px;
+            padding: 12px;
+            color: inherit;
+            font-size: 1rem;
+        }
+
+        textarea:focus {
+            outline: 2px solid #38bdf8;
+            border-color: transparent;
+        }
+
+        button {
+            background: linear-gradient(135deg, #38bdf8, #6366f1);
+            border: none;
+            color: #0b1130;
+            font-weight: 600;
+            border-radius: 10px;
+            padding: 12px 20px;
+            cursor: pointer;
+            transition: transform 0.15s ease, filter 0.15s ease;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            filter: brightness(1.05);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status {
+            margin-top: 8px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.45);
+            color: #bfdbfe;
+            display: none;
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.5);
+            color: #fecaca;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.75rem;
+            }
+            .chat-window {
+                height: 360px;
+            }
+            .message {
+                max-width: 90%;
+            }
+            form.chat-input {
+                flex-direction: column;
+            }
+            textarea {
+                min-height: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>BurnoutGuard Conversation</h1>
+        <p>Общайся с движком Emotime. Каждый ответ — это эмоциональный профиль твоего сообщения.</p>
+    </header>
+
+    <main>
+        <section class="settings-card">
+            <form class="settings" id="settings-form">
+                <div class="settings-row">
+                    <label>
+                        API base URL
+                        <input id="base-url" type="url" placeholder="http://127.0.0.1:8000" required />
+                    </label>
+                    <label>
+                        API key (Bearer)
+                        <input id="api-key" type="text" placeholder="Сначала создайте ключ через консоль" />
+                    </label>
+                </div>
+                <div class="settings-row">
+                    <button type="submit">Сохранить настройки</button>
+                    <button type="button" id="ping-button">Проверить /health</button>
+                </div>
+            </form>
+            <div id="settings-status" class="status"></div>
+        </section>
+
+        <section class="chat-card">
+            <div class="chat-window" id="chat-window"></div>
+            <form class="chat-input" id="chat-form">
+                <textarea id="chat-text" placeholder="Напишите, что чувствуете или думаете..." required></textarea>
+                <button type="submit" id="send-button">Отправить</button>
+            </form>
+            <div id="chat-status" class="status"></div>
+        </section>
+    </main>
+
+    <script>
+        const STORAGE_BASE = 'burnoutguard.baseUrl';
+        const STORAGE_KEY = 'burnoutguard.apiKey';
+
+        const state = {
+            baseUrl: '',
+            apiKey: '',
+            pending: false
+        };
+
+        const baseUrlInput = document.getElementById('base-url');
+        const apiKeyInput = document.getElementById('api-key');
+        const settingsStatus = document.getElementById('settings-status');
+        const chatStatus = document.getElementById('chat-status');
+        const chatWindow = document.getElementById('chat-window');
+        const chatForm = document.getElementById('chat-form');
+        const chatText = document.getElementById('chat-text');
+        const sendButton = document.getElementById('send-button');
+
+        function showStatus(element, message, isError = false) {
+            element.textContent = message;
+            element.classList.toggle('error', isError);
+            element.style.display = 'block';
+            clearTimeout(element._timeoutId);
+            element._timeoutId = setTimeout(() => {
+                element.style.display = 'none';
+            }, isError ? 6000 : 3500);
+        }
+
+        function loadSettings() {
+            state.baseUrl = localStorage.getItem(STORAGE_BASE) || 'http://127.0.0.1:8000';
+            state.apiKey = localStorage.getItem(STORAGE_KEY) || '';
+            baseUrlInput.value = state.baseUrl;
+            apiKeyInput.value = state.apiKey;
+        }
+
+        function saveSettings(event) {
+            event.preventDefault();
+            const url = baseUrlInput.value.trim().replace(/\/$/, '');
+            const key = apiKeyInput.value.trim();
+            if (!url) {
+                showStatus(settingsStatus, 'Укажите адрес API.', true);
+                return;
+            }
+            state.baseUrl = url;
+            state.apiKey = key;
+            localStorage.setItem(STORAGE_BASE, url);
+            localStorage.setItem(STORAGE_KEY, key);
+            showStatus(settingsStatus, 'Настройки сохранены.');
+        }
+
+        async function pingHealth() {
+            if (!state.baseUrl) {
+                showStatus(settingsStatus, 'Сначала сохраните адрес API.', true);
+                return;
+            }
+            try {
+                showStatus(settingsStatus, 'Проверяем /health ...');
+                const response = await fetch(state.baseUrl + '/health');
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                const payload = await response.json();
+                showStatus(settingsStatus, 'API OK: ' + JSON.stringify(payload));
+            } catch (error) {
+                showStatus(settingsStatus, 'Не удалось: ' + error.message, true);
+            }
+        }
+
+        function ensureReadyForRequest() {
+            if (!state.baseUrl) {
+                throw new Error('Укажите API base URL и сохраните настройки.');
+            }
+            if (!state.apiKey) {
+                throw new Error('Добавьте API key. Его можно получить через консоль BurnoutGuard.');
+            }
+        }
+
+        function addMessage(author, content, extra = null) {
+            const message = document.createElement('div');
+            message.className = `message ${author}`;
+
+            const label = document.createElement('div');
+            label.className = 'label';
+            label.textContent = author === 'user' ? 'Вы' : 'BurnoutGuard';
+
+            const body = document.createElement('div');
+            body.className = 'content';
+            body.textContent = content;
+
+            message.appendChild(label);
+            message.appendChild(body);
+
+            if (extra) {
+                if (extra.topEmotions) {
+                    const badgeRow = document.createElement('div');
+                    badgeRow.className = 'badge-row';
+                    extra.topEmotions.forEach(([emotion, score]) => {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge';
+                        badge.textContent = `${emotion}: ${(score * 100).toFixed(1)}%`;
+                        badgeRow.appendChild(badge);
+                    });
+                    message.appendChild(badgeRow);
+                }
+                if (extra.details) {
+                    const details = document.createElement('div');
+                    details.className = 'content';
+                    details.style.opacity = '0.75';
+                    details.style.fontSize = '0.85rem';
+                    details.textContent = extra.details;
+                    message.appendChild(details);
+                }
+            }
+
+            chatWindow.appendChild(message);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        async function handleSend(event) {
+            event.preventDefault();
+            if (state.pending) {
+                return;
+            }
+
+            const text = chatText.value.trim();
+            if (!text) {
+                showStatus(chatStatus, 'Нужно что-то написать.', true);
+                return;
+            }
+
+            addMessage('user', text);
+            chatText.value = '';
+
+            try {
+                ensureReadyForRequest();
+            } catch (error) {
+                showStatus(chatStatus, error.message, true);
+                return;
+            }
+
+            state.pending = true;
+            sendButton.disabled = true;
+            showStatus(chatStatus, 'Анализируем эмоции ...');
+
+            try {
+                const response = await fetch(state.baseUrl + '/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + state.apiKey
+                    },
+                    body: JSON.stringify({ text, language: 'en' })
+                });
+
+                if (!response.ok) {
+                    const payload = await response.json().catch(() => ({}));
+                    const message = payload.detail || ('HTTP ' + response.status);
+                    throw new Error(message);
+                }
+
+                const payload = await response.json();
+                const entries = Object.entries(payload.emotions || {});
+                entries.sort((a, b) => b[1] - a[1]);
+                const top = entries.slice(0, 4);
+                const main = top.length ? `${top[0][0]} ${(top[0][1] * 100).toFixed(1)}%` : 'нет данных';
+                const summary = `Главная эмоция: ${main}. Уверенность ${(payload.confidence || 0) * 100}%`;
+
+                addMessage('assistant', summary, {
+                    topEmotions: top,
+                    details: `Processing: ${(payload.processing_time || 0).toFixed(3)}s · ${payload.timestamp || ''}`
+                });
+                showStatus(chatStatus, 'Готово.');
+            } catch (error) {
+                addMessage('assistant', 'Не удалось проанализировать сообщение.', {
+                    details: error.message
+                });
+                showStatus(chatStatus, 'Ошибка: ' + error.message, true);
+            } finally {
+                state.pending = false;
+                sendButton.disabled = false;
+            }
+        }
+
+        function init() {
+            loadSettings();
+            document.getElementById('settings-form').addEventListener('submit', saveSettings);
+            document.getElementById('ping-button').addEventListener('click', pingHealth);
+            chatForm.addEventListener('submit', handleSend);
+            chatText.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' && event.ctrlKey) {
+                    handleSend(event);
+                }
+            });
+            addMessage('assistant', 'Привет! Напиши текст, и я подскажу эмоциональный фон.');
+        }
+
+        init();
+    </script>
+</body>
+</html>

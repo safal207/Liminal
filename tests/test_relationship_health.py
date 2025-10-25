@@ -14,7 +14,8 @@ if strawberry_spec is None:  # pragma: no cover - environment guard
     )
 
 try:
-    from liminal.graphql_schema import WEB, schema  # use module-level singletons
+    from liminal.graphql_schema import (WEB,  # use module-level singletons
+                                        schema)
 except Exception as e:  # pragma: no cover - environment guard
     pytest.skip(f"graphql schema unavailable: {e}", allow_module_level=True)
 

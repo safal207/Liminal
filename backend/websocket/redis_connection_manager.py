@@ -9,12 +9,12 @@ import logging
 from typing import Any, Callable, Dict, List, Optional, Set
 
 from fastapi import WebSocket
-from loguru import logger
+from logging_config import get_logger
 
 from .connection_manager import ConnectionManager
 from .redis_client import RedisClient
 
-logger = logging.getLogger("websocket.redis_connection_manager")
+logger = get_logger(__name__)
 
 
 class RedisConnectionManager(ConnectionManager):

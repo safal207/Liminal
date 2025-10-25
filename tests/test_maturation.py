@@ -15,11 +15,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # Import maturation module - imported via conftest.py
-from scripts.consciousness_maturation import (
-    ConsciousnessMaturationSystem,
-    LearningEvent,
-    MaturationStage,
-)
+from scripts.consciousness_maturation import (ConsciousnessMaturationSystem,
+                                              LearningEvent, MaturationStage)
 
 # Tests for ConsciousnessMaturationSystem
 

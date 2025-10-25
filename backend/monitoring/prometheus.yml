@@ -1,0 +1,53 @@
+# Prometheus configuration for LIMINAL monitoring
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Rules files
+rule_files:
+  - "alert_rules.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 30s
+
+  # LIMINAL Backend API
+  - job_name: 'liminal-backend'
+    static_configs:
+      - targets: ['liminal-backend:8000']
+    scrape_interval: 5s
+    metrics_path: '/metrics'
+    scrape_timeout: 5s
+
+  # Redis monitoring
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
+  # Neo4j monitoring
+  - job_name: 'neo4j'
+    static_configs:
+      - targets: ['neo4j:2004']
+    scrape_interval: 30s
+
+  # Node Exporter (if available)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 30s
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Storage retention
+storage:
+  tsdb:
+    retention.time: 7d

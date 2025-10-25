@@ -1,0 +1,16 @@
+{
+  "total_tests": 7,
+  "passed_tests": 6,
+  "failed_tests": 1,
+  "success_rate": 85.71428571428571,
+  "results": {
+    "Environment Setup": true,
+    "Core Imports": true,
+    "Configuration System": true,
+    "Production Modules": false,
+    "Database Clients": true,
+    "API Module": true,
+    "API Startup": true
+  },
+  "timestamp": "1756286748.0015178"
+}

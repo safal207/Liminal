@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database (for production features)
+  postgres:
+    image: postgres:15-alpine
+    container_name: liminal-postgres-local
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=liminal
+      - POSTGRES_USER=liminal
+      - POSTGRES_PASSWORD=test_postgres_password_123
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U liminal -d liminal"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Neo4j Graph Database (existing project requirement)
+  neo4j:
+    image: neo4j:5.15-community
+    container_name: liminal-neo4j-local
+    restart: unless-stopped
+    environment:
+      - NEO4J_AUTH=neo4j/test_neo4j_password_123
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_memory_heap_initial__size=256m
+      - NEO4J_dbms_memory_heap_max__size=1G
+    volumes:
+      - neo4j_local_data:/data
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "test_neo4j_password_123", "RETURN 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # Redis Cache (optional, as per project specs USE_REDIS=false by default)
+  redis:
+    image: redis:7-alpine
+    container_name: liminal-redis-local
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_local_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Prometheus Monitoring (for production features testing)
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: liminal-prometheus-local
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=1d'  # Reduced for local testing
+    volumes:
+      - ./prometheus-local.yml:/etc/prometheus/prometheus.yml
+      - prometheus_local_data:/prometheus
+    ports:
+      - "9090:9090"
+
+  # Grafana Dashboard (for monitoring testing)
+  grafana:
+    image: grafana/grafana:10.1.0
+    container_name: liminal-grafana-local
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=test_grafana_password_123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_local_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+
+volumes:
+  postgres_local_data:
+    driver: local
+  neo4j_local_data:
+    driver: local
+  redis_local_data:
+    driver: local
+  prometheus_local_data:
+    driver: local
+  grafana_local_data:
+    driver: local
+
+networks:
+  default:
+    name: liminal-local-network

@@ -98,12 +98,8 @@ else:
 
 # Импорт ML сервисов
 try:
-    from backend.ml.openai_service import (
-        AnalysisRequest,
-        AnalysisResponse,
-        OpenAIService,
-        openai_service,
-    )
+    from backend.ml.openai_service import (AnalysisRequest, AnalysisResponse,
+                                           OpenAIService, openai_service)
 
     print_success("OpenAI сервис успешно импортирован")
 except ImportError as e:

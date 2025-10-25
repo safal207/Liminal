@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>BurnoutGuard Console</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            color-scheme: light dark;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: linear-gradient(160deg, #0f172a 0%, #1e293b 35%, #0b1120 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        header {
+            padding: 32px 24px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2.4rem;
+            letter-spacing: 0.04em;
+        }
+
+        header p {
+            margin: 12px auto 0;
+            max-width: 720px;
+            color: #94a3b8;
+        }
+
+        .container {
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 0 24px 48px;
+            display: grid;
+            gap: 24px;
+        }
+
+        .card {
+            background: rgba(15, 23, 42, 0.86);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, 0.45);
+        }
+
+        h2 {
+            margin: 0 0 18px;
+            font-size: 1.4rem;
+        }
+
+        h2 span {
+            font-size: 0.9rem;
+            color: #7c90b5;
+            font-weight: normal;
+        }
+
+        form {
+            display: grid;
+            gap: 16px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #cbd5f5;
+            margin-bottom: 8px;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            border-radius: 10px;
+            padding: 12px;
+            color: #e2e8f0;
+            font-size: 0.95rem;
+        }
+
+        textarea {
+            min-height: 140px;
+            resize: vertical;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: 2px solid #38bdf8;
+            border-color: transparent;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        button {
+            background: linear-gradient(135deg, #38bdf8, #6366f1);
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            color: #0b1020;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s ease, filter 0.15s ease;
+        }
+
+        button.secondary {
+            background: rgba(148, 163, 184, 0.25);
+            color: #e2e8f0;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+            filter: brightness(1.05);
+        }
+
+        .status {
+            margin-top: 16px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.45);
+            color: #bfdbfe;
+            display: none;
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.5);
+            color: #fecaca;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+        }
+
+        th {
+            color: #94a3b8;
+            font-weight: 600;
+        }
+
+        .flex {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .flex > div {
+            flex: 1;
+            min-width: 220px;
+        }
+
+        pre {
+            background: rgba(15, 23, 42, 0.75);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 16px;
+            overflow-x: auto;
+            margin: 16px 0 0;
+            max-height: 280px;
+        }
+
+        small {
+            color: #64748b;
+        }
+
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.9rem;
+            }
+            .card {
+                padding: 20px;
+            }
+            button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>BurnoutGuard Operator Console</h1>
+        <p>Configure API access, register test accounts, and run emotion checks without touching curl. Keep the backend running before you connect.</p>
+    </header>
+
+    <main class="container">
+        <section class="card">
+            <h2>1. API Connection <span>Base URL + key are stored locally</span></h2>
+            <form id="settings-form">
+                <div class="flex">
+                    <div>
+                        <label for="base-url">API base URL</label>
+                        <input id="base-url" type="url" placeholder="http://127.0.0.1:8000" required>
+                    </div>
+                    <div>
+                        <label for="api-key">API key (Bearer)</label>
+                        <input id="api-key" type="text" placeholder="Paste key received from /users">
+                    </div>
+                </div>
+                <div class="actions">
+                    <button type="submit">Save connection</button>
+                    <button type="button" class="secondary" id="ping-api">Ping /health</button>
+                </div>
+            </form>
+            <div id="connection-status" class="status"></div>
+        </section>
+
+        <section class="card">
+            <h2>2. Create access token <span>Generates user and API key via /users</span></h2>
+            <form id="register-form">
+                <div class="flex">
+                    <div>
+                        <label for="user-email">Email</label>
+                        <input id="user-email" type="email" placeholder="analyst@example.com" required>
+                    </div>
+                    <div>
+                        <label for="user-plan">Plan</label>
+                        <select id="user-plan">
+                            <option value="starter">starter</option>
+                            <option value="growth">growth</option>
+                            <option value="enterprise">enterprise</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button type="submit">Create user</button>
+                </div>
+            </form>
+            <div id="register-status" class="status"></div>
+            <pre id="register-result" hidden></pre>
+        </section>
+
+        <section class="card">
+            <h2>3. Run emotion analysis <span>Calls POST /analyze</span></h2>
+            <form id="analyze-form">
+                <label for="analysis-text">Text to analyze</label>
+                <textarea id="analysis-text" placeholder="Type or paste transcript..."></textarea>
+                <div class="flex">
+                    <div>
+                        <label for="analysis-language">Language code</label>
+                        <input id="analysis-language" type="text" value="en">
+                    </div>
+                    <div class="actions">
+                        <button type="submit" id="analyze-btn">Analyze</button>
+                        <button type="button" class="secondary" id="clear-results">Clear</button>
+                    </div>
+                </div>
+            </form>
+            <div id="analysis-status" class="status"></div>
+            <div id="analysis-output" hidden>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Emotion</th>
+                            <th>Score (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="analysis-table"></tbody>
+                </table>
+                <div class="flex">
+                    <div>
+                        <strong>Confidence</strong>
+                        <div id="analysis-confidence">-</div>
+                    </div>
+                    <div>
+                        <strong>Processing time</strong>
+                        <div id="analysis-time">-</div>
+                    </div>
+                    <div>
+                        <strong>Timestamp</strong>
+                        <div id="analysis-timestamp">-</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>4. Monitor usage <span>Reads GET /usage for current key</span></h2>
+            <div class="actions" style="margin-bottom:16px;">
+                <button type="button" id="refresh-usage">Refresh usage</button>
+            </div>
+            <div id="usage-status" class="status"></div>
+            <div id="usage-cards" class="flex" hidden>
+                <div>
+                    <strong>Today</strong>
+                    <div id="usage-today">-</div>
+                </div>
+                <div>
+                    <strong>Last 7 days</strong>
+                    <div id="usage-week">-</div>
+                </div>
+                <div>
+                    <strong>Daily limit</strong>
+                    <div id="usage-limit">-</div>
+                </div>
+                <div>
+                    <strong>Plan</strong>
+                    <div id="usage-plan">-</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const state = {
+            baseUrl: '',
+            apiKey: ''
+        };
+
+        const baseUrlInput = document.getElementById('base-url');
+        const apiKeyInput = document.getElementById('api-key');
+        const connectionStatus = document.getElementById('connection-status');
+
+        const registerStatus = document.getElementById('register-status');
+        const registerResult = document.getElementById('register-result');
+
+        const analysisStatus = document.getElementById('analysis-status');
+        const analysisOutput = document.getElementById('analysis-output');
+        const analysisTable = document.getElementById('analysis-table');
+        const analysisConfidence = document.getElementById('analysis-confidence');
+        const analysisTime = document.getElementById('analysis-time');
+        const analysisTimestamp = document.getElementById('analysis-timestamp');
+
+        const usageStatus = document.getElementById('usage-status');
+        const usageCards = document.getElementById('usage-cards');
+        const usageToday = document.getElementById('usage-today');
+        const usageWeek = document.getElementById('usage-week');
+        const usageLimit = document.getElementById('usage-limit');
+        const usagePlan = document.getElementById('usage-plan');
+
+        function loadSettings() {
+            const storedBase = localStorage.getItem('burnoutguard.baseUrl');
+            const storedKey = localStorage.getItem('burnoutguard.apiKey');
+            state.baseUrl = storedBase || 'http://127.0.0.1:8000';
+            state.apiKey = storedKey || '';
+            baseUrlInput.value = state.baseUrl;
+            apiKeyInput.value = state.apiKey;
+        }
+
+        function showStatus(element, message, isError = false) {
+            element.textContent = message;
+            element.classList.toggle('error', isError);
+            element.style.display = 'block';
+            clearTimeout(element._timeoutId);
+            element._timeoutId = setTimeout(() => {
+                element.style.display = 'none';
+            }, isError ? 6000 : 4000);
+        }
+
+        function saveSettings(event) {
+            event.preventDefault();
+            const base = baseUrlInput.value.trim().replace(/\/$/, '');
+            const key = apiKeyInput.value.trim();
+            if (!base) {
+                showStatus(connectionStatus, 'Base URL is required.', true);
+                return;
+            }
+            state.baseUrl = base;
+            state.apiKey = key;
+            localStorage.setItem('burnoutguard.baseUrl', base);
+            localStorage.setItem('burnoutguard.apiKey', key);
+            showStatus(connectionStatus, 'Connection settings saved.');
+        }
+
+        async function pingApi() {
+            if (!state.baseUrl) {
+                showStatus(connectionStatus, 'Save the base URL first.', true);
+                return;
+            }
+            try {
+                showStatus(connectionStatus, 'Checking /health ...');
+                const response = await fetch(state.baseUrl + '/health');
+                if (!response.ok) {
+                    throw new Error('HTTP ' + response.status);
+                }
+                const payload = await response.json();
+                showStatus(connectionStatus, 'API healthy: ' + JSON.stringify(payload));
+            } catch (error) {
+                showStatus(connectionStatus, 'Ping failed: ' + error.message, true);
+            }
+        }
+
+        async function registerUser(event) {
+            event.preventDefault();
+            if (!state.baseUrl) {
+                showStatus(registerStatus, 'Save the API base URL first.', true);
+                return;
+            }
+            const email = document.getElementById('user-email').value.trim();
+            const plan = document.getElementById('user-plan').value;
+            if (!email) {
+                showStatus(registerStatus, 'Email is required.', true);
+                return;
+            }
+            try {
+                showStatus(registerStatus, 'Creating user ...');
+                registerResult.hidden = true;
+                const response = await fetch(state.baseUrl + '/users', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, plan })
+                });
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    const message = errorPayload.detail || ('HTTP ' + response.status);
+                    throw new Error(message);
+                }
+                const payload = await response.json();
+                state.apiKey = payload.api_key;
+                apiKeyInput.value = payload.api_key;
+                localStorage.setItem('burnoutguard.apiKey', state.apiKey);
+                registerResult.textContent = JSON.stringify(payload, null, 2);
+                registerResult.hidden = false;
+                showStatus(registerStatus, 'User created. API key copied to the connection form.');
+            } catch (error) {
+                showStatus(registerStatus, 'Unable to create user: ' + error.message, true);
+            }
+        }
+
+        function ensureApiKey() {
+            if (!state.apiKey) {
+                throw new Error('API key missing. Create a user or paste an existing key.');
+            }
+        }
+
+        async function analyzeText(event) {
+            event.preventDefault();
+            if (!state.baseUrl) {
+                showStatus(analysisStatus, 'Save the API base URL first.', true);
+                return;
+            }
+
+            const text = document.getElementById('analysis-text').value.trim();
+            const language = document.getElementById('analysis-language').value.trim() || 'en';
+
+            if (!text) {
+                showStatus(analysisStatus, 'Add some text to analyze.', true);
+                return;
+            }
+
+            try {
+                ensureApiKey();
+                showStatus(analysisStatus, 'Analyzing ...');
+                analysisOutput.hidden = true;
+                analysisTable.innerHTML = '';
+
+                const response = await fetch(state.baseUrl + '/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + state.apiKey
+                    },
+                    body: JSON.stringify({ text, language })
+                });
+
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    const message = errorPayload.detail || ('HTTP ' + response.status);
+                    throw new Error(message);
+                }
+
+                const payload = await response.json();
+                const entries = Object.entries(payload.emotions || {});
+                entries.sort((a, b) => b[1] - a[1]);
+
+                entries.forEach(([emotion, score]) => {
+                    const row = document.createElement('tr');
+                    const emotionCell = document.createElement('td');
+                    emotionCell.textContent = emotion;
+                    const scoreCell = document.createElement('td');
+                    scoreCell.textContent = (score * 100).toFixed(1);
+                    row.appendChild(emotionCell);
+                    row.appendChild(scoreCell);
+                    analysisTable.appendChild(row);
+                });
+
+                analysisConfidence.textContent = ((payload.confidence || 0) * 100).toFixed(1) + ' %';
+                analysisTime.textContent = (payload.processing_time || 0).toFixed(3) + ' s';
+                analysisTimestamp.textContent = payload.timestamp || '-';
+
+                analysisOutput.hidden = false;
+                showStatus(analysisStatus, 'Analysis ready.');
+            } catch (error) {
+                showStatus(analysisStatus, 'Failed to analyze: ' + error.message, true);
+            }
+        }
+
+        function clearResults() {
+            analysisTable.innerHTML = '';
+            analysisOutput.hidden = true;
+            showStatus(analysisStatus, 'Results cleared.');
+        }
+
+        async function refreshUsage() {
+            if (!state.baseUrl) {
+                showStatus(usageStatus, 'Save the API base URL first.', true);
+                return;
+            }
+            try {
+                ensureApiKey();
+                showStatus(usageStatus, 'Requesting usage ...');
+                usageCards.hidden = true;
+
+                const response = await fetch(state.baseUrl + '/usage', {
+                    headers: {
+                        'Authorization': 'Bearer ' + state.apiKey
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorPayload = await response.json().catch(() => ({}));
+                    const message = errorPayload.detail || ('HTTP ' + response.status);
+                    throw new Error(message);
+                }
+
+                const payload = await response.json();
+                usageToday.textContent = payload.today_usage ?? '-';
+                usageWeek.textContent = payload.week_usage ?? '-';
+                usageLimit.textContent = payload.daily_limit ?? '-';
+                usagePlan.textContent = payload.plan ?? '-';
+                usageCards.hidden = false;
+
+                showStatus(usageStatus, 'Usage refreshed.');
+            } catch (error) {
+                showStatus(usageStatus, 'Unable to read usage: ' + error.message, true);
+            }
+        }
+
+        document.getElementById('settings-form').addEventListener('submit', saveSettings);
+        document.getElementById('ping-api').addEventListener('click', pingApi);
+        document.getElementById('register-form').addEventListener('submit', registerUser);
+        document.getElementById('analyze-form').addEventListener('submit', analyzeText);
+        document.getElementById('clear-results').addEventListener('click', clearResults);
+        document.getElementById('refresh-usage').addEventListener('click', refreshUsage);
+
+        loadSettings();
+    </script>
+</body>
+</html>

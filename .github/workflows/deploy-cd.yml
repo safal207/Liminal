@@ -1,0 +1,132 @@
+name: Deploy CD
+
+on:
+  workflow_run:
+    workflows: ["Python CI"]
+    types: [completed]
+    branches: [main, feat/sprint4-setup]
+  push:
+    tags:
+      - 'v*.*.*'  # Запуск только на тегах формата v1.2.3
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Полная история для правильного получения тегов
+      
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      # Добавляем кэширование для pip
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-cd-${{ hashFiles('**/requirements.txt', '**/requirements-dev.txt', '**/constraints.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-cd-
+            ${{ runner.os }}-pip-
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Устанавливаем зависимости с учетом constraints.txt
+          if [ -f constraints.txt ]; then
+            pip install -r requirements.txt -c constraints.txt
+            if [ -f requirements-dev.txt ]; then
+              pip install -r requirements-dev.txt -c constraints.txt
+            fi
+          else
+            pip install -r requirements.txt
+            if [ -f requirements-dev.txt ]; then
+              pip install -r requirements-dev.txt
+            fi
+          fi
+          # Установка зависимостей для деплоя
+          pip install wheel setuptools twine
+      
+      # Сборка и тестирование релизной версии
+      - name: Run tests for release
+        run: |
+          python -m pytest -v --maxfail=1 -m "not integration"
+
+      # Определяем версию из тега
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      
+      # Создаем релизный архив
+      - name: Create release archive
+        run: |
+          echo "Building release ${{ steps.get_version.outputs.VERSION }}"
+          mkdir -p dist
+          tar -czf dist/liminal-${{ steps.get_version.outputs.VERSION }}.tar.gz \
+            --exclude=".git" --exclude="dist" --exclude=".github" \
+            --exclude="__pycache__" --exclude="*.pyc" \
+            --exclude="temp_packages" --exclude=".pytest_cache" \
+            .
+      
+      # Публикуем релиз на GitHub
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release v${{ steps.get_version.outputs.VERSION }}
+          files: dist/liminal-${{ steps.get_version.outputs.VERSION }}.tar.gz
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Деплой на продакшен сервер (только если секреты настроены)
+      - name: Deploy to production
+        if: success() && env.DEPLOY_SSH_KEY != ''
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          echo "==== DEPLOYMENT STAGE ===="
+          echo "Deploying version ${{ steps.get_version.outputs.VERSION }} to production"
+          # Настоящий скрипт деплоя (SSH, rsync, и т.д.)
+          echo "$DEPLOY_SSH_KEY" > deploy_key
+          chmod 600 deploy_key
+          rsync -avz --delete -e "ssh -i deploy_key -o StrictHostKeyChecking=no" \
+            --exclude=".git" --exclude=".github" --exclude="dist" \
+            --exclude="__pycache__" --exclude="*.pyc" --exclude=".pytest_cache" \
+            . $DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH
+          rm -f deploy_key
+          echo "Deployment successful!"
+      
+      # Имитация деплоя (если секреты не настроены)
+      - name: Deployment simulation
+        if: success() && env.DEPLOY_SSH_KEY == ''
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          echo "==== DEPLOYMENT SIMULATION ===="
+          echo "Deploying version ${{ steps.get_version.outputs.VERSION }} (simulation mode)"
+          echo "No deployment secrets configured - running in simulation mode"
+          echo "To enable real deployment, configure secrets: DEPLOY_SSH_KEY, DEPLOY_USER, DEPLOY_HOST, DEPLOY_PATH"
+          echo "Deployment simulation successful!"
+
+      # Отправка уведомления в канал связи (опционально)
+      - name: Send notification
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          VERSION="${{ steps.get_version.outputs.VERSION }}"
+          echo "Deployment status: $STATUS for version $VERSION"
+          # Здесь можно добавить интеграцию с системами уведомлений (Slack, Telegram и т.д.)
+          # curl -X POST -H 'Content-type: application/json' \
+          # --data '{"text":"Deployment status: '"$STATUS"' for version '"$VERSION"'"}' \
+          # ${{ secrets.WEBHOOK_URL }}

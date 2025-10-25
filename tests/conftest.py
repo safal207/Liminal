@@ -19,12 +19,9 @@ sys.path.append(str(Path(__file__).parent.parent / "scripts"))
 sys.path.append(str(Path(__file__).parent.parent / "src"))
 
 # Import SOMA modules
-from scripts.consciousness_maturation import (
-    ConsciousnessMaturationSystem,
-    InMemoryHistoryStorage,
-    LearningEvent,
-    MaturationStage,
-)
+from scripts.consciousness_maturation import (ConsciousnessMaturationSystem,
+                                              InMemoryHistoryStorage,
+                                              LearningEvent, MaturationStage)
 
 
 def pytest_configure(config):

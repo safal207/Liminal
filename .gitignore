@@ -86,3 +86,4 @@ redis_data/
 
 # Grafana data
 grafana_data/
+.venv_wsl/

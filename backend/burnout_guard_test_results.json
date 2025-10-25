@@ -1,0 +1,96 @@
+{
+  "total_tests": 15,
+  "passed_tests": 14,
+  "success_rate": 0.9333333333333333,
+  "duration": 0.046991825103759766,
+  "detailed_results": {
+    "unit_tests": {
+      "mode_mapping": {
+        "passed": true,
+        "accuracy": 1.0,
+        "details": "Mode mapping accuracy: 100.00%"
+      },
+      "risk_scoring": {
+        "passed": true,
+        "accuracy": 1.0,
+        "details": "Risk scoring accuracy: 100.00%"
+      },
+      "recommendations": {
+        "passed": true,
+        "accuracy": 1.0,
+        "details": "Recommendation engine accuracy: 100.00%"
+      },
+      "analytics": {
+        "passed": false,
+        "accuracy": 0.5,
+        "details": "Analytics accuracy: 50.00%"
+      },
+      "authentication": {
+        "passed": true,
+        "accuracy": 1.0,
+        "details": "Authentication accuracy: 100.00%"
+      }
+    },
+    "integration_tests": {
+      "end_to_end_workflow": {
+        "passed": true,
+        "success_rate": 1.0,
+        "details": "Workflow completion: 100.00%"
+      },
+      "real_time_monitoring": {
+        "passed": true,
+        "success_rate": 1.0,
+        "details": "Response time: 16.16ms"
+      }
+    },
+    "accuracy_tests": {
+      "detection_precision": {
+        "passed": true,
+        "f1_score": 0.6666666666666666,
+        "details": "F1-Score: 0.667"
+      },
+      "false_positive_rate": {
+        "passed": true,
+        "false_positive_rate": 0.1,
+        "details": "False positive rate: 10.00%"
+      }
+    },
+    "performance_tests": {
+      "response_time": {
+        "passed": true,
+        "response_time": 12.629508972167969,
+        "details": "Response time: 12.63ms"
+      },
+      "throughput": {
+        "passed": true,
+        "throughput": 800,
+        "details": "Throughput: 800 req/sec"
+      }
+    },
+    "security_tests": {
+      "data_privacy": {
+        "passed": true,
+        "compliance_rate": 1.0,
+        "details": "Privacy compliance: 100.00%"
+      },
+      "authentication_security": {
+        "passed": true,
+        "security_score": 1.0,
+        "details": "Security score: 100.00%"
+      }
+    },
+    "api_tests": {
+      "endpoint_availability": {
+        "passed": true,
+        "availability_rate": 1.0,
+        "details": "Endpoint availability: 100.00%"
+      },
+      "response_format": {
+        "passed": true,
+        "format_compliance": 1.0,
+        "details": "Format compliance: 100.00%"
+      }
+    }
+  },
+  "ready_for_deployment": true
+}

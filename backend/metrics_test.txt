@@ -1,0 +1,93 @@
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 951.0
+python_gc_objects_collected_total{generation="1"} 117.0
+python_gc_objects_collected_total{generation="2"} 199.0
+# HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
+# TYPE python_gc_objects_uncollectable_total counter
+python_gc_objects_uncollectable_total{generation="0"} 0.0
+python_gc_objects_uncollectable_total{generation="1"} 0.0
+python_gc_objects_uncollectable_total{generation="2"} 0.0
+# HELP python_gc_collections_total Number of times this generation was collected
+# TYPE python_gc_collections_total counter
+python_gc_collections_total{generation="0"} 442.0
+python_gc_collections_total{generation="1"} 40.0
+python_gc_collections_total{generation="2"} 2.0
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation="CPython",major="3",minor="11",patchlevel="9",version="3.11.9"} 1.0
+# HELP http_requests_total Общее количество HTTP запросов
+# TYPE http_requests_total counter
+http_requests_total{endpoint="/docs",method="GET",status_code="200"} 1.0
+http_requests_total{endpoint="/home-state/analyze/test_user_1",method="POST",status_code="200"} 2.0
+http_requests_total{endpoint="/home-state/current/test_user_1",method="GET",status_code="200"} 1.0
+http_requests_total{endpoint="/home-state/analytics/test_user_1",method="GET",status_code="200"} 1.0
+http_requests_total{endpoint="/health",method="GET",status_code="200"} 11.0
+http_requests_total{endpoint="/health/live",method="GET",status_code="200"} 1.0
+http_requests_total{endpoint="/health/startup",method="GET",status_code="200"} 1.0
+http_requests_total{endpoint="/health/ready",method="GET",status_code="503"} 1.0
+http_requests_total{endpoint="/home-state/analyze/test_user",method="POST",status_code="200"} 1.0
+http_requests_total{endpoint="/metrics",method="GET",status_code="200"} 1.0
+http_requests_total{endpoint="/home-state/analyze/test_1",method="POST",status_code="200"} 2.0
+http_requests_total{endpoint="/home-state/analyze/test_2",method="POST",status_code="200"} 1.0
+http_requests_total{endpoint="/home-state/analyze/test_3",method="POST",status_code="200"} 1.0
+# HELP http_requests_created Общее количество HTTP запросов
+# TYPE http_requests_created gauge
+http_requests_created{endpoint="/docs",method="GET",status_code="200"} 1.7556265661621451e+09
+http_requests_created{endpoint="/home-state/analyze/test_user_1",method="POST",status_code="200"} 1.755626592291872e+09
+http_requests_created{endpoint="/home-state/current/test_user_1",method="GET",status_code="200"} 1.755627032724535e+09
+http_requests_created{endpoint="/home-state/analytics/test_user_1",method="GET",status_code="200"} 1.7556270452910762e+09
+http_requests_created{endpoint="/health",method="GET",status_code="200"} 1.755634730138528e+09
+http_requests_created{endpoint="/health/live",method="GET",status_code="200"} 1.7556347404254475e+09
+http_requests_created{endpoint="/health/startup",method="GET",status_code="200"} 1.7556347495831585e+09
+http_requests_created{endpoint="/health/ready",method="GET",status_code="503"} 1.755634764992469e+09
+http_requests_created{endpoint="/home-state/analyze/test_user",method="POST",status_code="200"} 1.7556349990264454e+09
+http_requests_created{endpoint="/metrics",method="GET",status_code="200"} 1.7556350096444232e+09
+http_requests_created{endpoint="/home-state/analyze/test_1",method="POST",status_code="200"} 1.7556354620463867e+09
+http_requests_created{endpoint="/home-state/analyze/test_2",method="POST",status_code="200"} 1.7556354759605238e+09
+http_requests_created{endpoint="/home-state/analyze/test_3",method="POST",status_code="200"} 1.7556354762753105e+09
+# HELP websocket_connections Количество активных WebSocket соединений
+# TYPE websocket_connections gauge
+# HELP websocket_messages_total Общее количество WebSocket сообщений
+# TYPE websocket_messages_total counter
+# HELP websocket_auth_total Количество попыток аутентификации WebSocket
+# TYPE websocket_auth_total counter
+# HELP websocket_broadcast_duration_seconds Время обработки и рассылки сообщений WebSocket
+# TYPE websocket_broadcast_duration_seconds histogram
+# HELP connection_limits Статистика по ограничениям соединений
+# TYPE connection_limits gauge
+connection_limits{type="total"} 0.0
+connection_limits{type="max_total"} 100.0
+connection_limits{type="max_per_ip"} 10.0
+# HELP websocket_connection_rejections_total Total number of rejected WebSocket connections
+# TYPE websocket_connection_rejections_total counter
+# HELP websocket_rate_limit_total Total number of messages rejected due to rate limiting
+# TYPE websocket_rate_limit_total counter
+# HELP websocket_heartbeat_total Heartbeat events: ping sent, pong received, timeout disconnect
+# TYPE websocket_heartbeat_total counter
+# HELP websocket_idle_disconnects_total Connections closed due to idle timeout or missing pong
+# TYPE websocket_idle_disconnects_total counter
+# HELP redis_connection_status Статус подключения к Redis (1 - подключено, 0 - отключено)
+# TYPE redis_connection_status gauge
+# HELP redis_operations_total Общее количество операций Redis
+# TYPE redis_operations_total counter
+# HELP redis_operation_duration_seconds Время выполнения операций Redis
+# TYPE redis_operation_duration_seconds histogram
+# HELP redis_pubsub_messages_total Общее количество сообщений PubSub
+# TYPE redis_pubsub_messages_total counter
+# HELP redis_errors_total Количество ошибок Redis
+# TYPE redis_errors_total counter
+# HELP ml_requests_per_user_rate Requests per user rate for ML analysis
+# TYPE ml_requests_per_user_rate gauge
+# HELP ml_burstiness_score Traffic burstiness score for anomaly detection
+# TYPE ml_burstiness_score gauge
+ml_burstiness_score 0.0
+# HELP ml_ip_entropy IP address entropy for geographic analysis
+# TYPE ml_ip_entropy gauge
+ml_ip_entropy 0.0
+# HELP ml_channel_hotness Channel activity hotness score
+# TYPE ml_channel_hotness gauge
+# HELP ml_connection_patterns Connection pattern analysis
+# TYPE ml_connection_patterns gauge
+# HELP ml_jwt_anomalies_total JWT usage anomalies detected
+# TYPE ml_jwt_anomalies_total counter

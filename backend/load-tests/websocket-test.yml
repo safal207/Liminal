@@ -1,0 +1,179 @@
+config:
+  target: 'ws://localhost:8000'
+  phases:
+    # Разогрев - малая нагрузка
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm up"
+    # Нарастание нагрузки
+    - duration: 120
+      arrivalRate: 20
+      rampTo: 100
+      name: "Ramp up load"
+    # Пиковая нагрузка
+    - duration: 300
+      arrivalRate: 100
+      name: "Peak load - 100 concurrent users"
+    # Экстремальная нагрузка
+    - duration: 180
+      arrivalRate: 200
+      rampTo: 500
+      name: "Stress test - up to 500 users"
+    # Спад нагрузки
+    - duration: 60
+      arrivalRate: 50
+      rampTo: 10
+      name: "Cool down"
+  engines:
+    ws:
+      timeout: 30000  # 30 seconds timeout
+
+scenarios:
+  - name: "WebSocket connection lifecycle with Home State Detection"
+    weight: 70
+    engine: ws
+    flow:
+      # 1. Подключение к WebSocket
+      - connect:
+          url: "/ws/{{ $randomString() }}"
+      
+      # 2. Аутентификация (пока тест без JWT)
+      - send:
+          payload: |
+            {
+              "type": "message",
+              "user_id": "load_test_{{ $randomString() }}",
+              "channel": "test_channel",
+              "message": {
+                "text": "Привет! Я тестирую систему",
+                "timestamp": "{{ $timestamp }}"
+              }
+            }
+      
+      # 3. Ожидание ответа
+      - wait: 1
+      
+      # 4. Философское сообщение для Home State Detection
+      - send:
+          payload: |
+            {
+              "type": "message", 
+              "user_id": "load_test_{{ $randomString() }}",
+              "channel": "test_channel",
+              "message": {
+                "text": "Честно говоря, я чувствую себя дома в себе сейчас. Понимаю, что нахожусь в моменте присутствия.",
+                "timestamp": "{{ $timestamp }}"
+              }
+            }
+      
+      # 5. Короткая пауза
+      - wait: 2
+      
+      # 6. Подписка на канал
+      - send:
+          payload: |
+            {
+              "type": "subscribe",
+              "user_id": "load_test_{{ $randomString() }}",
+              "channel": "philosophy_channel"
+            }
+      
+      # 7. Еще несколько сообщений с разными размерами
+      - loop:
+        - send:
+            payload: |
+              {
+                "type": "message",
+                "user_id": "load_test_{{ $randomString() }}",
+                "channel": "test_channel", 
+                "message": {
+                  "text": "{{ $randomString() }} - Тестовое сообщение длиной {{ $random(10, 200) }} символов для проверки производительности системы при различных размерах сообщений",
+                  "timestamp": "{{ $timestamp }}"
+                }
+              }
+        - wait: 
+            min: 0.5
+            max: 3
+        count: 10
+      
+      # 8. Отписка от канала
+      - send:
+          payload: |
+            {
+              "type": "unsubscribe",
+              "user_id": "load_test_{{ $randomString() }}",
+              "channel": "philosophy_channel"
+            }
+      
+      # 9. Финальная пауза перед отключением
+      - wait: 1
+
+  - name: "HTTP API stress test"
+    weight: 20
+    flow:
+      # Тест Home State API
+      - post:
+          url: "/home-state/analyze/load_test_user_{{ $randomString() }}"
+          headers:
+            Content-Type: "application/json"
+          json:
+            text: "{{ $randomString() }} - тестирую состояние дома в себе. Честно говоря, волнуюсь о результатах нагрузочного тестирования"
+            timestamp: "{{ $timestamp }}"
+            user_id: "load_test_{{ $randomString() }}"
+            response_time: "{{ $random(1, 10) }}"
+          
+      # Тест health endpoints
+      - get:
+          url: "/health"
+      - get:
+          url: "/health/live"
+      - get:
+          url: "/health/ready"
+      
+      # Тест Prometheus метрик
+      - get:
+          url: "/metrics"
+
+  - name: "Edge cases and error handling"
+    weight: 10
+    engine: ws
+    flow:
+      - connect:
+          url: "/ws/edge_case_{{ $randomString() }}"
+      
+      # Тест на большие сообщения (близко к лимиту)
+      - send:
+          payload: |
+            {
+              "type": "message",
+              "user_id": "edge_test_{{ $randomString() }}",
+              "channel": "test_channel",
+              "message": {
+                "text": "{{ $repeat('A', 30000) }}",
+                "timestamp": "{{ $timestamp }}"
+              }
+            }
+      
+      # Тест неверных типов сообщений
+      - send:
+          payload: |
+            {
+              "type": "invalid_type",
+              "user_id": "edge_test_{{ $randomString() }}"
+            }
+      
+      # Тест без обязательных полей
+      - send:
+          payload: |
+            {
+              "user_id": "edge_test_{{ $randomString() }}"
+            }
+
+# Кастомные метрики для анализа
+metrics:
+  - name: "websocket_connections"
+    description: "Number of active WebSocket connections"
+  - name: "home_state_analysis_time"
+    description: "Time taken for Home State Detection analysis"
+  - name: "message_validation_errors"
+    description: "Number of message validation errors"

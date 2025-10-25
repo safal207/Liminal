@@ -10,14 +10,9 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import requests
-from consciousness_schema import (
-    PHILOSOPHICAL_THRESHOLDS,
-    ConsciousnessNode,
-    ConsciousnessQueries,
-    ConsciousnessState,
-    StateTransition,
-    TransitionTrigger,
-)
+from consciousness_schema import (PHILOSOPHICAL_THRESHOLDS, ConsciousnessNode,
+                                  ConsciousnessQueries, ConsciousnessState,
+                                  StateTransition, TransitionTrigger)
 
 from neo4j import GraphDatabase
 

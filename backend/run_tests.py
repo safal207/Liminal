@@ -8,10 +8,10 @@ import sys
 
 def run_tests():
     """Запускает тесты с помощью pytest."""
-    print("Запуск тестов...")
+    print("Running tests...")
 
     # Команда для запуска pytest
-    cmd = [sys.executable, "-m", "pytest", "tests/test_sanity_check.py", "-v"]
+    cmd = [sys.executable, "-m", "pytest", "backend/tests/test_sanity_check.py", "-v"]
 
     # Запускаем тесты
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -19,7 +19,7 @@ def run_tests():
     # Выводим результат
     print(result.stdout)
     if result.stderr:
-        print("Ошибки:", file=sys.stderr)
+        print("Errors:", file=sys.stderr)
         print(result.stderr, file=sys.stderr)
 
     return result.returncode == 0

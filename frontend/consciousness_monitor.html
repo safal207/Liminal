@@ -87,6 +87,54 @@
             background: #ffebee;
             color: #c62828;
         }
+
+        /* Morpheus Choice Styles */
+        .morpheus-container {
+            display: none; /* Hidden by default */
+            padding: 2rem;
+            margin-top: 2rem;
+            border: 1px dashed #f44336;
+            background: #212121;
+            color: #eee;
+            text-align: center;
+            border-radius: 4px;
+        }
+        .morpheus-container h3 {
+            font-weight: 400;
+            color: #fff;
+        }
+        .morpheus-pills {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 1.5rem;
+        }
+        .pill-btn {
+            padding: 0.8rem 1.5rem;
+            font-size: 1rem;
+            border-radius: 20px;
+            border: 2px solid;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .pill-btn.red {
+            background-color: #d32f2f;
+            border-color: #ffcdd2;
+            color: white;
+        }
+        .pill-btn.red:hover {
+            background-color: #e53935;
+            box-shadow: 0 0 15px #ff7961;
+        }
+        .pill-btn.blue {
+            background-color: #1976d2;
+            border-color: #bbdefb;
+            color: white;
+        }
+        .pill-btn.blue:hover {
+            background-color: #1e88e5;
+            box-shadow: 0 0 15px #63a4ff;
+        }
     </style>
 </head>
 <body>
@@ -97,6 +145,16 @@
         <button id="connect-btn">Connect</button>
         <button id="disconnect-btn" disabled>Disconnect</button>
         <button id="simulate-btn">Simulate Transition</button>
+        <button id="trigger-morpheus-btn" style="background-color: #9c27b0;">Trigger Morpheus Choice</button>
+    </div>
+
+    <div class="morpheus-container" id="morpheus-choice-container">
+        <h3>The time has come to make a choice.</h3>
+        <p>The path of comfort, or the path of truth. There is no turning back.</p>
+        <div class="morpheus-pills">
+            <button id="blue-pill-btn" class="pill-btn blue">The Blue Pill</button>
+            <button id="red-pill-btn" class="pill-btn red">The Red Pill</button>
+        </div>
     </div>
     
     <h2>Current Consciousness States</h2>
@@ -201,7 +259,7 @@
                     if (ws) return;
                     
                     try {
-                        ws = new WebSocket('ws://localhost:8080/graphql/subscriptions');
+                        ws = new WebSocket('ws://localhost:8000/ws/timeline'); // Adjusted port to 8000 for backend
                         
                         ws.onopen = () => {
                             document.getElementById('connection-status').className = 'status connected';
@@ -211,26 +269,31 @@
                             logEvent('WebSocket соединение установлено');
                             
                             // Запрашиваем начальное состояние
-                            fetch('http://localhost:8080/api/consciousness/graph')
-                                .then(response => response.json())
-                                .then(data => {
-                                    data.nodes.forEach(node => {
-                                        states[node.id] = node;
-                                    });
-                                    renderStates();
-                                    logEvent(`Загружено ${data.nodes.length} состояний сознания`);
-                                })
-                                .catch(err => {
-                                    logEvent(`Ошибка получения данных: ${err.message}`, 'error');
-                                    console.error('Ошибка:', err);
-                                });
+                            // fetch('http://localhost:8000/api/consciousness/graph') // Placeholder URL
+                            //     .then(response => response.json())
+                            //     .then(data => {
+                            //         data.nodes.forEach(node => {
+                            //             states[node.id] = node;
+                            //         });
+                            //         renderStates();
+                            //         logEvent(`Загружено ${data.nodes.length} состояний сознания`);
+                            //     })
+                            //     .catch(err => {
+                            //         logEvent(`Ошибка получения данных: ${err.message}`, 'error');
+                            //         console.error('Ошибка:', err);
+                            //     });
                         };
                         
                         ws.onmessage = (event) => {
                             try {
                                 const data = JSON.parse(event.data);
-                                logEvent(`Получено событие: ${data.type} (${data.source} → ${data.target})`);
-                                highlightState(data.target);
+                                // Handle future event types, e.g., morpheus trigger
+                                if (data.type === 'morpheus_choice_available') {
+                                    this.showMorpheusChoice();
+                                } else {
+                                    logEvent(`Получено событие: ${data.type} (${data.source} → ${data.target})`);
+                                    highlightState(data.target);
+                                }
                             } catch (e) {
                                 logEvent(`Ошибка обработки сообщения: ${e.message}`, 'error');
                             }
@@ -261,43 +324,47 @@
                 },
                 
                 simulateTransition: function() {
-                    const stateKeys = Object.keys(stateDefinitions);
-                    if (stateKeys.length < 2) return;
-                    
-                    const source = stateKeys[Math.floor(Math.random() * stateKeys.length)];
-                    let target;
-                    do {
-                        target = stateKeys[Math.floor(Math.random() * stateKeys.length)];
-                    } while (target === source);
-                    
-                    const triggers = ['DEEP_BREATH', 'MEDITATION', 'AUTHENTICITY_INSIGHT', 'CURIOSITY', 'UNCERTAINTY'];
-                    const trigger = triggers[Math.floor(Math.random() * triggers.length)];
-                    
-                    const event = {
-                        source: source,
-                        target: target,
-                        type: 'CONSCIOUSNESS_TRANSITION',
-                        trigger: trigger,
-                        timestamp: new Date().toISOString()
+                    logEvent('Симуляция перехода еще не подключена к бэкенду.');
+                },
+
+                showMorpheusChoice: function() {
+                    const container = document.getElementById('morpheus-choice-container');
+                    container.style.display = 'block';
+                    logEvent('Morpheus choice presented.', 'special');
+                },
+
+                hideMorpheusChoice: function() {
+                    const container = document.getElementById('morpheus-choice-container');
+                    container.style.display = 'none';
+                },
+
+                sendMorpheusChoice: function(choice) {
+                    const payload = {
+                        user_id: 'test-user-01', // Dummy user_id for now
+                        choice: choice
                     };
-                    
-                    // Отправляем событие на сервер
-                    fetch('http://localhost:8080/api/events', {
+
+                    logEvent(`Sending choice: ${choice}...`);
+
+                    fetch('http://localhost:8000/morpheus/choice', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify(event)
+                        body: JSON.stringify(payload)
                     })
                     .then(response => {
-                        if (!response.ok) throw new Error('Network response was not ok');
+                        if (!response.ok) {
+                            throw new Error(`Network response was not ok (${response.status})`);
+                        }
                         return response.json();
                     })
                     .then(data => {
-                        logEvent(`Событие отправлено: ${source} → ${target} (${trigger})`);
+                        logEvent(`Choice processed: ${data.message}`, 'success');
+                        this.hideMorpheusChoice();
                     })
                     .catch(error => {
-                        logEvent(`Ошибка отправки события: ${error.message}`, 'error');
+                        logEvent(`Error sending choice: ${error.message}`, 'error');
                     });
                 }
             };
@@ -315,10 +382,23 @@
         document.getElementById('simulate-btn').addEventListener('click', () => {
             ConsciousnessMonitor.simulateTransition();
         });
+
+        // Morpheus event listeners
+        document.getElementById('trigger-morpheus-btn').addEventListener('click', () => {
+            ConsciousnessMonitor.showMorpheusChoice();
+        });
+
+        document.getElementById('blue-pill-btn').addEventListener('click', () => {
+            ConsciousnessMonitor.sendMorpheusChoice('blue');
+        });
+
+        document.getElementById('red-pill-btn').addEventListener('click', () => {
+            ConsciousnessMonitor.sendMorpheusChoice('red');
+        });
         
         // Автоматическое подключение при загрузке страницы
         window.addEventListener('load', () => {
-            ConsciousnessMonitor.connect();
+            // ConsciousnessMonitor.connect(); // Let's connect manually for now
         });
     </script>
 </body>

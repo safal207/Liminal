@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BurnoutGuard HR Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .header h1 {
+            color: #4a5568;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 2em;
+            margin-right: 15px;
+        }
+
+        .subtitle {
+            color: #718096;
+            font-size: 1.1em;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .green { color: #48bb78; }
+        .yellow { color: #ed8936; }
+        .orange { color: #f56500; }
+        .red { color: #e53e3e; }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .teams-section, .alerts-section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            margin-bottom: 20px;
+            color: #4a5568;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title .icon {
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+
+        .team-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .team-item {
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 5px solid;
+            background: #f7fafc;
+            transition: all 0.3s ease;
+        }
+
+        .team-item:hover {
+            background: #edf2f7;
+            transform: translateX(5px);
+        }
+
+        .team-item.green { border-left-color: #48bb78; }
+        .team-item.yellow { border-left-color: #ed8936; }
+        .team-item.orange { border-left-color: #f56500; }
+        .team-item.red { border-left-color: #e53e3e; }
+
+        .team-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .team-name {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .team-score {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 20px;
+            color: white;
+            font-size: 0.9em;
+        }
+
+        .team-details {
+            color: #718096;
+            font-size: 0.9em;
+        }
+
+        .alert-item {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid;
+        }
+
+        .alert-item.critical {
+            background: #fed7d7;
+            border-left-color: #e53e3e;
+        }
+
+        .alert-item.high {
+            background: #feebc8;
+            border-left-color: #ed8936;
+        }
+
+        .alert-item.medium {
+            background: #fefcbf;
+            border-left-color: #ecc94b;
+        }
+
+        .alert-header {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .alert-time {
+            font-size: 0.8em;
+            color: #718096;
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 15px 25px;
+            font-size: 1em;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+
+        .loading .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><span class="logo">🛡️</span>BurnoutGuard HR Dashboard</h1>
+            <div class="subtitle">Real-time burnout monitoring and team analytics</div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number green" id="totalEmployees">--</div>
+                <div class="stat-label">Total Employees</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number red" id="highRiskCount">--</div>
+                <div class="stat-label">High Risk</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number orange" id="criticalCount">--</div>
+                <div class="stat-label">Critical</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number yellow" id="riskPercentage">--%</div>
+                <div class="stat-label">Company Risk</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="teams-section">
+                <h2 class="section-title">
+                    <span class="icon">👥</span>
+                    Team Status
+                </h2>
+                <div id="teamsList" class="team-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <div>Loading team data...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alerts-section">
+                <h2 class="section-title">
+                    <span class="icon">🚨</span>
+                    Active Alerts
+                </h2>
+                <div id="alertsList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <div>Loading alerts...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <button class="refresh-btn" onclick="refreshData()">
+        🔄 Refresh
+    </button>
+
+    <script>
+        // Mock data for demonstration
+        const mockData = {
+            overview: {
+                total_employees: 127,
+                total_teams: 8,
+                high_risk_employees: 12,
+                critical_employees: 3,
+                company_risk_percentage: 11.8
+            },
+            team_summaries: [
+                {
+                    team_id: "dev-frontend",
+                    team_name: "Frontend Development",
+                    alert_level: "red",
+                    risk_score: 0.78,
+                    members_count: 12
+                },
+                {
+                    team_id: "dev-backend",
+                    team_name: "Backend Development", 
+                    alert_level: "orange",
+                    risk_score: 0.65,
+                    members_count: 15
+                },
+                {
+                    team_id: "qa-automation",
+                    team_name: "QA Automation",
+                    alert_level: "yellow",
+                    risk_score: 0.42,
+                    members_count: 8
+                },
+                {
+                    team_id: "devops",
+                    team_name: "DevOps",
+                    alert_level: "green",
+                    risk_score: 0.28,
+                    members_count: 6
+                },
+                {
+                    team_id: "product",
+                    team_name: "Product Management",
+                    alert_level: "yellow",
+                    risk_score: 0.38,
+                    members_count: 5
+                }
+            ],
+            top_alerts: [
+                {
+                    alert_id: "alert_001",
+                    team_id: "dev-frontend",
+                    team_name: "Frontend Development",
+                    severity: "critical",
+                    alert_level: "red",
+                    risk_score: 0.78,
+                    affected_members: 4,
+                    primary_indicators: [
+                        "🚨 33% команды в критическом состоянии",
+                        "⚠️ 67% команды с высоким риском",
+                        "⏰ 6 участников без перерыва >7 дней"
+                    ],
+                    timestamp: new Date().toISOString(),
+                    urgent: true
+                },
+                {
+                    alert_id: "alert_002",
+                    team_id: "dev-backend",
+                    team_name: "Backend Development",
+                    severity: "high",
+                    alert_level: "orange",
+                    risk_score: 0.65,
+                    affected_members: 3,
+                    primary_indicators: [
+                        "⚠️ Высокий уровень стресса",
+                        "📋 Высокий риск в роли: Senior Developer",
+                        "⏰ 4 участника без перерыва >7 дней"
+                    ],
+                    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+                    urgent: false
+                }
+            ]
+        };
+
+        // Load dashboard data
+        async function loadDashboard() {
+            try {
+                // In production, this would be an actual API call
+                // const response = await fetch('/api/v1/burnout/dashboard/overview');
+                // const data = await response.json();
+                
+                // Using mock data for demonstration
+                const data = mockData;
+                
+                updateOverviewStats(data.overview);
+                updateTeamsList(data.team_summaries);
+                updateAlertsList(data.top_alerts);
+                
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                showError('Failed to load dashboard data');
+            }
+        }
+
+        function updateOverviewStats(overview) {
+            document.getElementById('totalEmployees').textContent = overview.total_employees;
+            document.getElementById('highRiskCount').textContent = overview.high_risk_employees;
+            document.getElementById('criticalCount').textContent = overview.critical_employees;
+            document.getElementById('riskPercentage').textContent = overview.company_risk_percentage + '%';
+        }
+
+        function updateTeamsList(teams) {
+            const container = document.getElementById('teamsList');
+            
+            container.innerHTML = teams.map(team => {
+                const riskPercentage = Math.round(team.risk_score * 100);
+                const alertColor = getAlertColor(team.alert_level);
+                
+                return `
+                    <div class="team-item ${alertColor}">
+                        <div class="team-header">
+                            <div class="team-name">${team.team_name}</div>
+                            <div class="team-score" style="background-color: ${getScoreColor(team.risk_score)}">
+                                ${riskPercentage}%
+                            </div>
+                        </div>
+                        <div class="team-details">
+                            ${team.members_count} members • Status: ${team.alert_level.toUpperCase()}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateAlertsList(alerts) {
+            const container = document.getElementById('alertsList');
+            
+            if (alerts.length === 0) {
+                container.innerHTML = '<div class="alert-item" style="text-align: center; color: #48bb78;">✅ No active alerts</div>';
+                return;
+            }
+            
+            container.innerHTML = alerts.map(alert => {
+                const timeAgo = getTimeAgo(new Date(alert.timestamp));
+                
+                return `
+                    <div class="alert-item ${alert.severity}">
+                        <div class="alert-header">
+                            ${alert.urgent ? '🚨' : '⚠️'} ${alert.team_name}
+                        </div>
+                        <div style="margin: 5px 0;">
+                            Risk: ${Math.round(alert.risk_score * 100)}% • ${alert.affected_members} members affected
+                        </div>
+                        <div style="font-size: 0.9em; color: #666;">
+                            ${alert.primary_indicators[0]}
+                        </div>
+                        <div class="alert-time">${timeAgo}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getAlertColor(level) {
+            const colors = {
+                'green': 'green',
+                'yellow': 'yellow', 
+                'orange': 'orange',
+                'red': 'red'
+            };
+            return colors[level] || 'yellow';
+        }
+
+        function getScoreColor(score) {
+            if (score >= 0.8) return '#e53e3e';
+            if (score >= 0.6) return '#f56500';
+            if (score >= 0.4) return '#ed8936';
+            return '#48bb78';
+        }
+
+        function getTimeAgo(date) {
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMins / 60);
+            
+            if (diffMins < 60) {
+                return `${diffMins}m ago`;
+            } else if (diffHours < 24) {
+                return `${diffHours}h ago`;
+            } else {
+                return `${Math.floor(diffHours / 24)}d ago`;
+            }
+        }
+
+        function showError(message) {
+            const container = document.getElementById('teamsList');
+            container.innerHTML = `<div style="text-align: center; color: #e53e3e; padding: 20px;">${message}</div>`;
+        }
+
+        function refreshData() {
+            const button = document.querySelector('.refresh-btn');
+            button.style.transform = 'rotate(360deg)';
+            
+            setTimeout(() => {
+                button.style.transform = '';
+                loadDashboard();
+            }, 500);
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(loadDashboard, 30000);
+
+        // Initial load
+        loadDashboard();
+    </script>
+</body>
+</html>

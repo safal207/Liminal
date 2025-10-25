@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(curl:*)",
+      "Bash(echo:*)",
+      "WebSearch",
+      "Bash(/c/Users/safal/AppData/Local/Microsoft/WindowsApps/python3 test_ecosystem.py)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -3,12 +3,15 @@
 """
 
 import json
+import json
 import uuid
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict
 
 from fastapi import WebSocket
-from loguru import logger
+from logging_config import get_logger
+
+logger = get_logger("websocket.handlers")
 
 # Тип для обработчиков сообщений
 MessageHandler = Callable[
@@ -244,3 +247,53 @@ async def handle_pong(
     except Exception as e:
         logger.warning(f"Не удалось отметить pong: {e}")
     return {"status": "success", "type": "pong"}
+
+
+@register_handler("ack")
+async def handle_acknowledgment(
+    data: Dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"
+):
+    """
+    Обработчик подтверждения получения сообщения (acknowledgment).
+    
+    Ожидаемые данные:
+    {
+        "type": "ack",
+        "message_id": "uuid-of-message",
+        "user_id": "user123"
+    }
+    """
+    message_id = data.get("message_id")
+    user_id = data.get("user_id")
+    
+    if not message_id:
+        logger.warning("Получено ACK без message_id")
+        return {"status": "error", "error": "message_id is required"}
+    
+    if not user_id:
+        logger.warning(f"Получено ACK {message_id} без user_id")
+        return {"status": "error", "error": "user_id is required"}
+    
+    try:
+        # Обрабатываем подтверждение через менеджер соединений
+        ack_handled = await manager.handle_ack(message_id, user_id)
+        
+        if ack_handled:
+            logger.debug(f"ACK для сообщения {message_id} обработан успешно")
+            return {
+                "status": "success", 
+                "type": "ack_processed",
+                "message_id": message_id
+            }
+        else:
+            logger.warning(f"ACK для неизвестного сообщения {message_id} от {user_id}")
+            return {
+                "status": "warning", 
+                "message": "ACK for unknown message or wrong user",
+                "message_id": message_id
+            }
+            
+    except Exception as e:
+        error_msg = f"Ошибка обработки ACK для сообщения {message_id}: {e}"
+        logger.error(error_msg)
+        return {"status": "error", "error": error_msg}

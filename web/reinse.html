@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>REINSE — прошлое и знание</title>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --panel: rgba(184,156,255,0.06);
+            --border: rgba(184,156,255,0.18);
+            --text: #e9e9ef;
+            --muted: #b8b8c9;
+            --accent: #b89cff;
+        }
+        html, body { height: 100%; }
+        body {
+            margin: 0;
+            background: radial-gradient(1200px 800px at 50% 60%, rgba(184,156,255,0.06), transparent 60%), var(--bg);
+            color: var(--text);
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif;
+            display: grid;
+            grid-template-rows: auto 1fr;
+            min-height: 100dvh;
+        }
+        header { text-align: center; padding: clamp(16px, 4vw, 28px) clamp(12px, 4vw, 20px) 0; }
+        .mantra {
+            font-size: clamp(16px, 4.2vw, 24px);
+            line-height: 1.35;
+            color: var(--muted);
+        }
+        .grid {
+            display: grid;
+            gap: clamp(12px, 3vw, 20px);
+            grid-template-columns: 1fr 1fr;
+            padding: clamp(16px, 4vw, 28px);
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: clamp(14px, 4vw, 20px);
+            min-height: 50dvh;
+            display: flex;
+            flex-direction: column;
+        }
+        .title { font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: var(--muted); font-size: 12px; margin-bottom: 10px; }
+        .book {
+            flex: 1;
+            border-radius: 12px;
+            border: 1px dashed var(--border);
+            padding: clamp(12px, 3vw, 16px);
+            color: var(--text);
+            background: linear-gradient(180deg, rgba(122,122,255,0.08), rgba(122,122,255,0.03));
+            overflow: auto;
+        }
+        .hint { margin-top: 10px; font-size: 12px; color: var(--muted); }
+        .nav { text-align: center; padding: 0 0 clamp(16px, 4vw, 24px) 0; }
+        .btn {
+            display: inline-block; text-decoration: none; color: var(--text);
+            background: linear-gradient(180deg, rgba(122,122,255,0.25), rgba(122,122,255,0.12));
+            border: 1px solid rgba(122,122,255,0.4);
+            border-radius: 14px; padding: 10px 16px; min-height: 44px;
+        }
+        @media (max-width: 800px) {
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="mantra">Твоё прошлое — оно прошло. Ты знаешь. И этого достаточно, чтобы идти дальше.</div>
+    </header>
+    <section class="grid" aria-label="Книги опыта">
+        <article class="panel" aria-labelledby="wisdom-title">
+            <div id="wisdom-title" class="title">Книга мудрости</div>
+            <div class="book" contenteditable="true" spellcheck="false" aria-label="Книга мудрости">
+                Напиши сюда то, что стало опорой. Мы не судим, мы запоминаем ритм.
+            </div>
+            <div class="hint">Локально на этой странице. Никаких отправок. Только память.</div>
+        </article>
+        <article class="panel" aria-labelledby="errors-title">
+            <div id="errors-title" class="title">Книга ошибок</div>
+            <div class="book" contenteditable="true" spellcheck="false" aria-label="Книга ошибок">
+                И здесь — то, что болело. Это не приговор. Это часть пути.
+            </div>
+            <div class="hint">Можно стереть в любой момент. Ты свободен(на) в выборе.</div>
+        </article>
+    </section>
+    <nav class="nav">
+        <a class="btn" href="vulnera.html">Назад к VULNERA</a>
+    </nav>
+    <script>
+        // Мини‑сохранение в localStorage, если пользователь вводит текст (без сети)
+        const wisdom = document.querySelector('[aria-label="Книга мудрости"]');
+        const errors = document.querySelector('[aria-label="Книга ошибок"]');
+        const W_KEY = 'reinse.wisdom';
+        const E_KEY = 'reinse.errors';
+        try {
+            if (localStorage.getItem(W_KEY)) wisdom.innerHTML = localStorage.getItem(W_KEY);
+            if (localStorage.getItem(E_KEY)) errors.innerHTML = localStorage.getItem(E_KEY);
+            const save = () => {
+                localStorage.setItem(W_KEY, wisdom.innerHTML);
+                localStorage.setItem(E_KEY, errors.innerHTML);
+            };
+            wisdom.addEventListener('input', save);
+            errors.addEventListener('input', save);
+        } catch (e) { /* в приватных режимах просто молчим */ }
+    </script>
+</body>
+</html>
+
+
+

@@ -6,23 +6,17 @@ API эндпоинты для ML-функций Resonance Liminal.
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
-from loguru import logger
+from logging_config import get_logger
+logger = get_logger(__name__)
 from pydantic import BaseModel
 
 from .anomaly_detector import anomaly_detector
-from .claude_service import (
-    ClaudeAnalysisRequest,
-    ClaudeAnalysisResponse,
-    claude_service,
-)
+from .claude_service import (ClaudeAnalysisRequest, ClaudeAnalysisResponse,
+                             claude_service)
 from .feature_extractor import feature_extractor
 from .model_manager import model_manager
-from .multi_llm_orchestrator import (
-    LLMProvider,
-    MultiLLMRequest,
-    TaskType,
-    multi_llm_orchestrator,
-)
+from .multi_llm_orchestrator import (LLMProvider, MultiLLMRequest, TaskType,
+                                     multi_llm_orchestrator)
 from .openai_service import AnalysisRequest, AnalysisResponse, openai_service
 from .xai_service import ExplanationResult, xai_service
 
