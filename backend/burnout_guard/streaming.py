@@ -20,11 +20,21 @@ from dataclasses import dataclass, asdict
 from collections import deque
 import uuid
 
-from ..emotime.websocket.streaming_engine import (
-    RealTimeEmotionalStreamer, StreamingConfig, StreamingMetrics,
-    AdaptiveQualityController, SafetyFilter
-)
-from ..websocket.connection_manager import EmotionalUpdate, get_connection_manager
+try:  # Allow module to work whether imported via `backend` namespace or locally
+    from backend.emotime.websocket.streaming_engine import (
+        RealTimeEmotionalStreamer, StreamingConfig, StreamingMetrics,
+        AdaptiveQualityController, SafetyFilter,
+    )
+except ImportError:  # pragma: no cover - fallback for local runs
+    from emotime.websocket.streaming_engine import (
+        RealTimeEmotionalStreamer, StreamingConfig, StreamingMetrics,
+        AdaptiveQualityController, SafetyFilter,
+    )
+
+try:
+    from backend.websocket.connection_manager import EmotionalUpdate, get_connection_manager
+except ImportError:  # pragma: no cover
+    from websocket.connection_manager import EmotionalUpdate, get_connection_manager  # type: ignore
 from .core import BurnoutGuardEngine, BurnoutState, BurnoutRisk
 from .modes import BurnoutMode, BurnoutRiskLevel
 from .utils import safe_logger, format_risk_score, create_alert_message

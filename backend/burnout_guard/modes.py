@@ -21,7 +21,10 @@ from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
 from enum import Enum
 
-from ..emotime.modes import EmotionalMode, ModeType as EmotionalModeType
+try:  # Allow imports both from `backend` namespace and local package
+    from backend.emotime.modes import EmotionalMode, ModeType as EmotionalModeType
+except ImportError:  # pragma: no cover - fallback for standalone tests
+    from emotime.modes import EmotionalMode, ModeType as EmotionalModeType
 
 
 class BurnoutRiskLevel(Enum):

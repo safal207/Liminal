@@ -16,18 +16,28 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, asdict
 
-from ..emotime.core import EmotimeEngine, EmotimeState
-from ..emotime.modes import EmotionalMode
-from ..emotime.fusion import EmotionalFeatures
-from ..emotime.timeseries import EmotionalPoint
+try:  # Support both `backend.*` and direct package imports
+    from backend.emotime.core import EmotimeEngine, EmotimeState
+    from backend.emotime.modes import EmotionalMode
+    from backend.emotime.fusion import EmotionalFeatures
+    from backend.emotime.timeseries import EmotionalPoint
+except ImportError:  # pragma: no cover - fallback for local runs
+    from emotime.core import EmotimeEngine, EmotimeState
+    from emotime.modes import EmotionalMode
+    from emotime.fusion import EmotionalFeatures
+    from emotime.timeseries import EmotionalPoint
 from .modes import BurnoutModeMapper, BurnoutMode, BurnoutRiskLevel
 from .utils import safe_logger
 
 try:
-    from ..emotime.ml import AdaptiveCalibrator, AdaptiveEmotionalEngine
+    from backend.emotime.ml import AdaptiveCalibrator, AdaptiveEmotionalEngine
     ML_AVAILABLE = True
 except ImportError:
-    ML_AVAILABLE = False
+    try:
+        from emotime.ml import AdaptiveCalibrator, AdaptiveEmotionalEngine  # type: ignore
+        ML_AVAILABLE = True
+    except ImportError:
+        ML_AVAILABLE = False
 
 
 @dataclass
@@ -199,7 +209,10 @@ class BurnoutRiskScorer:
             indicators.append(f"Эмоциональная притупленность ({features.intensity:.2f})")
         
         # Анализ режима
-        from ..emotime.modes import ModeType
+        try:
+            from backend.emotime.modes import ModeType
+        except ImportError:  # pragma: no cover
+            from emotime.modes import ModeType  # type: ignore
         if mode.type == ModeType.STRESS:
             total_risk += self.EMOTIONAL_RISK_CRITERIA["high_stress"]["weight"]
             indicators.append(f"Режим стресса (интенсивность: {mode.intensity:.2f})")
