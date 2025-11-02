@@ -49,6 +49,7 @@ jobs:
 
     - name: Run unit tests (skip integration)
       run: |
+        export PYTHONPATH="${PWD}:${PYTHONPATH}"
         cd backend && python -m pytest -v --maxfail=1 --durations=10 -m "not integration"
 
     - name: Smoke test Prometheus metrics registry
