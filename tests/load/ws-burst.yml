@@ -10,7 +10,7 @@ scenarios:
   - name: WS burst connect & ping
     flow:
       - get:
-          url: "/health/ready"
+          url: "/ready"
           expect:
             - statusCode: 200
       - post:
