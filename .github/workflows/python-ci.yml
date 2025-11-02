@@ -49,7 +49,7 @@ jobs:
 
     - name: Run unit tests (skip integration)
       run: |
-        python -m pytest -v --maxfail=1 --durations=10 -m "not integration"
+        cd backend && python -m pytest -v --maxfail=1 --durations=10 -m "not integration"
 
     - name: Smoke test Prometheus metrics registry
       run: |
