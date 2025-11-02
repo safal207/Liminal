@@ -14,6 +14,8 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import pytest
+
 # Добавляем путь к backend
 backend_path = Path(__file__).parent
 sys.path.insert(0, str(backend_path))
@@ -135,6 +137,7 @@ def create_test_emotime_state(mode_type: EmotionalModeType, valence: float = 0.0
     )
 
 
+@pytest.mark.asyncio
 async def test_burnout_mode_mapping():
     """Тест маппинга эмоциональных режимов в режимы выгорания."""
     print("\n🧪 Тестирование маппинга режимов выгорания...")
@@ -185,6 +188,7 @@ async def test_burnout_mode_mapping():
             print(f"    ⚠️ Ожидался {scenario['expected_risk']} риск, получен скор {burnout_mode.risk_score:.2f}")
 
 
+@pytest.mark.asyncio
 async def test_risk_scoring():
     """Тест системы скоринга риска."""
     print("\n🧪 Тестирование скоринга риска...")
@@ -237,6 +241,7 @@ async def test_risk_scoring():
         print(f"    Индикаторы: {', '.join(risk_assessment.emotional_indicators[:3])}")
 
 
+@pytest.mark.asyncio
 async def test_recommendations():
     """Тест системы рекомендаций."""
     print("\n🧪 Тестирование системы рекомендаций...")
@@ -329,6 +334,7 @@ async def test_recommendations():
         print(f"       Тип: {rec.type.value}, Приоритет: {rec.priority}")
 
 
+@pytest.mark.asyncio
 async def test_utils():
     """Тест утилит."""
     print("\n🧪 Тестирование утилит...")

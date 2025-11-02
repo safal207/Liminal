@@ -18,12 +18,18 @@ from enum import Enum
 
 # Import existing database components
 try:
-    from ..database_adapter import DatabaseAdapter, DataType
-    from ..datomic_client import DatomicClient
-    from ..consciousness_neo4j import ConsciousnessNeo4jWriter
+    from backend.database_adapter import DatabaseAdapter, DataType
+    from backend.datomic_client import DatomicClient
+    from backend.consciousness_neo4j import ConsciousnessNeo4jWriter
     DB_AVAILABLE = True
 except ImportError:
-    DB_AVAILABLE = False
+    try:
+        from database_adapter import DatabaseAdapter, DataType  # type: ignore
+        from datomic_client import DatomicClient  # type: ignore
+        from consciousness_neo4j import ConsciousnessNeo4jWriter  # type: ignore
+        DB_AVAILABLE = True
+    except ImportError:
+        DB_AVAILABLE = False
 
 from .core import BurnoutState, BurnoutRisk
 from .modes import BurnoutMode, BurnoutModeType, BurnoutRiskLevel
