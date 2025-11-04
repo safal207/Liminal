@@ -69,13 +69,22 @@ class EmotimeNeo4jStorage:
         self.database = database
         
         # Validate required credentials
+        missing_fields = []
         if not self.uri:
-            raise ValueError("NEO4J_URI environment variable must be set")
+            missing_fields.append("NEO4J_URI")
         if not self.user:
-            raise ValueError("NEO4J_USER environment variable must be set")  
+            missing_fields.append("NEO4J_USER")
         if not self.password:
-            raise ValueError("NEO4J_PASSWORD environment variable must be set")
-        if self.password == "password" or self.password == "admin" or len(self.password) < 8:
+            missing_fields.append("NEO4J_PASSWORD")
+
+        if missing_fields:
+            safe_logger.warning(
+                f"Neo4j credentials missing ({', '.join(missing_fields)}) — persistence disabled"
+            )
+            self.driver = None
+            return
+
+        if self.password in {"password", "admin"} or len(self.password) < 8:
             raise ValueError("NEO4J_PASSWORD must be secure (min 8 chars, not default values)")
         
         try:

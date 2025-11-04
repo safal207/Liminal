@@ -16,10 +16,10 @@ from .modes import EmotionalModes
 __version__ = "0.1.0"
 __all__ = [
     "EmotimeEngine",
-    "TextSensor", 
+    "TextSensor",
     "TouchSensor",
     "AudioSensor",
     "FeatureFusion",
-    "EmotionalTimeSeries", 
-    "EmotionalModes"
+    "EmotionalTimeSeries",
+    "EmotionalModes",
 ]
