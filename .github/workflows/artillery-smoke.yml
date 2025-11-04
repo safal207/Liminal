@@ -21,7 +21,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip wheel setuptools
           pip install -r requirements.txt
-          if [ -f requirements-dev.txt ]; then pip install --no-build-isolation -r requirements-dev.txt; fi
+          pip install -e ./tools/flake8_shim || true
 
       - name: Set up Node 20
         uses: actions/setup-node@v4
@@ -33,6 +33,7 @@ jobs:
 
       - name: Start backend (uvicorn)
         run: |
+          export PYTHONPATH="${PWD}:${PYTHONPATH}"
           uvicorn backend.main:app --host 127.0.0.1 --port 8000 &
           echo $! > uvicorn.pid
           bash scripts/check-health.sh --url http://127.0.0.1:8000 --retries 60 --delay 1 --fail-on-not-ready
