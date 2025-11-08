@@ -1,9 +1,11 @@
 """WebSocket routes."""
 from __future__ import annotations
 
+import json
+from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, WebSocket
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from backend.auth.dependencies import token_verifier
 
@@ -11,6 +13,7 @@ from ..dependencies import (
     get_connection_manager,
     get_memory_timeline,
     get_ml_service,
+    get_websocket_service,
 )
 
 router = APIRouter()
@@ -20,7 +23,9 @@ router = APIRouter()
 async def websocket_timeline(
     websocket: WebSocket,
     token: Optional[str] = None,
-    service=Depends(get_websocket_service),
+    manager=Depends(get_connection_manager),
+    timeline=Depends(get_memory_timeline),
+    ml_service=Depends(get_ml_service),
 ):
     connection_accepted = await manager.accept_pending_connection(websocket)
     if not connection_accepted:

@@ -24,6 +24,8 @@ from .dependencies import (
     shutdown_services,
 )
 from .routes import auth, debug, fragments, waves, ws
+from backend.config import get_settings
+from backend.middleware.rate_limit import rate_limit_middleware
 
 
 @asynccontextmanager
@@ -52,15 +54,71 @@ if static_dir.exists():
 
 
 # Middleware -----------------------------------------------------------
+# CORS Configuration - Secure by default
+settings = get_settings()
+
+# Production origins
+ALLOWED_ORIGINS = [
+    "https://liminal.app",
+    "https://www.liminal.app",
+    "https://app.liminal.io",
+]
+
+# Development origins (only in development mode)
+if settings.environment == "development":
+    ALLOWED_ORIGINS.extend([
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://localhost:8080",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
+        "http://127.0.0.1:8080",
+    ])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
 )
 
 setup_metrics(app)
+
+
+# Security Middlewares -------------------------------------------------
+@app.middleware("http")
+async def security_headers(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+    """Add security headers to all responses."""
+    response = await call_next(request)
+
+    # Security headers
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+    # HSTS header (only in production)
+    if settings.environment != "development":
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+
+    # Content Security Policy
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' data:; "
+        "connect-src 'self' wss: https:;"
+    )
+
+    return response
+
+
+@app.middleware("http")
+async def rate_limit(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+    """Apply rate limiting to protect against abuse."""
+    return await rate_limit_middleware(request, call_next)
 
 
 @app.middleware("http")
