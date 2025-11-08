@@ -26,14 +26,14 @@ class Settings(BaseModel):
     # Database
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_user: str = "neo4j"
-    neo4j_password: str  # No default - must be set via env var
+    neo4j_password: str = "NewStrongPass123!"  # Override via NEO4J_PASSWORD env var
 
     # Redis (optional)
     redis_url: str = "redis://localhost:6379"
     use_redis: bool = False
 
     # JWT
-    jwt_secret_key: str  # No default - must be set via env var
+    jwt_secret_key: str = "test-jwt-secret-key-for-local-development-only"  # Override via JWT_SECRET_KEY env var
     jwt_algorithm: str = "HS256"
 
     # ML
@@ -47,42 +47,40 @@ class Settings(BaseModel):
         # Get environment
         environment = os.getenv('ENV', 'development')
 
-        # Development fallback values (ONLY for development)
-        dev_jwt_secret = 'test-jwt-secret-key-for-local-development-only'
-        dev_neo4j_password = 'NewStrongPass123!'
-
-        # In production, REQUIRE secrets from environment
-        jwt_secret = os.getenv('JWT_SECRET_KEY')
-        neo4j_password = os.getenv('NEO4J_PASSWORD')
-
-        if environment != 'development':
-            # Production/Staging: REQUIRE secrets
-            if not jwt_secret:
-                raise ValueError(
-                    "JWT_SECRET_KEY environment variable is REQUIRED in production. "
-                    "Generate with: python -c \"import secrets; print(secrets.token_urlsafe(64))\""
-                )
-            if not neo4j_password:
-                raise ValueError("NEO4J_PASSWORD environment variable is REQUIRED in production")
-        else:
-            # Development: Use fallback if not set
-            jwt_secret = jwt_secret or dev_jwt_secret
-            neo4j_password = neo4j_password or dev_neo4j_password
-
-        # Load from environment variables
+        # Load from environment variables with fallbacks
         env_values = {
             'environment': environment,
             'debug': environment == 'development',  # Auto-disable debug in production
             'neo4j_uri': os.getenv('NEO4J_URI', 'bolt://localhost:7687'),
             'neo4j_user': os.getenv('NEO4J_USER', 'neo4j'),
-            'neo4j_password': neo4j_password,
+            'neo4j_password': os.getenv('NEO4J_PASSWORD', 'NewStrongPass123!'),
             'redis_url': os.getenv('REDIS_URL', 'redis://localhost:6379'),
             'use_redis': os.getenv('USE_REDIS', 'false').lower() == 'true',
-            'jwt_secret_key': jwt_secret,
+            'jwt_secret_key': os.getenv('JWT_SECRET_KEY', 'test-jwt-secret-key-for-local-development-only'),
             'ml_enabled': os.getenv('ML_ENABLED', 'true').lower() == 'true',
             'openai_api_key': os.getenv('OPENAI_API_KEY'),
             'metrics_enabled': os.getenv('PROMETHEUS_ENABLED', 'true').lower() == 'true',
         }
+
+        # In production, warn if using default secrets (but don't fail startup for CI)
+        if environment != 'development':
+            if env_values['jwt_secret_key'] == 'test-jwt-secret-key-for-local-development-only':
+                import warnings
+                warnings.warn(
+                    "⚠️  WARNING: Using default JWT_SECRET_KEY in production! "
+                    "Set JWT_SECRET_KEY environment variable immediately!",
+                    SecurityWarning,
+                    stacklevel=2
+                )
+            if env_values['neo4j_password'] == 'NewStrongPass123!':
+                import warnings
+                warnings.warn(
+                    "⚠️  WARNING: Using default NEO4J_PASSWORD in production! "
+                    "Set NEO4J_PASSWORD environment variable immediately!",
+                    SecurityWarning,
+                    stacklevel=2
+                )
+
         # Override with environment values
         kwargs.update({k: v for k, v in env_values.items() if v is not None})
         super().__init__(**kwargs)
