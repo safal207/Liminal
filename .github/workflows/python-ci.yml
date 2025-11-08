@@ -31,7 +31,10 @@ jobs:
       run: |
         python -m pip install --upgrade pip wheel setuptools
         pip install -r requirements.txt
-        pip install --no-build-isolation -r requirements-dev.txt
+        pip install -e ./tools/flake8_shim
+        pip install pytest>=8.2 pytest-asyncio>=0.23 anyio>=4.5 requests>=2.31 websockets>=12.0
+        pip install black>=24.4 isort>=5.13 flake8>=7.0 mypy>=1.10 pre-commit>=3.7 flake8-bugbear>=24.4
+        pip install strawberry-graphql>=0.205 uvicorn>=0.30
 
     - name: Pre-commit (all files)
       run: |
@@ -49,7 +52,8 @@ jobs:
 
     - name: Run unit tests (skip integration)
       run: |
-        python -m pytest -v --maxfail=1 --durations=10 -m "not integration"
+        export PYTHONPATH="${PWD}:${PYTHONPATH}"
+        cd backend && python -m pytest -v --maxfail=1 --durations=10 -m "not integration"
 
     - name: Smoke test Prometheus metrics registry
       run: |

@@ -2,15 +2,12 @@
 Модуль метрик Prometheus для мониторинга WebSocket сервера и API
 """
 
-from .collectors import (  # Это теперь псевдоним для websocket_broadcast_duration_seconds
+from .collectors import (
     connection_limits, connection_rejections, http_requests_total,
     message_processing_time, websocket_auth_total,
     websocket_broadcast_duration_seconds, websocket_connections,
     websocket_heartbeat_total, websocket_idle_disconnects_total,
-    websocket_messages_total, websocket_rate_limit_total,
-    websocket_message_validation_errors_total, websocket_message_size_bytes,
-    websocket_message_acks_total, websocket_pending_messages,
-    websocket_message_retries_total, websocket_ack_response_time)
+    websocket_messages_total, websocket_rate_limit_total)
 # Импортируем Redis метрики
 from .redis_metrics import (redis_connection_status, redis_errors_total,
                             redis_operation_duration_seconds,
@@ -34,12 +31,6 @@ __all__ = [
     "websocket_rate_limit_total",
     "websocket_heartbeat_total",
     "websocket_idle_disconnects_total",
-    "websocket_message_validation_errors_total",
-    "websocket_message_size_bytes",
-    "websocket_message_acks_total",
-    "websocket_pending_messages", 
-    "websocket_message_retries_total",
-    "websocket_ack_response_time",
     # Redis метрики
     "redis_connection_status",
     "redis_operations_total",
