@@ -16,9 +16,13 @@ from fastapi import HTTPException, Depends, status
 from dataclasses import dataclass
 from enum import Enum
 
-# Import existing auth system
-from ..auth.jwt_utils import verify_token, get_current_active_user
-from ..auth.auth_router import get_current_user
+# Import existing auth system (works both with and without backend namespace)
+try:
+    from backend.auth.jwt_utils import verify_token, get_current_active_user
+    from backend.auth.auth_router import get_current_user
+except ImportError:  # pragma: no cover - fallback for standalone tests
+    from auth.jwt_utils import verify_token, get_current_active_user  # type: ignore
+    from auth.auth_router import get_current_user  # type: ignore
 
 
 class BurnoutPermission(Enum):
