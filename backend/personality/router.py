@@ -1,23 +1,50 @@
-"""
-FastAPI роутер для интеграции GraphQL схемы PersonalityAdapter.
-"""
-from fastapi import APIRouter, Depends
-graphql_app = None
-try:  # Защита CI от отсутствия extra-зависимостей strawberry[fastapi]
-    from strawberry.fastapi import GraphQLRouter
-    from strawberry.schema.config import StrawberryConfig
-    from .schema import schema
+"""FastAPI роутер для интеграции GraphQL схемы PersonalityAdapter."""
 
-    # Создаем GraphQL роутер с настройками
-    graphql_app = GraphQLRouter(
-        schema,
-        graphiql=True,  # Включаем GraphiQL интерфейс для тестирования
-        context_getter=lambda: {"request": None},  # Будет расширено для передачи контекста
-        config=StrawberryConfig(auto_camel_case=True),
-    )
-except Exception:  # pragma: no cover
-    graphql_app = None
+from __future__ import annotations
+
+import logging
+from importlib import import_module
+from typing import Optional, TYPE_CHECKING
+
+from fastapi import APIRouter, Depends
+
 from ..auth.jwt_utils import get_current_user, User
+
+if TYPE_CHECKING:  # pragma: no cover
+    from strawberry.fastapi import GraphQLRouter as _GraphQLRouter
+
+
+logger = logging.getLogger(__name__)
+
+
+def _create_graphql_router() -> Optional["_GraphQLRouter"]:
+    """Создает GraphQL роутер, если доступна зависимость strawberry."""
+
+    try:
+        strawberry_fastapi = import_module("strawberry.fastapi")
+        GraphQLRouter = getattr(strawberry_fastapi, "GraphQLRouter")
+        schema_config = import_module("strawberry.schema.config")
+        StrawberryConfig = getattr(schema_config, "StrawberryConfig")
+        from .schema import schema
+
+        return GraphQLRouter(
+            schema,
+            graphiql=True,
+            context_getter=lambda: {"request": None},
+            config=StrawberryConfig(auto_camel_case=True),
+        )
+    except ModuleNotFoundError as exc:  # pragma: no cover - зависит от окружения CI
+        logger.warning(
+            "Strawberry GraphQL dependency is missing. Personality GraphQL endpoint disabled: %s",
+            exc,
+        )
+    except Exception as exc:  # pragma: no cover - защитный сценарий
+        logger.error("Failed to initialize Strawberry GraphQL router: %s", exc)
+
+    return None
+
+
+graphql_app = _create_graphql_router()
 
 # Создаем FastAPI роутер
 router = APIRouter(prefix="/personality", tags=["Personality"])
