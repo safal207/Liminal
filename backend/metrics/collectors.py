@@ -73,6 +73,68 @@ websocket_idle_disconnects_total = Counter(
     ["reason"],  # idle_timeout, missing_pong
 )
 
+# Message validation metrics
+websocket_message_validation_errors_total = Counter(
+    "websocket_message_validation_errors_total",
+    "Количество сообщений отклоненных из-за ошибок валидации",
+    ["channel", "error_type"],
+)
+
+# Payload size observability
+websocket_message_size_bytes = Histogram(
+    "websocket_message_size_bytes",
+    "Распределение размера WebSocket сообщений в байтах",
+    ["direction", "channel"],
+    buckets=(
+        64,
+        128,
+        256,
+        512,
+        1024,
+        2048,
+        4096,
+        8192,
+        16384,
+    ),
+)
+
+# ACK tracking
+websocket_message_acks_total = Counter(
+    "websocket_message_acks_total",
+    "Количество полученных ACK для WebSocket сообщений",
+    ["status"],  # success, timeout, duplicate
+)
+
+websocket_pending_messages = Gauge(
+    "websocket_pending_messages",
+    "Количество сообщений, ожидающих ACK",
+    ["channel"],
+)
+
+websocket_message_retries_total = Counter(
+    "websocket_message_retries_total",
+    "Количество повторных отправок сообщений WebSocket",
+    ["reason"],
+)
+
+websocket_ack_response_time = Histogram(
+    "websocket_ack_response_time",
+    "Время между отправкой сообщения и получением ACK",
+    ["channel"],
+    buckets=(
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1,
+        2.5,
+        5,
+    ),
+)
+
 # Memory timeline observability
 memory_timeline_events_total = Counter(
     "memory_timeline_events_total",
