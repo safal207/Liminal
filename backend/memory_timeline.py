@@ -1,14 +1,11 @@
 """Event-emitting memory timeline with WebSocket broadcasting support."""
 
 import asyncio
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional
-
-import asyncio
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from time import perf_counter
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from fastapi import WebSocket

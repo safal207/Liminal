@@ -7,15 +7,24 @@ from typing import Optional
 from backend.infrastructure.neo4j import Neo4jGateway, get_default_gateway
 
 from .container import AppContainer, get_container
+from .services.auth import AuthService
 from .services.memory import MemoryTimelineService
 from .services.ml import MLService
 from .services.neo4j import Neo4jService
 from .services.timeline_bridge import TimelineGraphBridge
-from .services.websocket import ConnectionManagerService
+from .services.websocket import ConnectionManagerService, TimelineWebSocketService
 
 
 def _container() -> AppContainer:
     return get_container()
+
+_memory_service = MemoryTimelineService()
+_ml_service = MLService()
+_auth_service = AuthService()
+_connection_manager_service = ConnectionManagerService()
+_websocket_service = TimelineWebSocketService(
+    _connection_manager_service, _memory_service, _ml_service, _auth_service
+)
 
 _neo4j_gateway: Optional[Neo4jGateway] = None
 _neo4j_service: Optional[Neo4jService] = None
