@@ -387,19 +387,67 @@ class GraphRenderer {
   }
 }
 
+  /**
+   * Применяет визуальный overlay режима Emotime ко всем узлам графа.
+   * Добавляет цветную обводку + glow-эффект по текущему эмоциональному режиму.
+   *
+   * @param {string} mode - Режим Emotime: calm | focus | stress | joy | contemplation | neutral
+   */
+  applyEmotimeMode(mode) {
+    const EMOTIME_COLORS = {
+      calm:          '#4CAF50',
+      focus:         '#2196F3',
+      stress:        '#f44336',
+      joy:           '#FFC107',
+      contemplation: '#9C27B0',
+      neutral:       '#607D8B',
+    };
+
+    const color = EMOTIME_COLORS[mode] || EMOTIME_COLORS.neutral;
+
+    this.nodeGroup.selectAll('.node')
+      .transition()
+      .duration(600)
+      .attr('stroke', color)
+      .attr('stroke-width', 3)
+      .attr('filter', `drop-shadow(0 0 6px ${color})`);
+
+    // Текущий режим храним для tooltip
+    this._currentEmotimeMode = mode;
+    this._currentEmotimeColor = color;
+  }
+
+  /**
+   * Сбрасывает emotime overlay (при потере соединения с API).
+   */
+  clearEmotimeMode() {
+    this.nodeGroup.selectAll('.node')
+      .transition()
+      .duration(600)
+      .attr('stroke', null)
+      .attr('stroke-width', null)
+      .attr('filter', null);
+    this._currentEmotimeMode = null;
+    this._currentEmotimeColor = null;
+  }
+}
+
+// Глобальный экземпляр рендерера (доступен из main.js)
+let graphRendererInstance = null;
+
 // Функция инициализации после загрузки DOM
 function initGraphRenderer() {
-  const graphRenderer = new GraphRenderer('consciousness-graph');
-  
+  graphRendererInstance = new GraphRenderer('consciousness-graph');
+
   // Подписка на изменения данных
   dataService.subscribe(data => {
-    graphRenderer.updateData(data);
-    
+    graphRendererInstance.updateData(data);
+
     // Обновляем метрики для активного состояния
     if (data.activeState) {
       const activeNode = data.nodes.find(n => n.id === data.activeState);
       if (activeNode) {
-        graphRenderer.updateStateMetrics(activeNode);
+        graphRendererInstance.updateStateMetrics(activeNode);
       }
     }
   });
