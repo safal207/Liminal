@@ -134,7 +134,6 @@ async def process_text(input_data: TextInput):
         sanitized_input = TextInput(
             text=clean_text,
             typing_speed=input_data.typing_speed,
-            pause_duration=input_data.pause_duration, 
             user_id=clean_user_id
         )
         # Performance optimization: check cache first  

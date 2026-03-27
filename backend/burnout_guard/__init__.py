@@ -15,7 +15,6 @@
 """
 
 from .core import BurnoutGuardEngine, BurnoutState, BurnoutRisk
-from .detector import BurnoutDetector, BurnoutPattern
 from .recommendations import RecommendationEngine, Recommendation
 from .analytics import TeamAnalytics, BurnoutTrend
 from .modes import BurnoutMode, BurnoutModeType
@@ -27,8 +26,6 @@ __all__ = [
     "BurnoutGuardEngine",
     "BurnoutState", 
     "BurnoutRisk",
-    "BurnoutDetector",
-    "BurnoutPattern",
     "RecommendationEngine",
     "Recommendation",
     "TeamAnalytics",
