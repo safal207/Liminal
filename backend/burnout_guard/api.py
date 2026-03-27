@@ -582,6 +582,75 @@ async def assess_user(
         raise HTTPException(status_code=500, detail="Ошибка оценки состояния пользователя")
 
 
+@router.get("/user/{user_id}/progress")
+async def get_user_progress(
+    user_id: str,
+    days: int = Query(30, ge=1, le=90, description="Количество дней истории"),
+) -> Dict[str, Any]:
+    """
+    Возвращает прогресс пользователя: историю риска и текущее состояние.
+
+    Используется consciousness map для визуализации динамики выгорания.
+    """
+    try:
+        db = BurnoutDatabaseAdapter()
+
+        # История риска за период
+        risk_history = await db.get_risk_history(user_id, days)
+
+        # Последнее состояние
+        latest = await db.get_latest_burnout_state(user_id)
+
+        # Тренд: сравниваем среднее за последние 7 дней vs предыдущие 7
+        trend = "stable"
+        if len(risk_history) >= 14:
+            recent_scores = [p.get("risk_score", 0) for p in risk_history[-7:]]
+            prev_scores = [p.get("risk_score", 0) for p in risk_history[-14:-7]]
+            recent_avg = sum(recent_scores) / len(recent_scores)
+            prev_avg = sum(prev_scores) / len(prev_scores)
+            delta = recent_avg - prev_avg
+            if delta > 0.05:
+                trend = "worsening"
+            elif delta < -0.05:
+                trend = "improving"
+
+        # Распределение уровней риска за период
+        level_counts: Dict[str, int] = {}
+        for point in risk_history:
+            lvl = point.get("risk_level", "unknown")
+            level_counts[lvl] = level_counts.get(lvl, 0) + 1
+
+        # Средний скор за период
+        scores = [p.get("risk_score", 0) for p in risk_history]
+        avg_score = round(sum(scores) / len(scores), 3) if scores else 0.0
+
+        return {
+            "user_id": user_id,
+            "period_days": days,
+            "generated_at": datetime.now().isoformat(),
+            "summary": {
+                "average_risk_score": avg_score,
+                "trend": trend,
+                "data_points": len(risk_history),
+                "risk_distribution": level_counts,
+            },
+            "current_state": latest,
+            "risk_history": [
+                {
+                    "timestamp": p.get("timestamp"),
+                    "risk_score": round(p.get("risk_score", 0), 3),
+                    "risk_level": p.get("risk_level", "unknown"),
+                    "confidence": round(p.get("confidence", 0), 3),
+                }
+                for p in risk_history
+            ],
+        }
+
+    except Exception as e:
+        safe_logger.error(f"Error getting progress for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка получения прогресса пользователя")
+
+
 @router.post("/user/{user_id}/feedback")
 async def submit_recommendation_feedback(
     user_id: str,

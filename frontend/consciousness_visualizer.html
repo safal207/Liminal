@@ -308,6 +308,7 @@
                 <div class="tab" data-tab="timeline">User Timeline</div>
                 <div class="tab" data-tab="resonance">Resonance Analysis</div>
                 <div class="tab" data-tab="graph">Consciousness Graph</div>
+                <div class="tab" data-tab="progress">Burnout Progress</div>
             </div>
 
             <div id="realtime-tab" class="tab-content active">
@@ -352,6 +353,43 @@
                 <h2>Consciousness State Graph</h2>
                 <div id="graph-visualization" class="visualization">
                     <!-- Canvas for graph visualization -->
+                </div>
+            </div>
+        </div>
+
+            <div id="progress-tab" class="tab-content">
+                <h2>Burnout Progress</h2>
+                <div class="user-filter">
+                    <label for="progress-user">Select user: </label>
+                    <select id="progress-user">
+                        <option value="philosopher_1">philosopher_1</option>
+                        <option value="philosopher_2">philosopher_2</option>
+                        <option value="consciousness_explorer">consciousness_explorer</option>
+                        <option value="authentic_self">authentic_self</option>
+                    </select>
+                    <label for="progress-days" style="margin-left:16px">Days: </label>
+                    <select id="progress-days">
+                        <option value="7">7</option>
+                        <option value="14">14</option>
+                        <option value="30" selected>30</option>
+                        <option value="90">90</option>
+                    </select>
+                    <button id="load-progress" style="margin-left:12px">Load Progress</button>
+                </div>
+
+                <!-- Summary cards -->
+                <div id="progress-summary" class="grid" style="margin-top:16px"></div>
+
+                <!-- Risk history chart -->
+                <div style="margin-top:20px;background:#1a1a2e;border-radius:8px;padding:16px">
+                    <h3 style="margin:0 0 12px;color:#bb86fc">Risk Score Over Time</h3>
+                    <canvas id="risk-chart" height="120"></canvas>
+                </div>
+
+                <!-- Distribution bar -->
+                <div style="margin-top:20px;background:#1a1a2e;border-radius:8px;padding:16px">
+                    <h3 style="margin:0 0 12px;color:#bb86fc">Risk Level Distribution</h3>
+                    <div id="risk-distribution"></div>
                 </div>
             </div>
         </div>
@@ -712,6 +750,210 @@
 
         // Initialize tabs
         document.querySelector('.tab[data-tab="realtime"]').click();
+
+        // ---- Burnout Progress tab ----
+
+        const BURNOUT_API = 'http://localhost:8000/api/v1/burnout';
+
+        const RISK_COLORS = {
+            very_low:  '#4CAF50',
+            low:       '#8BC34A',
+            medium:    '#FFC107',
+            high:      '#FF5722',
+            critical:  '#f44336',
+            unknown:   '#607D8B',
+        };
+
+        const TREND_LABELS = {
+            improving: { text: 'Improving', color: '#4CAF50' },
+            stable:    { text: 'Stable',    color: '#FFC107' },
+            worsening: { text: 'Worsening', color: '#f44336' },
+        };
+
+        document.getElementById('load-progress').addEventListener('click', loadProgress);
+
+        async function loadProgress() {
+            const userId = document.getElementById('progress-user').value;
+            const days   = document.getElementById('progress-days').value;
+            const btn    = document.getElementById('load-progress');
+
+            btn.textContent = 'Loading…';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${BURNOUT_API}/user/${encodeURIComponent(userId)}/progress?days=${days}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                renderProgress(data);
+            } catch (err) {
+                document.getElementById('progress-summary').innerHTML =
+                    `<div class="card" style="color:#f44336">Error: ${err.message}. Is the backend running?</div>`;
+                console.error('Progress load error:', err);
+            } finally {
+                btn.textContent = 'Load Progress';
+                btn.disabled = false;
+            }
+        }
+
+        function renderProgress(data) {
+            const summary   = data.summary || {};
+            const history   = data.risk_history || [];
+            const current   = data.current_state || {};
+            const trend     = summary.trend || 'stable';
+            const trendMeta = TREND_LABELS[trend] || TREND_LABELS.stable;
+
+            // --- Summary cards ---
+            const avgScore   = summary.average_risk_score ?? 0;
+            const currentLvl = current.risk_level || '—';
+            const currentScr = current.risk_score != null ? current.risk_score.toFixed(2) : '—';
+
+            document.getElementById('progress-summary').innerHTML = `
+                <div class="card">
+                    <div style="font-size:.8em;color:#888;margin-bottom:6px">AVG RISK (${data.period_days}d)</div>
+                    <div style="font-size:2em;font-weight:700;color:${scoreColor(avgScore)}">${(avgScore * 100).toFixed(0)}%</div>
+                </div>
+                <div class="card">
+                    <div style="font-size:.8em;color:#888;margin-bottom:6px">TREND</div>
+                    <div style="font-size:1.6em;font-weight:700;color:${trendMeta.color}">${trendMeta.text}</div>
+                </div>
+                <div class="card">
+                    <div style="font-size:.8em;color:#888;margin-bottom:6px">CURRENT LEVEL</div>
+                    <div style="font-size:1.6em;font-weight:700;color:${RISK_COLORS[currentLvl] || '#888'}">${currentLvl}</div>
+                    <div style="font-size:.9em;color:#aaa">${currentScr !== '—' ? 'score ' + currentScr : ''}</div>
+                </div>
+                <div class="card">
+                    <div style="font-size:.8em;color:#888;margin-bottom:6px">DATA POINTS</div>
+                    <div style="font-size:2em;font-weight:700;color:#bb86fc">${summary.data_points || 0}</div>
+                </div>
+            `;
+
+            // --- Risk line chart (vanilla canvas) ---
+            renderRiskChart(history);
+
+            // --- Distribution bars ---
+            renderDistribution(summary.risk_distribution || {});
+        }
+
+        function scoreColor(score) {
+            if (score < 0.2) return RISK_COLORS.very_low;
+            if (score < 0.4) return RISK_COLORS.low;
+            if (score < 0.6) return RISK_COLORS.medium;
+            if (score < 0.8) return RISK_COLORS.high;
+            return RISK_COLORS.critical;
+        }
+
+        function renderRiskChart(history) {
+            const canvas = document.getElementById('risk-chart');
+            const ctx    = canvas.getContext('2d');
+
+            canvas.width  = canvas.parentElement.clientWidth - 32;
+            canvas.height = 120;
+
+            const W = canvas.width, H = canvas.height;
+            const PAD = { top: 10, right: 10, bottom: 24, left: 36 };
+            const chartW = W - PAD.left - PAD.right;
+            const chartH = H - PAD.top - PAD.bottom;
+
+            ctx.clearRect(0, 0, W, H);
+
+            // Background grid
+            ctx.strokeStyle = '#2a2a3e';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = PAD.top + (chartH / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(PAD.left, y);
+                ctx.lineTo(W - PAD.right, y);
+                ctx.stroke();
+
+                // Y labels
+                ctx.fillStyle = '#666';
+                ctx.font = '10px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.fillText((1 - i / 4).toFixed(1), PAD.left - 4, y + 4);
+            }
+
+            if (!history.length) {
+                ctx.fillStyle = '#555';
+                ctx.font = '13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('No data', W / 2, H / 2);
+                return;
+            }
+
+            const step = chartW / Math.max(history.length - 1, 1);
+
+            // Fill gradient
+            const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + chartH);
+            grad.addColorStop(0, 'rgba(156,39,176,0.4)');
+            grad.addColorStop(1, 'rgba(156,39,176,0.0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            history.forEach((pt, i) => {
+                const x = PAD.left + i * step;
+                const y = PAD.top + chartH * (1 - pt.risk_score);
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.lineTo(PAD.left + (history.length - 1) * step, PAD.top + chartH);
+            ctx.lineTo(PAD.left, PAD.top + chartH);
+            ctx.closePath();
+            ctx.fill();
+
+            // Line
+            ctx.strokeStyle = '#9C27B0';
+            ctx.lineWidth = 2;
+            ctx.lineJoin = 'round';
+            ctx.beginPath();
+            history.forEach((pt, i) => {
+                const x = PAD.left + i * step;
+                const y = PAD.top + chartH * (1 - pt.risk_score);
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+            // Dots
+            history.forEach((pt, i) => {
+                const x = PAD.left + i * step;
+                const y = PAD.top + chartH * (1 - pt.risk_score);
+                ctx.fillStyle = scoreColor(pt.risk_score);
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // X-axis labels (first, middle, last)
+            ctx.fillStyle = '#666';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            [[0, history[0]], [Math.floor(history.length / 2), history[Math.floor(history.length / 2)]], [history.length - 1, history[history.length - 1]]].forEach(([i, pt]) => {
+                if (!pt) return;
+                const x = PAD.left + i * step;
+                const label = pt.timestamp ? pt.timestamp.slice(5, 10) : '';
+                ctx.fillText(label, x, H - 4);
+            });
+        }
+
+        function renderDistribution(dist) {
+            const order = ['very_low', 'low', 'medium', 'high', 'critical'];
+            const total = Object.values(dist).reduce((a, b) => a + b, 0) || 1;
+            const labels = { very_low: 'Very Low', low: 'Low', medium: 'Medium', high: 'High', critical: 'Critical' };
+
+            const html = order.map(lvl => {
+                const count = dist[lvl] || 0;
+                const pct   = (count / total * 100).toFixed(1);
+                return `
+                    <div style="display:flex;align-items:center;margin-bottom:8px;gap:10px">
+                        <div style="width:80px;font-size:.85em;color:#aaa;text-align:right">${labels[lvl]}</div>
+                        <div style="flex:1;background:#2a2a3e;border-radius:4px;height:18px;overflow:hidden">
+                            <div style="width:${pct}%;background:${RISK_COLORS[lvl]};height:100%;border-radius:4px;transition:width .4s"></div>
+                        </div>
+                        <div style="width:48px;font-size:.85em;color:#888">${pct}% (${count})</div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('risk-distribution').innerHTML = html;
+        }
     </script>
 </body>
 </html>
