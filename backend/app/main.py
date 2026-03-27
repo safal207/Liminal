@@ -25,6 +25,18 @@ from .dependencies import (
 )
 from .routes import auth, debug, fragments, waves, ws
 
+try:
+    from ..burnout_guard.api import router as burnout_router
+    BURNOUT_AVAILABLE = True
+except Exception:  # noqa: BLE001
+    BURNOUT_AVAILABLE = False
+
+try:
+    from ..emotime.api import emotime_router
+    EMOTIME_AVAILABLE = True
+except Exception:  # noqa: BLE001
+    EMOTIME_AVAILABLE = False
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -81,6 +93,11 @@ app.include_router(waves.router)
 app.include_router(fragments.router)
 app.include_router(debug.router)
 app.include_router(ws.router)
+
+if BURNOUT_AVAILABLE:
+    app.include_router(burnout_router)
+if EMOTIME_AVAILABLE:
+    app.include_router(emotime_router)
 
 
 # Application state ----------------------------------------------------
