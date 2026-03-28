@@ -40,9 +40,10 @@ def test_ready_endpoint_degraded_neo4j():
     mock_redis_client.client.ping.return_value = True
 
     # Мокаем Neo4j с ошибкой
-    with patch.object(app.state, "redis_client", mock_redis_client), patch(
-        "neo4j.GraphDatabase.driver"
-    ) as mock_driver:
+    with (
+        patch.object(app.state, "redis_client", mock_redis_client),
+        patch("neo4j.GraphDatabase.driver") as mock_driver,
+    ):
         mock_driver.side_effect = ConnectionError("Neo4j connection failed")
 
         response = client.get("/ready")
@@ -72,8 +73,9 @@ def test_ready_endpoint_ready():
     mock_session.run.return_value = mock_result
     mock_driver.session.return_value.__enter__.return_value = mock_session
 
-    with patch.object(app.state, "redis_client", mock_redis_client), patch(
-        "neo4j.GraphDatabase.driver", return_value=mock_driver
+    with (
+        patch.object(app.state, "redis_client", mock_redis_client),
+        patch("neo4j.GraphDatabase.driver", return_value=mock_driver),
     ):
 
         response = client.get("/ready")

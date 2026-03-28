@@ -44,10 +44,11 @@ class TestDatabaseAdapter:
     @pytest.fixture
     def adapter_with_mocks(self, mock_datomic_client, mock_neo4j_client):
         """DatabaseAdapter с моками."""
-        with patch(
-            "database_adapter.DatomicClient", return_value=mock_datomic_client
-        ), patch(
-            "database_adapter.PhilosophyNeo4jWriter", return_value=mock_neo4j_client
+        with (
+            patch("database_adapter.DatomicClient", return_value=mock_datomic_client),
+            patch(
+                "database_adapter.PhilosophyNeo4jWriter", return_value=mock_neo4j_client
+            ),
         ):
 
             adapter = DatabaseAdapter(auto_connect=False)

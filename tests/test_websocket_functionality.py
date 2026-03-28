@@ -165,8 +165,9 @@ class WebSocketRelayTest(unittest.TestCase):
         fake_ws = MagicMock()
         fake_ws.recv = AsyncMock(return_value=json.dumps(test_event))
         fake_ws.close = AsyncMock()
-        with patch("requests.post", return_value=http_ok), patch(
-            "websockets.connect", new=AsyncMock(return_value=fake_ws)
+        with (
+            patch("requests.post", return_value=http_ok),
+            patch("websockets.connect", new=AsyncMock(return_value=fake_ws)),
         ):
             # Выполняем тест
             received_event, success = asyncio.run(

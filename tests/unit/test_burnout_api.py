@@ -213,13 +213,13 @@ class TestAssessEndpoint:
     def test_assess_returns_200_with_valid_state(self, client):
         state = _mock_burnout_state()
 
-        with patch("backend.burnout_guard.api.EMOTIME_AVAILABLE", True), patch(
-            "backend.burnout_guard.api.EmotimeEngine"
-        ), patch("backend.burnout_guard.api.BurnoutGuardEngine") as MockEngine, patch(
-            "backend.burnout_guard.api.RecommendationEngine"
-        ) as MockRec, patch(
-            "backend.burnout_guard.api.BurnoutDatabaseAdapter"
-        ) as MockDB:
+        with (
+            patch("backend.burnout_guard.api.EMOTIME_AVAILABLE", True),
+            patch("backend.burnout_guard.api.EmotimeEngine"),
+            patch("backend.burnout_guard.api.BurnoutGuardEngine") as MockEngine,
+            patch("backend.burnout_guard.api.RecommendationEngine") as MockRec,
+            patch("backend.burnout_guard.api.BurnoutDatabaseAdapter") as MockDB,
+        ):
 
             # Wire mocks
             engine_inst = MagicMock()
@@ -250,13 +250,13 @@ class TestAssessEndpoint:
     def test_assess_returns_risk_assessment_fields(self, client):
         state = _mock_burnout_state()
 
-        with patch("backend.burnout_guard.api.EMOTIME_AVAILABLE", True), patch(
-            "backend.burnout_guard.api.EmotimeEngine"
-        ), patch("backend.burnout_guard.api.BurnoutGuardEngine") as MockEngine, patch(
-            "backend.burnout_guard.api.RecommendationEngine"
-        ) as MockRec, patch(
-            "backend.burnout_guard.api.BurnoutDatabaseAdapter"
-        ) as MockDB:
+        with (
+            patch("backend.burnout_guard.api.EMOTIME_AVAILABLE", True),
+            patch("backend.burnout_guard.api.EmotimeEngine"),
+            patch("backend.burnout_guard.api.BurnoutGuardEngine") as MockEngine,
+            patch("backend.burnout_guard.api.RecommendationEngine") as MockRec,
+            patch("backend.burnout_guard.api.BurnoutDatabaseAdapter") as MockDB,
+        ):
 
             MockEngine.return_value.analyze_now = AsyncMock(return_value=state)
             MockRec.return_value.get_recommendations = AsyncMock(return_value=[])
@@ -273,10 +273,11 @@ class TestAssessEndpoint:
         assert 0.0 <= risk["score"] <= 1.0
 
     def test_assess_no_data_when_engine_returns_none(self, client):
-        with patch("backend.burnout_guard.api.EMOTIME_AVAILABLE", True), patch(
-            "backend.burnout_guard.api.EmotimeEngine"
-        ), patch("backend.burnout_guard.api.BurnoutGuardEngine") as MockEngine, patch(
-            "backend.burnout_guard.api.BurnoutDatabaseAdapter"
+        with (
+            patch("backend.burnout_guard.api.EMOTIME_AVAILABLE", True),
+            patch("backend.burnout_guard.api.EmotimeEngine"),
+            patch("backend.burnout_guard.api.BurnoutGuardEngine") as MockEngine,
+            patch("backend.burnout_guard.api.BurnoutDatabaseAdapter"),
         ):
 
             MockEngine.return_value.analyze_now = AsyncMock(return_value=None)
@@ -311,13 +312,13 @@ class TestAssessEndpoint:
             applicable_modes=[BurnoutModeType.OVERWORK],
         )
 
-        with patch("backend.burnout_guard.api.EMOTIME_AVAILABLE", True), patch(
-            "backend.burnout_guard.api.EmotimeEngine"
-        ), patch("backend.burnout_guard.api.BurnoutGuardEngine") as MockEngine, patch(
-            "backend.burnout_guard.api.RecommendationEngine"
-        ) as MockRec, patch(
-            "backend.burnout_guard.api.BurnoutDatabaseAdapter"
-        ) as MockDB:
+        with (
+            patch("backend.burnout_guard.api.EMOTIME_AVAILABLE", True),
+            patch("backend.burnout_guard.api.EmotimeEngine"),
+            patch("backend.burnout_guard.api.BurnoutGuardEngine") as MockEngine,
+            patch("backend.burnout_guard.api.RecommendationEngine") as MockRec,
+            patch("backend.burnout_guard.api.BurnoutDatabaseAdapter") as MockDB,
+        ):
 
             MockEngine.return_value.analyze_now = AsyncMock(return_value=state)
             MockRec.return_value.get_recommendations = AsyncMock(return_value=[rec])
@@ -338,13 +339,13 @@ class TestAssessEndpoint:
         state.risk_assessment.level = BurnoutRiskLevel.HIGH
         state.risk_assessment.score = 0.75
 
-        with patch("backend.burnout_guard.api.EMOTIME_AVAILABLE", True), patch(
-            "backend.burnout_guard.api.EmotimeEngine"
-        ), patch("backend.burnout_guard.api.BurnoutGuardEngine") as MockEngine, patch(
-            "backend.burnout_guard.api.RecommendationEngine"
-        ) as MockRec, patch(
-            "backend.burnout_guard.api.BurnoutDatabaseAdapter"
-        ) as MockDB:
+        with (
+            patch("backend.burnout_guard.api.EMOTIME_AVAILABLE", True),
+            patch("backend.burnout_guard.api.EmotimeEngine"),
+            patch("backend.burnout_guard.api.BurnoutGuardEngine") as MockEngine,
+            patch("backend.burnout_guard.api.RecommendationEngine") as MockRec,
+            patch("backend.burnout_guard.api.BurnoutDatabaseAdapter") as MockDB,
+        ):
 
             MockEngine.return_value.analyze_now = AsyncMock(return_value=state)
             MockRec.return_value.get_recommendations = AsyncMock(return_value=[])
