@@ -41,11 +41,11 @@ class MemoryTimeline:
     def __init__(self):
         self.timeline: List[Dict[str, Any]] = []
         self._subscribers: List[WebSocket] = []
+        self._event_listeners: List[MemoryTimelineEventListener] = []
         self._lock = asyncio.Lock()
         settings = get_settings()
         self._initial_state_limit = settings.memory_timeline.initial_state_limit
         self._max_retained_events = settings.memory_timeline.max_retained_events
-        print("DEBUG: MemoryTimeline instance initialized")
 
     @property
     def subscribers(self):
@@ -143,7 +143,7 @@ class MemoryTimeline:
                     await subscriber.send_text(message_json)
                     delivered += 1
                 except Exception as e:
-                    print(f"Error sending to WebSocket: {e}")
+                    logger.warning("Error sending to WebSocket: %s", e)
                     disconnected.append(subscriber)
                     failed += 1
 
@@ -171,25 +171,21 @@ class MemoryTimeline:
 
     def register_listener(self, listener: MemoryTimelineEventListener) -> None:
         """Register a coroutine listener for timeline events."""
-
         if listener not in self._event_listeners:
             self._event_listeners.append(listener)
 
     def remove_listener(self, listener: MemoryTimelineEventListener) -> None:
         """Remove a previously registered listener."""
-
         self._event_listeners = [
             existing for existing in self._event_listeners if existing != listener
         ]
 
     def clear_listeners(self) -> None:
         """Remove all registered event listeners."""
-
         self._event_listeners.clear()
 
     async def _emit_event(self, event: TimelineEvent) -> None:
         """Dispatch an event to all registered listeners."""
-
         if not self._event_listeners:
             return
 
@@ -197,67 +193,7 @@ class MemoryTimeline:
             try:
                 await listener(event)
             except Exception as exc:  # pragma: no cover - defensive logging
-                print(f"Error emitting event {event.type}: {exc}")
-
-    def register_listener(self, listener: MemoryTimelineEventListener) -> None:
-        """Register a coroutine listener for timeline events."""
-
-        if listener not in self._event_listeners:
-            self._event_listeners.append(listener)
-
-    def remove_listener(self, listener: MemoryTimelineEventListener) -> None:
-        """Remove a previously registered listener."""
-
-        self._event_listeners = [
-            existing for existing in self._event_listeners if existing != listener
-        ]
-
-    def clear_listeners(self) -> None:
-        """Remove all registered event listeners."""
-
-        self._event_listeners.clear()
-
-    async def _emit_event(self, event: TimelineEvent) -> None:
-        """Dispatch an event to all registered listeners."""
-
-        if not self._event_listeners:
-            return
-
-        for listener in list(self._event_listeners):
-            try:
-                await listener(event)
-            except Exception as exc:  # pragma: no cover - defensive logging
-                print(f"Error emitting event {event.type}: {exc}")
-
-    def register_listener(self, listener: MemoryTimelineEventListener) -> None:
-        """Register a coroutine listener for timeline events."""
-
-        if listener not in self._event_listeners:
-            self._event_listeners.append(listener)
-
-    def remove_listener(self, listener: MemoryTimelineEventListener) -> None:
-        """Remove a previously registered listener."""
-
-        self._event_listeners = [
-            existing for existing in self._event_listeners if existing != listener
-        ]
-
-    def clear_listeners(self) -> None:
-        """Remove all registered event listeners."""
-
-        self._event_listeners.clear()
-
-    async def _emit_event(self, event: TimelineEvent) -> None:
-        """Dispatch an event to all registered listeners."""
-
-        if not self._event_listeners:
-            return
-
-        for listener in list(self._event_listeners):
-            try:
-                await listener(event)
-            except Exception as exc:  # pragma: no cover - defensive logging
-                print(f"Error emitting event {event.type}: {exc}")
+                logger.error("Error emitting event %s: %s", event.type, exc)
 
     def get_timeline(
         self,
