@@ -1,9 +1,12 @@
 # Integration Tests for API functionality
 # Тесты для проверки интеграции компонентов API
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
+
+pytestmark = pytest.mark.integration
 
 
 class TestAPIIntegration:

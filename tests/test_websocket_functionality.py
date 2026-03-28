@@ -21,8 +21,11 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 import requests
 import websockets
+
+pytestmark = pytest.mark.integration
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
