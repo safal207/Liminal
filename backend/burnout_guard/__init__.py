@@ -16,7 +16,7 @@
 
 from .core import BurnoutGuardEngine, BurnoutState, BurnoutRisk
 from .recommendations import RecommendationEngine, Recommendation
-from .analytics import TeamAnalytics, BurnoutTrend
+from .analytics import TeamAnalytics, TeamBurnoutTrend
 from .modes import BurnoutMode, BurnoutModeType
 
 __version__ = "1.0.0"
@@ -29,7 +29,7 @@ __all__ = [
     "RecommendationEngine",
     "Recommendation",
     "TeamAnalytics",
-    "BurnoutTrend",
+    "TeamBurnoutTrend",
     "BurnoutMode",
     "BurnoutModeType"
 ]
