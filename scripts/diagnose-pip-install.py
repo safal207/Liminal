@@ -294,34 +294,44 @@ def check_system_info():
 
     # Генерируем рекомендации для установки OpenAI
     print_info("1. Создать чистое виртуальное окружение:")
-    print(f"""
+    print(
+        f"""
     python -m venv venv
     venv\\Scripts\\activate  # для Windows
-    """)
+    """
+    )
 
     print_info("2. Попробовать установку OpenAI с опциями --no-cache-dir и --verbose:")
-    print(f"""
+    print(
+        f"""
     pip install --no-cache-dir --verbose openai
-    """)
+    """
+    )
 
     print_info("3. Установить библиотеку из GitHub репозитория:")
-    print(f"""
+    print(
+        f"""
     pip install git+https://github.com/openai/openai-python.git
-    """)
+    """
+    )
 
     print_info("4. Загрузить wheel файл и установить локально:")
-    print(f"""
+    print(
+        f"""
     # Скачать с URL: https://files.pythonhosted.org/packages/32/a1/a2790e953c9e4ea91f0ef8c799ce40c555f4f193b65f93a4b931d9d7ecc7/openai-1.20.0-py3-none-any.whl
     pip install openai-1.20.0-py3-none-any.whl
-    """)
+    """
+    )
 
     print_info("5. Проверить временное отключение антивируса/файервола")
 
     print_info("6. Использовать мок-реализацию OpenAI для разработки:")
-    print(f"""
+    print(
+        f"""
     # Мок-реализация OpenAI доступна в: backend/ml/openai_mock.py
     # Она позволяет продолжать разработку без реального API клиента
-    """)
+    """
+    )
 
 
 def main():

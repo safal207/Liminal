@@ -133,7 +133,8 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
 
-    cursor.execute("""
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT UNIQUE NOT NULL,
@@ -141,9 +142,11 @@ def init_db():
             plan TEXT DEFAULT 'starter',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-    """)
+    """
+    )
 
-    cursor.execute("""
+    cursor.execute(
+        """
         CREATE TABLE IF NOT EXISTS usage (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
@@ -151,7 +154,8 @@ def init_db():
             date DATE DEFAULT CURRENT_DATE,
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
-    """)
+    """
+    )
 
     conn.commit()
     conn.close()

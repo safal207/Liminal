@@ -201,10 +201,12 @@ class RealityWebNeo4j:
     def nodes(self) -> List[Node]:
         """Get all nodes from Neo4j database."""
         with self.driver.session() as session:
-            result = session.run("""
+            result = session.run(
+                """
                 MATCH (n:Node)
                 RETURN n.id as id, n.kind as kind, n.traits as traits, n.notes as notes
-                """)
+                """
+            )
 
             nodes = []
             for record in result:
@@ -223,12 +225,14 @@ class RealityWebNeo4j:
     def edges(self) -> List[Edge]:
         """Get all edges from Neo4j database."""
         with self.driver.session() as session:
-            result = session.run("""
+            result = session.run(
+                """
                 MATCH (source:Node)-[r:RELATES]->(target:Node)
                 RETURN source.id as source_id, target.id as target_id, 
                        r.kind as kind, r.weight as weight, 
                        r.notes as notes, r.rationale as rationale
-                """)
+                """
+            )
 
             edges = []
             for record in result:

@@ -164,7 +164,8 @@ def generate_cypher_examples():
 
     # Создание узла сознания
     print("\n1. Создание узла сознания:")
-    print("""
+    print(
+        """
     CREATE (c:ConsciousnessState {
         id: "journey-5",
         state: "harmony_balance",
@@ -180,11 +181,13 @@ def generate_cypher_examples():
         companions: ["universe"]
     })
     RETURN c
-    """)
+    """
+    )
 
     # Создание перехода
     print("\n2. Создание перехода между состояниями:")
-    print("""
+    print(
+        """
     MATCH (from:ConsciousnessState {id: "journey-4"})
     MATCH (to:ConsciousnessState {id: "journey-5"})
     CREATE (from)-[t:TRANSITIONS_TO {
@@ -202,11 +205,13 @@ def generate_cypher_examples():
         }
     }]->(to)
     RETURN t
-    """)
+    """
+    )
 
     # Анализ временных паттернов
     print("\n3. Анализ временных паттернов:")
-    print("""
+    print(
+        """
     MATCH (from:ConsciousnessState)-[t:TRANSITIONS_TO]->(to:ConsciousnessState)
     WHERE t.timestamp > datetime() - duration('P7D')
     RETURN 
@@ -217,11 +222,13 @@ def generate_cypher_examples():
         avg(t.duration_seconds) as avg_duration,
         avg(t.harmony_delta) as avg_harmony_change
     ORDER BY frequency DESC
-    """)
+    """
+    )
 
     # Поиск резонанса
     print("\n4. Поиск резонанса между пользователями:")
-    print("""
+    print(
+        """
     MATCH (c1:ConsciousnessState), (c2:ConsciousnessState)
     WHERE c1.id <> c2.id
     AND abs(duration.between(c1.timestamp, c2.timestamp).seconds) < 60
@@ -231,7 +238,8 @@ def generate_cypher_examples():
            abs(c1.home_resonance - c2.home_resonance) as resonance_similarity
     ORDER BY resonance_similarity ASC
     LIMIT 10
-    """)
+    """
+    )
 
 
 if __name__ == "__main__":

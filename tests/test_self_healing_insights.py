@@ -41,12 +41,14 @@ def test_low_health_writes_insight(
     monkeypatch.setenv("LIMINAL_HEALTH_THRESHOLD", "0.99")
     monkeypatch.setenv("LIMINAL_INSIGHTS_PATH", str(insights_path))
 
-    exec_gql("""
+    exec_gql(
+        """
         mutation {
           a: addNode(kind: "module_state", traits: [{key:"гнев", value:0.9}]) { id }
           b: addNode(kind: "module_state", traits: [{key:"страх", value:0.8}]) { id }
         }
-        """)
+        """
+    )
     ids = exec_gql("query { realityWebNodes { id } }")
     a_id, b_id = ids["realityWebNodes"][0]["id"], ids["realityWebNodes"][1]["id"]
 

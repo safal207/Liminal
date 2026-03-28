@@ -54,11 +54,13 @@ with open(log_file, "w", encoding="utf-8") as f:
 
                 # Get consciousness states
                 f.write("\n=== Consciousness States in Database ===\n")
-                result = session.run("""
+                result = session.run(
+                    """
                     MATCH (n:ConsciousnessNode)
                     RETURN n.state as state, count(n) as count
                     ORDER BY count DESC
-                """)
+                """
+                )
 
                 states = []
                 for record in result:
@@ -69,13 +71,15 @@ with open(log_file, "w", encoding="utf-8") as f:
 
                 # Get state transitions
                 f.write("\n=== State Transitions in Database ===\n")
-                result = session.run("""
+                result = session.run(
+                    """
                     MATCH (source:ConsciousnessNode)-[t:TRANSITIONS_TO]->(target:ConsciousnessNode)
                     RETURN source.state as source_state, target.state as target_state, 
                            count(t) as count
                     ORDER BY count DESC
                     LIMIT 10
-                """)
+                """
+                )
 
                 transitions = []
                 for record in result:
