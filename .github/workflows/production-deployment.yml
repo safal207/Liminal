@@ -62,7 +62,7 @@ jobs:
         run: safety check --json --output safety-report.json
 
       - name: Upload security reports
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: security-reports
@@ -159,7 +159,7 @@ jobs:
           name: codecov-umbrella
 
       - name: Upload test results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: always()
         with:
           name: test-results
@@ -246,7 +246,7 @@ jobs:
           k6 run --out json=stress-test-results.json tests/performance/stress-test.js
 
       - name: Upload performance results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: performance-results
           path: |
@@ -389,6 +389,7 @@ jobs:
     steps:
       - name: Delete old container images
         uses: actions/delete-package-versions@v4
+        continue-on-error: true
         with:
           package-name: ${{ env.IMAGE_NAME }}
           package-type: container
