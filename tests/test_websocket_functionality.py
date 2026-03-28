@@ -11,6 +11,7 @@ WebSocket Relay Automated Tests
 
 import asyncio
 import json
+
 # Включаем подробное логирование
 import logging
 import time

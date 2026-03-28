@@ -11,7 +11,9 @@ from typing import Optional
 from neo4j import GraphDatabase
 
 
-def run_check(uri: str = "bolt://localhost:7687", password: str = "NewStrongPass123!") -> bool:
+def run_check(
+    uri: str = "bolt://localhost:7687", password: str = "NewStrongPass123!"
+) -> bool:
     """Attempt to connect to Neo4j and run a simple query.
 
     Returns True when the query executes successfully.  Any failure is

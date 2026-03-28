@@ -15,10 +15,10 @@ from unittest.mock import MagicMock
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Minimal numpy stub so burnout_guard modules can be imported without numpy
 # ---------------------------------------------------------------------------
+
 
 def _make_numpy_stub() -> types.ModuleType:
     np = types.ModuleType("numpy")
@@ -27,7 +27,9 @@ def _make_numpy_stub() -> types.ModuleType:
     np.std = lambda x, **kw: 0.0
     np.diff = lambda x, **kw: [0.0]
     np.clip = lambda v, lo, hi: max(lo, min(hi, v))
-    np.zeros = lambda shape, **kw: [0.0] * (shape if isinstance(shape, int) else shape[0])
+    np.zeros = lambda shape, **kw: [0.0] * (
+        shape if isinstance(shape, int) else shape[0]
+    )
     np.linspace = lambda a, b, n: [a + (b - a) * i / (n - 1) for i in range(n)]
     np.nan = float("nan")
     np.float32 = float
@@ -41,6 +43,7 @@ _numpy_stub = _make_numpy_stub()
 # ---------------------------------------------------------------------------
 # Patch sys.modules BEFORE importing anything from burnout_guard
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(autouse=True, scope="module")
 def _patch_numpy():
@@ -72,6 +75,7 @@ def _patch_numpy():
 # Helpers to build minimal mock objects
 # ---------------------------------------------------------------------------
 
+
 def _make_emotime_state() -> Any:
     """Return a minimal EmotimeState-like mock."""
     features = MagicMock()
@@ -97,7 +101,11 @@ def _make_emotime_state() -> Any:
 
 
 def _make_burnout_mode() -> Any:
-    from backend.burnout_guard.modes import BurnoutMode, BurnoutModeType, BurnoutRiskLevel
+    from backend.burnout_guard.modes import (
+        BurnoutMode,
+        BurnoutModeType,
+        BurnoutRiskLevel,
+    )
 
     return BurnoutMode(
         type=BurnoutModeType.OVERWORK,
@@ -113,6 +121,7 @@ def _make_burnout_mode() -> Any:
 # ---------------------------------------------------------------------------
 # Tests: BurnoutRiskLevel enum
 # ---------------------------------------------------------------------------
+
 
 class TestBurnoutRiskLevel:
     def test_all_levels_defined(self):
@@ -137,6 +146,7 @@ class TestBurnoutRiskLevel:
 # Tests: BurnoutModeType enum
 # ---------------------------------------------------------------------------
 
+
 class TestBurnoutModeType:
     def test_all_types_defined(self):
         from backend.burnout_guard.modes import BurnoutModeType
@@ -155,6 +165,7 @@ class TestBurnoutModeType:
 # Tests: BurnoutMode dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestBurnoutMode:
     def test_burnout_mode_creation(self):
         mode = _make_burnout_mode()
@@ -163,7 +174,11 @@ class TestBurnoutMode:
         assert "prolonged_stress" in mode.primary_indicators
 
     def test_burnout_mode_defaults(self):
-        from backend.burnout_guard.modes import BurnoutMode, BurnoutModeType, BurnoutRiskLevel
+        from backend.burnout_guard.modes import (
+            BurnoutMode,
+            BurnoutModeType,
+            BurnoutRiskLevel,
+        )
 
         m = BurnoutMode(
             type=BurnoutModeType.HEALTHY,
@@ -179,6 +194,7 @@ class TestBurnoutMode:
 # ---------------------------------------------------------------------------
 # Tests: BurnoutRiskScorer
 # ---------------------------------------------------------------------------
+
 
 class TestBurnoutRiskScorer:
     def test_risk_factor_weights_sum_to_one(self):
@@ -237,10 +253,14 @@ class TestBurnoutRiskScorer:
 # Tests: Recommendation dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestRecommendation:
     def test_recommendation_fields(self):
         from backend.burnout_guard.modes import BurnoutModeType, BurnoutRiskLevel
-        from backend.burnout_guard.recommendations import Recommendation, RecommendationType
+        from backend.burnout_guard.recommendations import (
+            Recommendation,
+            RecommendationType,
+        )
 
         rec = Recommendation(
             id="rec_001",
@@ -261,6 +281,7 @@ class TestRecommendation:
 # ---------------------------------------------------------------------------
 # Tests: BurnoutDatabaseAdapter (mock/fallback mode)
 # ---------------------------------------------------------------------------
+
 
 class TestBurnoutDatabaseAdapter:
     @pytest.mark.asyncio

@@ -1,8 +1,8 @@
 """
 🧭🧠 Retrosplenial Gateway Layer — Brain's Internal Compass
 
-Inspired by neuroscience discovery: Scientists found that the retrosplenial complex (RSC) 
-and superior parietal lobule work as the brain's internal compass, maintaining directional 
+Inspired by neuroscience discovery: Scientists found that the retrosplenial complex (RSC)
+and superior parietal lobule work as the brain's internal compass, maintaining directional
 orientation regardless of environmental changes.
 
 This layer serves as LIMINAL's central navigation system:
@@ -16,7 +16,7 @@ Architecture Integration:
                               ↓
                       [ Scripts Layer ] ↔ [ ChronoAnalytics ]
 
-"Like a blade of grass in the wind that, no matter how it bends, 
+"Like a blade of grass in the wind that, no matter how it bends,
  always points to where the sun is." — The brain's compass never loses direction.
 """
 
@@ -25,7 +25,7 @@ from .core import (
     DirectionEncoder,
     MemoryCompass,
     TransitionNavigator,
-    NavigationEvent
+    NavigationEvent,
 )
 
 from .theta_engine import ThetaOscillationEngine
@@ -34,35 +34,27 @@ from .alpha_engine import AlphaWaveEngine
 from .beta_engine import BetaWaveEngine
 from .delta_engine import DeltaWaveEngine
 
-from .directions import (
-    SemanticDirection,
-    DirectionalSpace,
-    NavigationContext
-)
+from .directions import SemanticDirection, DirectionalSpace, NavigationContext
 
-from .stability import (
-    ContextStabilizer,
-    TransitionBalance,
-    OrientationMaintainer
-)
+from .stability import ContextStabilizer, TransitionBalance, OrientationMaintainer
 
 __all__ = [
-    'RetrosplenialGateway',
-    'DirectionEncoder', 
-    'MemoryCompass',
-    'TransitionNavigator',
-    'NavigationEvent',
-    'ThetaOscillationEngine',
-    'GammaSynchronyCompass',
-    'AlphaWaveEngine',
-    'BetaWaveEngine',
-    'DeltaWaveEngine',
-    'SemanticDirection',
-    'DirectionalSpace',
-    'NavigationContext',
-    'ContextStabilizer',
-    'TransitionBalance',
-    'OrientationMaintainer'
+    "RetrosplenialGateway",
+    "DirectionEncoder",
+    "MemoryCompass",
+    "TransitionNavigator",
+    "NavigationEvent",
+    "ThetaOscillationEngine",
+    "GammaSynchronyCompass",
+    "AlphaWaveEngine",
+    "BetaWaveEngine",
+    "DeltaWaveEngine",
+    "SemanticDirection",
+    "DirectionalSpace",
+    "NavigationContext",
+    "ContextStabilizer",
+    "TransitionBalance",
+    "OrientationMaintainer",
 ]
 
 __version__ = "1.0.0"

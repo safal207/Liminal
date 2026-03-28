@@ -1,4 +1,5 @@
 """WebSocket connection manager helpers."""
+
 from __future__ import annotations
 
 import json
@@ -80,7 +81,9 @@ class TimelineWebSocketService:
         self._ml_service: "MLService" = ml_service
         self._auth_service: "AuthService" = auth_service
 
-    async def handle_connection(self, websocket: WebSocket, token: Optional[str] = None) -> None:
+    async def handle_connection(
+        self, websocket: WebSocket, token: Optional[str] = None
+    ) -> None:
         manager = self._manager_service.get_manager()
         timeline = self._memory_service.get_timeline()
 
@@ -95,7 +98,9 @@ class TimelineWebSocketService:
             if token:
                 user_id = self._auth_service.verify_websocket_token(token)
                 if user_id:
-                    authenticated = await manager.authenticate_connection(websocket, user_id)
+                    authenticated = await manager.authenticate_connection(
+                        websocket, user_id
+                    )
                     if authenticated:
                         self._ml_service.register_auth_event(user_id, True)
                         await websocket.send_json(
@@ -138,11 +143,15 @@ class TimelineWebSocketService:
                                 }
                             )
                     if not authenticated:
-                        self._ml_service.register_auth_event(user_id or "unknown", False)
+                        self._ml_service.register_auth_event(
+                            user_id or "unknown", False
+                        )
                         await manager.reject_connection(websocket, "Invalid token")
                         return
                 else:
-                    await manager.reject_connection(websocket, "Invalid auth message format")
+                    await manager.reject_connection(
+                        websocket, "Invalid auth message format"
+                    )
                     return
 
             if not user_id:
@@ -154,7 +163,9 @@ class TimelineWebSocketService:
                 try:
                     message = json.loads(data)
                 except json.JSONDecodeError:
-                    await websocket.send_json({"type": "error", "message": "Неверный формат JSON"})
+                    await websocket.send_json(
+                        {"type": "error", "message": "Неверный формат JSON"}
+                    )
                     continue
 
                 message_type = message.get("type")
@@ -165,14 +176,18 @@ class TimelineWebSocketService:
                         if channel == "timeline":
                             await timeline.subscribe(websocket)
                         self._ml_service.register_channel_activity(channel)
-                        await websocket.send_json({"type": "subscribed", "channel": channel})
+                        await websocket.send_json(
+                            {"type": "subscribed", "channel": channel}
+                        )
                 elif message_type == "unsubscribe":
                     channel = message.get("channel")
                     if channel:
                         await manager.unsubscribe(user_id, channel)
                         if channel == "timeline":
                             await timeline.unsubscribe(websocket)
-                        await websocket.send_json({"type": "unsubscribed", "channel": channel})
+                        await websocket.send_json(
+                            {"type": "unsubscribed", "channel": channel}
+                        )
                 elif message_type == "broadcast":
                     channel = message.get("channel")
                     content = message.get("content")

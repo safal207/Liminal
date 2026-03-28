@@ -6,6 +6,7 @@ package is not available.  The goal is not to be feature complete but to
 provide a tiny, well-behaved facade that mirrors the public signatures
 we rely on.
 """
+
 from __future__ import annotations
 
 from typing import Any

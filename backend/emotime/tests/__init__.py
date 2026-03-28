@@ -3,7 +3,7 @@
 
 Test modules:
 - test_core.py — core engine testing
-- test_sensors.py — sensor layer testing  
+- test_sensors.py — sensor layer testing
 - test_fusion.py — feature fusion testing
 - test_timeseries.py — time series testing
 - test_modes.py — emotional modes testing

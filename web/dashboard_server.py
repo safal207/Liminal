@@ -142,7 +142,7 @@ class SOMADashboardServer:
             {
                 "time": datetime.now().strftime("%H:%M:%S"),
                 "type": "wisdom_sharing",
-                "description": "🧠→👶 SOMA shares wisdom with learning_assistant: 'Каждая система важна в нашей семье'"
+                "description": "🧠→👶 SOMA shares wisdom with learning_assistant: 'Каждая система важна в нашей семье'",
             },
             {
                 "time": datetime.now().strftime("%H:%M:%S"),

@@ -1,4 +1,5 @@
 """Shared dependencies and service accessors for the Liminal backend app."""
+
 from __future__ import annotations
 
 import asyncio
@@ -16,6 +17,7 @@ from .services.websocket import ConnectionManagerService
 
 def _container() -> AppContainer:
     return get_container()
+
 
 _neo4j_gateway: Optional[Neo4jGateway] = None
 _neo4j_service: Optional[Neo4jService] = None
@@ -63,6 +65,7 @@ def reset_neo4j_gateway() -> None:
         _memory_service.remove_listener(_timeline_bridge_listener)
         _timeline_bridge_listener = None
 
+
 _neo4j_gateway: Optional[Neo4jGateway] = None
 _neo4j_service: Optional[Neo4jService] = None
 _timeline_bridge: Optional[TimelineGraphBridge] = None
@@ -107,6 +110,7 @@ def reset_neo4j_gateway() -> None:
     if _timeline_bridge_listener is not None:
         _memory_service.remove_listener(_timeline_bridge_listener)
         _timeline_bridge_listener = None
+
 
 _neo4j_gateway: Optional[Neo4jGateway] = None
 _neo4j_service: Optional[Neo4jService] = None

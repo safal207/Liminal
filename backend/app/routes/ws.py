@@ -1,4 +1,5 @@
 """WebSocket routes."""
+
 from __future__ import annotations
 
 from typing import Optional
@@ -36,7 +37,9 @@ async def websocket_timeline(
                 return
             user_id = payload.get("sub")
             if user_id:
-                authenticated = await manager.authenticate_connection(websocket, user_id)
+                authenticated = await manager.authenticate_connection(
+                    websocket, user_id
+                )
                 if authenticated:
                     ml_service.register_auth_event(user_id, True)
                     await websocket.send_json(
@@ -65,13 +68,17 @@ async def websocket_timeline(
 
             if payload.get("type") == "auth" and "token" in payload:
                 candidate = payload["token"]
-                token_payload = await token_verifier.ensure_websocket(websocket, candidate)
+                token_payload = await token_verifier.ensure_websocket(
+                    websocket, candidate
+                )
                 if token_payload is None:
                     ml_service.register_auth_event(user_id or "unknown", False)
                     return
                 user_id = token_payload.get("sub")
                 if user_id:
-                    authenticated = await manager.authenticate_connection(websocket, user_id)
+                    authenticated = await manager.authenticate_connection(
+                        websocket, user_id
+                    )
                     if authenticated:
                         ml_service.register_auth_event(user_id, True)
                         await websocket.send_json(
@@ -85,7 +92,9 @@ async def websocket_timeline(
                     await manager.reject_connection(websocket, "Invalid token")
                     return
             else:
-                await manager.reject_connection(websocket, "Invalid auth message format")
+                await manager.reject_connection(
+                    websocket, "Invalid auth message format"
+                )
                 return
 
         if not user_id:

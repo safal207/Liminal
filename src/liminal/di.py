@@ -1,4 +1,5 @@
 """Global dependency injection container for Liminal core components."""
+
 from __future__ import annotations
 
 from dependency_injector import containers, providers

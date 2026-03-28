@@ -1,4 +1,5 @@
 """FastAPI application entrypoint for the modularised backend."""
+
 from __future__ import annotations
 
 import asyncio
@@ -27,12 +28,14 @@ from .routes import auth, debug, fragments, waves, ws
 
 try:
     from ..burnout_guard.api import router as burnout_router
+
     BURNOUT_AVAILABLE = True
 except Exception:  # noqa: BLE001
     BURNOUT_AVAILABLE = False
 
 try:
     from ..emotime.api import emotime_router
+
     EMOTIME_AVAILABLE = True
 except Exception:  # noqa: BLE001
     EMOTIME_AVAILABLE = False

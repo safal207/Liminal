@@ -9,7 +9,6 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from backend.auth.jwt_utils import JWTManager, get_jwt_manager
 
-
 _bearer_scheme = HTTPBearer(auto_error=False)
 
 

@@ -4,6 +4,7 @@
 Запускаются только при наличии поднятого WS/API сервера на localhost:8080.
 Помечены как @pytest.mark.integration, чтобы отделить от unit‑прогонов.
 """
+
 from __future__ import annotations
 
 import asyncio

@@ -1,4 +1,5 @@
 """Routes for working with dune waves and relationships."""
+
 from __future__ import annotations
 
 from typing import List
@@ -28,14 +29,18 @@ async def get_waves(limit: int = 10, service=Depends(get_neo4j_service)):
 
 
 @router.post("/relationships/link-wave-to-memory/", response_model=dict)
-async def link_wave_to_memory(wave_id: str, memory_id: str, service=Depends(get_neo4j_service)):
+async def link_wave_to_memory(
+    wave_id: str, memory_id: str, service=Depends(get_neo4j_service)
+):
     if not service.link_wave_to_memory(wave_id, memory_id):
         raise HTTPException(status_code=400, detail="Не удалось создать связь")
     return {"status": "success"}
 
 
 @router.post("/relationships/mentorship/", response_model=dict)
-async def create_mentorship(mentorship: MentorshipCreate, service=Depends(get_neo4j_service)):
+async def create_mentorship(
+    mentorship: MentorshipCreate, service=Depends(get_neo4j_service)
+):
     if not service.create_mentorship(mentorship.younger_id, mentorship.mentor_id):
         raise HTTPException(
             status_code=400, detail="Не удалось создать связь наставничества"

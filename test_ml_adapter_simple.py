@@ -31,25 +31,26 @@ from backend.personality.ml_adapter import (
 )
 from backend.personality.multilingual_support import detect_language
 
+
 async def test_ml_adapter():
     """Тестирование EmotionMLAdapter."""
     print("=== Тестирование EmotionMLAdapter ===")
-    
+
     # Создаем экземпляр EmotionMLAdapter
     adapter = EmotionMLAdapter()
-    
+
     # Тестируем метод get_emotion_suggestions
     print("\n--- Тестирование get_emotion_suggestions ---")
     emotions = await adapter.get_emotion_suggestions("user-1", context="радость")
     print("Предложения для 'радость':")
     pprint(emotions)
-    
+
     # Вместо несуществующего метода get_emotion_mapping выводим первые элементы EMOTION_MAPPING
     print("\n--- Тестирование EMOTION_MAPPING (первые 5 базовых эмоций) ---")
     base_items = list(EMOTION_MAPPING.get("BASE_EMOTIONS", {}).items())[:5]
     for key, value in base_items:
         print(f"{key}: {value}")
-    
+
     # Тестируем метод _aggregate_emotion_results
     print("\n--- Тестирование _aggregate_emotion_results ---")
     results = [
@@ -81,36 +82,40 @@ async def test_ml_adapter():
     aggregated = await _aggregate_emotion_results(results)
     print("Агрегированные результаты:")
     pprint(aggregated)
-    
+
     print("\n=== Тестирование завершено ===")
+
 
 def test_multilingual_support():
     """Тестирование функции detect_language."""
     print("\n=== Тестирование multilingual_support ===")
-    
+
     # Тестируем функцию detect_language
     texts = {
         "ru": "Привет, как дела? Это тестовый текст на русском языке.",
         "en": "Hello, how are you? This is a test text in English.",
         "de": "Hallo, wie geht es dir? Dies ist ein Testtext auf Deutsch.",
-        "fr": "Bonjour, comment ça va? C'est un texte de test en français."
+        "fr": "Bonjour, comment ça va? C'est un texte de test en français.",
     }
-    
+
     print("\n--- Определение языка ---")
     for lang, text in texts.items():
         detected = detect_language(text)
-        print(f"Ожидаемый язык: {lang}, Определенный язык: {detected}, Совпадение: {lang == detected}")
-    
+        print(
+            f"Ожидаемый язык: {lang}, Определенный язык: {detected}, Совпадение: {lang == detected}"
+        )
+
     print("\n=== Тестирование завершено ===")
+
 
 if __name__ == "__main__":
     # Запуск тестов
     print("Запуск тестов...")
-    
+
     # Тестирование multilingual_support
     test_multilingual_support()
-    
+
     # Тестирование ml_adapter
     asyncio.run(test_ml_adapter())
-    
+
     print("\nВсе тесты завершены успешно!")

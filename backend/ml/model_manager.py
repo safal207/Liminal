@@ -234,9 +234,7 @@ class ModelManager:
 
         try:
             if not model_path.exists():
-                logger.warning(
-                    f"Модель {model_name} не найдена по пути {model_path}"
-                )
+                logger.warning(f"Модель {model_name} не найдена по пути {model_path}")
                 status = "missing_artifact"
                 return False
 

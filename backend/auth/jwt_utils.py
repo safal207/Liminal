@@ -232,9 +232,7 @@ def create_access_token_for_user(user_data: Dict[str, Any]) -> str:
     Returns:
         str: JWT токен
     """
-    access_token_expires = timedelta(
-        minutes=jwt_manager.access_token_expire_minutes
-    )
+    access_token_expires = timedelta(minutes=jwt_manager.access_token_expire_minutes)
     access_token = jwt_manager.create_access_token(
         data={"sub": user_data["user_id"], "username": user_data["username"]},
         expires_delta=access_token_expires,

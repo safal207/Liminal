@@ -17,8 +17,11 @@ from unittest.mock import MagicMock, Mock, patch
 sys.path.append(str(Path(__file__).parent.parent / "scripts"))
 
 try:
-    from consciousness_quality import (ConsciousnessQualitySystem,
-                                       QualityLevel, TestResult)
+    from consciousness_quality import (
+        ConsciousnessQualitySystem,
+        QualityLevel,
+        TestResult,
+    )
     from SOMA_integrated import SOMAIntegratedFamily
 
     SOMA_AVAILABLE = True

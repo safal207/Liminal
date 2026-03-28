@@ -24,12 +24,12 @@ __author__ = "Resonance Liminal Team"
 
 __all__ = [
     "BurnoutGuardEngine",
-    "BurnoutState", 
+    "BurnoutState",
     "BurnoutRisk",
     "RecommendationEngine",
     "Recommendation",
     "TeamAnalytics",
     "TeamBurnoutTrend",
     "BurnoutMode",
-    "BurnoutModeType"
+    "BurnoutModeType",
 ]

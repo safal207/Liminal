@@ -9,13 +9,13 @@ from .dashboard import (
     AnalyticsInsight,
     PerformanceMetric,
     AnalyticsCategory,
-    get_analytics_dashboard
+    get_analytics_dashboard,
 )
 
 __all__ = [
-    'EmotimeAnalyticsDashboard',
-    'AnalyticsInsight', 
-    'PerformanceMetric',
-    'AnalyticsCategory',
-    'get_analytics_dashboard'
+    "EmotimeAnalyticsDashboard",
+    "AnalyticsInsight",
+    "PerformanceMetric",
+    "AnalyticsCategory",
+    "get_analytics_dashboard",
 ]

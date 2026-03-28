@@ -6,6 +6,7 @@ keep those historical imports functioning we expose the same public surface by
 re-exporting all names from :mod:`backend.metrics` while avoiding duplicate
 registration side effects.
 """
+
 from __future__ import annotations
 
 from backend.metrics import *  # noqa: F401,F403 - re-exported API

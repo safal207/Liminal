@@ -2,6 +2,7 @@
 """
 Utility script to generate sample test data for load testing.
 """
+
 import json
 import os
 import random

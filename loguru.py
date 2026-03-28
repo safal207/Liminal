@@ -11,6 +11,7 @@ except Exception:
         from backend.app_logging import get_logger  # type: ignore
     except Exception:  # fallback to stdlib logging if our config isn't available yet
         import logging
+
         def get_logger(name: str):
             return logging.getLogger(name)
 
@@ -44,7 +45,9 @@ class _CompatLogger:
             self._logger.error(msg, *args, **kwargs)
 
     # No-op compatibility stubs for loguru-specific API used in code
-    def add(self, *args: Any, **kwargs: Any) -> Optional[int]:  # loguru returns handler id
+    def add(
+        self, *args: Any, **kwargs: Any
+    ) -> Optional[int]:  # loguru returns handler id
         return 0
 
     def remove(self, *args: Any, **kwargs: Any) -> None:

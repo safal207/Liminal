@@ -1,4 +1,5 @@
 """Test configuration for the refactored backend FastAPI app."""
+
 from __future__ import annotations
 
 from typing import Iterator
@@ -65,5 +66,3 @@ def client(override_neo4j_service: MockNeo4jGateway) -> Iterator[TestClient]:
         timeline.subscribe = original_subscribe  # type: ignore[attr-defined]
     if original_unsubscribe is not None:
         timeline.unsubscribe = original_unsubscribe  # type: ignore[attr-defined]
-
-

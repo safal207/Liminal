@@ -18,6 +18,7 @@ from backend.core.settings import get_settings
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class TimelineEvent:
     """Structured message emitted by the memory timeline."""
@@ -129,7 +130,9 @@ class MemoryTimeline:
         async with self._lock:
             # Проверяем снова под локом, так как список мог измениться
             if not self._subscribers:
-                memory_timeline_events_total.labels(event_type="notification_skipped").inc()
+                memory_timeline_events_total.labels(
+                    event_type="notification_skipped"
+                ).inc()
                 return
 
             disconnected = []

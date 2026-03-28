@@ -3,6 +3,7 @@
 Диагностический скрипт для проверки универсального OpenAI адаптера
 Проверяет работу с реальным API и в режиме мока
 """
+
 import asyncio
 import json
 import os
@@ -89,8 +90,7 @@ print("------------------------------------")
 # Пробуем импортировать модуль
 try:
     info("Importing OpenAI wrapper module...")
-    from backend.ml.openai_wrapper import (LLMRequest, initialize_llm_client,
-                                           llm_client)
+    from backend.ml.openai_wrapper import LLMRequest, initialize_llm_client, llm_client
 
     success("OpenAI wrapper module imported successfully")
 

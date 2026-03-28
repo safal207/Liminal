@@ -30,9 +30,7 @@ class TimelineGraphBridge:
             "id": payload.get("id"),
             "content": payload.get("content"),
             "type": payload.get("type"),
-            "growth_stage": payload.get("metadata", {}).get(
-                "growth_stage", "observed"
-            ),
+            "growth_stage": payload.get("metadata", {}).get("growth_stage", "observed"),
             "timestamp": payload.get("timestamp"),
             "metadata": payload.get("metadata", {}),
         }

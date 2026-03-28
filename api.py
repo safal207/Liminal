@@ -9,6 +9,7 @@ To avoid breaking those environments we keep this tiny facade that simply
 re-exports the modern application object and lifespan context.  Importing this
 module has no side effects beyond importing :mod:`backend.api`.
 """
+
 from __future__ import annotations
 
 from backend.api import app, lifespan

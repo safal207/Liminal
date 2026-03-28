@@ -9,8 +9,11 @@ from pydantic import AliasChoices, BaseModel, Field
 
 try:  # pragma: no cover - prefer the dedicated package when available
     from pydantic_settings import BaseSettings, SettingsConfigDict
+
     USING_PYDANTIC_SETTINGS = True
-except Exception:  # pragma: no cover - fallback for environments without pydantic-settings
+except (
+    Exception
+):  # pragma: no cover - fallback for environments without pydantic-settings
     from pydantic import BaseModel
 
     USING_PYDANTIC_SETTINGS = False
@@ -66,7 +69,8 @@ class MemoryTimelineSettings(BaseModel):
     initial_state_limit: int = Field(
         DEFAULT_MEMORY_TIMELINE_INITIAL_LIMIT,
         validation_alias=AliasChoices(
-            "MEMORY_TIMELINE__INITIAL_STATE_LIMIT", "MEMORY_TIMELINE_INITIAL_STATE_LIMIT"
+            "MEMORY_TIMELINE__INITIAL_STATE_LIMIT",
+            "MEMORY_TIMELINE_INITIAL_STATE_LIMIT",
         ),
         json_schema_extra={
             "env": [
@@ -95,46 +99,32 @@ class IntegrationSettings(BaseModel):
 
     use_redis: bool = Field(
         False,
-        validation_alias=AliasChoices(
-            "INTEGRATIONS__USE_REDIS", "USE_REDIS"
-        ),
+        validation_alias=AliasChoices("INTEGRATIONS__USE_REDIS", "USE_REDIS"),
         json_schema_extra={"env": ["INTEGRATIONS__USE_REDIS", "USE_REDIS"]},
     )
     redis_url: str = Field(
         "redis://localhost:6379/0",
-        validation_alias=AliasChoices(
-            "INTEGRATIONS__REDIS_URL", "REDIS_URL"
-        ),
+        validation_alias=AliasChoices("INTEGRATIONS__REDIS_URL", "REDIS_URL"),
         json_schema_extra={"env": ["INTEGRATIONS__REDIS_URL", "REDIS_URL"]},
     )
     neo4j_uri: str = Field(
         "bolt://localhost:7687",
-        validation_alias=AliasChoices(
-            "INTEGRATIONS__NEO4J_URI", "NEO4J_URI"
-        ),
+        validation_alias=AliasChoices("INTEGRATIONS__NEO4J_URI", "NEO4J_URI"),
         json_schema_extra={"env": ["INTEGRATIONS__NEO4J_URI", "NEO4J_URI"]},
     )
     neo4j_user: str = Field(
         "neo4j",
-        validation_alias=AliasChoices(
-            "INTEGRATIONS__NEO4J_USER", "NEO4J_USER"
-        ),
+        validation_alias=AliasChoices("INTEGRATIONS__NEO4J_USER", "NEO4J_USER"),
         json_schema_extra={"env": ["INTEGRATIONS__NEO4J_USER", "NEO4J_USER"]},
     )
     neo4j_password: str = Field(
         "password",
-        validation_alias=AliasChoices(
-            "INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD"
-        ),
-        json_schema_extra={
-            "env": ["INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD"]
-        },
+        validation_alias=AliasChoices("INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD"),
+        json_schema_extra={"env": ["INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD"]},
     )
     ml_enabled: bool = Field(
         False,
-        validation_alias=AliasChoices(
-            "INTEGRATIONS__ML_ENABLED", "ML_ENABLED"
-        ),
+        validation_alias=AliasChoices("INTEGRATIONS__ML_ENABLED", "ML_ENABLED"),
         json_schema_extra={"env": ["INTEGRATIONS__ML_ENABLED", "ML_ENABLED"]},
     )
 
@@ -143,7 +133,9 @@ class Settings(BaseSettings):
     """Centralised application settings loaded via Pydantic."""
 
     jwt: JWTSettings = Field(default_factory=JWTSettings)
-    memory_timeline: MemoryTimelineSettings = Field(default_factory=MemoryTimelineSettings)
+    memory_timeline: MemoryTimelineSettings = Field(
+        default_factory=MemoryTimelineSettings
+    )
     integrations: IntegrationSettings = Field(default_factory=IntegrationSettings)
 
     if USING_PYDANTIC_SETTINGS:
@@ -175,10 +167,21 @@ class Settings(BaseSettings):
         }
         env_mapping: Dict[str, Dict[str, Tuple[Iterable[str], Type[Any], Any]]] = {
             "jwt": {
-                "secret_key": (("JWT__SECRET_KEY", "JWT_SECRET_KEY"), str, DEFAULT_SECRET),
-                "algorithm": (("JWT__ALGORITHM", "JWT_ALGORITHM"), str, DEFAULT_ALGORITHM),
+                "secret_key": (
+                    ("JWT__SECRET_KEY", "JWT_SECRET_KEY"),
+                    str,
+                    DEFAULT_SECRET,
+                ),
+                "algorithm": (
+                    ("JWT__ALGORITHM", "JWT_ALGORITHM"),
+                    str,
+                    DEFAULT_ALGORITHM,
+                ),
                 "access_token_expire_minutes": (
-                    ("JWT__ACCESS_TOKEN_EXPIRE_MINUTES", "JWT_ACCESS_TOKEN_EXPIRE_MINUTES"),
+                    (
+                        "JWT__ACCESS_TOKEN_EXPIRE_MINUTES",
+                        "JWT_ACCESS_TOKEN_EXPIRE_MINUTES",
+                    ),
                     int,
                     DEFAULT_EXPIRE_MINUTES,
                 ),
@@ -242,7 +245,9 @@ class Settings(BaseSettings):
             else:
                 section_data = dict(current or {})
 
-            for field_name, (env_names, caster, default) in env_mapping[section].items():
+            for field_name, (env_names, caster, default) in env_mapping[
+                section
+            ].items():
                 if field_name in section_data and section_data[field_name] is not None:
                     continue
 

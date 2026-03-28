@@ -26,7 +26,7 @@ SUPPORTED_LANGUAGES = {
     "es": "spanish",
     "it": "italian",
     "zh": "chinese",
-    "ja": "japanese"
+    "ja": "japanese",
 }
 
 # Словари эмоций для разных языков
@@ -56,7 +56,7 @@ EMOTION_DICTIONARIES = {
         "boredom": "скука",
         "nostalgia": "ностальгия",
         "confusion": "замешательство",
-        "pensiveness": "задумчивость"
+        "pensiveness": "задумчивость",
     },
     "en": {
         "joy": "joy",
@@ -83,7 +83,7 @@ EMOTION_DICTIONARIES = {
         "boredom": "boredom",
         "nostalgia": "nostalgia",
         "confusion": "confusion",
-        "pensiveness": "pensiveness"
+        "pensiveness": "pensiveness",
     },
     "de": {
         "joy": "Freude",
@@ -110,7 +110,7 @@ EMOTION_DICTIONARIES = {
         "boredom": "Langeweile",
         "nostalgia": "Nostalgie",
         "confusion": "Verwirrung",
-        "pensiveness": "Nachdenklichkeit"
+        "pensiveness": "Nachdenklichkeit",
     },
     "fr": {
         "joy": "joie",
@@ -137,8 +137,8 @@ EMOTION_DICTIONARIES = {
         "boredom": "ennui",
         "nostalgia": "nostalgie",
         "confusion": "confusion",
-        "pensiveness": "pensivité"
-    }
+        "pensiveness": "pensivité",
+    },
 }
 
 # Языковые маркеры для определения языка
@@ -156,30 +156,30 @@ LANGUAGE_MARKERS = {
 def detect_language(text: str) -> str:
     """
     Определяет язык текста на основе частоты символов.
-    
+
     Args:
         text: Текст для анализа
-        
+
     Returns:
         Код языка (ru, en, de, fr, es, it) или 'en' по умолчанию
     """
     if not text:
         return "en"
-    
+
     # Приводим текст к нижнему регистру
     text = text.lower()
-    
+
     # Считаем символы для каждого языка
     lang_counts = {}
     for lang, charset in LANGUAGE_MARKERS.items():
         count = sum(1 for char in text if char in charset)
         if count > 0:
             lang_counts[lang] = count / len(text)
-    
+
     # Если не удалось определить язык, возвращаем английский
     if not lang_counts:
         return "en"
-    
+
     # Возвращаем язык с наибольшим количеством совпадений
     return max(lang_counts.items(), key=lambda x: x[1])[0]
 
@@ -187,29 +187,32 @@ def detect_language(text: str) -> str:
 def translate_emotion(emotion: str, source_lang: str, target_lang: str) -> str:
     """
     Переводит название эмоции с одного языка на другой.
-    
+
     Args:
         emotion: Название эмоции
         source_lang: Исходный язык (ru, en, de, fr)
         target_lang: Целевой язык (ru, en, de, fr)
-        
+
     Returns:
         Переведенное название эмоции
     """
-    if source_lang not in EMOTION_DICTIONARIES or target_lang not in EMOTION_DICTIONARIES:
+    if (
+        source_lang not in EMOTION_DICTIONARIES
+        or target_lang not in EMOTION_DICTIONARIES
+    ):
         return emotion
-    
+
     # Находим ключ эмоции в исходном языке
     emotion_key = None
     for key, value in EMOTION_DICTIONARIES[source_lang].items():
         if value.lower() == emotion.lower():
             emotion_key = key
             break
-    
+
     # Если не нашли ключ, возвращаем исходную эмоцию
     if not emotion_key:
         return emotion
-    
+
     # Возвращаем эмоцию на целевом языке
     return EMOTION_DICTIONARIES[target_lang].get(emotion_key, emotion)
 
@@ -217,11 +220,11 @@ def translate_emotion(emotion: str, source_lang: str, target_lang: str) -> str:
 def get_emotion_in_language(emotion: str, target_lang: str) -> str:
     """
     Возвращает название эмоции на указанном языке.
-    
+
     Args:
         emotion: Название эмоции (на любом языке)
         target_lang: Целевой язык (ru, en, de, fr)
-        
+
     Returns:
         Название эмоции на целевом языке
     """
@@ -231,15 +234,20 @@ def get_emotion_in_language(emotion: str, target_lang: str) -> str:
         if emotion.lower() in [e.lower() for e in emotions.values()]:
             source_lang = lang
             break
-    
+
     # Переводим эмоцию
     return translate_emotion(emotion, source_lang, target_lang)
 
 
-async def analyze_multilingual_text(text: str, analyzer_func, target_lang: str = "ru", expected_lang: Optional[str] = None) -> Dict[str, Any]:
+async def analyze_multilingual_text(
+    text: str,
+    analyzer_func,
+    target_lang: str = "ru",
+    expected_lang: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Анализирует текст на любом языке и возвращает результат на целевом языке.
-    
+
     Args:
         text: Текст для анализа
         analyzer_func: Функция анализа эмоций
@@ -248,13 +256,13 @@ async def analyze_multilingual_text(text: str, analyzer_func, target_lang: str =
             tie-break в случае неоднозначности (например, только ASCII-символы).
             Если счёт expected_lang по LANGUAGE_MARKERS не хуже обнаруженного,
             выбирается expected_lang.
-        
+
     Returns:
         Результат анализа с эмоциями на целевом языке
     """
     # Определяем язык текста
     detected_lang = detect_language(text)
-    
+
     # Tie-break с подсказкой expected_lang при равенстве/неоднозначности
     if expected_lang and expected_lang in SUPPORTED_LANGUAGES:
         try:
@@ -269,17 +277,19 @@ async def analyze_multilingual_text(text: str, analyzer_func, target_lang: str =
         except Exception:
             # Безопасно игнорируем ошибки повышения надёжности
             pass
-    
+
     # Анализируем текст
     result = await analyzer_func(text)
-    
+
     # Если язык результата отличается от целевого, переводим эмоцию
     if detected_lang != target_lang:
         result["original_emotion"] = result["emotion_type"]
         result["original_language"] = detected_lang
-        result["emotion_type"] = get_emotion_in_language(result["emotion_type"], target_lang)
+        result["emotion_type"] = get_emotion_in_language(
+            result["emotion_type"], target_lang
+        )
         result["target_language"] = target_lang
-    
+
     return result
 
 
@@ -287,7 +297,7 @@ async def analyze_multilingual_text(text: str, analyzer_func, target_lang: str =
 def get_supported_languages() -> Dict[str, str]:
     """
     Возвращает список поддерживаемых языков.
-    
+
     Returns:
         Словарь с кодами и названиями языков
     """
@@ -298,10 +308,10 @@ def get_supported_languages() -> Dict[str, str]:
 def get_emotion_dictionary(lang: str) -> Dict[str, str]:
     """
     Возвращает словарь эмоций для указанного языка.
-    
+
     Args:
         lang: Код языка (ru, en, de, fr)
-        
+
     Returns:
         Словарь эмоций для указанного языка
     """

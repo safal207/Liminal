@@ -17,9 +17,9 @@ from typing import Any, Dict, List, Optional, Union
 safe_logger = logging.getLogger("burnout_guard")
 if not safe_logger.handlers:
     handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    ))
+    handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    )
     safe_logger.addHandler(handler)
     safe_logger.setLevel(logging.INFO)
 
@@ -27,7 +27,7 @@ if not safe_logger.handlers:
 def format_risk_score(score: float) -> str:
     """Форматирует скор риска в читаемый вид."""
     percentage = int(score * 100)
-    
+
     if score <= 0.2:
         return f"🟢 {percentage}% - Очень низкий риск"
     elif score <= 0.4:
@@ -93,20 +93,21 @@ def is_working_hours(hour: int, working_start: int = 9, working_end: int = 18) -
 
 def serialize_burnout_data(data: Any) -> str:
     """Сериализует данные BurnoutGuard в JSON."""
+
     def serialize_helper(obj):
         if isinstance(obj, datetime):
             return obj.isoformat()
-        elif hasattr(obj, '__dict__'):
+        elif hasattr(obj, "__dict__"):
             return {key: serialize_helper(value) for key, value in obj.__dict__.items()}
         elif isinstance(obj, list):
             return [serialize_helper(item) for item in obj]
         elif isinstance(obj, dict):
             return {key: serialize_helper(value) for key, value in obj.items()}
-        elif hasattr(obj, 'value'):  # для Enum
+        elif hasattr(obj, "value"):  # для Enum
             return obj.value
         else:
             return obj
-    
+
     try:
         return json.dumps(serialize_helper(data), ensure_ascii=False, indent=2)
     except Exception as e:
@@ -117,14 +118,14 @@ def serialize_burnout_data(data: Any) -> str:
 def create_alert_message(risk_score: float, indicators: List[str]) -> str:
     """Создает сообщение предупреждения."""
     risk_emoji = "🚨" if risk_score > 0.8 else "⚠️" if risk_score > 0.6 else "ℹ️"
-    
+
     message = f"{risk_emoji} Уровень риска выгорания: {format_risk_score(risk_score)}\n"
-    
+
     if indicators:
         message += "\nОсновные индикаторы:\n"
         for indicator in indicators[:5]:  # показываем максимум 5
             message += f"• {indicator}\n"
-    
+
     return message.strip()
 
 
