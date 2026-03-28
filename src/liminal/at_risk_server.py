@@ -10,6 +10,7 @@ try:
         JSONResponse,
         PlainTextResponse,
         RedirectResponse,
+        Response,
     )
     from starlette.routing import Mount, Route
 except Exception as e:  # pragma: no cover

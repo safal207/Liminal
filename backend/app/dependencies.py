@@ -38,7 +38,7 @@ def _bind_timeline_bridge(gateway: Neo4jGateway) -> None:
 
 
 def _ensure_neo4j_components() -> None:
-    global _neo4j_gateway, _neo4j_service, _timeline_bridge_listener
+    global _neo4j_gateway, _neo4j_service
     if _neo4j_gateway is None:
         _neo4j_gateway = get_default_gateway()
     if _neo4j_service is None:

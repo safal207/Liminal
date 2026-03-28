@@ -599,7 +599,7 @@ XAI АНАЛИЗ:
         Returns:
             Ответ от OpenAI API
         """
-        if not OPENAI_AVAILABLE:
+        if not WRAPPER_AVAILABLE:
             logger.error("OpenAI API недоступно")
             return "Ошибка: OpenAI API недоступно. Установите библиотеку openai."
 

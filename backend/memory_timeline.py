@@ -5,12 +5,18 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from time import perf_counter
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from fastapi import WebSocket
 
 from backend.auth.dependencies import token_verifier
 from backend.core.settings import get_settings
+from backend.metrics.collectors import (
+    memory_timeline_events_total,
+    memory_timeline_processing_seconds,
+    memory_timeline_subscribers,
+)
 
 logger = logging.getLogger(__name__)
 

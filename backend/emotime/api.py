@@ -482,8 +482,6 @@ async def health_check():
     Возвращает статус всех компонентов.
     """
     try:
-        global _global_emotime
-
         health_status = {
             "emotime_core": "ok",
             "active_session": _global_emotime is not None,

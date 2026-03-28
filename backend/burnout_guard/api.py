@@ -160,7 +160,7 @@ async def get_team_analytics(
                 }
 
         safe_logger.info(
-            f"Team analytics generated for {team_id} by user {user['user_id']}"
+            f"Team analytics generated for {team_id} by user {user_context.user_id}"
         )
         return result
 

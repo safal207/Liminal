@@ -360,31 +360,26 @@ class MLFeatureExtractor:
     @staticmethod
     def _get_request_timestamps() -> List[float]:
         """Возвращает временные метки запросов"""
-        global _request_timestamps
         return _request_timestamps
 
     @staticmethod
     def _get_user_request_data() -> List[Tuple[float, str]]:
         """Возвращает данные о запросах пользователей"""
-        global _user_request_data
         return _user_request_data
 
     @staticmethod
     def _get_request_ip_data() -> List[Tuple[float, str]]:
         """Возвращает данные об IP-адресах запросов"""
-        global _request_ip_data
         return _request_ip_data
 
     @staticmethod
     def _get_auth_events() -> List[Dict[str, Any]]:
         """Возвращает события авторизации"""
-        global _auth_events
         return _auth_events
 
     @staticmethod
     def _get_channel_activity() -> Dict[str, int]:
         """Возвращает активность по каналам"""
-        global _channel_activity
         return dict(_channel_activity)
 
 
@@ -448,7 +443,6 @@ def register_channel_activity(channel: str) -> None:
     if not ML_ENABLED:
         return
 
-    global _channel_activity
     _channel_activity[channel] += 1
 
 

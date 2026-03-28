@@ -10,6 +10,7 @@ from typing import Any, Awaitable, Callable, Dict
 from fastapi import WebSocket
 
 from backend.logging_config import get_logger
+from backend.websocket.connection_manager import ConnectionManager
 
 logger = get_logger("websocket.handlers")
 
