@@ -12,6 +12,7 @@ from ..dependencies import (
     get_connection_manager,
     get_memory_timeline,
     get_ml_service,
+    get_websocket_service,
 )
 
 router = APIRouter()
