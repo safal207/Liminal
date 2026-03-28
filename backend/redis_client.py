@@ -5,7 +5,7 @@ Provides Redis connection, PubSub, and caching functionality
 
 import os
 
-from logging_config import get_logger
+from backend.logging_config import get_logger
 
 logger = get_logger(__name__)
 

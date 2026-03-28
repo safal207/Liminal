@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict
 
 from fastapi import WebSocket
-from logging_config import get_logger
+from backend.logging_config import get_logger
 
 logger = get_logger("websocket.handlers")
 

@@ -6,7 +6,7 @@ from typing import Dict, List, Any
 
 from fastapi import APIRouter, HTTPException, status, Depends
 from pydantic import BaseModel
-from logging_config import get_logger
+from backend.logging_config import get_logger
 
 logger = get_logger(__name__)
 

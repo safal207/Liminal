@@ -7,7 +7,7 @@ import asyncio
 import sys
 import uuid
 
-from logging_config import get_logger
+from backend.logging_config import get_logger
 from websocket.redis_client import RedisClient
 from websocket.redis_connection_manager import RedisConnectionManager
 
