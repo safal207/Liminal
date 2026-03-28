@@ -9,30 +9,31 @@
 
 import asyncio
 import time
-import numpy as np
+from dataclasses import asdict, dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
+from typing import Any, Dict, List, Optional
 
-from .sensors import SensorData
-from .fusion import FeatureFusion, EmotionalFeatures
-from .timeseries import EmotionalTimeSeries, EmotionalPoint
-from .modes import EmotionalModes, EmotionalMode
+import numpy as np
+
+from .fusion import EmotionalFeatures, FeatureFusion
 from .metrics_integration import emotime_metrics
+from .modes import EmotionalMode, EmotionalModes
 from .neo4j_storage import EmotimeNeo4jStorage
+from .sensors import SensorData
+from .timeseries import EmotionalPoint, EmotionalTimeSeries
 from .utils import safe_logger
 
 # MIT Advanced ML components
 try:
     from .ml import (
-        get_calibrator,
-        AdaptiveCalibrator,
-        get_adaptive_engine,
-        AdaptiveEmotionalEngine,
-        get_feature_learner,
-        DeepFeatureLearner,
         ADAPTIVE_ENGINE_AVAILABLE,
         FEATURE_LEARNING_AVAILABLE,
+        AdaptiveCalibrator,
+        AdaptiveEmotionalEngine,
+        DeepFeatureLearner,
+        get_adaptive_engine,
+        get_calibrator,
+        get_feature_learner,
     )
 
     ML_ENHANCED = True

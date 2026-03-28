@@ -3,8 +3,9 @@
 """
 
 import pytest
-from api import app
 from fastapi.testclient import TestClient
+
+from api import app
 
 
 def test_get_empty_timeline():

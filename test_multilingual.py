@@ -7,8 +7,8 @@
 """
 
 import asyncio
-import sys
 import os
+import sys
 from pprint import pprint
 
 # Добавляем путь к проекту
@@ -17,12 +17,12 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Отключаем импорт модулей, которые могут вызывать проблемы
 sys.modules["backend.personality.router"] = None
 
+from backend.personality.ml_adapter import EmotionMLAdapter
 from backend.personality.multilingual_support import (
+    analyze_multilingual_text,
     detect_language,
     translate_emotion,
-    analyze_multilingual_text,
 )
-from backend.personality.ml_adapter import EmotionMLAdapter
 
 
 async def test_multilingual_support():

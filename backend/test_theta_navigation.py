@@ -18,22 +18,22 @@ Key Features Being Tested:
 import asyncio
 import time
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any, Dict, List
 
 # Safe imports with fallbacks
 try:
-    from retrosplenial_gateway.core import RetrosplenialGateway, NavigationEvent
+    from retrosplenial_gateway.core import NavigationEvent, RetrosplenialGateway
     from retrosplenial_gateway.directions import NavigationContext, SemanticDirection
     from retrosplenial_gateway.theta_engine import ThetaType
 except ImportError as e:
     print(f"Import error: {e}")
     print("Running test from backend directory...")
-    import sys
     import os
+    import sys
 
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-    from retrosplenial_gateway.core import RetrosplenialGateway, NavigationEvent
+    from retrosplenial_gateway.core import NavigationEvent, RetrosplenialGateway
     from retrosplenial_gateway.directions import NavigationContext, SemanticDirection
     from retrosplenial_gateway.theta_engine import ThetaType
 

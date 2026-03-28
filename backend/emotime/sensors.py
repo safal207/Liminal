@@ -7,13 +7,12 @@
 - AudioSensor: анализ голосовых характеристик
 """
 
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Union
 from enum import Enum
-
-import re
+from typing import Any, Dict, List, Optional, Union
 
 
 class SensorType(Enum):

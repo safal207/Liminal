@@ -9,8 +9,8 @@
 """
 
 import asyncio
-import sys
 import os
+import sys
 from unittest.mock import AsyncMock, MagicMock
 
 # Добавляем путь к модулям

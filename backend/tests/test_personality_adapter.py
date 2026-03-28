@@ -9,23 +9,23 @@
 """
 
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
-
-import sys
 import os
+import sys
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from backend.database_adapter import DataType
 from backend.personality import PersonalityAdapter
 from backend.personality.schema import (
     Emotion,
+    PersonalityProfile,
     Preference,
     Recommendation,
-    PersonalityProfile,
 )
-from backend.database_adapter import DataType
 
 
 class TestPersonalityAdapter:

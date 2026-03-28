@@ -23,21 +23,21 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
-from sklearn.base import BaseEstimator
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-
-from config import get_ml_settings
 from monitoring import monitoring_service, record_business_metric
 from resilience import (
+    LiminalException,
     circuit_breaker,
     with_bulkhead,
     with_retry_policy,
-    LiminalException,
 )
+from sklearn.base import BaseEstimator
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+
+from config import get_ml_settings
 
 logger = monitoring_service.tracer.start_span("ml_pipeline").__enter__()
 

@@ -13,10 +13,10 @@ Based on peer-reviewed neurofeedback research and clinical guidelines.
 """
 
 import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class EvidenceLevel(Enum):

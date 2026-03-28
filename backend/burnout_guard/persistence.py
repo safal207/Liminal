@@ -11,24 +11,24 @@ Integration with existing dual database architecture:
 """
 
 import asyncio
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, asdict
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 # Import existing database components
 try:
+    from ..consciousness_neo4j import ConsciousnessNeo4jWriter
     from ..database_adapter import DatabaseAdapter, DataType
     from ..datomic_client import DatomicClient
-    from ..consciousness_neo4j import ConsciousnessNeo4jWriter
 
     DB_AVAILABLE = True
 except ImportError:
     DB_AVAILABLE = False
 
-from .core import BurnoutState, BurnoutRisk
-from .modes import BurnoutMode, BurnoutModeType, BurnoutRiskLevel
 from .analytics import TeamAnalytics, TeamMember
+from .core import BurnoutRisk, BurnoutState
+from .modes import BurnoutMode, BurnoutModeType, BurnoutRiskLevel
 from .utils import safe_logger
 
 

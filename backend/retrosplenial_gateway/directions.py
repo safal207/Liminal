@@ -17,10 +17,10 @@ Each direction represents both a spatial and temporal orientation in the
 landscape of consciousness and meaning.
 """
 
-from enum import Enum
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class SemanticDirection(Enum):

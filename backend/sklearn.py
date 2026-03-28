@@ -3,8 +3,8 @@ Simple fallback implementation of sklearn for testing.
 This provides mock ML functionality when sklearn is not available.
 """
 
-from typing import Any, List, Optional
 import random
+from typing import Any, List, Optional
 
 
 class MockModel:

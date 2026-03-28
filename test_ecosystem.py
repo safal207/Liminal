@@ -4,9 +4,9 @@ Quick test of LIMINAL Ecosystem L-CORE Agent
 Run this to see immediate benefits from the ecosystem
 """
 
-import sys
-import os
 import asyncio
+import os
+import sys
 from datetime import datetime
 
 # Add backend to path
@@ -20,7 +20,7 @@ def test_ecosystem():
 
     try:
         # Import L-CORE Agent
-        from ecosystem_l.l_core_agent import LCoreAgent, ProductStatus, EcosystemHealth
+        from ecosystem_l.l_core_agent import EcosystemHealth, LCoreAgent, ProductStatus
 
         print("✅ L-CORE Agent imported successfully!")
 

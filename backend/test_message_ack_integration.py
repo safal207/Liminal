@@ -5,8 +5,9 @@ Tests the complete ACK system including API endpoints and metrics.
 
 import asyncio
 import json
-import requests
 import time
+
+import requests
 from websocket.connection_manager import ConnectionManager, PendingMessage
 
 

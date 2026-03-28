@@ -9,12 +9,12 @@
 """
 
 import asyncio
-from datetime import datetime, timedelta
 import random
+from datetime import datetime, timedelta
 
 from .core import EmotimeEngine
-from .sensors import SensorData, SensorType, TextData, TouchData, AudioData
 from .modes import ModeType
+from .sensors import AudioData, SensorData, SensorType, TextData, TouchData
 from .utils import safe_logger
 
 

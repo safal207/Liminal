@@ -18,8 +18,9 @@ def test_root_endpoint():
 def test_memory_timeline():
     """Проверяем работу с временной шкалой памяти с таймаутами."""
     import pytest
-    from api import app, memory_timeline
     from fastapi.testclient import TestClient
+
+    from api import app, memory_timeline
 
     # Используем контекстный менеджер для тестового клиента
     with TestClient(app) as client:

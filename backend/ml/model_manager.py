@@ -11,6 +11,7 @@ from time import perf_counter
 from typing import Any, Dict, List, Optional
 
 import yaml
+
 from loguru import logger
 
 from .observability import (

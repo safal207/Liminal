@@ -9,17 +9,17 @@ World-class real-time emotional intelligence streaming:
 """
 
 import asyncio
-import time
 import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable
-from dataclasses import dataclass, asdict
-from collections import deque
+import time
 import uuid
+from collections import deque
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Any, Callable, Dict, List, Optional
 
 from ..core import EmotimeEngine
-from ..sensors import SensorData, SensorType
 from ..modes import ModeType
+from ..sensors import SensorData, SensorType
 from ..utils import safe_logger
 from .connection_manager import EmotionalUpdate, get_connection_manager
 
@@ -472,7 +472,7 @@ class RealTimeEmotionalStreamer:
         """Обрабатывает сенсорные данные от клиента в реальном времени."""
         try:
             # Convert to SensorData object
-            from ..sensors import TextData, TouchData, AudioData
+            from ..sensors import AudioData, TextData, TouchData
 
             sensor_type = SensorType(sensor_data.get("type", "text"))
             timestamp = datetime.now()

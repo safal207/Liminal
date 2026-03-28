@@ -8,14 +8,14 @@ for brain-accurate navigation through liminal states.
 
 import asyncio
 import time
-from datetime import datetime
-from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 from retrosplenial_gateway import (
-    RetrosplenialGateway,
-    NavigationEvent,
     NavigationContext,
+    NavigationEvent,
+    RetrosplenialGateway,
     SemanticDirection,
 )
 

@@ -1,15 +1,16 @@
 """Модуль обнаружения аномалий на основе машинного обучения."""
 
+import json
+import logging
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple
+
+import joblib
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
-import joblib
-from typing import Dict, List, Optional, Tuple
-from datetime import datetime, timedelta
-import logging
-from dataclasses import dataclass
-import json
 
 from backend.security_logging import security_logger
 

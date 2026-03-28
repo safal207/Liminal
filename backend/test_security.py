@@ -9,8 +9,8 @@ Tests all security improvements:
 - XSS/injection prevention
 """
 
-import sys
 import os
+import sys
 
 sys.path.append(".")
 

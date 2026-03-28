@@ -14,20 +14,21 @@ full neurological accuracy across all major brain rhythms.
 """
 
 import asyncio
-import time
 import math
-from datetime import datetime
-from typing import Dict, List, Optional, Any, Tuple
+import time
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
+
+from .alpha_engine import AlphaState, AlphaWaveEngine
+from .beta_engine import BetaState, BetaWaveEngine
+from .core import NavigationContext, NavigationEvent, RetrosplenialGateway
+from .delta_engine import DeltaState, DeltaWaveEngine
+from .directions import SemanticDirection
+from .gamma_engine import GammaBand, GammaSynchronyCompass
 
 # Import all wave engines
 from .theta_engine import ThetaOscillationEngine, ThetaType
-from .gamma_engine import GammaSynchronyCompass, GammaBand
-from .alpha_engine import AlphaWaveEngine, AlphaState
-from .beta_engine import BetaWaveEngine, BetaState
-from .delta_engine import DeltaWaveEngine, DeltaState
-from .core import RetrosplenialGateway, NavigationEvent, NavigationContext
-from .directions import SemanticDirection
 
 
 @dataclass

@@ -2,20 +2,20 @@
 🌿✨ Emotime Core Engine Tests — testing the heartbeat of emotional time
 """
 
-import pytest
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import Mock, patch, AsyncMock
-
-import sys
 import os
+import sys
+from datetime import datetime, timedelta
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from emotime.core import EmotimeEngine, EmotimeState
-from emotime.sensors import SensorData, SensorType
 from emotime.fusion import EmotionalFeatures
 from emotime.modes import EmotionalMode, ModeType
+from emotime.sensors import SensorData, SensorType
 
 
 class TestEmotimeEngine:

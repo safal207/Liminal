@@ -30,7 +30,7 @@ async def test_basic_direction_encoding():
 
     try:
         # Import the gateway system
-        from retrosplenial_gateway.core import RetrosplenialGateway, NavigationEvent
+        from retrosplenial_gateway.core import NavigationEvent, RetrosplenialGateway
         from retrosplenial_gateway.directions import SemanticDirection
 
         # Create gateway
@@ -99,7 +99,7 @@ async def test_semantic_directions():
     print("Testing Semantic Direction System...")
 
     try:
-        from retrosplenial_gateway.directions import SemanticDirection, DirectionalSpace
+        from retrosplenial_gateway.directions import DirectionalSpace, SemanticDirection
 
         # Test all four semantic directions
         directions = [
@@ -146,13 +146,13 @@ async def test_context_stability():
 
     try:
         from retrosplenial_gateway.core import (
-            RetrosplenialGateway,
-            NavigationEvent,
             DirectionalVector,
+            NavigationEvent,
+            RetrosplenialGateway,
         )
         from retrosplenial_gateway.directions import (
-            SemanticDirection,
             NavigationContext,
+            SemanticDirection,
         )
         from retrosplenial_gateway.stability import ContextStabilizer
 
@@ -246,9 +246,9 @@ async def test_transition_navigation():
 
     try:
         from retrosplenial_gateway.core import (
-            RetrosplenialGateway,
-            NavigationEvent,
             DirectionalVector,
+            NavigationEvent,
+            RetrosplenialGateway,
         )
         from retrosplenial_gateway.directions import SemanticDirection
 
@@ -353,10 +353,10 @@ async def test_memory_compass():
     print("Testing Memory Compass...")
 
     try:
-        from retrosplenial_gateway.core import MemoryCompass, DirectionalVector
+        from retrosplenial_gateway.core import DirectionalVector, MemoryCompass
         from retrosplenial_gateway.directions import (
-            SemanticDirection,
             NavigationContext,
+            SemanticDirection,
         )
 
         memory_compass = MemoryCompass()
@@ -416,7 +416,7 @@ async def test_complete_system():
     print("Testing Complete Retrosplenial Gateway System...")
 
     try:
-        from retrosplenial_gateway.core import RetrosplenialGateway, NavigationEvent
+        from retrosplenial_gateway.core import NavigationEvent, RetrosplenialGateway
         from retrosplenial_gateway.directions import NavigationContext
 
         gateway = RetrosplenialGateway()

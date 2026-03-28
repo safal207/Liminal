@@ -6,11 +6,11 @@ Test all 4 breakthrough technologies working together
 Ready for 2030 deployment test!
 """
 
-import sys
-import os
 import asyncio
-from datetime import datetime
+import os
+import sys
 import time
+from datetime import datetime
 
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "backend"))
@@ -327,8 +327,8 @@ async def test_integrated_scenario(technologies):
 
         # Create enlightenment reality space
         from breakthrough.reality_synthesis_engine import (
-            RealityLayer,
             ConsciousnessEntity,
+            RealityLayer,
         )
 
         enlightenment_layers = [

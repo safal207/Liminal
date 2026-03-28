@@ -2,9 +2,10 @@
 Тест для мягкого эндпоинта /ready в degraded режиме.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch
 
 from backend.main import app
 

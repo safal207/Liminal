@@ -3,19 +3,19 @@
 """
 
 from datetime import timedelta
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 
 from backend.auth.jwt_utils import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
     authenticate_user,
     create_access_token_for_user,
     create_tokens_for_user,
-    refresh_access_token,
     jwt_manager,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
+    refresh_access_token,
 )
 
 # Создаем роутер для аутентификации

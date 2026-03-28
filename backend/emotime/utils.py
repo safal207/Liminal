@@ -4,10 +4,10 @@
 Решает проблемы с кодировкой, логированием и совместимостью
 """
 
+import locale
 import os
 import sys
-import locale
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 def setup_encoding():

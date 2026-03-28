@@ -9,17 +9,18 @@ Based on quantum neuroscience research:
 - Orchestrated reduction for memory consolidation
 """
 
-import numpy as np
-from typing import Dict, List, Tuple, Optional, Any, Union
 import asyncio
-import logging
-from datetime import datetime, timedelta
-from dataclasses import dataclass, field
-from enum import Enum
-import math
 import cmath
 import json
+import logging
+import math
 from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 
 class MemoryType(Enum):

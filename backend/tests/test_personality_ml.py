@@ -7,19 +7,19 @@
 Проверяет работу ML-адаптера для анализа эмоций и его интеграцию с PersonalityAdapter.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 import json
-from datetime import datetime
-
-import sys
 import os
+import sys
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from backend.personality.ml_adapter import EmotionMLAdapter, emotion_ml_adapter
-from backend.personality.adapter import PersonalityAdapter
 from backend.emotime.ml_accuracy_optimizer import EmotionalDimension
+from backend.personality.adapter import PersonalityAdapter
+from backend.personality.ml_adapter import EmotionMLAdapter, emotion_ml_adapter
 
 
 class TestEmotionMLAdapter:

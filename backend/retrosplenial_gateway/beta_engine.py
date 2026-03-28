@@ -13,12 +13,12 @@ Based on neuroscience research on beta rhythms and their role in
 cognitive control, attention regulation, and executive functioning.
 """
 
-import time
 import math
 import random
+import time
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class BetaState(Enum):

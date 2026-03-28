@@ -8,11 +8,11 @@
 анализа эмоций для различных языков.
 """
 
-import re
-import logging
-from typing import Dict, Any, Optional, List, Tuple, Union
 import asyncio
+import logging
+import re
 from functools import lru_cache
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 # Настройка логгера
 logger = logging.getLogger(__name__)

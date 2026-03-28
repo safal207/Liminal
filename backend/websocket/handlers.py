@@ -3,12 +3,12 @@
 """
 
 import json
-import json
 import uuid
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict
 
 from fastapi import WebSocket
+
 from backend.logging_config import get_logger
 
 logger = get_logger("websocket.handlers")

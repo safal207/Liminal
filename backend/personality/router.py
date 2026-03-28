@@ -8,6 +8,7 @@ graphql_app = None
 try:  # Защита CI от отсутствия extra-зависимостей strawberry[fastapi]
     from strawberry.fastapi import GraphQLRouter
     from strawberry.schema.config import StrawberryConfig
+
     from .schema import schema
 
     # Создаем GraphQL роутер с настройками
@@ -21,7 +22,7 @@ try:  # Защита CI от отсутствия extra-зависимостей
     )
 except Exception:  # pragma: no cover
     graphql_app = None
-from ..auth.jwt_utils import get_current_user, User
+from ..auth.jwt_utils import User, get_current_user
 
 # Создаем FastAPI роутер
 router = APIRouter(prefix="/personality", tags=["Personality"])

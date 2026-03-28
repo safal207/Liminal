@@ -9,9 +9,10 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
+
 from backend.home_state_detector import HomeStateMetrics, home_state_detector
 from backend.logging_config import get_logger
-from pydantic import BaseModel
 
 
 class HomeStateResponse(BaseModel):

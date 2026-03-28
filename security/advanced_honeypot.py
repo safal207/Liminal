@@ -16,7 +16,8 @@ from pyftpdlib.servers import FTPServer
 from pymongo import MongoClient
 
 from backend.security_logging import security_logger
-from .honeypot import HoneypotEvent, AttackPattern
+
+from .honeypot import AttackPattern, HoneypotEvent
 
 
 class BaseHoneypot(ABC):

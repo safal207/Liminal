@@ -16,16 +16,17 @@ Security Testing Areas:
 """
 
 import asyncio
-import time
-import json
-import hashlib
-import requests
-from typing import Dict, List, Optional, Any, Tuple
-from datetime import datetime
-from dataclasses import dataclass
-from enum import Enum
 import base64
+import hashlib
+import json
+import time
 import urllib.parse
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
+import requests
 
 
 class SecurityTestResult(Enum):

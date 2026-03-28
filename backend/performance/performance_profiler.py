@@ -4,13 +4,14 @@ LIMINAL Performance Profiler
 """
 
 import asyncio
-import time
+import json
 import statistics
-import requests
+import time
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, List, Optional
-from dataclasses import dataclass
-import json
+
+import requests
 
 
 @dataclass

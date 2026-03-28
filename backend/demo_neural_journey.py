@@ -10,11 +10,11 @@ with real brain compass, theta-gamma coupling and liminal navigation.
 """
 
 import asyncio
-import time
-import random
-from datetime import datetime
-from typing import Dict, List, Any
 import json
+import random
+import time
+from datetime import datetime
+from typing import Any, Dict, List
 
 # Safe import for demo
 try:

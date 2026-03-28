@@ -8,8 +8,8 @@ from typing import Dict, List, Optional
 from backend.memory_timeline import (
     MemoryTimeline,
     MemoryTimelineEventListener,
-    timeline as global_timeline,
 )
+from backend.memory_timeline import timeline as global_timeline
 
 
 class MemoryTimelineService:

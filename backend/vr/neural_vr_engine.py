@@ -13,20 +13,20 @@ The world's first VR system with accurate brain wave integration.
 """
 
 import asyncio
-import time
-import math
 import json
-from datetime import datetime
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, asdict
-from enum import Enum
+import math
 import random
+import time
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 # Safe import of RGL system
 try:
-    from retrosplenial_gateway.full_spectrum_rgl import FullSpectrumRGL, BrainState
-    from retrosplenial_gateway import NavigationEvent, SemanticDirection
     from medical.therapeutic_ai import TherapeuticAI
+    from retrosplenial_gateway import NavigationEvent, SemanticDirection
+    from retrosplenial_gateway.full_spectrum_rgl import BrainState, FullSpectrumRGL
 
     RGL_AVAILABLE = True
 except ImportError:

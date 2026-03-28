@@ -11,10 +11,10 @@ Advanced real-time emotional intelligence streaming:
 "Real intelligence happens in real-time" — Leading AI Labs
 """
 
-from .connection_manager import EmotimeConnectionManager
-from .streaming_engine import RealTimeEmotionalStreamer
 from .adaptive_handler import AdaptiveWebSocketHandler
+from .connection_manager import EmotimeConnectionManager
 from .safety_monitor import EmotionalSafetyMonitor
+from .streaming_engine import RealTimeEmotionalStreamer
 
 __all__ = [
     "EmotimeConnectionManager",

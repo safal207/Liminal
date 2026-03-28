@@ -6,10 +6,10 @@ Perfect for production environments where we want analytics without numpy/sklear
 """
 
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
 from collections import defaultdict
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
 
 
 @dataclass

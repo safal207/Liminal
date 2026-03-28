@@ -7,20 +7,20 @@
 Проверяет работу GraphQL запросов, мутаций и интеграцию с FastAPI.
 """
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi.testclient import TestClient
 import json
-from datetime import datetime
-
-import sys
 import os
+import sys
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from fastapi.testclient import TestClient
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.main import app
-from backend.personality.schema import schema
 from backend.personality import PersonalityAdapter
+from backend.personality.schema import schema
 
 
 class TestPersonalityGraphQL:

@@ -5,11 +5,12 @@
 
 import asyncio
 import json
-import time
 import signal
-import websockets
+import time
 from datetime import datetime
 from typing import Dict, List
+
+import websockets
 
 
 class ZombieConnectionTest:

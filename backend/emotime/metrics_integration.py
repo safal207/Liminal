@@ -7,18 +7,18 @@
 
 import time
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 try:
     from metrics.collectors import (
-        emotime_sensor_data_total,
         emotime_emotional_features,
-        emotime_mode_duration_seconds,
-        emotime_mode_transitions_total,
         emotime_fusion_confidence,
         emotime_heartbeat_total,
-        emotime_timeseries_points,
+        emotime_mode_duration_seconds,
+        emotime_mode_transitions_total,
         emotime_peak_detection_total,
+        emotime_sensor_data_total,
+        emotime_timeseries_points,
     )
 
     METRICS_AVAILABLE = True
@@ -31,9 +31,9 @@ except ImportError:
         print("WARNING: Emotime - Prometheus metrics not available")
     METRICS_AVAILABLE = False
 
-from .sensors import SensorData, SensorType
 from .fusion import EmotionalFeatures
 from .modes import EmotionalMode, ModeType
+from .sensors import SensorData, SensorType
 from .timeseries import EmotionalPoint
 
 

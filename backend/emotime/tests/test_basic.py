@@ -2,19 +2,19 @@
 🌿✨ Emotime Basic Tests — minimal smoke tests for core functionality
 """
 
-import pytest
 import asyncio
+import os
+import sys
 from datetime import datetime
 
-import sys
-import os
+import pytest
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from emotime.core import EmotimeEngine
 from emotime.fusion import EmotionalFeatures
-from emotime.modes import ModeType, EmotionalModes
-from emotime.sensors import SensorType, SensorData, TextData, TouchData, AudioData
+from emotime.modes import EmotionalModes, ModeType
+from emotime.sensors import AudioData, SensorData, SensorType, TextData, TouchData
 from emotime.timeseries import EmotionalPoint
 
 

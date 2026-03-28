@@ -19,19 +19,20 @@ import time
 import uuid
 from abc import ABC, abstractmethod
 from collections import defaultdict
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional, Set, Union
-from contextlib import asynccontextmanager
 
 import asyncpg
-from neo4j import AsyncGraphDatabase, AsyncDriver
-from redis.asyncio import Redis, ConnectionPool as RedisPool
+from monitoring import monitoring_service
+from neo4j import AsyncDriver, AsyncGraphDatabase
+from resilience import LiminalException, circuit_breaker, with_bulkhead
 
 from config import get_database_settings
-from monitoring import monitoring_service
-from resilience import circuit_breaker, with_bulkhead, LiminalException
+from redis.asyncio import ConnectionPool as RedisPool
+from redis.asyncio import Redis
 
 logger = logging.getLogger(__name__)
 

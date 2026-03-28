@@ -10,26 +10,28 @@ Key Features:
 - Quantum memory-guided navigation
 """
 
-import numpy as np
-from typing import Dict, List, Tuple, Optional, Any, Union
 import asyncio
-import logging
-from datetime import datetime
-from dataclasses import dataclass, asdict
-import math
 import cmath
+import logging
+import math
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
+
+from .quantum_memory_protocols import (
+    MemoryType,
+    QuantumMemoryEngine,
+    QuantumMemoryTrace,
+)
 
 # Import quantum engines
 from .quantum_neural_engine import QuantumNeuralEngine, QuantumNeuralEvent, QuantumState
-from .quantum_memory_protocols import (
-    QuantumMemoryEngine,
-    QuantumMemoryTrace,
-    MemoryType,
-)
 
 # Import RGL components (with error handling)
 try:
-    from ..retrosplenial_gateway.core import RetrosplenialGatewayLayer, NavigationEvent
+    from ..retrosplenial_gateway.core import NavigationEvent, RetrosplenialGatewayLayer
     from ..retrosplenial_gateway.full_spectrum_rgl import FullSpectrumRGL, RGLState
 
     RGL_AVAILABLE = True

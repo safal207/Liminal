@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Union
 from urllib.parse import urljoin
 
 import httpx
+
 from config import get_database_settings
 
 logger = logging.getLogger(__name__)

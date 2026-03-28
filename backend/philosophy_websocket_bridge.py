@@ -33,9 +33,9 @@ import uuid
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
+from neo4j import GraphDatabase, basic_auth
 
 import redis
-from neo4j import GraphDatabase, basic_auth
 
 # Configure logging
 logging.basicConfig(

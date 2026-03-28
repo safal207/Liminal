@@ -6,10 +6,10 @@ LIMINAL Local Testing Runner
 Comprehensive testing script for all production-ready components
 """
 
-import sys
-import os
-import traceback
 import json
+import os
+import sys
+import traceback
 from pathlib import Path
 
 # Add backend to path
@@ -96,12 +96,12 @@ def test_configuration():
 
     try:
         from config import (
-            get_settings,
             get_database_settings,
-            get_security_settings,
             get_ml_settings,
-            get_websocket_settings,
             get_monitoring_settings,
+            get_security_settings,
+            get_settings,
+            get_websocket_settings,
         )
 
         # Test main settings

@@ -5,8 +5,9 @@ Quick Performance Optimizations for LIMINAL
 
 import asyncio
 import time
-import requests
 from datetime import datetime
+
+import requests
 
 
 class QuickPerformanceTest:

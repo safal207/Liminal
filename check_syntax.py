@@ -5,9 +5,9 @@
 Скрипт для проверки синтаксической корректности файлов Python.
 """
 
-import sys
 import os
 import py_compile
+import sys
 
 
 def check_syntax(file_path):

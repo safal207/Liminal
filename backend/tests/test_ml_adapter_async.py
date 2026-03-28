@@ -9,20 +9,20 @@
 """
 
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-import time
-
-import sys
 import os
+import sys
+import time
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.personality.ml_adapter import (
     EmotionMLAdapter,
-    emotion_ml_adapter,
-    analyze_large_text,
     _aggregate_emotion_results,
+    analyze_large_text,
+    emotion_ml_adapter,
 )
 
 

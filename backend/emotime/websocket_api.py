@@ -14,15 +14,15 @@ Real-time emotional intelligence API:
 import asyncio
 import json
 from datetime import datetime
-from typing import Dict, Optional, Any
+from typing import Any, Dict, Optional
 
 try:
     from fastapi import (
         APIRouter,
-        WebSocket,
-        WebSocketDisconnect,
         Depends,
         HTTPException,
+        WebSocket,
+        WebSocketDisconnect,
     )
     from fastapi.responses import HTMLResponse
 
@@ -73,7 +73,7 @@ if FASTAPI_AVAILABLE:
             # Security: JWT Authentication (NEW)
             if token:
                 try:
-                    from .security.auth import validate_token, TokenType
+                    from .security.auth import TokenType, validate_token
                     from .security.validators import get_input_sanitizer
 
                     # Validate JWT token
@@ -521,7 +521,7 @@ if FASTAPI_AVAILABLE:
         - Audit logging
         """
         try:
-            from .security.auth import generate_secure_token, TokenType
+            from .security.auth import TokenType, generate_secure_token
             from .security.validators import get_input_sanitizer
 
             # Validate and sanitize user_id

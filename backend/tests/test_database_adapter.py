@@ -9,11 +9,11 @@ fallback механизмы и корректность работы с разн
 """
 
 import asyncio
-import pytest
+import os
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import sys
-import os
+import pytest
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

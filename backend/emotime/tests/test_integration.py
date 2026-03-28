@@ -2,19 +2,19 @@
 🌿✨ Emotime Integration Tests — testing full system integration
 """
 
-import pytest
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
-
-import sys
 import os
+import sys
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from emotime.core import EmotimeEngine
-from emotime.sensors import SensorData, SensorType
 from emotime.modes import ModeType
+from emotime.sensors import SensorData, SensorType
 
 
 class TestEmotimeIntegration:

@@ -12,16 +12,16 @@
 """
 
 import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, asdict
-from enum import Enum
 import statistics
 from collections import defaultdict, deque
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
-from .core import BurnoutState, BurnoutRisk
-from .modes import BurnoutRiskLevel, BurnoutModeType
-from .utils import safe_logger, format_risk_score, calculate_percentage_change
+from .core import BurnoutRisk, BurnoutState
+from .modes import BurnoutModeType, BurnoutRiskLevel
+from .utils import calculate_percentage_change, format_risk_score, safe_logger
 
 
 class TeamAlertLevel(Enum):

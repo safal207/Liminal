@@ -6,10 +6,10 @@ Health check endpoints для мониторинга состояния сист
 from typing import Any, Dict
 
 from fastapi import APIRouter, HTTPException, Request, status
-from loguru import logger
 
 # Импортируем наш кастомный RedisClient и DummyRedis для определения деградации
 from backend.redis_client import DummyRedis, RedisClient
+from loguru import logger
 
 router = APIRouter(prefix="/health", tags=["health"])
 

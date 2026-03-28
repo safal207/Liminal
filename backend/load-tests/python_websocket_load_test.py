@@ -5,14 +5,14 @@
 
 import asyncio
 import json
-import time
 import statistics
-from datetime import datetime
-from typing import List, Dict, Any
-
-import websockets
-import aiohttp
+import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from typing import Any, Dict, List
+
+import aiohttp
+import websockets
 
 
 class LoadTestResults:

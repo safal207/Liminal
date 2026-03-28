@@ -7,16 +7,16 @@
 """
 
 import asyncio
-import time
 import math
+import time
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 try:
     from retrosplenial_gateway import (
-        RetrosplenialGateway,
-        NavigationEvent,
         NavigationContext,
+        NavigationEvent,
+        RetrosplenialGateway,
     )
 
     SYSTEM_AVAILABLE = True

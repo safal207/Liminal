@@ -12,10 +12,10 @@
 
 import json
 import os
-import uuid
 import time
+import uuid
 from datetime import datetime
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 try:
     from neo4j import GraphDatabase
@@ -40,9 +40,9 @@ except ImportError:
 
     safe_logger = FallbackLogger()
 
-from .timeseries import EmotionalPoint, TrendAnalysis
-from .modes import EmotionalMode, ModeType
 from .fusion import EmotionalFeatures
+from .modes import EmotionalMode, ModeType
+from .timeseries import EmotionalPoint, TrendAnalysis
 
 
 class EmotimeNeo4jStorage:

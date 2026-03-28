@@ -3,11 +3,12 @@ ML Accuracy Optimization for Emotime
 Оптимизация точности машинного обучения для эмоционального анализа.
 """
 
-import numpy as np
-from typing import Dict, List, Tuple, Optional, Any
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 
 class EmotionalDimension(Enum):

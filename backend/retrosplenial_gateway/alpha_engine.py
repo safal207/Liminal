@@ -13,12 +13,12 @@ Based on neuroscience research on alpha rhythms and their role in
 cognitive flexibility, creativity, and conscious-unconscious integration.
 """
 
-import time
 import math
 import random
+import time
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class AlphaState(Enum):

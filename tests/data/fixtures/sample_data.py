@@ -1,10 +1,11 @@
 # Test fixtures for Resonance-Liminal
 # Фикстуры для тестирования компонентов системы
 
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock
-from typing import Dict, Any
+from typing import Any, Dict
+from unittest.mock import AsyncMock, Mock
+
+import pytest
 
 
 @pytest.fixture

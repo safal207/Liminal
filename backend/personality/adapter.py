@@ -4,14 +4,14 @@ PersonalityAdapter - универсальный адаптер для хране
 Поддерживает ML-анализ эмоций в тексте пользователя.
 """
 
-from datetime import datetime
-from typing import List, Optional, Dict, Any, Union
 import logging
+from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional, Union
 
 # Импортируем существующие компоненты
 from ..database_adapter import DatabaseAdapter, DataType
-from .ml_adapter import emotion_ml_adapter, EmotionMLAdapter
+from .ml_adapter import EmotionMLAdapter, emotion_ml_adapter
 
 
 class PersonalityDataType(Enum):

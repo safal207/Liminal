@@ -4,15 +4,16 @@ Pytest test suite for LIMINAL Web Interface
 Comprehensive testing of all API endpoints and functionality
 """
 
-import pytest
-import requests
 import json
-import time
-import threading
-import subprocess
 import os
 import signal
-from unittest.mock import patch, MagicMock
+import subprocess
+import threading
+import time
+from unittest.mock import MagicMock, patch
+
+import pytest
+import requests
 
 # Test configuration
 BASE_URL = "http://localhost:5001"  # Different port to avoid conflicts

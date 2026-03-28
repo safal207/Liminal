@@ -10,24 +10,25 @@ Advanced multi-modal feature learning:
 Based on MIT CSAIL research in representation learning.
 """
 
-import numpy as np
-from typing import Dict, List, Optional, Tuple, Any
+import json
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from collections import deque
-import json
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 try:
+    from sklearn.cluster import KMeans
     from sklearn.decomposition import PCA
     from sklearn.preprocessing import MinMaxScaler
-    from sklearn.cluster import KMeans
 
     ML_AVAILABLE = True
 except ImportError:
     ML_AVAILABLE = False
 
-from ..sensors import SensorData, SensorType, TextData, TouchData, AudioData
 from ..fusion import EmotionalFeatures
+from ..sensors import AudioData, SensorData, SensorType, TextData, TouchData
 from ..utils import safe_logger
 
 

@@ -5,10 +5,11 @@ Tests real WebSocket communication with Emotime processing.
 
 import asyncio
 import json
-import websockets
-import requests
-from datetime import datetime
 import time
+from datetime import datetime
+
+import requests
+import websockets
 
 
 class WebSocketEmotimeIntegration:

@@ -4,11 +4,12 @@ Simple Pytest test suite for LIMINAL Web Interface
 Tests basic functionality without complex server setup
 """
 
-import pytest
-import requests
 import json
 import time
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
+import requests
 
 # Test configuration - using main server on 5000
 BASE_URL = "http://localhost:5000"
@@ -70,8 +71,9 @@ class TestLiminalWebBasic:
 
     def test_system_testing_methods(self):
         """Test individual system testing methods"""
-        from web_interface import LiminalWebInterface
         import asyncio
+
+        from web_interface import LiminalWebInterface
 
         interface = LiminalWebInterface()
         session_id = interface.create_user_session()
@@ -211,8 +213,9 @@ def test_all_systems_defined():
 
 def test_mock_api_response():
     """Test API response structure with mocked data"""
-    from web_interface import LiminalWebInterface
     import asyncio
+
+    from web_interface import LiminalWebInterface
 
     interface = LiminalWebInterface()
     session_id = interface.create_user_session()

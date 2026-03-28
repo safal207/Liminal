@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dependency_injector import containers, providers
 import structlog
+from dependency_injector import containers, providers
 
 from .observability.workflow import WorkflowAuditLogger
 from .reality_web import RealityWebInMemory, SystemBreath

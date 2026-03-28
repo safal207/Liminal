@@ -15,13 +15,15 @@
 • Neutral → Базовый риск
 """
 
-import numpy as np
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Tuple
 from enum import Enum
+from typing import Dict, List, Optional, Tuple
 
-from ..emotime.modes import EmotionalMode, ModeType as EmotionalModeType
+import numpy as np
+
+from ..emotime.modes import EmotionalMode
+from ..emotime.modes import ModeType as EmotionalModeType
 
 
 class BurnoutRiskLevel(Enum):

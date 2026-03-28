@@ -12,25 +12,25 @@
 """
 
 import asyncio
-import time
 import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable
-from dataclasses import dataclass, asdict
-from collections import deque
+import time
 import uuid
+from collections import deque
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Any, Callable, Dict, List, Optional
 
 from ..emotime.websocket.streaming_engine import (
+    AdaptiveQualityController,
     RealTimeEmotionalStreamer,
+    SafetyFilter,
     StreamingConfig,
     StreamingMetrics,
-    AdaptiveQualityController,
-    SafetyFilter,
 )
 from ..websocket.connection_manager import EmotionalUpdate, get_connection_manager
-from .core import BurnoutGuardEngine, BurnoutState, BurnoutRisk
+from .core import BurnoutGuardEngine, BurnoutRisk, BurnoutState
 from .modes import BurnoutMode, BurnoutRiskLevel
-from .utils import safe_logger, format_risk_score, create_alert_message
+from .utils import create_alert_message, format_risk_score, safe_logger
 
 
 @dataclass

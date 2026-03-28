@@ -14,10 +14,10 @@
 "Защитим от выгорания, сохранив внутренний огонь" ✨
 """
 
-from .core import BurnoutGuardEngine, BurnoutState, BurnoutRisk
-from .recommendations import RecommendationEngine, Recommendation
 from .analytics import TeamAnalytics, TeamBurnoutTrend
+from .core import BurnoutGuardEngine, BurnoutRisk, BurnoutState
 from .modes import BurnoutMode, BurnoutModeType
+from .recommendations import Recommendation, RecommendationEngine
 
 __version__ = "1.0.0"
 __author__ = "Resonance Liminal Team"

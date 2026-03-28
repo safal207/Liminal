@@ -3,9 +3,10 @@ GraphQL схема для PersonalityAdapter.
 Определяет типы данных и запросы для персонализации и рекомендаций.
 """
 
-import strawberry
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
+
+import strawberry
 
 
 @strawberry.type

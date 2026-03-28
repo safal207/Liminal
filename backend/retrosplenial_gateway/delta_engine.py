@@ -13,12 +13,12 @@ Based on neuroscience research on delta rhythms and their role in
 deep recovery, memory consolidation, and unconscious information processing.
 """
 
-import time
 import math
 import random
+import time
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 
 class DeltaState(Enum):

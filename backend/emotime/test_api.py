@@ -3,8 +3,9 @@
 Тестирование Emotime API
 """
 
-import requests
 import json
+
+import requests
 
 BASE_URL = "http://localhost:8000"
 

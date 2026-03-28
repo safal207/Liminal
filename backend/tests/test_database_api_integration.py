@@ -7,17 +7,18 @@
 Тестирует REST API для DatabaseAdapter через FastAPI TestClient.
 """
 
+import os
+import sys
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, MagicMock, patch
-import sys
-import os
 
 # Добавляем путь к backend модулям
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from main import app
 from database_adapter import DataType
+from main import app
 
 
 class TestDatabaseAPIIntegration:

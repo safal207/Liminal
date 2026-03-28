@@ -10,15 +10,17 @@ Integration with existing JWT-based authentication system:
 "Secure access to burnout protection features" 🔐
 """
 
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from fastapi import HTTPException, Depends, status
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from fastapi import Depends, HTTPException, status
+
+from ..auth.auth_router import get_current_user
 
 # Import existing auth system
-from ..auth.jwt_utils import verify_token, get_current_active_user
-from ..auth.auth_router import get_current_user
+from ..auth.jwt_utils import get_current_active_user, verify_token
 
 
 class BurnoutPermission(Enum):

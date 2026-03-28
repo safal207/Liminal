@@ -11,14 +11,13 @@ import asyncio
 import math
 import time
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Any, Set
 from enum import Enum
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from .directions import SemanticDirection
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .core import NavigationEvent, DirectionalVector
+    from .core import DirectionalVector, NavigationEvent
 
 
 class GammaFrequencyBand(Enum):

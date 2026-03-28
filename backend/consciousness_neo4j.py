@@ -10,6 +10,8 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import requests
+from neo4j import GraphDatabase
+
 from consciousness_schema import (
     PHILOSOPHICAL_THRESHOLDS,
     ConsciousnessNode,
@@ -18,8 +20,6 @@ from consciousness_schema import (
     StateTransition,
     TransitionTrigger,
 )
-
-from neo4j import GraphDatabase
 
 
 class ConsciousnessNeo4jWriter:

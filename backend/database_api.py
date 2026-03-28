@@ -8,11 +8,12 @@ API эндпоинты для работы с DatabaseAdapter.
 через универсальный адаптер Datomic + Neo4j.
 """
 
+import logging
 from typing import Any, Dict, List, Optional
+
+from database_adapter import DatabaseAdapter, DataType
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
-from database_adapter import DatabaseAdapter, DataType
-import logging
 
 logger = logging.getLogger(__name__)
 

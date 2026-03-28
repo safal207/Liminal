@@ -8,22 +8,22 @@
 и мультиязычного анализа текста.
 """
 
-import pytest
 import asyncio
+import os
+import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import sys
-import os
+import pytest
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from backend.personality.multilingual_support import (
-    detect_language,
-    translate_emotion,
-    get_emotion_in_language,
     analyze_multilingual_text,
-    get_supported_languages,
+    detect_language,
     get_emotion_dictionary,
+    get_emotion_in_language,
+    get_supported_languages,
+    translate_emotion,
 )
 
 

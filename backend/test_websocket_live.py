@@ -11,8 +11,9 @@ Tests the world-class WebSocket implementation with:
 
 import asyncio
 import json
-import websockets
 from datetime import datetime
+
+import websockets
 
 
 async def test_emotime_websocket():

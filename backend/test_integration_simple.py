@@ -4,9 +4,10 @@ Simple Integration Test for LIMINAL - Emotime System (ASCII only)
 
 import asyncio
 import json
-import requests
 import time
 from datetime import datetime
+
+import requests
 
 
 class SimpleLIMINALTest:

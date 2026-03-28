@@ -11,22 +11,23 @@ Features:
 - Medical-grade safety systems
 """
 
-import numpy as np
-from typing import Dict, List, Tuple, Optional, Any, Union
 import asyncio
-import logging
-from datetime import datetime, timedelta
-from dataclasses import dataclass, field
-from enum import Enum
 import json
+import logging
 import math
 from collections import defaultdict, deque
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+import numpy as np
 
 # Import core LIMINAL components
 try:
-    from ..quantum.rgl_quantum_integration import QuantumRGLAPI
+    from ..biomarkers.predictive_analytics_engine import Biomarker, BiomarkerType
     from ..quantum.quantum_neural_engine import QuantumNeuralEngine
-    from ..biomarkers.predictive_analytics_engine import BiomarkerType, Biomarker
+    from ..quantum.rgl_quantum_integration import QuantumRGLAPI
 
     LIMINAL_CORE_AVAILABLE = True
 except ImportError:

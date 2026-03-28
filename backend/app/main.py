@@ -6,15 +6,15 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Awaitable, Callable, Dict, AsyncIterator
+from typing import AsyncIterator, Awaitable, Callable, Dict
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from backend.health import router as health_router
-from backend.redis_client import RedisClient
 from backend.metrics import setup_metrics
+from backend.redis_client import RedisClient
 
 from .dependencies import (
     get_connection_manager,

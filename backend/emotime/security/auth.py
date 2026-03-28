@@ -9,14 +9,15 @@ Enterprise-grade authentication for Emotime WebSocket connections:
 - OpenID Connect integration ready
 """
 
-import jwt
-import secrets
 import hashlib
+import secrets
 import time
-from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
+import jwt
 
 from ..utils import safe_logger
 

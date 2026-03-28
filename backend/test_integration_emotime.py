@@ -5,20 +5,21 @@ Tests full integration between Emotime, WebSocket, ML, and metrics systems.
 
 import asyncio
 import json
-import requests
+import os
+import sys
 import time
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
-import sys
-import os
+
+import requests
 
 # Add emotime to path
 sys.path.append(os.path.join(os.path.dirname(__file__), "emotime"))
 
 from emotime.core import EmotimeEngine
-from emotime.sensors import SensorData, SensorType
 from emotime.fusion import EmotionalFeatures
 from emotime.modes import EmotionalMode, ModeType
+from emotime.sensors import SensorData, SensorType
 
 
 class IntegrationTestSuite:

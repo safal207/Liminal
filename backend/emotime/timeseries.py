@@ -10,12 +10,13 @@
 "Время течет через эмоции, оставляя следы на карте души"
 """
 
-import numpy as np
+import asyncio
+from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import List, Optional, Dict, Any, Tuple
-from collections import deque
-import asyncio
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 
 @dataclass

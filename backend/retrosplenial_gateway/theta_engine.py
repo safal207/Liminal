@@ -11,14 +11,13 @@ import asyncio
 import math
 import time
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 from enum import Enum
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 from .directions import SemanticDirection
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .core import NavigationEvent, DirectionalVector
+    from .core import DirectionalVector, NavigationEvent
 
 
 class ThetaType(Enum):
@@ -307,9 +306,9 @@ class ThetaOscillationEngine:
         current_phase = self.calculate_theta_phase()
         theta_strength = max(0.1, math.cos(current_phase))  # 0.1-1.0 range
 
-        from .core import (
+        from .core import (  # Import at runtime to avoid circular import
             DirectionalVector,
-        )  # Import at runtime to avoid circular import
+        )
 
         synchronized_directions = []
 

@@ -3,8 +3,9 @@
 Test API with proper session handling
 """
 
-import requests
 import json
+
+import requests
 
 
 def test_with_session():

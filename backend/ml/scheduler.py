@@ -12,9 +12,9 @@ from typing import Any, Dict, List, Optional
 
 import requests
 import schedule
-from loguru import logger
 
 import redis
+from loguru import logger
 
 
 class MLScheduler:

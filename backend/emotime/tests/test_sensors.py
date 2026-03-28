@@ -2,16 +2,16 @@
 🌿✨ Emotime Sensors Tests — testing the sensory layer
 """
 
-import pytest
-from datetime import datetime
-from unittest.mock import patch, MagicMock
-
-import sys
 import os
+import sys
+from datetime import datetime
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from emotime.sensors import SensorData, SensorType, TextSensor, TouchSensor, AudioSensor
+from emotime.sensors import AudioSensor, SensorData, SensorType, TextSensor, TouchSensor
 
 
 class TestSensorData:

@@ -8,15 +8,16 @@ Based on latest quantum neuroscience research:
 - Quantum superposition for parallel cognitive processing
 """
 
-import numpy as np
-from typing import Dict, List, Tuple, Optional, Any
 import asyncio
-import logging
-from datetime import datetime
-from dataclasses import dataclass
-from enum import Enum
-import math
 import cmath
+import logging
+import math
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 
 # Quantum Computing Simulation (Classical implementation for compatibility)

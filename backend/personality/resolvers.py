@@ -3,9 +3,9 @@
 Реализуют бизнес-логику для запросов и мутаций.
 """
 
-from typing import List, Dict, Any, Optional
 import logging
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 # Импорт адаптера
 from .adapter import PersonalityAdapter

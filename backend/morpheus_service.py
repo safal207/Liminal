@@ -1,5 +1,5 @@
-from .morpheus_schemas import MorpheusChoiceRequest
 from .app_logging import get_logger
+from .morpheus_schemas import MorpheusChoiceRequest
 
 logger = get_logger(__name__)
 

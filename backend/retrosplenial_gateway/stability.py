@@ -18,12 +18,12 @@ orientation independent of environmental context changes.
 
 import math
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass
 from collections import deque
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
 
-from .directions import SemanticDirection, DirectionalSpace, NavigationContext
+from .directions import DirectionalSpace, NavigationContext, SemanticDirection
 
 
 @dataclass

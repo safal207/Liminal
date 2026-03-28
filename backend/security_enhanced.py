@@ -31,12 +31,12 @@ from urllib.parse import urlparse
 
 import bcrypt
 from fastapi import HTTPException, Request, Response, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from monitoring import monitoring_service
 from pydantic import BaseModel, validator
+from resilience import LiminalException
 
 from config import get_security_settings
-from monitoring import monitoring_service
-from resilience import LiminalException
 
 logger = monitoring_service.tracer.start_span("security").__enter__()
 

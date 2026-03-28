@@ -2,10 +2,11 @@
 Message Acknowledgment API - endpoints для мониторинга гарантированной доставки сообщений
 """
 
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException, status, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+
 from backend.logging_config import get_logger
 
 logger = get_logger(__name__)

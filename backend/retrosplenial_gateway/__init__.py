@@ -20,23 +20,20 @@ Architecture Integration:
  always points to where the sun is." — The brain's compass never loses direction.
 """
 
-from .core import (
-    RetrosplenialGateway,
-    DirectionEncoder,
-    MemoryCompass,
-    TransitionNavigator,
-    NavigationEvent,
-)
-
-from .theta_engine import ThetaOscillationEngine
-from .gamma_engine import GammaSynchronyCompass
 from .alpha_engine import AlphaWaveEngine
 from .beta_engine import BetaWaveEngine
+from .core import (
+    DirectionEncoder,
+    MemoryCompass,
+    NavigationEvent,
+    RetrosplenialGateway,
+    TransitionNavigator,
+)
 from .delta_engine import DeltaWaveEngine
-
-from .directions import SemanticDirection, DirectionalSpace, NavigationContext
-
-from .stability import ContextStabilizer, TransitionBalance, OrientationMaintainer
+from .directions import DirectionalSpace, NavigationContext, SemanticDirection
+from .gamma_engine import GammaSynchronyCompass
+from .stability import ContextStabilizer, OrientationMaintainer, TransitionBalance
+from .theta_engine import ThetaOscillationEngine
 
 __all__ = [
     "RetrosplenialGateway",

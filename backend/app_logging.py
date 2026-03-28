@@ -4,6 +4,7 @@ Configures structured logging on startup
 """
 
 import os
+
 from backend.logging_config import configure_structured_logging
 
 

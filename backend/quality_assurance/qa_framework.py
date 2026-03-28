@@ -16,15 +16,15 @@ MIT принципы:
 """
 
 import asyncio
-import time
-import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass
-from enum import Enum
 import json
 import statistics
+import time
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
 import pytest
 import requests
 from prometheus_client.parser import text_string_to_metric_families

@@ -8,7 +8,7 @@ import asyncio
 from datetime import datetime
 
 from .core import EmotimeEngine
-from .sensors import SensorData, SensorType, TextData, TouchData, AudioData
+from .sensors import AudioData, SensorData, SensorType, TextData, TouchData
 from .utils import safe_logger
 
 

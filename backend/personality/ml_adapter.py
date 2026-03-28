@@ -10,28 +10,28 @@ ML-адаптер для PersonalityAdapter.
 Включает кэширование результатов анализа и асинхронную обработку.
 """
 
-import logging
 import asyncio
 import functools
+import logging
 import re
-from typing import Dict, Any, Optional, List, Tuple, Union
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from functools import lru_cache
-from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, List, Optional, Tuple, Union
+
+from backend.emotime.ml_accuracy_optimizer import (
+    EmotionalDimension,
+    MLPrediction,
+    enhanced_classifier,
+)
 
 # Импорт модуля мультиязычной поддержки
 from backend.personality.multilingual_support import (
-    detect_language,
-    translate_emotion,
-    get_emotion_in_language,
     analyze_multilingual_text,
+    detect_language,
+    get_emotion_in_language,
     get_supported_languages,
-)
-
-from backend.emotime.ml_accuracy_optimizer import (
-    enhanced_classifier,
-    EmotionalDimension,
-    MLPrediction,
+    translate_emotion,
 )
 
 # Инициализация логгера

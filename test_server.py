@@ -1,7 +1,7 @@
 import sys
 
 sys.path.append(".")
-from web_interface import app, LiminalWebInterface
+from web_interface import LiminalWebInterface, app
 
 # Override port for testing
 if __name__ == "__main__":

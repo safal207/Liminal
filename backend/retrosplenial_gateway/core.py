@@ -18,16 +18,16 @@ directional orientation independent of visual environment changes.
 import asyncio
 import math
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple, Union
-from dataclasses import dataclass, asdict
-from enum import Enum
 from collections import defaultdict, deque
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple, Union
 
-from .directions import SemanticDirection, DirectionalSpace, NavigationContext
+from .directions import DirectionalSpace, NavigationContext, SemanticDirection
+from .gamma_engine import GammaState, GammaSynchronyMemoryCompass
 from .stability import ContextStabilizer, TransitionBalance
 from .theta_engine import ThetaOscillationEngine, ThetaState
-from .gamma_engine import GammaSynchronyMemoryCompass, GammaState
 
 
 @dataclass

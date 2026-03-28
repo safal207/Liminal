@@ -5,10 +5,10 @@ World-class analytics and insights from top AI research labs.
 """
 
 from .dashboard import (
-    EmotimeAnalyticsDashboard,
-    AnalyticsInsight,
-    PerformanceMetric,
     AnalyticsCategory,
+    AnalyticsInsight,
+    EmotimeAnalyticsDashboard,
+    PerformanceMetric,
     get_analytics_dashboard,
 )
 

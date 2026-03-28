@@ -2,11 +2,11 @@
 🌿✨ Emotime API Tests — testing REST endpoints
 """
 
-import pytest
+import os
+import sys
 from datetime import datetime
 
-import sys
-import os
+import pytest
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -15,7 +15,7 @@ try:
 except ImportError:
     router = None
 from emotime.core import EmotimeEngine
-from emotime.sensors import SensorType, SensorData, TextData
+from emotime.sensors import SensorData, SensorType, TextData
 
 
 class TestEmotimeAPI:

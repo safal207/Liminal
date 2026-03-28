@@ -11,13 +11,13 @@
 """
 
 import asyncio
-import time
 import random
+import time
 from datetime import datetime, timedelta
 
 # Импорты Emotime
 from emotime.core import EmotimeEngine
-from emotime.sensors import TextSensor, TouchSensor, AudioSensor
+from emotime.sensors import AudioSensor, TextSensor, TouchSensor
 
 
 class EmotimeDemo:

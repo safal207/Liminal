@@ -9,8 +9,8 @@
 """
 
 import asyncio
-import sys
 import os
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -21,16 +21,17 @@ sys.path.insert(0, str(backend_path))
 # Импорты BurnoutGuard
 try:
     # Прямые импорты из локальных модулей
-    from burnout_guard.modes import BurnoutModeMapper, BurnoutModeType, BurnoutRiskLevel
-    from burnout_guard.core import BurnoutRiskScorer
-    from burnout_guard.recommendations import RecommendationEngine, RecommendationType
-    from burnout_guard.utils import format_risk_score, create_alert_message
+    from dataclasses import dataclass
 
     # Создаем простые mock классы для Emotime
     from datetime import datetime
-    from dataclasses import dataclass
-    from typing import List, Optional
     from enum import Enum
+    from typing import List, Optional
+
+    from burnout_guard.core import BurnoutRiskScorer
+    from burnout_guard.modes import BurnoutModeMapper, BurnoutModeType, BurnoutRiskLevel
+    from burnout_guard.recommendations import RecommendationEngine, RecommendationType
+    from burnout_guard.utils import create_alert_message, format_risk_score
 
     class EmotionalModeType(Enum):
         CALM = "calm"
@@ -278,8 +279,8 @@ async def test_recommendations():
     engine = RecommendationEngine("test_user")
 
     # Создаем тестовые состояния выгорания
-    from burnout_guard.modes import BurnoutMode
     from burnout_guard.core import BurnoutRisk, BurnoutState
+    from burnout_guard.modes import BurnoutMode
 
     # Критическое состояние
     critical_risk = BurnoutRisk(

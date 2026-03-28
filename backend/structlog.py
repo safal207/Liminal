@@ -3,8 +3,8 @@ Simple fallback implementation of structlog for testing.
 This provides basic logging functionality when structlog is not available.
 """
 
-import logging
 import json
+import logging
 from typing import Any, Dict
 
 # Configure basic logging

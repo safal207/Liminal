@@ -10,11 +10,11 @@ from unittest.mock import AsyncMock, patch
 import pytest
 import websockets
 from fastapi.testclient import TestClient
-
-from auth.jwt_utils import create_access_token_for_user, verify_websocket_token
 from main import app
 from websocket.connection_manager import ConnectionManager
 from websocket.redis_connection_manager import RedisConnectionManager
+
+from auth.jwt_utils import create_access_token_for_user, verify_websocket_token
 
 
 @pytest.fixture

@@ -6,10 +6,10 @@ Simple API functionality test for LIMINAL.
 Tests the core API endpoints without requiring external services.
 """
 
-import sys
-import os
 import asyncio
 import json
+import os
+import sys
 from pathlib import Path
 
 # Add backend to path
@@ -112,7 +112,7 @@ async def test_resilience_patterns():
     print("\n🛡️ Testing Resilience Patterns...")
 
     try:
-        from resilience import resilience_manager, circuit_breaker
+        from resilience import circuit_breaker, resilience_manager
 
         # Test resilience manager
         health = resilience_manager.get_health_status()

@@ -10,14 +10,14 @@ World-class analytics with insights from top AI labs:
 """
 
 import asyncio
-import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from collections import defaultdict, deque
-from dataclasses import dataclass, asdict
-from enum import Enum
 import json
 import math
+import time
+from collections import defaultdict, deque
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..utils import safe_logger
 

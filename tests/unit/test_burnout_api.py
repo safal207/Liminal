@@ -86,12 +86,12 @@ def _patch_deps():
 
 
 def _mock_burnout_state() -> Any:
+    from backend.burnout_guard.core import BurnoutRisk, BurnoutState
     from backend.burnout_guard.modes import (
         BurnoutMode,
         BurnoutModeType,
         BurnoutRiskLevel,
     )
-    from backend.burnout_guard.core import BurnoutRisk, BurnoutState
 
     risk = BurnoutRisk(
         score=0.55,
@@ -166,8 +166,8 @@ ASSESS_PATCHES = [
 
 def _setup_assess_mocks(patches: dict, state: Any) -> None:
     """Configure mock objects so assess endpoint returns a full assessment."""
+    from backend.burnout_guard.modes import BurnoutModeType, BurnoutRiskLevel
     from backend.burnout_guard.recommendations import Recommendation, RecommendationType
-    from backend.burnout_guard.modes import BurnoutRiskLevel, BurnoutModeType
 
     patches["backend.burnout_guard.api.EMOTIME_AVAILABLE"].return_value = True
 
@@ -226,11 +226,11 @@ class TestAssessEndpoint:
             engine_inst.analyze_now = AsyncMock(return_value=state)
             MockEngine.return_value = engine_inst
 
+            from backend.burnout_guard.modes import BurnoutModeType, BurnoutRiskLevel
             from backend.burnout_guard.recommendations import (
                 Recommendation,
                 RecommendationType,
             )
-            from backend.burnout_guard.modes import BurnoutRiskLevel, BurnoutModeType
 
             rec_inst = MagicMock()
             rec_inst.get_recommendations = AsyncMock(return_value=[])
@@ -293,11 +293,11 @@ class TestAssessEndpoint:
         assert resp.status_code == 503
 
     def test_assess_includes_recommendations(self, client):
+        from backend.burnout_guard.modes import BurnoutModeType, BurnoutRiskLevel
         from backend.burnout_guard.recommendations import (
             Recommendation,
             RecommendationType,
         )
-        from backend.burnout_guard.modes import BurnoutRiskLevel, BurnoutModeType
 
         state = _mock_burnout_state()
         rec = Recommendation(

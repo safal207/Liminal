@@ -5,10 +5,10 @@ from typing import Dict, List, Optional
 import strawberry
 from strawberry.scalars import JSON
 
+from .di import get_container
 from .diffusion import InMemoryDiffusion, ModuleState
 from .reality_web import Edge as RWEdge
 from .reality_web import Node as RWNode
-from .di import get_container
 from .reality_web import SystemBreath
 from .reince import InMemoryREINCE, ResonanceEvent
 

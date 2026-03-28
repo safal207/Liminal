@@ -13,26 +13,26 @@ import json
 import logging
 import time
 import uuid
+from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
-from contextlib import asynccontextmanager
 
 import structlog
 from prometheus_client import (
-    Counter,
-    Histogram,
-    Gauge,
-    Summary,
-    Info,
-    CollectorRegistry,
-    generate_latest,
     CONTENT_TYPE_LATEST,
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    Info,
+    Summary,
+    generate_latest,
 )
-
-from config import get_monitoring_settings, get_app_settings
 from resilience import resilience_manager
+
+from config import get_app_settings, get_monitoring_settings
 
 logger = structlog.get_logger(__name__)
 

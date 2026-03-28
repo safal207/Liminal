@@ -11,41 +11,41 @@ API endpoints для командной аналитики и управлени
 "API для превращения данных выгорания в управленческие решения" 🔗
 """
 
-from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
-from fastapi.responses import JSONResponse, StreamingResponse
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Any
-import json
 import asyncio
-from io import StringIO
 import csv
+import json
+from datetime import datetime, timedelta
+from io import StringIO
+from typing import Any, Dict, List, Optional
 
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from .analytics import (
-    TeamBurnoutAnalyzer,
-    DepartmentAnalyzer,
-    TeamAnalytics,
     DepartmentAnalytics,
-    TeamMember,
+    DepartmentAnalyzer,
     TeamAlertLevel,
+    TeamAnalytics,
+    TeamBurnoutAnalyzer,
+    TeamMember,
 )
-from .core import BurnoutGuardEngine, BurnoutState
-from .modes import BurnoutRiskLevel
-from .recommendations import RecommendationEngine
-from .persistence import BurnoutDatabaseAdapter
-from .utils import safe_logger
 from .auth_integration import (
-    BurnoutUserContext,
+    BurnoutAuditLogger,
+    BurnoutAuthService,
     BurnoutPermission,
     BurnoutPermissionChecker,
-    BurnoutAuthService,
+    BurnoutUserContext,
     require_burnout_permission,
     require_hr_access,
     require_team_access,
     require_user_consent,
-    BurnoutAuditLogger,
 )
+from .core import BurnoutGuardEngine, BurnoutState
+from .modes import BurnoutRiskLevel
+from .persistence import BurnoutDatabaseAdapter
+from .recommendations import RecommendationEngine
+from .utils import safe_logger
 
 try:
     from ..emotime.core import EmotimeEngine

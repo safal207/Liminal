@@ -8,13 +8,13 @@ Real-time safety monitoring для эмоциональных данных:
 - Google: Privacy-first safety design
 """
 
-import time
 import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from collections import deque, defaultdict
+import time
+from collections import defaultdict, deque
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..utils import safe_logger
 

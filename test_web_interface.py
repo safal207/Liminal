@@ -3,9 +3,10 @@
 Тест веб-интерфейса LIMINAL - проверка API endpoints
 """
 
-import requests
 import json
 import time
+
+import requests
 
 
 def test_web_interface():

@@ -12,11 +12,11 @@ import asyncio
 import json
 import time
 import uuid
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set, Any, Callable
-from dataclasses import dataclass, asdict
-from collections import defaultdict, deque
 import weakref
+from collections import defaultdict, deque
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Any, Callable, Dict, List, Optional, Set
 
 try:
     from fastapi import WebSocket, WebSocketDisconnect
@@ -28,8 +28,8 @@ except ImportError:
     WebSocket = None
     WebSocketDisconnect = Exception
 
-from ..utils import safe_logger
 from ..modes import ModeType
+from ..utils import safe_logger
 
 
 @dataclass

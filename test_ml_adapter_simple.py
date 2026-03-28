@@ -6,9 +6,9 @@
 без зависимостей от других модулей.
 """
 
-import sys
-import os
 import asyncio
+import os
+import sys
 from pprint import pprint
 
 # Добавляем путь к проекту
@@ -25,8 +25,8 @@ os.environ.setdefault("LIMINAL_ENABLE_PERSONALITY_ROUTER", "0")
 
 # Импортируем только необходимые модули
 from backend.personality.ml_adapter import (
-    EmotionMLAdapter,
     EMOTION_MAPPING,
+    EmotionMLAdapter,
     _aggregate_emotion_results,
 )
 from backend.personality.multilingual_support import detect_language

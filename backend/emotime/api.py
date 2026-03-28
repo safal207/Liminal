@@ -10,18 +10,19 @@ API эндпоинты для взаимодействия с системой E
 "Каждый запрос — это прикосновение к эмоциональному ритму души"
 """
 
-from datetime import datetime
-from typing import Dict, List, Optional, Any
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field
-
-from .core import EmotimeEngine
-from .sensors import TextSensor, TouchSensor, AudioSensor, SensorType
-from .cache import emotime_cache
-from ..performance.batch_processor import emotime_batch_processor
-from ..performance.connection_optimizations import connection_manager
 import asyncio
 import hashlib
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+
+from ..performance.batch_processor import emotime_batch_processor
+from ..performance.connection_optimizations import connection_manager
+from .cache import emotime_cache
+from .core import EmotimeEngine
+from .sensors import AudioSensor, SensorType, TextSensor, TouchSensor
 
 # Глобальный экземпляр Emotime (в продакшене должен быть в зависимости)
 _global_emotime: Optional[EmotimeEngine] = None
@@ -593,6 +594,7 @@ async def get_advanced_analytics(
     try:
         # Security: Use safe import with validation
         import os
+
         from .security.validators import safe_import_module
 
         # Secure import of analytics module
@@ -639,6 +641,7 @@ async def get_analytics_summary():
     try:
         # Security: Use safe import with validation
         import os
+
         from .security.validators import safe_import_module
 
         # Secure import of analytics module

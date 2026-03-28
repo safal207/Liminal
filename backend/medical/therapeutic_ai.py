@@ -13,21 +13,21 @@ Based on clinical neuroscience research and FDA-approved neurofeedback protocols
 """
 
 import asyncio
-import time
 import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
+import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
 # Import Full Spectrum RGL
 try:
+    from retrosplenial_gateway import NavigationEvent, SemanticDirection
     from retrosplenial_gateway.full_spectrum_rgl import (
-        FullSpectrumRGL,
         BrainState,
+        FullSpectrumRGL,
         NeuralEnhancement,
     )
-    from retrosplenial_gateway import NavigationEvent, SemanticDirection
 
     RGL_AVAILABLE = True
 except ImportError:

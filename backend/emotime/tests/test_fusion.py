@@ -2,16 +2,16 @@
 🌿✨ Emotime Feature Fusion Tests — testing multi-sensor data fusion
 """
 
-import pytest
-from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
-
-import sys
 import os
+import sys
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from emotime.fusion import FeatureFusion, EmotionalFeatures
+from emotime.fusion import EmotionalFeatures, FeatureFusion
 from emotime.sensors import SensorData, SensorType
 
 

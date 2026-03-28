@@ -11,9 +11,9 @@ Adaptive message handling для WebSocket connections:
 import asyncio
 import json
 import time
+from collections import defaultdict, deque
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Callable
-from collections import deque, defaultdict
+from typing import Any, Callable, Dict, List, Optional
 
 try:
     from fastapi import WebSocket

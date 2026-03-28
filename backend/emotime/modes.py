@@ -11,11 +11,12 @@
 "Каждое состояние — это музыка души, играющая в своем ритме"
 """
 
-import numpy as np
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Any
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 
 from .timeseries import EmotionalPoint, EmotionalTimeSeries
 

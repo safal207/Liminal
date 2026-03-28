@@ -10,13 +10,14 @@ Implements cutting-edge algorithms:
 Based on MIT CSAIL research in adaptive systems.
 """
 
-import numpy as np
 import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, asdict
 from collections import deque
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
 from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 try:
     from sklearn.ensemble import RandomForestClassifier
@@ -29,7 +30,7 @@ except ImportError:
     ML_AVAILABLE = False
 
 from ..fusion import EmotionalFeatures
-from ..modes import ModeType, EmotionalMode
+from ..modes import EmotionalMode, ModeType
 from ..timeseries import EmotionalPoint
 from ..utils import safe_logger
 

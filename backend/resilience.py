@@ -14,9 +14,9 @@ import logging
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Type, Union
-from datetime import datetime, timedelta
 
 from config import get_monitoring_settings
 

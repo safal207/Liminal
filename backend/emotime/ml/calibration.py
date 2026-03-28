@@ -10,15 +10,16 @@ Smart calibration without heavy ML dependencies:
 Based on MIT optimization research.
 """
 
-import numpy as np
 import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any
-from dataclasses import dataclass, asdict
-from collections import deque
 import random
+from collections import deque
+from dataclasses import asdict, dataclass
+from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Tuple
 
-from ..modes import ModeType, EmotionalMode
+import numpy as np
+
+from ..modes import EmotionalMode, ModeType
 from ..timeseries import EmotionalPoint
 from ..utils import safe_logger
 

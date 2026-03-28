@@ -12,38 +12,39 @@ Enterprise-grade Retrosplenial Gateway Layer service with:
 """
 
 import asyncio
-import time
-import uuid
-from datetime import datetime
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
 import json
 import logging
+import time
+import uuid
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
+import uvicorn
 from fastapi import (
+    BackgroundTasks,
+    Depends,
     FastAPI,
+    HTTPException,
     WebSocket,
     WebSocketDisconnect,
-    HTTPException,
-    Depends,
-    BackgroundTasks,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from prometheus_client import Counter, Gauge, Histogram, generate_latest
 from pydantic import BaseModel, Field
-import uvicorn
-from prometheus_client import Counter, Histogram, Gauge, generate_latest
+
 import redis.asyncio as redis
 
 # Safe import of RGL system
 try:
+    from liminal_rgl_integration import LiminalNavigationSystem
     from retrosplenial_gateway import (
-        RetrosplenialGateway,
-        NavigationEvent,
         NavigationContext,
+        NavigationEvent,
+        RetrosplenialGateway,
         SemanticDirection,
     )
-    from liminal_rgl_integration import LiminalNavigationSystem
 
     RGL_AVAILABLE = True
 except ImportError:

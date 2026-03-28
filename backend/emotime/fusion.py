@@ -8,11 +8,12 @@
 """
 
 import asyncio
-import numpy as np
+from collections import defaultdict, deque
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from collections import defaultdict, deque
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 
 from .sensors import SensorData, SensorType
 

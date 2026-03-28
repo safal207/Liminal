@@ -11,15 +11,15 @@
 """
 
 import asyncio
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass
-from enum import Enum
 import random
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Any, Dict, List, Optional, Tuple
 
-from .core import BurnoutState, BurnoutRisk
+from .core import BurnoutRisk, BurnoutState
 from .modes import BurnoutModeType, BurnoutRiskLevel
-from .utils import safe_logger, get_time_of_day_category, is_working_hours
+from .utils import get_time_of_day_category, is_working_hours, safe_logger
 
 
 class RecommendationType(Enum):

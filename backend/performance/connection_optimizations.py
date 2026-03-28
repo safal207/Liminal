@@ -4,8 +4,8 @@ Connection Pooling Optimizations
 """
 
 import asyncio
-from typing import Optional, Dict, Any
 from contextlib import asynccontextmanager
+from typing import Any, Dict, Optional
 
 # Заглушки для aiohttp если не установлен
 try:

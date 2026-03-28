@@ -13,50 +13,51 @@ Complete testing framework for BurnoutGuard system:
 """
 
 import asyncio
-import pytest
-import unittest
-from unittest.mock import Mock, AsyncMock, patch
-from datetime import datetime, timedelta
-from typing import Dict, List, Any
 import json
 import time
+import unittest
+from datetime import datetime, timedelta
+from typing import Any, Dict, List
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 # Import all BurnoutGuard components
 try:
+    from burnout_guard.analytics import (
+        DepartmentAnalyzer,
+        TeamAnalytics,
+        TeamBurnoutAnalyzer,
+        TeamMember,
+    )
+    from burnout_guard.auth_integration import (
+        BurnoutPermission,
+        BurnoutPermissionChecker,
+        BurnoutUserContext,
+    )
     from burnout_guard.core import (
         BurnoutGuardEngine,
+        BurnoutRisk,
         BurnoutRiskScorer,
         BurnoutState,
-        BurnoutRisk,
     )
     from burnout_guard.modes import (
-        BurnoutModeMapper,
         BurnoutMode,
+        BurnoutModeMapper,
         BurnoutModeType,
         BurnoutRiskLevel,
     )
+    from burnout_guard.persistence import BurnoutDatabaseAdapter
     from burnout_guard.recommendations import (
-        RecommendationEngine,
         Recommendation,
+        RecommendationEngine,
         RecommendationType,
     )
-    from burnout_guard.analytics import (
-        TeamBurnoutAnalyzer,
-        DepartmentAnalyzer,
-        TeamAnalytics,
-        TeamMember,
-    )
     from burnout_guard.streaming import (
+        BurnoutSafetyFilter,
         BurnoutStreamingEngine,
         BurnoutUpdate,
-        BurnoutSafetyFilter,
     )
-    from burnout_guard.auth_integration import (
-        BurnoutPermissionChecker,
-        BurnoutUserContext,
-        BurnoutPermission,
-    )
-    from burnout_guard.persistence import BurnoutDatabaseAdapter
 
     COMPONENTS_AVAILABLE = True
 except ImportError as e:

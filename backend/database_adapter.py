@@ -18,8 +18,9 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
-from config import get_database_settings
 from datomic_client import DatomicClient, DatomicConnectionError
+
+from config import get_database_settings
 
 try:
     from philosophy_neo4j import PhilosophyNeo4jWriter

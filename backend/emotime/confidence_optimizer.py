@@ -3,10 +3,11 @@ Emotime Confidence Optimization
 Оптимизация уверенности эмоциональных предсказаний.
 """
 
-import numpy as np
-from typing import Dict, List, Optional, Any
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional
+
+import numpy as np
 
 
 @dataclass

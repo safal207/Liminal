@@ -4,9 +4,9 @@ Batch Processing Optimizations
 """
 
 import asyncio
-from typing import List, Dict, Any, Optional
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
@@ -145,10 +145,10 @@ class EmotimeBatchProcessor(BatchProcessor):
         """Обрабатывает одиночный Emotime запрос с оптимизированной уверенностью."""
         try:
             # Импортируем внутри функции для избежания циклических импортов
-            from ..emotime.sensors import TextSensor
-            from ..emotime.core import EmotimeEngine
             from ..emotime.confidence_optimizer import confidence_optimizer
+            from ..emotime.core import EmotimeEngine
             from ..emotime.ml_accuracy_optimizer import enhanced_classifier
+            from ..emotime.sensors import TextSensor
 
             text = request.data.get("text", "")
             user_id = request.data.get("user_id", "default")

@@ -9,14 +9,15 @@ Enterprise-grade encryption for sensitive emotional data:
 - Zero-knowledge architecture support
 """
 
-import os
-import json
 import base64
-import secrets
 import hashlib
-from typing import Dict, List, Optional, Any, Union
-from dataclasses import dataclass, asdict
+import json
+import os
+import secrets
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Union
+
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC

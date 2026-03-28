@@ -11,16 +11,17 @@
 """
 
 import asyncio
-import numpy as np
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, asdict
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 from ..emotime.core import EmotimeEngine, EmotimeState
-from ..emotime.modes import EmotionalMode
 from ..emotime.fusion import EmotionalFeatures
+from ..emotime.modes import EmotionalMode
 from ..emotime.timeseries import EmotionalPoint
-from .modes import BurnoutModeMapper, BurnoutMode, BurnoutRiskLevel
+from .modes import BurnoutMode, BurnoutModeMapper, BurnoutRiskLevel
 from .utils import safe_logger
 
 try:

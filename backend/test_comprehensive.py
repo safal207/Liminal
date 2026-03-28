@@ -15,7 +15,6 @@ Includes:
 
 import asyncio
 import json
-import pytest
 import time
 import uuid
 from datetime import datetime, timedelta
@@ -23,18 +22,19 @@ from typing import Any, Dict, List, Optional
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
+import pytest
 import pytest_asyncio
+from datomic_client import DatomicClient
 from fastapi.testclient import TestClient
-from locust import HttpUser, task, between
+from locust import HttpUser, between, task
+from ml_pipeline_enhanced import ModelVersion, ml_pipeline
+from monitoring import monitoring_service
 from playwright.async_api import async_playwright
+from resilience import Bulkhead, CircuitBreaker, resilience_manager
+from security_enhanced import InputValidator, RateLimiter, security_middleware
 
 # Import our modules for testing
 from config import get_settings
-from resilience import CircuitBreaker, Bulkhead, resilience_manager
-from monitoring import monitoring_service
-from datomic_client import DatomicClient
-from ml_pipeline_enhanced import ml_pipeline, ModelVersion
-from security_enhanced import security_middleware, InputValidator, RateLimiter
 
 
 class TestConfig:
@@ -246,7 +246,7 @@ class UnitTests:
         @pytest.mark.asyncio
         async def test_prediction_caching(self):
             """Test ML prediction caching."""
-            from ml_pipeline_enhanced import PredictionCache, Prediction
+            from ml_pipeline_enhanced import Prediction, PredictionCache
 
             cache = PredictionCache(max_size=10, ttl_seconds=60)
 
@@ -315,7 +315,7 @@ class UnitTests:
         @pytest.mark.asyncio
         async def test_health_monitor(self):
             """Test health monitoring system."""
-            from monitoring import HealthMonitor, HealthCheck
+            from monitoring import HealthCheck, HealthMonitor
 
             monitor = HealthMonitor()
 
@@ -600,8 +600,9 @@ class PerformanceTests:
     @pytest.mark.asyncio
     async def test_memory_usage(self):
         """Test memory usage under load."""
-        import psutil
         import os
+
+        import psutil
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss

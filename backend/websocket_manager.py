@@ -18,19 +18,19 @@ import json
 import logging
 import time
 import uuid
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Callable
-from collections import defaultdict, deque
+from typing import Any, Callable, Dict, List, Optional, Set
 
-import redis.asyncio as redis
 from fastapi import WebSocket, WebSocketDisconnect
 from fastapi.websockets import WebSocketState
-
-from config import get_websocket_settings
 from monitoring import monitoring_service, record_business_metric
-from resilience import circuit_breaker, with_bulkhead, LiminalException
+from resilience import LiminalException, circuit_breaker, with_bulkhead
+
+import redis.asyncio as redis
+from config import get_websocket_settings
 
 logger = logging.getLogger(__name__)
 
