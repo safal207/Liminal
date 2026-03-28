@@ -385,7 +385,6 @@ class GraphRenderer {
       .duration(500)
       .style('opacity', 0);
   }
-}
 
   /**
    * Применяет визуальный overlay режима Emotime ко всем узлам графа.

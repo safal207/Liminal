@@ -17,6 +17,8 @@ sys.path.append(str(Path(__file__).parent.parent))
 sys.path.append(str(Path(__file__).parent.parent / "scripts"))
 # Add src/ for packages like rince
 sys.path.append(str(Path(__file__).parent.parent / "src"))
+# Add backend/ so bare imports like `from logging_config import ...` resolve
+sys.path.append(str(Path(__file__).parent.parent / "backend"))
 
 # Import SOMA modules
 from scripts.consciousness_maturation import (ConsciousnessMaturationSystem,
