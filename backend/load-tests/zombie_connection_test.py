@@ -152,7 +152,9 @@ class ZombieConnectionTest:
                                 f"   ⚠️  Неожиданный ответ на malformed {i+1}: {response}"
                             )
                     except websockets.exceptions.ConnectionClosed:
-                        print(f"   🛡️  Соединение закрыто после malformed message {i+1}")
+                        print(
+                            f"   🛡️  Соединение закрыто после malformed message {i+1}"
+                        )
                         break
                     except Exception as e:
                         print(f"   ❌ Ошибка malformed {i+1}: {e}")

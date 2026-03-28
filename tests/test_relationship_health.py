@@ -34,8 +34,7 @@ def setup_function(_: Any) -> None:
 
 def test_relationship_health_bounded_and_breakdown_present() -> None:
     # create two nodes
-    create = exec_gql(
-        """
+    create = exec_gql("""
         mutation {
           a: addNode(kind: "module_state", traits: [
             {key:"любовь", value:0.8}, {key:"спокойствие", value:0.6}
@@ -44,8 +43,7 @@ def test_relationship_health_bounded_and_breakdown_present() -> None:
             {key:"страх", value:0.3}, {key:"гнев", value:0.2}
           ]) { id }
         }
-        """
-    )
+        """)
     a_id = create["a"]["id"]
     b_id = create["b"]["id"]
 
@@ -70,14 +68,12 @@ def test_relationship_health_bounded_and_breakdown_present() -> None:
 
 def test_relationship_health_improves_with_positive_traits() -> None:
     # nodes with neutral overlap
-    res1 = exec_gql(
-        """
+    res1 = exec_gql("""
         mutation {
           a: addNode(kind: "module_state", traits: [{key:"дом", value:0.5}]) { id }
           b: addNode(kind: "module_state", traits: [{key:"дом", value:0.5}]) { id }
         }
-        """
-    )
+        """)
     a = res1["a"]["id"]
     b = res1["b"]["id"]
 
@@ -93,8 +89,7 @@ def test_relationship_health_improves_with_positive_traits() -> None:
     # add extra nodes with positive traits and recompute on those
     WEB._nodes.clear()
     WEB._edges.clear()
-    res2 = exec_gql(
-        """
+    res2 = exec_gql("""
         mutation {
           a: addNode(kind: "module_state", traits: [
             {key:"дом", value:0.5}, {key:"любовь", value:0.9}, {key:"спокойствие", value:0.8}
@@ -103,8 +98,7 @@ def test_relationship_health_improves_with_positive_traits() -> None:
             {key:"дом", value:0.5}
           ]) { id }
         }
-        """
-    )
+        """)
     a2 = res2["a"]["id"]
     b2 = res2["b"]["id"]
     h2 = exec_gql(

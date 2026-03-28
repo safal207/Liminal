@@ -36,15 +36,13 @@ def test_top_at_risk_edges_basic(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("LIMINAL_HEALTH_THRESHOLD", "0.6")
 
     # Create three nodes: one pair with negative traits to be at-risk
-    exec_gql(
-        """
+    exec_gql("""
         mutation {
           a: addNode(kind: "module_state", traits: [{key:"любовь", value:0.8}]) { id }
           b: addNode(kind: "module_state", traits: [{key:"страх", value:0.9}]) { id }
           c: addNode(kind: "module_state", traits: [{key:"спокойствие", value:0.7}]) { id }
         }
-        """
-    )
+        """)
 
     data = exec_gql(
         "query { topAtRiskEdges(limit: 2) { sourceId targetId score advice rationale } }"
