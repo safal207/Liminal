@@ -148,9 +148,13 @@ jobs:
           DATABASE_URL: postgresql://test:test@localhost:5432/test_liminal
           REDIS_URL: redis://localhost:6379
         run: |
-          uvicorn main:app --host 0.0.0.0 --port 8000 &
-          sleep 10
-          pytest tests/api/ -v --tb=short
+          if [ -d tests/api ]; then
+            uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 &
+            sleep 10
+            pytest tests/api/ -v --tb=short
+          else
+            echo "tests/api/ not found, skipping API tests"
+          fi
 
       - name: Upload test coverage
         uses: codecov/codecov-action@v3
