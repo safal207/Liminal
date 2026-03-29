@@ -126,7 +126,12 @@ class TestSOMAModuleQuality(unittest.TestCase):
             consciousness_cell_file.exists(), "Consciousness cell module should exist"
         )
 
-        # Try to import
+        # Try to import (skip if optional dependencies like prefect are absent)
+        try:
+            import prefect  # noqa: F401
+        except ImportError:
+            self.skipTest("prefect not installed; skipping import check")
+
         try:
             sys.path.append(str(self.scripts_dir))
             import consciousness_cell
