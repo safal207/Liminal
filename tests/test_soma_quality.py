@@ -132,8 +132,8 @@ class TestSOMAModuleQuality(unittest.TestCase):
             import consciousness_cell
 
             self.assertTrue(
-                hasattr(consciousness_cell, "ConsciousnessCell"),
-                "ConsciousnessCell class should be available",
+                hasattr(consciousness_cell, "consciousness_cell_flow"),
+                "consciousness_cell_flow function should be available",
             )
         except ImportError as e:
             self.fail(f"Could not import consciousness_cell: {e}")
