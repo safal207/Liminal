@@ -17,10 +17,16 @@ import pytest
 import requests
 import websockets
 
-from rich import print as rprint
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
+try:
+    from rich import print as rprint
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+except ImportError:
+    rprint = print  # type: ignore[assignment]
+    Console = None  # type: ignore[assignment]
+    Panel = None  # type: ignore[assignment]
+    Table = None  # type: ignore[assignment]
 
 # Маркер: это интеграционные диагностические проверки, требуют живого сервера
 pytestmark = pytest.mark.integration
