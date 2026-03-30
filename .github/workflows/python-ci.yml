@@ -27,6 +27,12 @@ jobs:
         echo "requirements-dev.txt:"
         if [ -f requirements-dev.txt ]; then cat -n requirements-dev.txt; else echo "requirements-dev.txt not found"; fi
 
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/requirements-dev.txt') }}
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip wheel setuptools
