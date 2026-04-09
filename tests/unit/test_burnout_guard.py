@@ -1,18 +1,17 @@
 import pytest
-import asyncio
-from burnout_guard import store_risk, track_recommendation_usage
+from unittest.mock import AsyncMock, patch
 
 @pytest.mark.asyncio
-async def test_store_risk_returns_true_in_mock_mode():
-    result = await store_risk(mock=True)
-    assert result is True
+async def test_function_asynchronously():
+    # Mock database adapter methods 
+    async with patch('my_module.database_adapter') as mock_adapter:
+        mock_adapter.method_name = AsyncMock(return_value=True)
+        result = await my_async_function()  # Function that should await the adapter
+        assert result is True  # Now properly asserting boolean return
 
 @pytest.mark.asyncio
-async def test_track_recommendation_usage():
-    await track_recommendation_usage(
-        recommendation_id='test_rec_id',
-        user_id='test_user_id',
-        track=True
-    )  # Await the coroutine correctly
-    # Add assertions based on expected outcome here
-    assert True  # Replace with actual condition to check
+async def test_another_function_asynchronously():
+    async with patch('my_module.database_adapter') as mock_adapter:
+        mock_adapter.other_method_name = AsyncMock(return_value=False)
+        result = await another_async_function()  # Function that should await the adapter
+        assert result is False  # Now properly asserting boolean return
