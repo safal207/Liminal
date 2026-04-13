@@ -76,6 +76,7 @@ class DatabaseAdapter:
         # Общие настройки
         auto_connect: bool = True,
         fallback_enabled: bool = True,
+        mock_mode: bool = False,
     ):
         """
         Инициализация адаптера.
@@ -105,6 +106,7 @@ class DatabaseAdapter:
         # Общие настройки
         self.auto_connect = auto_connect
         self.fallback_enabled = fallback_enabled
+        self.mock_mode = mock_mode
         
         # Клиенты БД
         self.datomic_client: Optional[DatomicClient] = None
@@ -121,17 +123,20 @@ class DatabaseAdapter:
             "fallback_uses": 0,
             "errors": 0
         }
-        
-        if auto_connect:
-            self.connect()
     
-    def connect(self) -> bool:
+    async def connect(self) -> bool:
         """
         Подключение к обеим БД.
         
         Returns:
             True если хотя бы одна БД доступна
         """
+        if self.mock_mode:
+            self.datomic_available = True
+            self.neo4j_available = True
+            logger.info("✅ DatabaseAdapter в mock-режиме")
+            return True
+
         logger.info("🔌 Подключение к базам данных...")
         
         # Подключение к Datomic
@@ -141,7 +146,7 @@ class DatabaseAdapter:
                 db_name=self.datomic_db_name,
                 storage_type=self.datomic_storage_type
             )
-            self.datomic_available = self.datomic_client.connect()
+            self.datomic_available = await self.datomic_client.connect()
             if self.datomic_available:
                 logger.info("✅ Datomic подключен")
             else:
@@ -274,9 +279,12 @@ class DatabaseAdapter:
         """Сохранение данных в Datomic."""
         self.stats["datomic_queries"] += 1
         
+        if self.mock_mode:
+            return data.get("id", "mock-id")
+
         if data_type == DataType.EMOTION_HISTORY:
             # Специальная обработка для эмоций
-            result = self.datomic_client.add_emotion_entry(
+            result = await self.datomic_client.add_emotion_entry(
                 user_id=data.get("user_id"),
                 emotion=data.get("emotion", "unknown"),
                 intensity=data.get("intensity", 0.5)
@@ -345,9 +353,12 @@ class DatabaseAdapter:
         """Запрос данных из Datomic."""
         self.stats["datomic_queries"] += 1
         
+        if self.mock_mode:
+            return []
+
         if data_type == DataType.EMOTION_HISTORY and filters and "user_id" in filters:
             # Специальный запрос истории эмоций
-            history = self.datomic_client.get_emotion_history(
+            history = await self.datomic_client.get_emotion_history(
                 user_id=filters["user_id"],
                 limit=limit
             )
