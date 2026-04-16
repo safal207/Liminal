@@ -49,6 +49,8 @@ jobs:
 
     - name: Run unit tests (skip integration)
       run: |
+        # Avoid loading local dev .env with unsupported legacy keys in CI
+        if [ -f .env ]; then mv .env .env.ci.bak; fi
         python -m pytest tests -v --maxfail=1 --durations=10 -m "not integration"
 
     - name: Smoke test Prometheus metrics registry

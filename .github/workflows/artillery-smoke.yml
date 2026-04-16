@@ -33,8 +33,8 @@ jobs:
 
       - name: Start backend (uvicorn)
         run: |
-          # Ignore legacy .env keys not part of current Pydantic settings model
-          unset backend_port frontend_port xai_service_port || true
+          # Avoid loading local dev .env with unsupported legacy keys in CI
+          if [ -f .env ]; then mv .env .env.ci.bak; fi
           uvicorn backend.main:app --host 127.0.0.1 --port 8000 &
           echo $! > uvicorn.pid
           bash scripts/check-health.sh --url http://127.0.0.1:8000 --retries 60 --delay 1 --fail-on-not-ready
