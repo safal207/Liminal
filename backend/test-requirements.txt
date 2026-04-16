@@ -79,5 +79,4 @@ testcontainers>=3.7.0
 docker>=6.1.0
 
 # Performance Monitoring
-py-monitor>=1.0.0
 line-profiler>=4.0.0
