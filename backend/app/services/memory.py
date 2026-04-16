@@ -1,20 +1,14 @@
 """Memory timeline utilities."""
-
 from __future__ import annotations
 
-import builtins
-import logging
-from importlib import import_module
-from typing import Optional
+from datetime import datetime
+from typing import Dict, List, Optional
 
-# Some legacy modules reference `logging` without importing it explicitly.
-# Expose stdlib logging via builtins before importing memory_timeline.
-builtins.logging = logging
-
-_memory_timeline = import_module("backend.memory_timeline")
-MemoryTimeline = _memory_timeline.MemoryTimeline
-MemoryTimelineEventListener = _memory_timeline.MemoryTimelineEventListener
-global_timeline = _memory_timeline.timeline
+from backend.memory_timeline import (
+    MemoryTimeline,
+    MemoryTimelineEventListener,
+    timeline as global_timeline,
+)
 
 
 class MemoryTimelineService:

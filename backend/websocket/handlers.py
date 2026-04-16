@@ -3,13 +3,13 @@
 """
 
 import json
+import json
 import uuid
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict
 
 from fastapi import WebSocket
-
-from backend.logging_config import get_logger
+from logging_config import get_logger
 
 logger = get_logger("websocket.handlers")
 
@@ -283,14 +283,14 @@ async def handle_acknowledgment(
             return {
                 "status": "success",
                 "type": "ack_processed",
-                "message_id": message_id,
+                "message_id": message_id
             }
         else:
             logger.warning(f"ACK для неизвестного сообщения {message_id} от {user_id}")
             return {
                 "status": "warning",
                 "message": "ACK for unknown message or wrong user",
-                "message_id": message_id,
+                "message_id": message_id
             }
 
     except Exception as e:

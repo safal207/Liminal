@@ -3,13 +3,10 @@ API эндпоинты для ML-функций Resonance Liminal.
 Предоставляет доступ к аномалиям, моделям и аналитике.
 """
 
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status
-
-from backend.logging_config import get_logger
-
+from logging_config import get_logger
 logger = get_logger(__name__)
 from pydantic import BaseModel
 

@@ -5,10 +5,10 @@ Provides Redis connection, PubSub, and caching functionality
 
 import os
 
-import redis
-from backend.logging_config import get_logger
-
+from logging_config import get_logger
 logger = get_logger(__name__)
+
+import redis
 
 
 class RedisClient:
@@ -39,12 +39,9 @@ class RedisClient:
             )
             # Test connection
             self.client.ping()
-            connection_msg = "Connected to Redis at %s:%s, db=%s" % (
-                redis_host,
-                redis_port,
-                redis_db,
+            logger.info(
+                f"Connected to Redis at {redis_host}:{redis_port}, db={redis_db}"
             )
-            logger.info(connection_msg)
         except redis.ConnectionError as e:
             logger.warning(f"Redis connection failed: {e} - Using dummy mode")
             self.client = DummyRedis()
@@ -110,8 +107,7 @@ class DummyRedis:
         return 0
 
     def publish(self, channel, message):
-        debug_msg = f"DummyRedis: Would publish '{message}' to '{channel}'"
-        self.logger.debug(debug_msg)
+        self.logger.debug(f"DummyRedis: Would publish '{message}' to '{channel}'")
         return 0
 
     def pubsub(self):

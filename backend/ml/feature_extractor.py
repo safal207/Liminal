@@ -8,8 +8,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from backend.logging_config import get_logger
-
+from logging_config import get_logger
 logger = get_logger(__name__)
 
 

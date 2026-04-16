@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -41,37 +41,28 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install --no-build-isolation -r requirements-dev.txt
-          pip install -r backend/test-requirements.txt
+          pip install -r test-requirements.txt
 
-      # Scope to maintained unit tests; repo-wide formatting debt would block CI.
       - name: Code formatting check (Black)
-        run: python -m black --check --diff tests/unit
+        run: black --check --diff .
 
       - name: Import sorting check (isort)
-        run: python -m isort --check-only --diff tests/unit --profile black
+        run: isort --check-only --diff .
 
       - name: Linting (flake8)
-        run: python -m flake8 tests/unit --count --select=E9,F63,F7,F82 --show-source --statistics
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
       - name: Type checking (mypy)
-        run: python -m mypy tests/unit --ignore-missing-imports --follow-imports=skip
+        run: mypy . --ignore-missing-imports
 
-      # Run from /tmp so the repo's vendored `rich/` package does not shadow bandit's dependency.
       - name: Security scan (bandit)
-        run: |
-          cd /tmp
-          python -m bandit -r "${{ github.workspace }}/src" "${{ github.workspace }}/scripts" -f json -o "${{ github.workspace }}/bandit-report.json" --exit-zero
+        run: bandit -r . -x tests/ -f json -o bandit-report.json
 
-      # `safety scan` is interactive / API-key oriented in Safety 3; use pip-audit for CI.
       - name: Dependency vulnerability scan
-        run: |
-          cd /tmp
-          python -m pip install --quiet pip-audit
-          pip-audit -r "${{ github.workspace }}/requirements.txt" -f json -o "${{ github.workspace }}/safety-report.json" || true
+        run: safety check --json --output safety-report.json
 
       - name: Upload security reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         if: always()
         with:
           name: security-reports
@@ -121,7 +112,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -129,7 +120,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install -r backend/test-requirements.txt
+          pip install -r test-requirements.txt
 
       - name: Run unit tests
         env:
@@ -168,7 +159,7 @@ jobs:
           name: codecov-umbrella
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         if: always()
         with:
           name: test-results
@@ -255,7 +246,7 @@ jobs:
           k6 run --out json=stress-test-results.json tests/performance/stress-test.js
 
       - name: Upload performance results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: performance-results
           path: |
@@ -398,7 +389,6 @@ jobs:
     steps:
       - name: Delete old container images
         uses: actions/delete-package-versions@v4
-        continue-on-error: true
         with:
           package-name: ${{ env.IMAGE_NAME }}
           package-type: container

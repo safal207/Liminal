@@ -13,10 +13,10 @@ jobs:
     # Unit tests do not require external services by default
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
 
     - name: Set up Python 3.11
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v4
       with:
         python-version: '3.11'
 
@@ -49,9 +49,7 @@ jobs:
 
     - name: Run unit tests (skip integration)
       run: |
-        # Avoid loading local dev .env with unsupported legacy keys in CI
-        if [ -f .env ]; then mv .env .env.ci.bak; fi
-        python -m pytest tests/unit -v --maxfail=1 --durations=10 -m "not integration"
+        python -m pytest -v --maxfail=1 --durations=10 -m "not integration"
 
     - name: Smoke test Prometheus metrics registry
       run: |

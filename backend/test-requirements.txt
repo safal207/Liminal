@@ -71,7 +71,8 @@ allure-pytest>=2.13.0
 tox>=4.6.0
 pre-commit>=3.3.0
 
-# Chaos Engineering (optional in CI: chaos-toolkit is not available on PyPI)
+# Chaos Engineering
+chaos-toolkit>=1.16.0
 toxiproxy-python>=0.1.0
 
 # Container Testing  
@@ -79,4 +80,5 @@ testcontainers>=3.7.0
 docker>=6.1.0
 
 # Performance Monitoring
+py-monitor>=1.0.0
 line-profiler>=4.0.0
