@@ -109,13 +109,14 @@ class BurnoutDatabaseAdapter:
     - Structural data → Neo4j (user relationships, team patterns, networks)
     """
 
-    def __init__(self):
+    def __init__(self, mock_mode: bool = False):
         self.db_adapter = None
         self.neo4j_writer = None
         self.datomic_client = None
+        self.mock_mode = mock_mode
 
-        if DB_AVAILABLE:
-            self.db_adapter = DatabaseAdapter()
+        if DB_AVAILABLE and not mock_mode:
+            self.db_adapter = DatabaseAdapter(mock_mode=mock_mode)
             # These would be initialized with the existing database connections
 
     async def initialize(self):
@@ -123,14 +124,22 @@ class BurnoutDatabaseAdapter:
         if self.db_adapter:
             try:
                 # Use existing database initialization
-                await self.db_adapter.initialize()
-                safe_logger.info("BurnoutGuard database adapter initialized")
+                await self.db_adapter.connect()
+                safe_logger.info(
+                    f"BurnoutGuard database adapter initialized (mock_mode={self.mock_mode})"
+                )
             except Exception as e:
                 safe_logger.error(f"Failed to initialize database adapter: {e}")
-                # Fall back to mock mode
-                self.db_adapter = None
+                # Fall back to mock mode if not already in mock mode
+                if not self.mock_mode:
+                    self.db_adapter = DatabaseAdapter(mock_mode=True)
+                    await self.db_adapter.connect()
 
     # ========== Risk Data Persistence ==========
+
+    async def store_risk(self, *args, **kwargs):
+        """Alias for store_risk_assessment for backward compatibility and testing."""
+        return await self.store_risk_assessment(*args, **kwargs)
 
     async def store_risk_assessment(
         self,
@@ -558,5 +567,5 @@ class BurnoutDatabaseAdapter:
         return analytics
 
 
-# Global instance
-burnout_db = BurnoutDatabaseAdapter()
+# Global instance defaults to mock mode so imports stay lightweight in tests/CI.
+burnout_db = BurnoutDatabaseAdapter(mock_mode=True)

@@ -14,8 +14,6 @@ try:  # pragma: no cover - prefer the dedicated package when available
 except (
     Exception
 ):  # pragma: no cover - fallback for environments without pydantic-settings
-    from pydantic import BaseModel
-
     USING_PYDANTIC_SETTINGS = False
 
     class BaseSettings(BaseModel):  # type: ignore
@@ -147,7 +145,10 @@ class Settings(BaseSettings):
             extra="ignore",
         )
     else:  # pragma: no cover - fallback for environments without pydantic-settings
-        model_config: Dict[str, Any] = {"case_sensitive": False}
+        model_config: Dict[str, Any] = {
+            "case_sensitive": False,
+            "extra": "ignore",
+        }
 
     def __init__(self, **values: Any):
         if not USING_PYDANTIC_SETTINGS:

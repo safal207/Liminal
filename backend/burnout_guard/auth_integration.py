@@ -11,16 +11,14 @@ Integration with existing JWT-based authentication system:
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from fastapi import Depends, HTTPException, status
 
-from ..auth.auth_router import get_current_user
-
 # Import existing auth system
-from ..auth.jwt_utils import get_current_active_user, verify_token
+from ..auth.auth_router import get_current_active_user
 
 
 class BurnoutPermission(Enum):
@@ -294,7 +292,7 @@ class BurnoutAuthService:
 
 
 # Dependency functions for FastAPI endpoints
-async def require_burnout_permission(permission: BurnoutPermission):
+def require_burnout_permission(permission: BurnoutPermission):
     """Dependency factory for requiring specific burnout permissions."""
 
     async def check_permission(
@@ -312,7 +310,7 @@ async def require_burnout_permission(permission: BurnoutPermission):
     return check_permission
 
 
-async def require_team_access(team_id: str):
+def require_team_access(team_id: str):
     """Dependency factory for requiring access to specific team data."""
 
     async def check_team_access(

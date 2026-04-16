@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Any, Dict, Optional
 
-from fastapi import HTTPException, status
 from jose import JWTError, jwt
 
 from backend.core.settings import Settings, get_settings
@@ -254,3 +253,36 @@ def verify_websocket_token(token: str) -> Optional[str]:
         return None
 
     return jwt_manager.extract_user_id_from_token(token)
+
+
+# Совместимость с auth_router: access + refresh пары
+ACCESS_TOKEN_EXPIRE_MINUTES = jwt_manager.access_token_expire_minutes
+
+
+def create_tokens_for_user(user_data: Dict[str, Any]) -> Dict[str, str]:
+    """Access и refresh JWT для пользователя (используется auth_router)."""
+    access_token = create_access_token_for_user(user_data)
+    refresh_expires = timedelta(days=7)
+    refresh = jwt_manager.create_access_token(
+        data={
+            "sub": user_data["user_id"],
+            "username": user_data["username"],
+            "token_type": "refresh",
+        },
+        expires_delta=refresh_expires,
+    )
+    return {"access_token": access_token, "refresh_token": refresh}
+
+
+def refresh_access_token(refresh_token: str) -> Optional[Dict[str, str]]:
+    """Выдаёт новую пару токенов по действительному refresh JWT."""
+    payload = jwt_manager.verify_token(refresh_token)
+    if not payload or payload.get("token_type") != "refresh":
+        return None
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+    user = fake_users_db.get(str(user_id))
+    if not user:
+        return None
+    return create_tokens_for_user(user)
