@@ -1,0 +1,11 @@
+[flake8]
+max-line-length = 100
+extend-ignore = E203
+exclude = .git,__pycache__,.venv,venv,node_modules
+per-file-ignores =
+    backend/app/routes/ws.py:B008
+    backend/burnout_guard/auth_integration.py:B008,F401
+    backend/burnout_guard/persistence.py:F401,F841
+    backend/core/settings.py:B023
+    backend/memory_timeline.py:F811,F821,F841
+    emotime/__init__.py:E402
