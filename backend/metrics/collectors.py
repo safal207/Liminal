@@ -25,7 +25,9 @@ websocket_messages_total = Counter(
 )
 
 websocket_auth_total = Counter(
-    "websocket_auth_total", "Количество попыток аутентификации WebSocket", ["status"]
+    "websocket_auth_total",
+    "Количество попыток аутентификации WebSocket",
+    ["status"],
 )
 
 # Метрики производительности
@@ -71,6 +73,43 @@ websocket_idle_disconnects_total = Counter(
     "websocket_idle_disconnects_total",
     "Connections closed due to idle timeout or missing pong",
     ["reason"],  # idle_timeout, missing_pong
+)
+
+# WebSocket message validation and ACK metrics
+websocket_message_validation_errors_total = Counter(
+    "websocket_message_validation_errors_total",
+    "Total number of WebSocket message validation errors",
+    ["reason"],
+)
+
+websocket_message_size_bytes = Histogram(
+    "websocket_message_size_bytes",
+    "Distribution of WebSocket message sizes in bytes",
+    ["direction", "channel"],
+    buckets=(64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384),
+)
+
+websocket_message_acks_total = Counter(
+    "websocket_message_acks_total",
+    "Total number of message acknowledgements by status",
+    ["status"],
+)
+
+websocket_pending_messages = Gauge(
+    "websocket_pending_messages",
+    "Current number of pending messages waiting for ACK",
+)
+
+websocket_message_retries_total = Counter(
+    "websocket_message_retries_total",
+    "Total number of message retries due to ACK timeout",
+    ["reason"],
+)
+
+websocket_ack_response_time = Histogram(
+    "websocket_ack_response_time_seconds",
+    "Round-trip ACK response time in seconds",
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2, 5),
 )
 
 # Memory timeline observability
