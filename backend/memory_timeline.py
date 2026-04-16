@@ -1,14 +1,11 @@
 """Event-emitting memory timeline with WebSocket broadcasting support."""
 
 import asyncio
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional
-
-import asyncio
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from time import perf_counter
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from fastapi import WebSocket
@@ -17,6 +14,7 @@ from backend.auth.dependencies import token_verifier
 from backend.core.settings import get_settings
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class TimelineEvent:
@@ -129,7 +127,9 @@ class MemoryTimeline:
         async with self._lock:
             # Проверяем снова под локом, так как список мог измениться
             if not self._subscribers:
-                memory_timeline_events_total.labels(event_type="notification_skipped").inc()
+                memory_timeline_events_total.labels(
+                    event_type="notification_skipped"
+                ).inc()
                 return
 
             disconnected = []
