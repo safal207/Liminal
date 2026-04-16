@@ -10,7 +10,8 @@ import time
 import uuid
 from typing import Any, Callable, Dict, List, Optional, Set, Union
 
-from logging_config import get_logger
+from backend.logging_config import get_logger
+
 logger = get_logger(__name__)
 
 import redis.asyncio as redis
