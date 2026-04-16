@@ -63,11 +63,13 @@ jobs:
           cd /tmp
           python -m bandit -r "${{ github.workspace }}/src" "${{ github.workspace }}/scripts" -f json -o "${{ github.workspace }}/bandit-report.json" --exit-zero
 
-      # Same as bandit: cwd must not be the repo root (vendored `rich/` shadows typer/safety).
+      # `safety scan` is interactive / API-key oriented in Safety 3; use pip-audit for CI.
       - name: Dependency vulnerability scan
         run: |
           cd /tmp
-          python -m safety scan --output json > "${{ github.workspace }}/safety-report.json"
+          python -m pip install --quiet pip-audit
+          pip-audit -r "${{ github.workspace }}/requirements.txt" --format json --exit-code-zero \
+            -o "${{ github.workspace }}/safety-report.json"
 
       - name: Upload security reports
         uses: actions/upload-artifact@v4
