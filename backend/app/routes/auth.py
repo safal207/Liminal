@@ -1,12 +1,14 @@
 """Authentication API routes."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.auth.dependencies import token_verifier
-from backend.auth.jwt_utils import authenticate_user, create_access_token_for_user
 from backend.auth.models import Token, UserLogin
 
+from ..billing.entitlements import entitlements_for_tier
+from ..billing.store import get_user_state
 from ..dependencies import get_auth_service
 
 router = APIRouter(tags=["auth"])
@@ -26,10 +28,19 @@ async def login(user_data: UserLogin, service=Depends(get_auth_service)) -> Toke
 
 @router.get("/auth/me")
 async def get_current_user(payload: dict = Depends(token_verifier)):
+    uid = str(payload.get("sub") or "")
+    state = get_user_state(uid)
+    ent = entitlements_for_tier(state.tier)
     return {
         "user_id": payload.get("sub"),
         "username": payload.get("username"),
         "message": "Токен действителен",
+        "subscription_tier": state.tier.value,
+        "entitlements": {
+            "burnout_pro": ent.burnout_pro,
+            "team_dashboard": ent.team_dashboard,
+            "api_access": ent.api_access,
+        },
     }
 
 
