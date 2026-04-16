@@ -45,22 +45,22 @@ jobs:
           pip install -r backend/test-requirements.txt
 
       - name: Code formatting check (Black)
-        run: black --check --diff .
+        run: python -m black --check --diff .
 
       - name: Import sorting check (isort)
-        run: isort --check-only --diff .
+        run: python -m isort --check-only --diff .
 
       - name: Linting (flake8)
-        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        run: python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
 
       - name: Type checking (mypy)
-        run: mypy . --ignore-missing-imports
+        run: python -m mypy . --ignore-missing-imports
 
       - name: Security scan (bandit)
-        run: bandit -r . -x tests/ -f json -o bandit-report.json
+        run: python -m bandit -r . -x tests/ -f json -o bandit-report.json
 
       - name: Dependency vulnerability scan
-        run: safety check --json --output safety-report.json
+        run: python -m safety scan --output json > safety-report.json
 
       - name: Upload security reports
         uses: actions/upload-artifact@v4
