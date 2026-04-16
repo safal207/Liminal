@@ -4,8 +4,7 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from backend.burnout_guard.modes import BurnoutRiskLevel
-from backend.burnout_guard.persistence import (BurnoutDatabaseAdapter,
-                                               BurnoutRisk)
+from backend.burnout_guard.persistence import BurnoutDatabaseAdapter, BurnoutRisk
 from backend.database_adapter import DatabaseAdapter
 
 
