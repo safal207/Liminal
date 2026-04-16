@@ -68,8 +68,7 @@ jobs:
         run: |
           cd /tmp
           python -m pip install --quiet pip-audit
-          pip-audit -r "${{ github.workspace }}/requirements.txt" --format json --exit-code-zero \
-            -o "${{ github.workspace }}/safety-report.json"
+          pip-audit -r "${{ github.workspace }}/requirements.txt" -f json -o "${{ github.workspace }}/safety-report.json" || true
 
       - name: Upload security reports
         uses: actions/upload-artifact@v4
