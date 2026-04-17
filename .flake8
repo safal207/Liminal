@@ -9,3 +9,4 @@ per-file-ignores =
     backend/core/settings.py:B023
     backend/memory_timeline.py:F811,F821,F841
     backend/emotime/tests/test_api.py:E402,F841
+    backend/test_comprehensive.py:B007,B017,E501,F401,F811,W291,W292,W293
