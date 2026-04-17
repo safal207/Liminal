@@ -24,7 +24,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import aiohttp
 import pytest
 import pytest_asyncio
-from datomic_client import DatomicClient
 from fastapi.testclient import TestClient
 from locust import HttpUser, between, task
 from ml_pipeline_enhanced import ModelVersion, ml_pipeline
@@ -35,6 +34,7 @@ from security_enhanced import InputValidator, RateLimiter, security_middleware
 
 # Import our modules for testing
 from config import get_settings
+from datomic_client import DatomicClient
 
 
 class TestConfig:

@@ -30,7 +30,6 @@ try:
         create_consciousness_event,
     )
 except ModuleNotFoundError:  # pragma: no cover - legacy fallback when run as script
-    from philosophy_neo4j import PhilosophyNeo4jWriter
     from philosophy_schema import (  # type: ignore[no-redef]
         ConsciousnessNode,
         ConsciousnessState,
@@ -38,6 +37,8 @@ except ModuleNotFoundError:  # pragma: no cover - legacy fallback when run as sc
         TransitionTrigger,
         create_consciousness_event,
     )
+
+    from philosophy_neo4j import PhilosophyNeo4jWriter
 
 
 def log_message(title, content=None):
