@@ -85,9 +85,8 @@ class TestEmotimeEngineIntegration:
 
             await asyncio.sleep(0.2)
 
-            # Check that engine processed something
-            state = await self.engine.get_current_state()
-            # State might be None if processing didn't complete, which is okay
+            # State might be None if processing didn't complete, which is okay.
+            await self.engine.get_current_state()
 
             # Test serialization works
             result = self.engine.to_dict()

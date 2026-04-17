@@ -18,12 +18,16 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
-from ..emotime.modes import EmotionalMode
-from ..emotime.modes import ModeType as EmotionalModeType
+try:
+    from ..emotime.modes import EmotionalMode
+    from ..emotime.modes import ModeType as EmotionalModeType
+except ImportError:  # pragma: no cover - support legacy top-level package imports
+    from emotime.modes import EmotionalMode
+    from emotime.modes import ModeType as EmotionalModeType
 
 
 class BurnoutRiskLevel(Enum):
@@ -184,7 +188,7 @@ class BurnoutModeMapper:
         total_risk = 0.0
         total_duration = 0.0
 
-        for mode, timestamp in recent_modes:
+        for mode, _timestamp in recent_modes:
             mode_mapping = self.EMOTIONAL_TO_RISK_MAPPING.get(mode.type, {})
             base_risk = mode_mapping.get("base_risk", 0.25)
 

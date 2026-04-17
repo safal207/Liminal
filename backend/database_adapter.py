@@ -14,14 +14,12 @@ Principle: "No randomness is random" - every database choice is justified by dat
 import asyncio
 import logging
 import os
-import time
 import uuid
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from config import get_database_settings
-from datomic_client import DatomicClient, DatomicConnectionError
+from datomic_client import DatomicClient
 
 try:
     from philosophy_neo4j import PhilosophyNeo4jWriter
@@ -78,6 +76,7 @@ class DatabaseAdapter:
         # Общие настройки
         auto_connect: bool = True,
         fallback_enabled: bool = True,
+        mock_mode: bool = False,
     ):
         """
         Инициализация адаптера.
@@ -109,6 +108,7 @@ class DatabaseAdapter:
         # Общие настройки
         self.auto_connect = auto_connect
         self.fallback_enabled = fallback_enabled
+        self.mock_mode = mock_mode
 
         # Клиенты БД
         self.datomic_client: Optional[DatomicClient] = None
@@ -136,6 +136,12 @@ class DatabaseAdapter:
         Returns:
             True если хотя бы одна БД доступна
         """
+        if self.mock_mode:
+            self.datomic_available = True
+            self.neo4j_available = True
+            logger.info("DatabaseAdapter running in mock mode")
+            return True
+
         logger.info("🔌 Подключение к базам данных...")
 
         # Подключение к Datomic
@@ -174,7 +180,8 @@ class DatabaseAdapter:
             return False
 
         logger.info(
-            f"🎯 DatabaseAdapter готов (Datomic: {self.datomic_available}, Neo4j: {self.neo4j_available})"
+            "🎯 DatabaseAdapter готов "
+            f"(Datomic: {self.datomic_available}, Neo4j: {self.neo4j_available})"
         )
         return True
 
@@ -290,6 +297,9 @@ class DatabaseAdapter:
         """Сохранение данных в Datomic."""
         self.stats["datomic_queries"] += 1
 
+        if self.mock_mode:
+            return data.get("id", "mock-id")
+
         if data_type == DataType.EMOTION_HISTORY:
             # Специальная обработка для эмоций
             result = self.datomic_client.add_emotion_entry(
@@ -311,7 +321,7 @@ class DatabaseAdapter:
         if data_type == DataType.PHILOSOPHY:
             # Специальная обработка для философских состояний
             # TODO: Интеграция с PhilosophyNeo4jWriter
-            logger.info(f"🧠 Сохранение философского состояния в Neo4j")
+            logger.info("🧠 Сохранение философского состояния в Neo4j")
             return data["id"]
         else:
             # Общее сохранение данных
@@ -357,6 +367,9 @@ class DatabaseAdapter:
     ) -> List[Dict[str, Any]]:
         """Запрос данных из Datomic."""
         self.stats["datomic_queries"] += 1
+
+        if self.mock_mode:
+            return []
 
         if data_type == DataType.EMOTION_HISTORY and filters and "user_id" in filters:
             # Специальный запрос истории эмоций

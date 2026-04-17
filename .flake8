@@ -8,3 +8,4 @@ per-file-ignores =
     backend/burnout_guard/persistence.py:F401,F841
     backend/core/settings.py:B023
     backend/memory_timeline.py:F811,F821,F841
+    backend/emotime/tests/test_api.py:E402,F841
