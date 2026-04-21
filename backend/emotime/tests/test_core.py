@@ -185,6 +185,8 @@ class TestEmotimeEngine:
         with patch.object(
             self.engine.fusion, "process_batch", return_value=mock_features
         ) as mock_fusion:
+            # Force classic mode classification path for deterministic assertion.
+            self.engine.adaptive_engine = None
             with patch.object(self.engine.modes, "classify_mode") as mock_classify:
                 mock_mode = EmotionalMode(
                     name="Focus",
