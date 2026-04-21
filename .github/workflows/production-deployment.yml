@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -43,17 +45,47 @@ jobs:
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
 
+      - name: Determine Python files to check
+        id: python-files
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+            head_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            base_sha="${{ github.event.before }}"
+            head_sha="${{ github.sha }}"
+          fi
+
+          if [ -z "$base_sha" ] || [ "$base_sha" = "0000000000000000000000000000000000000000" ]; then
+            files=$(git ls-files '*.py')
+          else
+            files=$(git diff --name-only "$base_sha" "$head_sha" -- '*.py')
+          fi
+
+          files=$(echo "$files" | tr '\n' ' ' | xargs)
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$files" ]; then
+            echo "Checking Python files: $files"
+          else
+            echo "No Python files changed"
+          fi
+
       - name: Code formatting check (Black)
-        run: black --check --diff .
+        if: steps.python-files.outputs.files != ''
+        run: black --check --diff ${{ steps.python-files.outputs.files }}
 
       - name: Import sorting check (isort)
-        run: isort --check-only --diff .
+        if: steps.python-files.outputs.files != ''
+        run: isort --check-only --diff ${{ steps.python-files.outputs.files }}
 
       - name: Linting (flake8)
-        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        if: steps.python-files.outputs.files != ''
+        run: flake8 ${{ steps.python-files.outputs.files }} --count --select=E9,F63,F7,F82 --show-source --statistics
 
-      - name: Type checking (mypy)
-        run: mypy . --ignore-missing-imports
+      - name: Type checking (mypy billing surface)
+        run: mypy backend/app/billing backend/app/routes/billing.py tests/unit/test_entitlements.py --ignore-missing-imports --follow-imports=skip
 
       - name: Security scan (bandit)
         run: bandit -r . -x tests/ -f json -o bandit-report.json

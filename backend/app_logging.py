@@ -2,7 +2,9 @@
 Application-wide logging initialization for LIMINAL
 Configures structured logging on startup
 """
+
 import os
+
 from logging_config import configure_structured_logging
 
 
@@ -18,20 +20,19 @@ def init_logging():
 
     # Configure structured logging
     configure_structured_logging(
-        log_level=log_level,
-        service_name=service_name,
-        enable_json=enable_json
+        log_level=log_level, service_name=service_name, enable_json=enable_json
     )
 
     # Log initialization
     from logging_config import get_logger
+
     logger = get_logger(__name__)
 
     logger.info(
         "Structured logging initialized",
         log_level=log_level,
         service_name=service_name,
-        json_format=enable_json
+        json_format=enable_json,
     )
 
 
@@ -40,6 +41,7 @@ if __name__ == "__main__":
     init_logging()
 
     from logging_config import get_logger
+
     logger = get_logger("test")
 
     logger.debug("Debug message")

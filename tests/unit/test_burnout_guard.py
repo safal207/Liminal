@@ -1,9 +1,10 @@
-import pytest
-from unittest.mock import AsyncMock, patch
 from datetime import datetime
-from backend.burnout_guard.persistence import BurnoutDatabaseAdapter, BurnoutRisk
+
+import pytest
+
 from backend.burnout_guard.modes import BurnoutRiskLevel
-from backend.database_adapter import DatabaseAdapter
+from backend.burnout_guard.persistence import BurnoutDatabaseAdapter, BurnoutRisk
+
 
 class TestBurnoutDatabaseAdapter:
     @pytest.mark.asyncio
@@ -22,13 +23,12 @@ class TestBurnoutDatabaseAdapter:
             emotional_indicators=["high_stress"],
             behavioral_patterns=["late_work"],
             duration_risk=0.5,
-            trend_risk=0.2
+            trend_risk=0.2,
         )
 
         # Test store_risk (which is an alias for store_risk_assessment)
         result = await adapter.store_risk(
-            user_id="test-user",
-            risk_assessment=risk_assessment
+            user_id="test-user", risk_assessment=risk_assessment
         )
 
         assert result is True
@@ -41,9 +41,7 @@ class TestBurnoutDatabaseAdapter:
 
         # Test track_recommendation_usage
         result = await adapter.track_recommendation_usage(
-            user_id="test-user",
-            recommendation_id="rec-123",
-            action="accepted"
+            user_id="test-user", recommendation_id="rec-123", action="accepted"
         )
 
         assert result is True
