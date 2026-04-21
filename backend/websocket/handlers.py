@@ -20,7 +20,7 @@ logger = get_logger("websocket.handlers")
 
 # Тип для обработчиков сообщений
 MessageHandler = Callable[
-    [Dict[str, Any], WebSocket, ConnectionManager], Awaitable[None]
+    [Dict[str, Any], WebSocket, "ConnectionManager"], Awaitable[None]
 ]
 
 # Реестр обработчиков
