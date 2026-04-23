@@ -21,10 +21,17 @@ def pytest_ignore_collect(collection_path, config):
     if path.suffix == ".txt" and path.name.startswith("test"):
         return True
 
-    if path.suffix != ".py" or path.parent != _BACKEND_ROOT:
+    if path.suffix != ".py":
         return False
 
-    if not path.name.startswith("test_"):
+    is_backend_manual_smoke_test = (
+        path.parent == _BACKEND_ROOT and path.name.startswith("test_")
+    )
+    is_backend_tests_script = (
+        path.parent == _BACKEND_ROOT / "tests" and path.name.endswith("_test.py")
+    )
+
+    if not (is_backend_manual_smoke_test or is_backend_tests_script):
         return False
 
     try:
