@@ -13,6 +13,7 @@ per-file-ignores =
     backend/emotime/tests/test_basic.py:E402,F401
     backend/emotime/tests/test_core.py:E402,F401
     backend/emotime/tests/test_fusion.py:E402,F401
+    backend/emotime/tests/test_integration.py:E402,F841
     backend/test_comprehensive.py:B007,B017,E501,F401,F811,W291,W292,W293
     backend/websocket/connection_manager.py:E501,F401,F541
     backend/websocket/handlers.py:E501
