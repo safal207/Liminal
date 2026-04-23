@@ -18,6 +18,9 @@ def pytest_ignore_collect(collection_path, config):
     """Skip root-level backend smoke scripts that are not real pytest modules."""
     path = Path(str(collection_path))
 
+    if path.suffix == ".txt" and path.name.startswith("test"):
+        return True
+
     if path.suffix != ".py" or path.parent != _BACKEND_ROOT:
         return False
 
