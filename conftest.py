@@ -38,5 +38,9 @@ def pytest_ignore_collect(collection_path, config):
         or "async def main(" in source
     )
     has_assertions = "assert " in source
+    has_custom_runner = "run_all_tests(" in source
+    has_boolean_test_protocol = "return True" in source or "return False" in source
 
-    return has_manual_entrypoint and not has_assertions
+    return has_custom_runner or (
+        has_manual_entrypoint and (not has_assertions or has_boolean_test_protocol)
+    )
