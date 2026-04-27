@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+from backend.memory_timeline import _parse_memory_timestamp
 from backend.memory_timeline import timeline as memory_timeline
 
 TEST_MEMORY = {
@@ -17,7 +18,7 @@ def test_add_memory(client):
     """Тестирование добавления нового воспоминания."""
 
     response = client.post("/timeline/memories/", json=TEST_MEMORY)
-    assert response.status_code == 201
+    assert response.status_code == 201, response.text
     data = response.json()
     assert "id" in data
     assert data["content"] == TEST_MEMORY["content"]
@@ -29,10 +30,10 @@ def test_get_memories(client):
     """Тестирование получения списка воспоминаний."""
 
     response = client.post("/timeline/memories/", json=TEST_MEMORY)
-    assert response.status_code == 201
+    assert response.status_code == 201, response.text
 
     response = client.get("/timeline/memories/")
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     memories = response.json()
     assert isinstance(memories, list)
     assert len(memories) == 1
@@ -51,16 +52,16 @@ def test_get_memories_with_filters(client):
 
     for memory in test_memories:
         response = client.post("/timeline/memories/", json=memory)
-        assert response.status_code == 201
+        assert response.status_code == 201, response.text
 
     response = client.get("/timeline/memories/?memory_type=old")
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     memories = response.json()
     assert len(memories) == 2
     assert all(m["type"] == "old" for m in memories)
 
     response = client.get("/timeline/memories/?memory_type=new")
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     memories = response.json()
     assert len(memories) == 1
     assert all(m["type"] == "new" for m in memories)
@@ -82,7 +83,7 @@ def test_websocket_updates(client):
             "/timeline/memories/",
             json={"content": "WebSocket тест", "memory_type": "test"},
         )
-        assert response.status_code == 201
+        assert response.status_code == 201, response.text
         assert events
         assert events[-1]["event"] == "memory_added"
         assert events[-1]["data"]["content"] == "WebSocket тест"
@@ -107,13 +108,13 @@ def test_get_memories_with_time_filters(client):
     }
 
     response = client.post("/timeline/memories/", json=older_memory)
-    assert response.status_code == 201
+    assert response.status_code == 201, response.text
     response = client.post("/timeline/memories/", json=newer_memory)
-    assert response.status_code == 201
+    assert response.status_code == 201, response.text
 
     start_time = (now + timedelta(seconds=1)).isoformat()
     response = client.get("/timeline/memories/", params={"start_time": start_time})
-    assert response.status_code == 200
+    assert response.status_code == 200, response.text
     memories = response.json()
     start_dt = datetime.fromisoformat(start_time)
-    assert all(datetime.fromisoformat(m["timestamp"]) >= start_dt for m in memories)
+    assert all(_parse_memory_timestamp(m["timestamp"]) >= start_dt for m in memories)

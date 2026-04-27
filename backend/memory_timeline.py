@@ -37,6 +37,15 @@ class TimelineEvent:
 MemoryTimelineEventListener = Callable[[TimelineEvent], Awaitable[None]]
 
 
+def _parse_memory_timestamp(value: str) -> datetime:
+    """Parse timeline ISO timestamps (…Z or offset-aware) for comparisons."""
+
+    s = value.strip()
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    return datetime.fromisoformat(s)
+
+
 class MemoryTimeline:
     def __init__(self):
         self.timeline: List[Dict[str, Any]] = []
@@ -150,7 +159,7 @@ class MemoryTimeline:
             "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         }
 
-        message_json = json.dumps(message)
+        message_json = json.dumps(message, default=str)
 
         delivered = 0
         failed = 0
