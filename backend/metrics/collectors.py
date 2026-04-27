@@ -73,6 +73,45 @@ websocket_idle_disconnects_total = Counter(
     ["reason"],  # idle_timeout, missing_pong
 )
 
+# WebSocket message validation / ack pipeline (used by metrics package API)
+websocket_message_validation_errors_total = Counter(
+    "websocket_message_validation_errors_total",
+    "WebSocket messages rejected by validation",
+    ["reason"],
+)
+
+websocket_message_size_bytes = Histogram(
+    "websocket_message_size_bytes",
+    "Size of WebSocket messages in bytes",
+    ["direction"],
+    buckets=(64, 256, 1024, 4096, 16384, 65536, 262144),
+)
+
+websocket_message_acks_total = Counter(
+    "websocket_message_acks_total",
+    "WebSocket message acknowledgements",
+    ["status"],
+)
+
+websocket_pending_messages = Gauge(
+    "websocket_pending_messages",
+    "Messages awaiting acknowledgement",
+    ["channel"],
+)
+
+websocket_message_retries_total = Counter(
+    "websocket_message_retries_total",
+    "Retries for unacknowledged WebSocket messages",
+    ["reason"],
+)
+
+websocket_ack_response_time = Histogram(
+    "websocket_ack_response_time_seconds",
+    "Time until WebSocket message acknowledgement",
+    ["channel"],
+    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5),
+)
+
 # Memory timeline observability
 memory_timeline_events_total = Counter(
     "memory_timeline_events_total",

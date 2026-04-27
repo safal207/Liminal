@@ -16,10 +16,10 @@ from datetime import datetime
 import pytest
 import requests
 import websockets
-from rich import print as rprint
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
+
+from diagnostic_rich_stub.console import Console
+from diagnostic_rich_stub.panel import Panel
+from diagnostic_rich_stub.table import Table
 
 # Маркер: это интеграционные диагностические проверки, требуют живого сервера
 pytestmark = pytest.mark.integration
@@ -65,7 +65,8 @@ async def test_websocket_connection():
             console.print(f"[green]✓[/green] Получен ответ: {response[:100]}...")
         except asyncio.TimeoutError:
             console.print(
-                "[yellow]⚠[/yellow] Не получен ответ на ping (это нормально, если сервер не настроен на ответ)"
+                "[yellow]⚠[/yellow] Не получен ответ на ping "
+                "(это нормально, если сервер не настроен на ответ)"
             )
 
         await ws.close()
@@ -181,7 +182,7 @@ def test_events_api():
             try:
                 response_data = response.json()
                 console.print(f"Ответ: {json.dumps(response_data, indent=2)}")
-            except:
+            except ValueError:
                 console.print(f"Ответ: {response.text[:100]}...")
 
             return True, "Событие успешно отправлено"
@@ -201,7 +202,8 @@ async def run_diagnostics():
     console.clear()
     console.print(
         Panel.fit(
-            "[bold green]Resonance Liminal[/bold green] - [bold]Диагностика Philosophy-First WebSocket Relay[/bold]",
+            "[bold green]Resonance Liminal[/bold green] - "
+            "[bold]Диагностика Philosophy-First WebSocket Relay[/bold]",
             border_style="blue",
         )
     )
@@ -239,7 +241,8 @@ async def run_diagnostics():
     if all_success:
         console.print(
             Panel(
-                "[green bold]Все тесты успешно пройдены![/green bold] WebSocket relay готов к работе.",
+                "[green bold]Все тесты успешно пройдены![/green bold] "
+                "WebSocket relay готов к работе.",
                 border_style="green",
             )
         )
@@ -253,14 +256,5 @@ async def run_diagnostics():
 
 
 if __name__ == "__main__":
-    # Проверяем наличие rich
-    try:
-        import rich
-    except ImportError:
-        print("Установка пакета rich для красивого вывода...")
-        import subprocess
-
-        subprocess.call(["pip", "install", "rich"])
-
-    # Запускаем диагностику
+    # Запускаем диагностику (вывод через diagnostic_rich_stub или установите PyPI rich)
     asyncio.run(run_diagnostics())

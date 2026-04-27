@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Protocol
 
@@ -15,7 +16,9 @@ class Neo4jGateway(Protocol):
 
     def close(self) -> None: ...
 
-    def create_dunewave_node(self, wave_data: Dict[str, Any]) -> Optional[Dict[str, Any]]: ...
+    def create_dunewave_node(
+        self, wave_data: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]: ...
 
     def list_dunewaves(self, limit: int = 10) -> List[Dict[str, Any]]: ...
 
@@ -42,12 +45,6 @@ def _build_default_gateway() -> Neo4jGateway:
     uri = integrations.neo4j_uri
     user = integrations.neo4j_user
     password = integrations.neo4j_password
-
-    if os.getenv("NEO4J_USE_MOCK", "false").lower() == "true" or os.getenv("TESTING"):
-        return MockNeo4jGateway()
-
-    if os.getenv("NEO4J_USE_MOCK", "false").lower() == "true" or os.getenv("TESTING"):
-        return MockNeo4jGateway()
 
     if os.getenv("NEO4J_USE_MOCK", "false").lower() == "true" or os.getenv("TESTING"):
         return MockNeo4jGateway()

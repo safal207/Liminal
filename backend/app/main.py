@@ -1,20 +1,23 @@
 """FastAPI application entrypoint for the modularised backend."""
+
 from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Awaitable, Callable, Dict, AsyncIterator
+from typing import AsyncIterator, Awaitable, Callable, Dict
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from backend.burnout_guard.api import router as burnout_router
 from backend.health import router as health_router
-from backend.redis_client import RedisClient
 from backend.metrics import setup_metrics
+from backend.redis_client import RedisClient
 
+from .billing.deps import require_burnout_pro
 from .dependencies import (
     get_connection_manager,
     get_memory_service,
@@ -23,7 +26,7 @@ from .dependencies import (
     init_services,
     shutdown_services,
 )
-from .routes import auth, debug, fragments, waves, ws
+from .routes import auth, billing, debug, fragments, waves, ws
 
 
 @asynccontextmanager
@@ -81,6 +84,11 @@ app.include_router(waves.router)
 app.include_router(fragments.router)
 app.include_router(debug.router)
 app.include_router(ws.router)
+app.include_router(billing.router)
+app.include_router(
+    burnout_router,
+    dependencies=[Depends(require_burnout_pro)],
+)
 
 
 # Application state ----------------------------------------------------

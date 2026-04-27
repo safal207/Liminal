@@ -7,7 +7,15 @@ import argparse
 import random
 import time
 
-from prometheus_client import REGISTRY, Counter, Gauge, Histogram, start_http_server
+from prometheus_client import (
+    CollectorRegistry,
+    Counter,
+    Gauge,
+    Histogram,
+    start_http_server,
+)
+
+LOCAL_REGISTRY = CollectorRegistry()
 
 # Имитация метрик из backend/metrics/collectors.py
 # WebSocket метрики
@@ -15,16 +23,21 @@ websocket_connections = Gauge(
     "websocket_connections",
     "Количество активных WebSocket соединений",
     ["channel", "authenticated"],
+    registry=LOCAL_REGISTRY,
 )
 
 websocket_messages_total = Counter(
     "websocket_messages_total",
     "Общее количество WebSocket сообщений",
     ["type", "direction", "channel"],
+    registry=LOCAL_REGISTRY,
 )
 
 websocket_auth_total = Counter(
-    "websocket_auth_total", "Количество попыток аутентификации WebSocket", ["status"]
+    "websocket_auth_total",
+    "Количество попыток аутентификации WebSocket",
+    ["status"],
+    registry=LOCAL_REGISTRY,
 )
 
 # Метрики производительности
@@ -33,6 +46,7 @@ message_processing_time = Histogram(
     "Время обработки сообщений WebSocket",
     ["message_type"],
     buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10),
+    registry=LOCAL_REGISTRY,
 )
 
 # Метрики для ограничений соединений
@@ -40,6 +54,7 @@ connection_limits = Gauge(
     "connection_limits",
     "Статистика по ограничениям соединений",
     ["type"],  # ip, total, max_per_ip, max_total
+    registry=LOCAL_REGISTRY,
 )
 
 # Метрика для тайм-аутов и отклонённых соединений
@@ -47,6 +62,7 @@ connection_rejections = Counter(
     "connection_rejections_total",
     "Количество отклонённых WebSocket соединений",
     ["reason"],
+    registry=LOCAL_REGISTRY,
 )
 
 
@@ -274,7 +290,7 @@ def main():
 
     # Запуск HTTP сервера метрик
     print(f"Запуск HTTP сервера метрик Prometheus на порту {args.port}...")
-    start_http_server(args.port)
+    start_http_server(args.port, registry=LOCAL_REGISTRY)
     print(
         f"Сервер метрик запущен. Доступен по адресу http://localhost:{args.port}/metrics"
     )

@@ -1,31 +1,20 @@
 """
 🚀🛡️ BurnoutGuard — AI-защита от выгорания
-
-Система раннего предупреждения и защиты от профессионального выгорания,
-построенная на основе Emotime для анализа эмоционального состояния.
-
-Основные компоненты:
-- Детектор выгорания (на основе эмоциональных паттернов)
-- Система скоринга риска выгорания
-- Персонализированные рекомендации
-- Командная аналитика для HR
-- Мобильный интерфейс
-
-"Защитим от выгорания, сохранив внутренний огонь" ✨
 """
 
-from .core import BurnoutGuardEngine, BurnoutState, BurnoutRisk
+from .analytics import TeamAnalytics
+from .analytics import TeamBurnoutTrend as BurnoutTrend
+from .core import BurnoutGuardEngine, BurnoutRisk, BurnoutState
 from .detector import BurnoutDetector, BurnoutPattern
-from .recommendations import RecommendationEngine, Recommendation
-from .analytics import TeamAnalytics, BurnoutTrend
 from .modes import BurnoutMode, BurnoutModeType
+from .recommendations import Recommendation, RecommendationEngine
 
 __version__ = "1.0.0"
 __author__ = "Resonance Liminal Team"
 
 __all__ = [
     "BurnoutGuardEngine",
-    "BurnoutState", 
+    "BurnoutState",
     "BurnoutRisk",
     "BurnoutDetector",
     "BurnoutPattern",
@@ -34,5 +23,5 @@ __all__ = [
     "TeamAnalytics",
     "BurnoutTrend",
     "BurnoutMode",
-    "BurnoutModeType"
+    "BurnoutModeType",
 ]

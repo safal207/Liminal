@@ -9,10 +9,11 @@ from pydantic import AliasChoices, BaseModel, Field
 
 try:  # pragma: no cover - prefer the dedicated package when available
     from pydantic_settings import BaseSettings, SettingsConfigDict
-    USING_PYDANTIC_SETTINGS = True
-except Exception:  # pragma: no cover - fallback for environments without pydantic-settings
-    from pydantic import BaseModel
 
+    USING_PYDANTIC_SETTINGS = True
+except (
+    Exception
+):  # pragma: no cover - fallback for environments without pydantic-settings
     USING_PYDANTIC_SETTINGS = False
 
     class BaseSettings(BaseModel):  # type: ignore
@@ -66,7 +67,8 @@ class MemoryTimelineSettings(BaseModel):
     initial_state_limit: int = Field(
         DEFAULT_MEMORY_TIMELINE_INITIAL_LIMIT,
         validation_alias=AliasChoices(
-            "MEMORY_TIMELINE__INITIAL_STATE_LIMIT", "MEMORY_TIMELINE_INITIAL_STATE_LIMIT"
+            "MEMORY_TIMELINE__INITIAL_STATE_LIMIT",
+            "MEMORY_TIMELINE_INITIAL_STATE_LIMIT",
         ),
         json_schema_extra={
             "env": [
@@ -90,51 +92,88 @@ class MemoryTimelineSettings(BaseModel):
     )
 
 
+class BillingSettings(BaseModel):
+    """Stripe and local billing store configuration."""
+
+    stripe_secret_key: str = Field(
+        "",
+        validation_alias=AliasChoices(
+            "BILLING__STRIPE_SECRET_KEY", "STRIPE_SECRET_KEY"
+        ),
+        json_schema_extra={"env": ["BILLING__STRIPE_SECRET_KEY", "STRIPE_SECRET_KEY"]},
+    )
+    stripe_webhook_secret: str = Field(
+        "",
+        validation_alias=AliasChoices(
+            "BILLING__STRIPE_WEBHOOK_SECRET", "STRIPE_WEBHOOK_SECRET"
+        ),
+        json_schema_extra={
+            "env": ["BILLING__STRIPE_WEBHOOK_SECRET", "STRIPE_WEBHOOK_SECRET"]
+        },
+    )
+    stripe_price_pro_monthly: str = Field(
+        "",
+        validation_alias=AliasChoices(
+            "BILLING__STRIPE_PRICE_PRO_MONTHLY", "STRIPE_PRICE_PRO_MONTHLY"
+        ),
+        json_schema_extra={
+            "env": ["BILLING__STRIPE_PRICE_PRO_MONTHLY", "STRIPE_PRICE_PRO_MONTHLY"]
+        },
+    )
+    stripe_success_url: str = Field(
+        "http://127.0.0.1:8000/",
+        validation_alias=AliasChoices(
+            "BILLING__STRIPE_SUCCESS_URL", "STRIPE_SUCCESS_URL"
+        ),
+        json_schema_extra={
+            "env": ["BILLING__STRIPE_SUCCESS_URL", "STRIPE_SUCCESS_URL"]
+        },
+    )
+    stripe_cancel_url: str = Field(
+        "http://127.0.0.1:8000/",
+        validation_alias=AliasChoices(
+            "BILLING__STRIPE_CANCEL_URL", "STRIPE_CANCEL_URL"
+        ),
+        json_schema_extra={"env": ["BILLING__STRIPE_CANCEL_URL", "STRIPE_CANCEL_URL"]},
+    )
+    store_path: str = Field(
+        "",
+        validation_alias=AliasChoices("BILLING__STORE_PATH", "BILLING_STORE_PATH"),
+        json_schema_extra={"env": ["BILLING__STORE_PATH", "BILLING_STORE_PATH"]},
+    )
+
+
 class IntegrationSettings(BaseModel):
     """Settings for external integrations and infrastructure dependencies."""
 
     use_redis: bool = Field(
         False,
-        validation_alias=AliasChoices(
-            "INTEGRATIONS__USE_REDIS", "USE_REDIS"
-        ),
+        validation_alias=AliasChoices("INTEGRATIONS__USE_REDIS", "USE_REDIS"),
         json_schema_extra={"env": ["INTEGRATIONS__USE_REDIS", "USE_REDIS"]},
     )
     redis_url: str = Field(
         "redis://localhost:6379/0",
-        validation_alias=AliasChoices(
-            "INTEGRATIONS__REDIS_URL", "REDIS_URL"
-        ),
+        validation_alias=AliasChoices("INTEGRATIONS__REDIS_URL", "REDIS_URL"),
         json_schema_extra={"env": ["INTEGRATIONS__REDIS_URL", "REDIS_URL"]},
     )
     neo4j_uri: str = Field(
         "bolt://localhost:7687",
-        validation_alias=AliasChoices(
-            "INTEGRATIONS__NEO4J_URI", "NEO4J_URI"
-        ),
+        validation_alias=AliasChoices("INTEGRATIONS__NEO4J_URI", "NEO4J_URI"),
         json_schema_extra={"env": ["INTEGRATIONS__NEO4J_URI", "NEO4J_URI"]},
     )
     neo4j_user: str = Field(
         "neo4j",
-        validation_alias=AliasChoices(
-            "INTEGRATIONS__NEO4J_USER", "NEO4J_USER"
-        ),
+        validation_alias=AliasChoices("INTEGRATIONS__NEO4J_USER", "NEO4J_USER"),
         json_schema_extra={"env": ["INTEGRATIONS__NEO4J_USER", "NEO4J_USER"]},
     )
     neo4j_password: str = Field(
         "password",
-        validation_alias=AliasChoices(
-            "INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD"
-        ),
-        json_schema_extra={
-            "env": ["INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD"]
-        },
+        validation_alias=AliasChoices("INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD"),
+        json_schema_extra={"env": ["INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD"]},
     )
     ml_enabled: bool = Field(
         False,
-        validation_alias=AliasChoices(
-            "INTEGRATIONS__ML_ENABLED", "ML_ENABLED"
-        ),
+        validation_alias=AliasChoices("INTEGRATIONS__ML_ENABLED", "ML_ENABLED"),
         json_schema_extra={"env": ["INTEGRATIONS__ML_ENABLED", "ML_ENABLED"]},
     )
 
@@ -143,8 +182,11 @@ class Settings(BaseSettings):
     """Centralised application settings loaded via Pydantic."""
 
     jwt: JWTSettings = Field(default_factory=JWTSettings)
-    memory_timeline: MemoryTimelineSettings = Field(default_factory=MemoryTimelineSettings)
+    memory_timeline: MemoryTimelineSettings = Field(
+        default_factory=MemoryTimelineSettings
+    )
     integrations: IntegrationSettings = Field(default_factory=IntegrationSettings)
+    billing: BillingSettings = Field(default_factory=BillingSettings)
 
     if USING_PYDANTIC_SETTINGS:
         model_config = SettingsConfigDict(
@@ -152,9 +194,13 @@ class Settings(BaseSettings):
             env_file_encoding="utf-8",
             case_sensitive=False,
             env_nested_delimiter="__",
+            extra="ignore",
         )
     else:  # pragma: no cover - fallback for environments without pydantic-settings
-        model_config: Dict[str, Any] = {"case_sensitive": False}
+        model_config: Dict[str, Any] = {
+            "case_sensitive": False,
+            "extra": "ignore",
+        }
 
     def __init__(self, **values: Any):
         if not USING_PYDANTIC_SETTINGS:
@@ -172,13 +218,25 @@ class Settings(BaseSettings):
             "jwt": JWTSettings,
             "memory_timeline": MemoryTimelineSettings,
             "integrations": IntegrationSettings,
+            "billing": BillingSettings,
         }
         env_mapping: Dict[str, Dict[str, Tuple[Iterable[str], Type[Any], Any]]] = {
             "jwt": {
-                "secret_key": (("JWT__SECRET_KEY", "JWT_SECRET_KEY"), str, DEFAULT_SECRET),
-                "algorithm": (("JWT__ALGORITHM", "JWT_ALGORITHM"), str, DEFAULT_ALGORITHM),
+                "secret_key": (
+                    ("JWT__SECRET_KEY", "JWT_SECRET_KEY"),
+                    str,
+                    DEFAULT_SECRET,
+                ),
+                "algorithm": (
+                    ("JWT__ALGORITHM", "JWT_ALGORITHM"),
+                    str,
+                    DEFAULT_ALGORITHM,
+                ),
                 "access_token_expire_minutes": (
-                    ("JWT__ACCESS_TOKEN_EXPIRE_MINUTES", "JWT_ACCESS_TOKEN_EXPIRE_MINUTES"),
+                    (
+                        "JWT__ACCESS_TOKEN_EXPIRE_MINUTES",
+                        "JWT_ACCESS_TOKEN_EXPIRE_MINUTES",
+                    ),
                     int,
                     DEFAULT_EXPIRE_MINUTES,
                 ),
@@ -233,6 +291,38 @@ class Settings(BaseSettings):
                     False,
                 ),
             },
+            "billing": {
+                "stripe_secret_key": (
+                    ("BILLING__STRIPE_SECRET_KEY", "STRIPE_SECRET_KEY"),
+                    str,
+                    "",
+                ),
+                "stripe_webhook_secret": (
+                    ("BILLING__STRIPE_WEBHOOK_SECRET", "STRIPE_WEBHOOK_SECRET"),
+                    str,
+                    "",
+                ),
+                "stripe_price_pro_monthly": (
+                    ("BILLING__STRIPE_PRICE_PRO_MONTHLY", "STRIPE_PRICE_PRO_MONTHLY"),
+                    str,
+                    "",
+                ),
+                "stripe_success_url": (
+                    ("BILLING__STRIPE_SUCCESS_URL", "STRIPE_SUCCESS_URL"),
+                    str,
+                    "http://127.0.0.1:8000/",
+                ),
+                "stripe_cancel_url": (
+                    ("BILLING__STRIPE_CANCEL_URL", "STRIPE_CANCEL_URL"),
+                    str,
+                    "http://127.0.0.1:8000/",
+                ),
+                "store_path": (
+                    ("BILLING__STORE_PATH", "BILLING_STORE_PATH"),
+                    str,
+                    "",
+                ),
+            },
         }
 
         for section, model_cls in section_models.items():
@@ -242,7 +332,9 @@ class Settings(BaseSettings):
             else:
                 section_data = dict(current or {})
 
-            for field_name, (env_names, caster, default) in env_mapping[section].items():
+            for field_name, (env_names, caster, default) in env_mapping[
+                section
+            ].items():
                 if field_name in section_data and section_data[field_name] is not None:
                     continue
 
@@ -273,4 +365,4 @@ def get_settings() -> "Settings":
 
 settings = get_settings()
 
-__all__ = ["Settings", "settings", "get_settings"]
+__all__ = ["Settings", "BillingSettings", "settings", "get_settings"]

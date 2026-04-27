@@ -8,10 +8,12 @@ import logging
 import os
 import sys
 import time
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from fastapi import WebSocket
+
 from loguru import logger
 
 try:
@@ -74,6 +76,28 @@ except ImportError:
 logger = logging.getLogger("websocket.connection_manager")
 
 
+@dataclass
+class PendingMessage:
+    """Backward-compatible pending message model for ACK tests."""
+
+    message_id: str
+    content: Dict[str, Any]
+    user_id: str
+    websocket: Any
+    created_at: datetime = field(default_factory=datetime.now)
+    retry_count: int = 0
+    max_retries: int = 3
+    ttl_seconds: int = 300
+
+    @property
+    def can_retry(self) -> bool:
+        return self.retry_count < self.max_retries and not self.is_expired
+
+    @property
+    def is_expired(self) -> bool:
+        return (datetime.now() - self.created_at).total_seconds() > self.ttl_seconds
+
+
 class ConnectionManager:
     """Управляет активными WebSocket соединениями."""
 
@@ -101,6 +125,10 @@ class ConnectionManager:
         self.user_channels: Dict[str, Set[str]] = {}
         # Хранит WebSocket соединение для каждого пользователя: {user_id: websocket}
         self.user_to_websocket: Dict[str, WebSocket] = {}
+        # Backward-compatible ACK state used by legacy tests/tools.
+        self.pending_messages: Dict[str, PendingMessage] = {}
+        self.user_pending_messages: Dict[str, Set[str]] = {}
+        self.ack_timeout_seconds = 30
 
         # Ограничения подключений
         self.max_connections = max_connections
@@ -599,6 +627,40 @@ class ConnectionManager:
     def get_websocket_id(self, websocket: WebSocket) -> str:
         """Возвращает уникальный идентификатор для WebSocket соединения."""
         return str(id(websocket))
+
+    async def handle_ack(self, message_id: str, user_id: str) -> bool:
+        """Handles message ACK for legacy compatibility paths."""
+        pending_message = self.pending_messages.get(message_id)
+        if pending_message is None or pending_message.user_id != user_id:
+            return False
+
+        self.pending_messages.pop(message_id, None)
+        user_messages = self.user_pending_messages.get(user_id)
+        if user_messages is not None:
+            user_messages.discard(message_id)
+            if not user_messages:
+                self.user_pending_messages.pop(user_id, None)
+        return True
+
+    def get_ack_stats(self) -> Dict[str, Any]:
+        """Returns simple ACK state statistics expected by legacy tests."""
+        age_buckets = {"lt_30s": 0, "30s_to_120s": 0, "gte_120s": 0}
+        now = datetime.now()
+        for pending in self.pending_messages.values():
+            age_seconds = (now - pending.created_at).total_seconds()
+            if age_seconds < 30:
+                age_buckets["lt_30s"] += 1
+            elif age_seconds < 120:
+                age_buckets["30s_to_120s"] += 1
+            else:
+                age_buckets["gte_120s"] += 1
+
+        return {
+            "total_pending_messages": len(self.pending_messages),
+            "users_with_pending_messages": len(self.user_pending_messages),
+            "ack_timeout_seconds": self.ack_timeout_seconds,
+            "pending_by_age": age_buckets,
+        }
 
     async def is_rate_limited(
         self,
