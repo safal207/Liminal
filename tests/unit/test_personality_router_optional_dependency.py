@@ -1,8 +1,8 @@
 """Unit tests for optional GraphQL dependency handling in personality router."""
 
+import sys
 from importlib import import_module
 from types import ModuleType
-import sys
 
 
 def test_create_graphql_router_handles_missing_strawberry(monkeypatch):
