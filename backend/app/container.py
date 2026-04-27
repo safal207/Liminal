@@ -43,10 +43,11 @@ except ModuleNotFoundError:  # pragma: no cover - optional dependency in CI
     containers = _ContainersModule()  # type: ignore[assignment]
     providers = _ProvidersModule()  # type: ignore[assignment]
 
+from .services.auth import AuthService
 from .services.memory import MemoryTimelineService
 from .services.ml import MLService
 from .services.neo4j import Neo4jService
-from .services.websocket import ConnectionManagerService
+from .services.websocket import ConnectionManagerService, TimelineWebSocketService
 
 
 class AppContainer(containers.DeclarativeContainer):
@@ -58,6 +59,8 @@ class AppContainer(containers.DeclarativeContainer):
     memory_timeline_service = providers.Singleton(MemoryTimelineService)
     ml_service = providers.Singleton(MLService)
     connection_manager_service = providers.Singleton(ConnectionManagerService)
+    auth_service = providers.Singleton(AuthService)
+    websocket_service = providers.Singleton(TimelineWebSocketService)
 
 
 _container: AppContainer | None = None

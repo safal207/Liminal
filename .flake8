@@ -3,6 +3,7 @@ max-line-length = 100
 extend-ignore = E203
 exclude = .git,__pycache__,.venv,venv,node_modules
 per-file-ignores =
+    backend/app/main.py:B008
     backend/app/routes/ws.py:B008
     backend/burnout_guard/auth_integration.py:B008,F401
     backend/burnout_guard/persistence.py:F401,F841
