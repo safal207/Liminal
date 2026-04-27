@@ -89,7 +89,10 @@ class MemoryTimeline:
             self.timeline.append(memory)
             if len(self.timeline) > self._max_retained_events:
                 self.timeline = self.timeline[-self._max_retained_events :]
-            await self._notify_subscribers("memory_added", memory)
+
+        # Notify outside the timeline lock: _notify_subscribers acquires the lock itself
+        # when there are WebSocket subscribers (avoids re-entrant deadlock on asyncio.Lock).
+        await self._notify_subscribers("memory_added", memory)
 
         await self._emit_event(
             TimelineEvent(

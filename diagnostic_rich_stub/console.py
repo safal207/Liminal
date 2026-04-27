@@ -1,4 +1,5 @@
 """Simplified :mod:`rich.console` implementation for testing purposes."""
+
 from __future__ import annotations
 
 from typing import Any
