@@ -20,6 +20,8 @@ WS_URL = "ws://127.0.0.1:8000/ws/timeline"
 # Секретный ключ должен совпадать с тем, что используется в приложении
 SECRET_KEY = "testsecret123"  # Для тестов используем фиксированный ключ
 
+pytestmark = pytest.mark.integration
+
 
 class TestJWTEdgeCases:
     """Тесты JWT аутентификации для граничных случаев."""
