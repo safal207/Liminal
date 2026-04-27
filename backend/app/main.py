@@ -179,6 +179,7 @@ async def health_check():
         "ml_enabled": get_ml_service().enabled,
         "redis_connected": hasattr(app.state.connection_manager, "redis")
         and getattr(app.state.connection_manager, "redis", None) is not None,
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
 
