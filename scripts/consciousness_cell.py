@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """CLI wrapper for the Consciousness Cell Prefect workflow."""
+
 from __future__ import annotations
 
 import argparse
