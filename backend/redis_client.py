@@ -5,9 +5,8 @@ Provides Redis connection, PubSub, and caching functionality
 
 import os
 
-from loguru import logger
-
 import redis
+from loguru import logger
 
 
 class RedisClient:
