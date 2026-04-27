@@ -1,11 +1,11 @@
 import asyncio
-import json
 import logging
 import sys
+from importlib import import_module
 from pathlib import Path
 
 import pytest
-from websockets.exceptions import ConnectionClosed, ConnectionClosedError
+from websockets.exceptions import ConnectionClosedError
 
 # Настройка логирования
 logging.basicConfig(
@@ -16,12 +16,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Добавляем корень проекта в PYTHONPATH
-project_root = str(Path(__file__).parent.parent)
+project_root = str(Path(__file__).resolve().parents[2])
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-# Импортируем WebSocketClient из существующего теста
-from tests.test_websocket_simple import WebSocketClient
+WebSocketClient = import_module("backend.tests.test_websocket_simple").WebSocketClient
 
 # Базовый URL WebSocket сервера
 BASE_URL = "ws://localhost:8000"
@@ -153,9 +152,10 @@ async def test_multiple_channels():
                 logger.debug(
                     f"Checking message in {msg_channel} for {user['id']}: {msg}"
                 )
-                assert (
-                    msg_channel in user_channels
-                ), f"Пользователь {user['id']} получил сообщение из неподписанного канала {msg_channel}"
+                assert msg_channel in user_channels, (
+                    f"Пользователь {user['id']} получил сообщение "
+                    f"из неподписанного канала {msg_channel}"
+                )
 
             # Проверяем, что пользователь получил все ожидаемые сообщения
             expected_messages = [
@@ -194,7 +194,8 @@ async def test_multiple_channels():
         channel_to_unsubscribe = user_to_unsubscribe["channels"][0]  # channel1
 
         logger.info(
-            f"Testing unsubscribe for user {user_to_unsubscribe['id']} from {channel_to_unsubscribe}"
+            f"Testing unsubscribe for user {user_to_unsubscribe['id']} "
+            f"from {channel_to_unsubscribe}"
         )
 
         try:

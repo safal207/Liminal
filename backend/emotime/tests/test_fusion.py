@@ -2,21 +2,22 @@
 🌿✨ Emotime Feature Fusion Tests — testing multi-sensor data fusion
 """
 
-import pytest
-from datetime import datetime, timedelta
-from unittest.mock import patch, MagicMock
-
-import sys
+import asyncio
 import os
+import sys
+from datetime import datetime, timedelta
+
+import pytest
+
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from emotime.fusion import FeatureFusion, EmotionalFeatures
-from emotime.sensors import SensorData, SensorType
+from emotime.fusion import EmotionalFeatures, FeatureFusion
+from emotime.sensors import AudioData, SensorData, SensorType, TextData, TouchData
 
 
 class TestEmotionalFeatures:
     """Test EmotionalFeatures dataclass."""
-    
+
     def test_features_creation(self):
         """Test EmotionalFeatures creation."""
         features = EmotionalFeatures(
@@ -25,280 +26,286 @@ class TestEmotionalFeatures:
             dominance=0.6,
             tempo=0.5,
             intensity=0.9,
-            confidence=0.85
+            confidence=0.85,
         )
-        
+
         assert features.valence == 0.7
         assert features.arousal == 0.8
         assert features.dominance == 0.6
         assert features.tempo == 0.5
         assert features.intensity == 0.9
         assert features.confidence == 0.85
-    
+
     def test_features_validation(self):
-        """Test features are in valid range."""
+        """Test dataclass stores provided feature values as-is."""
         features = EmotionalFeatures(
-            valence=1.2,  # Will be clamped
-            arousal=-0.1,  # Will be clamped
-            dominance=0.5,
-            tempo=0.5,
-            intensity=0.5
+            valence=1.2, arousal=-0.1, dominance=0.5, tempo=0.5, intensity=0.5
         )
-        
-        # Values should be clamped to [0, 1]
-        assert 0.0 <= features.valence <= 1.0
-        assert 0.0 <= features.arousal <= 1.0
+
+        assert features.valence == 1.2
+        assert features.arousal == -0.1
 
 
 class TestFeatureFusion:
     """Test FeatureFusion class."""
-    
+
     def setup_method(self):
         """Setup for each test."""
-        self.fusion = FeatureFusion(
-            smoothing_factor=0.3,  # More responsive for testing
-            confidence_threshold=0.1
+        self.fusion = FeatureFusion(smoothing_alpha=0.3)
+
+    @staticmethod
+    def _make_text_sensor_data(
+        text: str,
+        timestamp: datetime | None = None,
+        **metadata,
+    ) -> SensorData:
+        return SensorData(
+            sensor_type=SensorType.TEXT,
+            timestamp=timestamp or datetime.now(),
+            raw_data=TextData(
+                text=text,
+                word_count=len(text.split()),
+                char_count=len(text),
+            ),
+            metadata=metadata,
         )
-    
+
+    @staticmethod
+    def _make_touch_sensor_data(
+        timestamp: datetime | None = None,
+        **metadata,
+    ) -> SensorData:
+        return SensorData(
+            sensor_type=SensorType.TOUCH,
+            timestamp=timestamp or datetime.now(),
+            raw_data=TouchData(
+                pressure=0.6,
+                duration=1.0,
+                frequency=30.0,
+                pattern="tap",
+            ),
+            metadata=metadata,
+        )
+
+    @staticmethod
+    def _make_audio_sensor_data(
+        timestamp: datetime | None = None,
+        **metadata,
+    ) -> SensorData:
+        return SensorData(
+            sensor_type=SensorType.AUDIO,
+            timestamp=timestamp or datetime.now(),
+            raw_data=AudioData(
+                pitch_mean=160.0,
+                pitch_variance=25.0,
+                speech_rate=160.0,
+                volume_level=0.7,
+                pause_ratio=0.15,
+                emotion_markers=["joy"],
+            ),
+            metadata=metadata,
+        )
+
     @pytest.mark.asyncio
     async def test_process_single_sensor(self):
         """Test processing data from a single sensor."""
         sensor_data = [
-            SensorData(
-                sensor_type=SensorType.TEXT,
-                data={"text": "I feel wonderful today!"},
-                timestamp=datetime.now()
+            self._make_text_sensor_data(
+                "I feel wonderful today!",
+                valence=0.8,
+                arousal=0.6,
+                intensity=0.8,
             )
         ]
-        
-        # Mock the sensor analysis
-        with patch('emotime.sensors.TextSensor.analyze') as mock_analyze:
-            mock_analyze.return_value = EmotionalFeatures(
-                valence=0.8, arousal=0.6, dominance=0.7,
-                tempo=0.5, intensity=0.8, confidence=0.9
-            )
-            
-            result = await self.fusion.process_batch(sensor_data)
-            
-            assert result is not None
-            assert result.valence == 0.8
-            assert result.confidence == 0.9
-    
+
+        result = await self.fusion.process_batch(sensor_data)
+
+        assert result is not None
+        assert result.valence == pytest.approx(0.8)
+        assert result.arousal == pytest.approx(0.6)
+        assert result.dominance == pytest.approx(0.5)
+        assert result.tempo == pytest.approx(0.5)
+        assert result.intensity == pytest.approx(0.8)
+        assert result.confidence == pytest.approx(1 / 3)
+        assert result.sources == ["text"]
+
     @pytest.mark.asyncio
     async def test_process_multiple_sensors(self):
         """Test processing data from multiple sensors."""
         sensor_data = [
-            SensorData(
-                sensor_type=SensorType.TEXT,
-                data={"text": "I'm excited!"},
-                timestamp=datetime.now()
+            self._make_text_sensor_data(
+                "I'm excited!",
+                valence=0.9,
+                arousal=0.8,
+                intensity=0.9,
             ),
-            SensorData(
-                sensor_type=SensorType.TOUCH,
-                data={"pressure": 0.6, "duration": 1.0},
-                timestamp=datetime.now()
+            self._make_touch_sensor_data(
+                valence=0.7,
+                arousal=0.6,
+                intensity=0.7,
             ),
-            SensorData(
-                sensor_type=SensorType.AUDIO,
-                data={"volume": 0.7, "tempo": 0.8},
-                timestamp=datetime.now()
-            )
+            self._make_audio_sensor_data(
+                valence=0.8,
+                arousal=0.9,
+                intensity=0.8,
+            ),
         ]
-        
-        # Mock sensor analyses
-        with patch('emotime.sensors.TextSensor.analyze') as mock_text:
-            with patch('emotime.sensors.TouchSensor.analyze') as mock_touch:
-                with patch('emotime.sensors.AudioSensor.analyze') as mock_audio:
-                    
-                    mock_text.return_value = EmotionalFeatures(
-                        valence=0.9, arousal=0.8, dominance=0.7,
-                        tempo=0.6, intensity=0.9, confidence=0.8
-                    )
-                    mock_touch.return_value = EmotionalFeatures(
-                        valence=0.7, arousal=0.6, dominance=0.8,
-                        tempo=0.5, intensity=0.7, confidence=0.7
-                    )
-                    mock_audio.return_value = EmotionalFeatures(
-                        valence=0.8, arousal=0.9, dominance=0.6,
-                        tempo=0.8, intensity=0.8, confidence=0.9
-                    )
-                    
-                    result = await self.fusion.process_batch(sensor_data)
-                    
-                    assert result is not None
-                    # Result should be a weighted combination
-                    assert 0.7 <= result.valence <= 0.9
-                    assert 0.6 <= result.arousal <= 0.9
-                    assert result.confidence > 0.0
-    
+
+        result = await self.fusion.process_batch(sensor_data)
+
+        assert result is not None
+        assert result.valence == pytest.approx(0.81)
+        assert result.arousal == pytest.approx(0.77)
+        assert result.dominance == pytest.approx(0.56)
+        assert result.tempo == pytest.approx(0.59)
+        assert result.intensity == pytest.approx(0.81)
+        assert result.confidence == pytest.approx(1.0)
+        assert set(result.sources) == {"text", "touch", "audio"}
+
     @pytest.mark.asyncio
     async def test_process_empty_batch(self):
         """Test processing empty batch."""
         result = await self.fusion.process_batch([])
         assert result is None
-    
+
     @pytest.mark.asyncio
     async def test_ewma_smoothing(self):
         """Test EWMA smoothing functionality."""
         # First batch
         sensor_data1 = [
-            SensorData(
-                sensor_type=SensorType.TEXT,
-                data={"text": "Happy"},
-                timestamp=datetime.now()
+            self._make_text_sensor_data(
+                "Happy",
+                timestamp=datetime.now(),
+                valence=0.9,
+                arousal=0.5,
+                intensity=0.5,
             )
         ]
-        
+
         # Second batch with different values
         sensor_data2 = [
-            SensorData(
-                sensor_type=SensorType.TEXT,
-                data={"text": "Sad"},
-                timestamp=datetime.now() + timedelta(seconds=1)
+            self._make_text_sensor_data(
+                "Sad",
+                timestamp=datetime.now() + timedelta(seconds=1),
+                valence=0.1,
+                arousal=0.5,
+                intensity=0.5,
             )
         ]
-        
-        with patch('emotime.sensors.TextSensor.analyze') as mock_analyze:
-            # First analysis - high valence
-            mock_analyze.return_value = EmotionalFeatures(
-                valence=0.9, arousal=0.5, dominance=0.5,
-                tempo=0.5, intensity=0.5, confidence=0.8
-            )
-            
-            result1 = await self.fusion.process_batch(sensor_data1)
-            assert result1.valence == 0.9
-            
-            # Second analysis - low valence
-            mock_analyze.return_value = EmotionalFeatures(
-                valence=0.1, arousal=0.5, dominance=0.5,
-                tempo=0.5, intensity=0.5, confidence=0.8
-            )
-            
-            result2 = await self.fusion.process_batch(sensor_data2)
-            
-            # Result should be smoothed (not exactly 0.1)
-            assert 0.1 < result2.valence < 0.9
-    
-    def test_calculate_sensor_weights(self):
-        """Test sensor weight calculation."""
-        features_list = [
-            EmotionalFeatures(
-                valence=0.8, arousal=0.6, dominance=0.7,
-                tempo=0.5, intensity=0.8, confidence=0.9  # High confidence
-            ),
-            EmotionalFeatures(
-                valence=0.5, arousal=0.5, dominance=0.5,
-                tempo=0.5, intensity=0.5, confidence=0.3  # Low confidence
-            ),
-            EmotionalFeatures(
-                valence=0.7, arousal=0.7, dominance=0.6,
-                tempo=0.6, intensity=0.7, confidence=0.8  # High confidence
-            )
-        ]
-        
-        weights = self.fusion._calculate_sensor_weights(features_list)
-        
-        assert len(weights) == 3
-        assert sum(weights) == pytest.approx(1.0, rel=1e-6)
-        
-        # Higher confidence features should have higher weights
-        assert weights[0] > weights[1]  # High confidence > low confidence
-        assert weights[2] > weights[1]  # High confidence > low confidence
-    
-    def test_weighted_fusion(self):
-        """Test weighted fusion of features."""
-        features_list = [
-            EmotionalFeatures(
-                valence=1.0, arousal=0.0, dominance=0.5,
-                tempo=0.5, intensity=0.5, confidence=0.8
-            ),
-            EmotionalFeatures(
-                valence=0.0, arousal=1.0, dominance=0.5,
-                tempo=0.5, intensity=0.5, confidence=0.8
-            )
-        ]
-        weights = [0.6, 0.4]  # First feature weighted more
-        
-        result = self.fusion._weighted_fusion(features_list, weights)
-        
-        # Should be weighted average
-        expected_valence = 1.0 * 0.6 + 0.0 * 0.4
-        expected_arousal = 0.0 * 0.6 + 1.0 * 0.4
-        
-        assert result.valence == pytest.approx(expected_valence)
-        assert result.arousal == pytest.approx(expected_arousal)
-    
+
+        result1 = await self.fusion.process_batch(sensor_data1)
+        assert result1.valence == pytest.approx(0.9)
+
+        result2 = await self.fusion.process_batch(sensor_data2)
+        assert result2.valence == pytest.approx(0.66)
+        assert result2.arousal == pytest.approx(0.5)
+
+    @pytest.mark.asyncio
+    async def test_fuse_features_clamps_ranges(self):
+        """Test weighted fusion clamps out-of-range values."""
+        result = await self.fusion._fuse_features(
+            {
+                SensorType.TEXT: {
+                    "valence": 2.0,
+                    "arousal": -1.0,
+                    "dominance": 1.5,
+                    "tempo": 2.0,
+                    "intensity": -0.5,
+                }
+            },
+            ["text"],
+        )
+
+        assert result.valence == 1.0
+        assert result.arousal == 0.0
+        assert result.dominance == 1.0
+        assert result.tempo == 1.0
+        assert result.intensity == 0.0
+        assert result.confidence == pytest.approx(1 / 3)
+
     def test_apply_ewma_smoothing(self):
         """Test EWMA smoothing application."""
         # Set up previous features
-        self.fusion.previous_features = EmotionalFeatures(
-            valence=0.5, arousal=0.5, dominance=0.5,
-            tempo=0.5, intensity=0.5, confidence=0.8
+        self.fusion.last_features = EmotionalFeatures(
+            valence=0.5,
+            arousal=0.5,
+            dominance=0.5,
+            tempo=0.5,
+            intensity=0.5,
+            confidence=0.8,
         )
-        
+
         # New features
         new_features = EmotionalFeatures(
-            valence=1.0, arousal=1.0, dominance=1.0,
-            tempo=1.0, intensity=1.0, confidence=0.9
+            valence=1.0,
+            arousal=1.0,
+            dominance=1.0,
+            tempo=1.0,
+            intensity=1.0,
+            confidence=0.9,
         )
-        
-        # Apply smoothing with alpha=0.3
-        smoothed = self.fusion._apply_ewma_smoothing(new_features)
-        
-        # Should be: old_value * (1 - alpha) + new_value * alpha
+
+        smoothed = asyncio.run(self.fusion._apply_smoothing(new_features))
+
         expected_valence = 0.5 * 0.7 + 1.0 * 0.3
         assert smoothed.valence == pytest.approx(expected_valence)
-    
+        assert smoothed.confidence == 0.9
+
     def test_feature_statistics(self):
         """Test feature statistics collection."""
-        # Process some batches to build statistics
         features1 = EmotionalFeatures(
-            valence=0.8, arousal=0.6, dominance=0.7,
-            tempo=0.5, intensity=0.8, confidence=0.9
+            valence=0.8,
+            arousal=0.6,
+            dominance=0.7,
+            tempo=0.5,
+            intensity=0.8,
+            confidence=0.9,
+            sources=["text"],
         )
         features2 = EmotionalFeatures(
-            valence=0.6, arousal=0.8, dominance=0.5,
-            tempo=0.7, intensity=0.6, confidence=0.7
+            valence=0.6,
+            arousal=0.8,
+            dominance=0.5,
+            tempo=0.7,
+            intensity=0.6,
+            confidence=0.7,
+            sources=["audio"],
         )
-        
-        # Add to history
+
         self.fusion.feature_history.extend([features1, features2])
-        
+
         stats = self.fusion.get_feature_statistics()
-        
-        assert "total_fusions" in stats
-        assert "avg_confidence" in stats
-        assert "feature_ranges" in stats
-        
-        # Check averages
-        expected_avg_valence = (0.8 + 0.6) / 2
-        assert stats["feature_ranges"]["valence"]["avg"] == pytest.approx(expected_avg_valence)
-    
+
+        assert stats["total_points"] == 2
+        assert stats["valence"]["mean"] == pytest.approx(0.7)
+        assert stats["valence"]["min"] == pytest.approx(0.6)
+        assert stats["valence"]["max"] == pytest.approx(0.8)
+        assert stats["arousal"]["mean"] == pytest.approx(0.7)
+        assert stats["recent_confidence"] == pytest.approx(0.7)
+        assert stats["active_sources"] == ["audio"]
+
     @pytest.mark.asyncio
-    async def test_low_confidence_filtering(self):
-        """Test filtering of low confidence results."""
-        # Create fusion with high confidence threshold
-        fusion = FeatureFusion(confidence_threshold=0.8)
-        
-        sensor_data = [
-            SensorData(
-                sensor_type=SensorType.TEXT,
-                data={"text": "unclear..."},
-                timestamp=datetime.now()
-            )
-        ]
-        
-        with patch('emotime.sensors.TextSensor.analyze') as mock_analyze:
-            # Return low confidence result
-            mock_analyze.return_value = EmotionalFeatures(
-                valence=0.5, arousal=0.5, dominance=0.5,
-                tempo=0.5, intensity=0.5, confidence=0.3  # Below threshold
-            )
-            
-            result = await fusion.process_batch(sensor_data)
-            
-            # Should return None due to low confidence
-            assert result is None
+    async def test_confidence_reflects_active_sensor_count(self):
+        """Test confidence is derived from active sensor count."""
+        single_sensor = await self.fusion.process_batch(
+            [
+                self._make_text_sensor_data(
+                    "steady", valence=0.4, arousal=0.4, intensity=0.4
+                )
+            ]
+        )
+        all_sensors = await self.fusion.process_batch(
+            [
+                self._make_text_sensor_data(
+                    "steady", valence=0.4, arousal=0.4, intensity=0.4
+                ),
+                self._make_touch_sensor_data(valence=0.4, arousal=0.4, intensity=0.4),
+                self._make_audio_sensor_data(valence=0.4, arousal=0.4, intensity=0.4),
+            ]
+        )
+
+        assert single_sensor.confidence == pytest.approx(1 / 3)
+        assert all_sensors.confidence == pytest.approx(1.0)
 
 
 if __name__ == "__main__":

@@ -1,23 +1,21 @@
 import asyncio
-import json
 import logging
 import sys
+from importlib import import_module
 from pathlib import Path
 
 import pytest
-from websockets.exceptions import ConnectionClosed, ConnectionClosedError
 
 # Настройка логирования
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 # Добавляем корень проекта в PYTHONPATH
-project_root = str(Path(__file__).parent.parent)
+project_root = str(Path(__file__).resolve().parents[2])
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-# Импортируем WebSocketClient из существующего теста
-from tests.test_websocket_simple import WebSocketClient
+WebSocketClient = import_module("backend.tests.test_websocket_simple").WebSocketClient
 
 
 @pytest.mark.asyncio

@@ -18,9 +18,9 @@ for _name in _ALIASES:
     _module = importlib.import_module(f"backend.emotime.{_name}")
     sys.modules[f"{__name__}.{_name}"] = _module
 
-from backend.emotime import EmotimeEngine  # noqa: E402
-from backend.emotime import (
+from backend.emotime import (  # noqa: E402
     AudioSensor,
+    EmotimeEngine,
     EmotionalModes,
     EmotionalTimeSeries,
     FeatureFusion,
