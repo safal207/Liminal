@@ -1,10 +1,11 @@
 """Rate limiting middleware for LIMINAL API."""
+
+import asyncio
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Dict, Tuple
-import asyncio
 
-from fastapi import HTTPException, Request, status
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 
 
