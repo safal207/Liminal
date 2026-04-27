@@ -23,11 +23,15 @@ from typing import List, Optional, Tuple
 import numpy as np
 
 try:
-    from ..emotime.modes import EmotionalMode
-    from ..emotime.modes import ModeType as EmotionalModeType
-except ImportError:  # pragma: no cover - support legacy top-level package imports
-    from emotime.modes import EmotionalMode
-    from emotime.modes import ModeType as EmotionalModeType
+    from backend.emotime.modes import EmotionalMode
+    from backend.emotime.modes import ModeType as EmotionalModeType
+except ImportError:  # pragma: no cover
+    try:
+        from ..emotime.modes import EmotionalMode
+        from ..emotime.modes import ModeType as EmotionalModeType
+    except ImportError:  # pragma: no cover
+        from emotime.modes import EmotionalMode
+        from emotime.modes import ModeType as EmotionalModeType
 
 
 class BurnoutRiskLevel(Enum):

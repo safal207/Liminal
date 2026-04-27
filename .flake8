@@ -22,3 +22,4 @@ per-file-ignores =
     backend/tests/test_metrics_standalone.py:B007,E501
     backend/tests/test_websocket_chat.py:B001,E722
     backend/personality/router.py:B008,B009
+    backend/emotime/neo4j_storage.py:E501,F401,W291,W293

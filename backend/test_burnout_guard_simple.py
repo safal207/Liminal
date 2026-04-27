@@ -13,6 +13,8 @@ import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import pytest
+
 # Добавляем путь к backend
 backend_path = Path(__file__).parent
 sys.path.insert(0, str(backend_path))
@@ -395,6 +397,26 @@ async def run_utils():
     test_indicators = ["Хронический стресс", "Длительная работа", "Недостаток отдыха"]
     alert_message = create_alert_message(0.8, test_indicators)
     print(f"    Алерт: {alert_message}")
+
+
+@pytest.mark.asyncio
+async def test_burnout_mode_mapping():
+    await run_burnout_mode_mapping()
+
+
+@pytest.mark.asyncio
+async def test_risk_scoring():
+    await run_risk_scoring()
+
+
+@pytest.mark.asyncio
+async def test_recommendations():
+    await run_recommendations()
+
+
+@pytest.mark.asyncio
+async def test_utils():
+    await run_utils()
 
 
 async def main():

@@ -2,8 +2,7 @@
 🚀🛡️ BurnoutGuard — AI-защита от выгорания
 """
 
-from .analytics import TeamAnalytics
-from .analytics import TeamBurnoutTrend as BurnoutTrend
+from .analytics import TeamAnalytics, TeamBurnoutTrend
 from .core import BurnoutGuardEngine, BurnoutRisk, BurnoutState
 from .detector import BurnoutDetector, BurnoutPattern
 from .modes import BurnoutMode, BurnoutModeType
@@ -16,12 +15,12 @@ __all__ = [
     "BurnoutGuardEngine",
     "BurnoutState",
     "BurnoutRisk",
-    "BurnoutDetector",
-    "BurnoutPattern",
     "RecommendationEngine",
     "Recommendation",
     "TeamAnalytics",
-    "BurnoutTrend",
+    "TeamBurnoutTrend",
     "BurnoutMode",
     "BurnoutModeType",
+    "BurnoutDetector",
+    "BurnoutPattern",
 ]
