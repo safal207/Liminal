@@ -18,9 +18,10 @@ if project_root not in sys.path:
 WebSocketClient = import_module("backend.tests.test_websocket_simple").WebSocketClient
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_unsubscribe_debug():
-    """Упрощенный тест отписки для отладки"""
+    """Упрощенный тест отписки для отладки (нужен uvicorn на localhost:8000)."""
 
     logger.info("=== Starting unsubscribe debug test ===")
 
