@@ -26,13 +26,14 @@ class TimelineGraphBridge:
 
     # Internal helpers -------------------------------------------------
     def _ingest_memory_fragment(self, payload: Dict[str, Any]) -> None:
+        meta = payload.get("metadata")
+        if not isinstance(meta, dict):
+            meta = {}
         fragment = {
             "id": payload.get("id"),
             "content": payload.get("content"),
             "type": payload.get("type"),
-            "growth_stage": payload.get("metadata", {}).get(
-                "growth_stage", "observed"
-            ),
+            "growth_stage": meta.get("growth_stage", "observed"),
             "timestamp": payload.get("timestamp"),
             "metadata": payload.get("metadata", {}),
         }

@@ -81,6 +81,9 @@ data/cache/
 # Neo4j data
 neo4j_data/
 
+# Local billing state (Stripe webhook sync; do not commit)
+backend/app/billing/data/billing_store.json
+
 # Redis data
 redis_data/
 

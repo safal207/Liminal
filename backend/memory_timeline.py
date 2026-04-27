@@ -1,22 +1,25 @@
 """Event-emitting memory timeline with WebSocket broadcasting support."""
 
 import asyncio
-from dataclasses import dataclass, field
-from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict, List, Optional
-
-import asyncio
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from time import perf_counter
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from fastapi import WebSocket
 
 from backend.auth.dependencies import token_verifier
 from backend.core.settings import get_settings
+from backend.metrics.collectors import (
+    memory_timeline_events_total,
+    memory_timeline_processing_seconds,
+    memory_timeline_subscribers,
+)
 
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class TimelineEvent:
@@ -34,11 +37,22 @@ class TimelineEvent:
 MemoryTimelineEventListener = Callable[[TimelineEvent], Awaitable[None]]
 
 
+def _parse_memory_timestamp(value: str) -> datetime:
+    """Parse timeline ISO timestamps (…Z or offset-aware) for comparisons."""
+
+    s = value.strip()
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    return datetime.fromisoformat(s)
+
+
 class MemoryTimeline:
     def __init__(self):
         self.timeline: List[Dict[str, Any]] = []
         self._subscribers: List[WebSocket] = []
+        self._event_listeners: List[MemoryTimelineEventListener] = []
         self._lock = asyncio.Lock()
+        self._lock_loop: Optional[asyncio.AbstractEventLoop] = None
         settings = get_settings()
         self._initial_state_limit = settings.memory_timeline.initial_state_limit
         self._max_retained_events = settings.memory_timeline.max_retained_events
@@ -48,6 +62,23 @@ class MemoryTimeline:
     def subscribers(self):
         """Доступ к списку подписчиков (только для тестирования)."""
         return self._subscribers.copy()
+
+    def get_subscriber_count(self) -> int:
+        """Backward-compatible subscriber count accessor for legacy debug routes."""
+
+        return len(self._subscribers)
+
+    async def _ensure_lock(self) -> None:
+        """Bind the lock to the current event loop.
+
+        Starlette's synchronous ``TestClient`` may run each request in a new loop;
+        a single ``asyncio.Lock`` would then raise "bound to a different event loop".
+        """
+
+        loop = asyncio.get_running_loop()
+        if self._lock_loop is not loop:
+            self._lock = asyncio.Lock()
+            self._lock_loop = loop
 
     async def add_memory(
         self, content: str, memory_type: str, metadata: Optional[Dict] = None
@@ -62,11 +93,15 @@ class MemoryTimeline:
             "metadata": metadata or {},
         }
 
+        await self._ensure_lock()
         async with self._lock:
             self.timeline.append(memory)
             if len(self.timeline) > self._max_retained_events:
                 self.timeline = self.timeline[-self._max_retained_events :]
-            await self._notify_subscribers("memory_added", memory)
+
+        # Notify outside the timeline lock: _notify_subscribers acquires the lock itself
+        # when there are WebSocket subscribers (avoids re-entrant deadlock on asyncio.Lock).
+        await self._notify_subscribers("memory_added", memory)
 
         await self._emit_event(
             TimelineEvent(
@@ -87,6 +122,7 @@ class MemoryTimeline:
         if payload is None and not getattr(websocket, "user_id", None):
             return
 
+        await self._ensure_lock()
         async with self._lock:
             self._subscribers.append(websocket)
             memory_timeline_subscribers.set(len(self._subscribers))
@@ -102,6 +138,7 @@ class MemoryTimeline:
 
     async def unsubscribe(self, websocket: WebSocket):
         """Отписывает WebSocket от обновлений."""
+        await self._ensure_lock()
         async with self._lock:
             if websocket in self._subscribers:
                 self._subscribers.remove(websocket)
@@ -122,14 +159,17 @@ class MemoryTimeline:
             "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         }
 
-        message_json = json.dumps(message)
+        message_json = json.dumps(message, default=str)
 
         delivered = 0
         failed = 0
+        await self._ensure_lock()
         async with self._lock:
             # Проверяем снова под локом, так как список мог измениться
             if not self._subscribers:
-                memory_timeline_events_total.labels(event_type="notification_skipped").inc()
+                memory_timeline_events_total.labels(
+                    event_type="notification_skipped"
+                ).inc()
                 return
 
             disconnected = []
@@ -163,66 +203,6 @@ class MemoryTimeline:
         memory_timeline_processing_seconds.labels(
             operation="notify_subscribers"
         ).observe(perf_counter() - start_time)
-
-    def register_listener(self, listener: MemoryTimelineEventListener) -> None:
-        """Register a coroutine listener for timeline events."""
-
-        if listener not in self._event_listeners:
-            self._event_listeners.append(listener)
-
-    def remove_listener(self, listener: MemoryTimelineEventListener) -> None:
-        """Remove a previously registered listener."""
-
-        self._event_listeners = [
-            existing for existing in self._event_listeners if existing != listener
-        ]
-
-    def clear_listeners(self) -> None:
-        """Remove all registered event listeners."""
-
-        self._event_listeners.clear()
-
-    async def _emit_event(self, event: TimelineEvent) -> None:
-        """Dispatch an event to all registered listeners."""
-
-        if not self._event_listeners:
-            return
-
-        for listener in list(self._event_listeners):
-            try:
-                await listener(event)
-            except Exception as exc:  # pragma: no cover - defensive logging
-                print(f"Error emitting event {event.type}: {exc}")
-
-    def register_listener(self, listener: MemoryTimelineEventListener) -> None:
-        """Register a coroutine listener for timeline events."""
-
-        if listener not in self._event_listeners:
-            self._event_listeners.append(listener)
-
-    def remove_listener(self, listener: MemoryTimelineEventListener) -> None:
-        """Remove a previously registered listener."""
-
-        self._event_listeners = [
-            existing for existing in self._event_listeners if existing != listener
-        ]
-
-    def clear_listeners(self) -> None:
-        """Remove all registered event listeners."""
-
-        self._event_listeners.clear()
-
-    async def _emit_event(self, event: TimelineEvent) -> None:
-        """Dispatch an event to all registered listeners."""
-
-        if not self._event_listeners:
-            return
-
-        for listener in list(self._event_listeners):
-            try:
-                await listener(event)
-            except Exception as exc:  # pragma: no cover - defensive logging
-                print(f"Error emitting event {event.type}: {exc}")
 
     def register_listener(self, listener: MemoryTimelineEventListener) -> None:
         """Register a coroutine listener for timeline events."""
