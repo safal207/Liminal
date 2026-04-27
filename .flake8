@@ -8,6 +8,7 @@ per-file-ignores =
     backend/burnout_guard/persistence.py:F401,F841
     backend/core/settings.py:B023
     backend/memory_timeline.py:F811,F821,F841
+    emotime/__init__.py:E402
     backend/message_ack_api.py:B008,E501,F401
     backend/emotime/tests/test_api.py:E402,F841
     backend/emotime/tests/test_basic.py:E402,F401
@@ -20,3 +21,4 @@ per-file-ignores =
     backend/websocket/handlers.py:E501
     backend/tests/test_metrics_standalone.py:B007,E501
     backend/tests/test_websocket_chat.py:B001,E722
+    backend/personality/router.py:B008,B009

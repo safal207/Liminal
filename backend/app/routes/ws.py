@@ -17,4 +17,6 @@ async def websocket_timeline(
     token: Optional[str] = None,
     service=Depends(get_websocket_service),
 ):
+    """Delegate WebSocket lifecycle handling to the service layer."""
+
     await service.handle_connection(websocket, token)
