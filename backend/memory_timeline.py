@@ -12,6 +12,11 @@ from fastapi import WebSocket
 
 from backend.auth.dependencies import token_verifier
 from backend.core.settings import get_settings
+from backend.metrics.collectors import (
+    memory_timeline_events_total,
+    memory_timeline_processing_seconds,
+    memory_timeline_subscribers,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +41,7 @@ class MemoryTimeline:
     def __init__(self):
         self.timeline: List[Dict[str, Any]] = []
         self._subscribers: List[WebSocket] = []
+        self._event_listeners: List[MemoryTimelineEventListener] = []
         self._lock = asyncio.Lock()
         settings = get_settings()
         self._initial_state_limit = settings.memory_timeline.initial_state_limit
@@ -46,6 +52,11 @@ class MemoryTimeline:
     def subscribers(self):
         """Доступ к списку подписчиков (только для тестирования)."""
         return self._subscribers.copy()
+
+    def get_subscriber_count(self) -> int:
+        """Backward-compatible subscriber count accessor for legacy debug routes."""
+
+        return len(self._subscribers)
 
     async def add_memory(
         self, content: str, memory_type: str, metadata: Optional[Dict] = None

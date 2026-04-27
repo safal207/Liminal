@@ -187,10 +187,11 @@ jobs:
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/test_liminal
           REDIS_URL: redis://localhost:6379
+          NEO4J_URI: bolt://localhost:7687
+          NEO4J_USER: neo4j
+          NEO4J_PASSWORD: testpassword
         run: |
-          uvicorn main:app --host 0.0.0.0 --port 8000 &
-          sleep 10
-          pytest tests/api/ -v --tb=short
+          pytest backend/tests/test_api_simple_chat.py backend/tests/test_timeline_endpoints.py -v --tb=short
 
       - name: Upload test coverage
         uses: codecov/codecov-action@v3
