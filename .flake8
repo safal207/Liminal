@@ -21,3 +21,4 @@ per-file-ignores =
     backend/websocket/handlers.py:E501
     backend/tests/test_metrics_standalone.py:B007,E501
     backend/tests/test_websocket_chat.py:B001,E722
+    backend/personality/router.py:B008,B009

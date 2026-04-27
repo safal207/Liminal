@@ -1,9 +1,11 @@
 """Dependency injection container for backend services."""
+
 from __future__ import annotations
 
 try:  # pragma: no cover - exercised indirectly during import
     from dependency_injector import containers, providers
 except ModuleNotFoundError:  # pragma: no cover - optional dependency in CI
+
     class _DeclarativeContainer:
         """Lightweight stand-in for dependency_injector base class."""
 

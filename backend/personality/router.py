@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import logging
 from importlib import import_module
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from fastapi import APIRouter, Depends
 
-from ..auth.jwt_utils import get_current_user, User
+from ..auth.jwt_utils import User, get_current_user
 
 if TYPE_CHECKING:  # pragma: no cover
     from strawberry.fastapi import GraphQLRouter as _GraphQLRouter
@@ -53,62 +53,66 @@ router = APIRouter(prefix="/personality", tags=["Personality"])
 if graphql_app is not None:
     router.include_router(graphql_app, prefix="/graphql")
 
+
 # Добавляем REST эндпоинты для совместимости
 @router.post("/emotion")
 async def store_emotion(
     emotion_type: str,
     intensity: float,
     context: str = None,
-    user: User = Depends(get_current_user)
+    user: User = Depends(get_current_user),
 ):
     """
     REST эндпоинт для сохранения эмоционального состояния.
-    
+
     Args:
         emotion_type: Тип эмоции
         intensity: Интенсивность от 0.0 до 1.0
         context: Контекст эмоции (опционально)
         user: Текущий пользователь (из JWT)
-        
+
     Returns:
         Сохраненная эмоция
     """
     from .adapter import PersonalityAdapter
+
     adapter = PersonalityAdapter(user.id)
     return await adapter.store_emotion(emotion_type, intensity, context)
+
 
 @router.get("/profile")
 async def get_profile(user: User = Depends(get_current_user)):
     """
     REST эндпоинт для получения профиля пользователя.
-    
+
     Args:
         user: Текущий пользователь (из JWT)
-        
+
     Returns:
         Профиль пользователя
     """
     from .adapter import PersonalityAdapter
+
     adapter = PersonalityAdapter(user.id)
     return await adapter.get_profile()
 
+
 @router.get("/recommendations")
 async def get_recommendations(
-    limit: int = 5,
-    context: str = None,
-    user: User = Depends(get_current_user)
+    limit: int = 5, context: str = None, user: User = Depends(get_current_user)
 ):
     """
     REST эндпоинт для получения рекомендаций.
-    
+
     Args:
         limit: Максимальное количество рекомендаций
         context: Контекст для фильтрации рекомендаций
         user: Текущий пользователь (из JWT)
-        
+
     Returns:
         Список рекомендаций
     """
     from .adapter import PersonalityAdapter
+
     adapter = PersonalityAdapter(user.id)
     return await adapter.get_recommendations(limit, context)
