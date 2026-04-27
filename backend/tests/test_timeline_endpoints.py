@@ -1,9 +1,8 @@
 """Tests for timeline-related REST endpoints."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-
-import pytest
 
 from backend.memory_timeline import timeline as memory_timeline
 
@@ -14,8 +13,7 @@ TEST_MEMORY = {
 }
 
 
-@pytest.mark.asyncio
-async def test_add_memory(client):
+def test_add_memory(client):
     """Тестирование добавления нового воспоминания."""
 
     response = client.post("/timeline/memories/", json=TEST_MEMORY)
@@ -27,8 +25,7 @@ async def test_add_memory(client):
     assert "timestamp" in data
 
 
-@pytest.mark.asyncio
-async def test_get_memories(client):
+def test_get_memories(client):
     """Тестирование получения списка воспоминаний."""
 
     response = client.post("/timeline/memories/", json=TEST_MEMORY)
@@ -43,8 +40,7 @@ async def test_get_memories(client):
     assert memories[0]["type"] == TEST_MEMORY["memory_type"]
 
 
-@pytest.mark.asyncio
-async def test_get_memories_with_filters(client):
+def test_get_memories_with_filters(client):
     """Тестирование фильтрации воспоминаний по типу."""
 
     test_memories = [
@@ -70,8 +66,7 @@ async def test_get_memories_with_filters(client):
     assert all(m["type"] == "new" for m in memories)
 
 
-@pytest.mark.asyncio
-async def test_websocket_updates(client):
+def test_websocket_updates(client):
     """Проверяем, что уведомления таймлайна отправляются подписчикам."""
 
     events = []
@@ -96,8 +91,7 @@ async def test_websocket_updates(client):
         memory_timeline._notify_subscribers = original_notify
 
 
-@pytest.mark.asyncio
-async def test_get_memories_with_time_filters(client):
+def test_get_memories_with_time_filters(client):
     """Проверяем фильтрацию по временным границам."""
 
     now = datetime.now(UTC)
