@@ -1,4 +1,5 @@
 """Tiny :mod:`rich.panel` stand-in used for diagnostic output."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

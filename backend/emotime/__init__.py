@@ -8,18 +8,18 @@
 """
 
 from .core import EmotimeEngine
-from .sensors import TextSensor, TouchSensor, AudioSensor
 from .fusion import FeatureFusion
-from .timeseries import EmotionalTimeSeries
 from .modes import EmotionalModes
+from .sensors import AudioSensor, TextSensor, TouchSensor
+from .timeseries import EmotionalTimeSeries
 
 __version__ = "0.1.0"
 __all__ = [
     "EmotimeEngine",
-    "TextSensor", 
+    "TextSensor",
     "TouchSensor",
     "AudioSensor",
     "FeatureFusion",
-    "EmotionalTimeSeries", 
-    "EmotionalModes"
+    "EmotionalTimeSeries",
+    "EmotionalModes",
 ]

@@ -92,6 +92,57 @@ class MemoryTimelineSettings(BaseModel):
     )
 
 
+class BillingSettings(BaseModel):
+    """Stripe and local billing store configuration."""
+
+    stripe_secret_key: str = Field(
+        "",
+        validation_alias=AliasChoices(
+            "BILLING__STRIPE_SECRET_KEY", "STRIPE_SECRET_KEY"
+        ),
+        json_schema_extra={"env": ["BILLING__STRIPE_SECRET_KEY", "STRIPE_SECRET_KEY"]},
+    )
+    stripe_webhook_secret: str = Field(
+        "",
+        validation_alias=AliasChoices(
+            "BILLING__STRIPE_WEBHOOK_SECRET", "STRIPE_WEBHOOK_SECRET"
+        ),
+        json_schema_extra={
+            "env": ["BILLING__STRIPE_WEBHOOK_SECRET", "STRIPE_WEBHOOK_SECRET"]
+        },
+    )
+    stripe_price_pro_monthly: str = Field(
+        "",
+        validation_alias=AliasChoices(
+            "BILLING__STRIPE_PRICE_PRO_MONTHLY", "STRIPE_PRICE_PRO_MONTHLY"
+        ),
+        json_schema_extra={
+            "env": ["BILLING__STRIPE_PRICE_PRO_MONTHLY", "STRIPE_PRICE_PRO_MONTHLY"]
+        },
+    )
+    stripe_success_url: str = Field(
+        "http://127.0.0.1:8000/",
+        validation_alias=AliasChoices(
+            "BILLING__STRIPE_SUCCESS_URL", "STRIPE_SUCCESS_URL"
+        ),
+        json_schema_extra={
+            "env": ["BILLING__STRIPE_SUCCESS_URL", "STRIPE_SUCCESS_URL"]
+        },
+    )
+    stripe_cancel_url: str = Field(
+        "http://127.0.0.1:8000/",
+        validation_alias=AliasChoices(
+            "BILLING__STRIPE_CANCEL_URL", "STRIPE_CANCEL_URL"
+        ),
+        json_schema_extra={"env": ["BILLING__STRIPE_CANCEL_URL", "STRIPE_CANCEL_URL"]},
+    )
+    store_path: str = Field(
+        "",
+        validation_alias=AliasChoices("BILLING__STORE_PATH", "BILLING_STORE_PATH"),
+        json_schema_extra={"env": ["BILLING__STORE_PATH", "BILLING_STORE_PATH"]},
+    )
+
+
 class IntegrationSettings(BaseModel):
     """Settings for external integrations and infrastructure dependencies."""
 
@@ -135,6 +186,7 @@ class Settings(BaseSettings):
         default_factory=MemoryTimelineSettings
     )
     integrations: IntegrationSettings = Field(default_factory=IntegrationSettings)
+    billing: BillingSettings = Field(default_factory=BillingSettings)
 
     if USING_PYDANTIC_SETTINGS:
         model_config = SettingsConfigDict(
@@ -166,6 +218,7 @@ class Settings(BaseSettings):
             "jwt": JWTSettings,
             "memory_timeline": MemoryTimelineSettings,
             "integrations": IntegrationSettings,
+            "billing": BillingSettings,
         }
         env_mapping: Dict[str, Dict[str, Tuple[Iterable[str], Type[Any], Any]]] = {
             "jwt": {
@@ -238,6 +291,38 @@ class Settings(BaseSettings):
                     False,
                 ),
             },
+            "billing": {
+                "stripe_secret_key": (
+                    ("BILLING__STRIPE_SECRET_KEY", "STRIPE_SECRET_KEY"),
+                    str,
+                    "",
+                ),
+                "stripe_webhook_secret": (
+                    ("BILLING__STRIPE_WEBHOOK_SECRET", "STRIPE_WEBHOOK_SECRET"),
+                    str,
+                    "",
+                ),
+                "stripe_price_pro_monthly": (
+                    ("BILLING__STRIPE_PRICE_PRO_MONTHLY", "STRIPE_PRICE_PRO_MONTHLY"),
+                    str,
+                    "",
+                ),
+                "stripe_success_url": (
+                    ("BILLING__STRIPE_SUCCESS_URL", "STRIPE_SUCCESS_URL"),
+                    str,
+                    "http://127.0.0.1:8000/",
+                ),
+                "stripe_cancel_url": (
+                    ("BILLING__STRIPE_CANCEL_URL", "STRIPE_CANCEL_URL"),
+                    str,
+                    "http://127.0.0.1:8000/",
+                ),
+                "store_path": (
+                    ("BILLING__STORE_PATH", "BILLING_STORE_PATH"),
+                    str,
+                    "",
+                ),
+            },
         }
 
         for section, model_cls in section_models.items():
@@ -280,4 +365,4 @@ def get_settings() -> "Settings":
 
 settings = get_settings()
 
-__all__ = ["Settings", "settings", "get_settings"]
+__all__ = ["Settings", "BillingSettings", "settings", "get_settings"]

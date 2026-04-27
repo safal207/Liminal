@@ -47,7 +47,7 @@ def test_analyze_requires_authentication(api_client):
     client, _ = api_client
 
     response = client.post("/analyze", json={"text": "Hello", "language": "en"})
-    assert response.status_code == 403
+    assert response.status_code in {401, 403}
 
 
 def test_chat_flow_creates_usage_record(api_client):

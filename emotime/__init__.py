@@ -1,39 +1,40 @@
-"""Compatibility package forwarding legacy `emotime.*` imports."""
+"""Compatibility shim exposing ``backend.emotime`` at the top-level package.
 
-from __future__ import annotations
+This module makes the rich backend Emotime implementation importable both via
+``backend.emotime`` (original location) and the legacy ``emotime`` namespace
+that several tests and helper scripts expect.  It keeps the backend package as
+source of truth while still allowing local utilities within ``emotime/`` to be
+imported.
+"""
 
-import importlib
-import sys
+import os
+from importlib import import_module
+from types import ModuleType
+from typing import Any, Iterable
 
-_ALIASES = (
-    "core",
-    "fusion",
-    "metrics_integration",
-    "modes",
-    "sensors",
-    "timeseries",
-)
+_backend_pkg: ModuleType = import_module("backend.emotime")
 
-for _name in _ALIASES:
-    _module = importlib.import_module(f"backend.emotime.{_name}")
-    sys.modules[f"{__name__}.{_name}"] = _module
-
-from backend.emotime import EmotimeEngine  # noqa: E402
-from backend.emotime import (
-    AudioSensor,
-    EmotionalModes,
-    EmotionalTimeSeries,
-    FeatureFusion,
-    TextSensor,
-    TouchSensor,
-)
-
-__all__ = [
-    "AudioSensor",
-    "EmotimeEngine",
-    "EmotionalModes",
-    "EmotionalTimeSeries",
-    "FeatureFusion",
-    "TextSensor",
-    "TouchSensor",
+# Ensure submodule discovery works for both the backend implementation and the
+# legacy helpers that live alongside this shim.
+__path__ = [
+    os.path.dirname(__file__),
+    *getattr(_backend_pkg, "__path__", []),  # type: ignore[arg-type]
 ]
+
+# Re-export the public API from the backend package.
+__all__ = getattr(_backend_pkg, "__all__", [])
+
+
+def __getattr__(name: str) -> Any:
+    """Delegate attribute access to the backend implementation when possible."""
+
+    if hasattr(_backend_pkg, name):
+        return getattr(_backend_pkg, name)
+    # Fall back to legacy helpers (e.g. emotime.api_simple).
+    return import_module(f"emotime.{name}")
+
+
+def __dir__() -> Iterable[str]:
+    """Combine attributes from the shim and backend package for introspection."""
+
+    return sorted(set(globals().keys()) | set(dir(_backend_pkg)))

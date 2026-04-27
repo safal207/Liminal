@@ -3,7 +3,6 @@
 Проверяет создание соединений, отправку/получение сообщений и интеграцию с RINSE.
 """
 
-import asyncio
 import json
 from unittest.mock import AsyncMock, patch
 
@@ -11,10 +10,20 @@ import pytest
 import websockets
 from fastapi.testclient import TestClient
 
-from auth.jwt_utils import create_access_token_for_user, verify_websocket_token
-from main import app
-from websocket.connection_manager import ConnectionManager
-from websocket.redis_connection_manager import RedisConnectionManager
+try:
+    from backend.auth.jwt_utils import (
+        create_access_token_for_user,
+        verify_websocket_token,
+    )
+    from backend.main import app
+    from backend.websocket.connection_manager import ConnectionManager
+    from backend.websocket.redis_connection_manager import RedisConnectionManager
+except ModuleNotFoundError:  # pragma: no cover - support legacy invocation
+    from main import app
+    from websocket.connection_manager import ConnectionManager
+    from websocket.redis_connection_manager import RedisConnectionManager
+
+    from auth.jwt_utils import create_access_token_for_user, verify_websocket_token
 
 
 @pytest.fixture
@@ -77,7 +86,9 @@ async def test_websocket_broadcast():
 async def test_redis_integration():
     """Тест интеграции с Redis для синхронизации между экземплярами."""
     # Создаем два экземпляра RedisConnectionManager для имитации распределенной системы
-    with patch("websocket.redis_connection_manager.RedisClient") as mock_redis_client:
+    with patch(
+        "backend.websocket.redis_connection_manager.RedisClient"
+    ) as mock_redis_client:
         # Настраиваем mock для Redis клиента
         mock_redis = AsyncMock()
         mock_pubsub = AsyncMock()
@@ -126,7 +137,9 @@ async def test_rinse_integration():
     # Поскольку RINSE - внешний модуль на Haskell, мы создаем mock
     # для имитации вызова внешнего API
 
-    with patch("websocket.connection_manager.httpx.AsyncClient.post") as mock_post:
+    with patch(
+        "backend.websocket.connection_manager.httpx.AsyncClient.post"
+    ) as mock_post:
         # Настраиваем mock ответ от RINSE
         mock_response = AsyncMock()
         mock_response.status_code = 200
@@ -135,9 +148,6 @@ async def test_rinse_integration():
             "processed_data": {"sentiment": "positive", "score": 0.85},
         }
         mock_post.return_value = mock_response
-
-        # Создаем экземпляр менеджера соединений
-        manager = ConnectionManager()
 
         # Предполагаем, что есть метод для отправки данных в RINSE
         # (в реальном коде это может быть метод, который мы добавим позже)
@@ -172,7 +182,6 @@ async def test_rinse_integration():
 @pytest.mark.asyncio
 async def test_websocket_jwt_auth_valid():
     """Тест успешного подключения с валидным JWT токеном."""
-    uri = "ws://localhost:8000/ws"
     user_data = {"user_id": "test_user", "username": "test_user"}
     access_token = create_access_token_for_user(user_data)
 
@@ -182,7 +191,6 @@ async def test_websocket_jwt_auth_valid():
 @pytest.mark.asyncio
 async def test_websocket_jwt_auth_invalid():
     """Тест отказа в подключении с недействительным JWT токеном."""
-    uri = "ws://localhost:8000/ws"
     user_data = {"user_id": "test_user", "username": "test_user"}
     valid_token = create_access_token_for_user(user_data)
     invalid_token = f"Bearer {valid_token}invalid"
