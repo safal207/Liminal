@@ -14,7 +14,5 @@ except ImportError:  # pragma: no cover
     import backend.logging_config as _backend_logging_config
 
     __all__ = [
-        name
-        for name in dir(_backend_logging_config)
-        if not name.startswith("_")
+        name for name in dir(_backend_logging_config) if not name.startswith("_")
     ]

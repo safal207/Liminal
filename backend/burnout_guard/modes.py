@@ -20,13 +20,18 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import List, Optional, Tuple
 
-try:  # Allow imports both from `backend` namespace and local package
+import numpy as np
+
+try:
     from backend.emotime.modes import EmotionalMode
     from backend.emotime.modes import ModeType as EmotionalModeType
-except ImportError:  # pragma: no cover - fallback for standalone tests
-    from emotime.modes import EmotionalMode, ModeType as EmotionalModeType
-
-import numpy as np
+except ImportError:  # pragma: no cover
+    try:
+        from ..emotime.modes import EmotionalMode
+        from ..emotime.modes import ModeType as EmotionalModeType
+    except ImportError:  # pragma: no cover
+        from emotime.modes import EmotionalMode
+        from emotime.modes import ModeType as EmotionalModeType
 
 
 class BurnoutRiskLevel(Enum):

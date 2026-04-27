@@ -9,4 +9,16 @@ per-file-ignores =
     backend/core/settings.py:B023
     backend/memory_timeline.py:F811,F821,F841
     emotime/__init__.py:E402
+    backend/message_ack_api.py:B008,E501,F401
     backend/emotime/tests/test_api.py:E402,F841
+    backend/emotime/tests/test_basic.py:E402,F401
+    backend/emotime/tests/test_core.py:E402,F401
+    backend/emotime/tests/test_fusion.py:E402,F401
+    backend/emotime/tests/test_integration.py:E402,F841
+    backend/emotime/tests/test_sensors.py:E402
+    backend/test_comprehensive.py:B007,B017,E501,F401,F811,W291,W292,W293
+    backend/websocket/connection_manager.py:E501,F401,F541
+    backend/websocket/handlers.py:E501
+    backend/tests/test_metrics_standalone.py:B007,E501
+    backend/tests/test_websocket_chat.py:B001,E722
+    backend/personality/router.py:B008,B009

@@ -1,4 +1,5 @@
 """Test configuration for the refactored backend FastAPI app."""
+
 from __future__ import annotations
 
 from typing import Iterator
@@ -9,6 +10,8 @@ from fastapi.testclient import TestClient
 from backend.app.dependencies import (
     get_memory_service,
     get_neo4j_service,
+    reset_neo4j_gateway,
+    set_neo4j_gateway,
 )
 from backend.app.main import app
 from backend.app.services.neo4j import Neo4jService
@@ -20,12 +23,14 @@ def override_neo4j_service() -> Iterator[MockNeo4jGateway]:
     """Inject the in-memory Neo4j gateway for every test."""
 
     gateway = MockNeo4jGateway()
-    service = Neo4jService(writer=gateway)
+    service = Neo4jService(gateway)
     app.dependency_overrides[get_neo4j_service] = lambda: service
+    set_neo4j_gateway(gateway)
     try:
         yield gateway
     finally:
         app.dependency_overrides.pop(get_neo4j_service, None)
+        reset_neo4j_gateway()
 
 
 @pytest.fixture
@@ -65,5 +70,3 @@ def client(override_neo4j_service: MockNeo4jGateway) -> Iterator[TestClient]:
         timeline.subscribe = original_subscribe  # type: ignore[attr-defined]
     if original_unsubscribe is not None:
         timeline.unsubscribe = original_unsubscribe  # type: ignore[attr-defined]
-
-

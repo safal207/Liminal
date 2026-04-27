@@ -7,8 +7,8 @@ source of truth while still allowing local utilities within ``emotime/`` to be
 imported.
 """
 
-from importlib import import_module
 import os
+from importlib import import_module
 from types import ModuleType
 from typing import Any, Iterable
 
