@@ -3,6 +3,7 @@ MIT Enhanced Features Testing Suite
 Тестирование новых ML компонентов в духе MIT Computer Science.
 """
 
+import asyncio
 import os
 import sys
 from datetime import datetime

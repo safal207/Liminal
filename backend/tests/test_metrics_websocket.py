@@ -198,8 +198,8 @@ def print_metrics(url):
         print(f"Ошибка при запросе метрик: {e}")
 
 
-async def test_single_client(server_url, metrics_url):
-    """Тест одного клиента"""
+async def run_single_client_scenario(server_url, metrics_url):
+    """Сценарий одного клиента (скрипт, не pytest)."""
     client = WebSocketClient(server_url, "test_user_1")
 
     # Подключаемся
@@ -231,8 +231,8 @@ async def test_single_client(server_url, metrics_url):
     listener_task.cancel()
 
 
-async def test_multiple_clients(server_url, metrics_url, num_clients=5):
-    """Тест множественных клиентов"""
+async def run_multiple_clients_scenario(server_url, metrics_url, num_clients=5):
+    """Сценарий множественных клиентов (скрипт, не pytest)."""
     clients = []
     listener_tasks = []
 
@@ -279,8 +279,8 @@ async def test_multiple_clients(server_url, metrics_url, num_clients=5):
     print_metrics(metrics_url)
 
 
-async def test_connection_limits(server_url, metrics_url, num_clients=15):
-    """Тест лимитов подключений"""
+async def run_connection_limits_scenario(server_url, metrics_url, num_clients=15):
+    """Сценарий лимитов подключений (скрипт, не pytest)."""
     clients = []
 
     print(f"Тестирование лимитов подключений с {num_clients} клиентами...")
@@ -306,8 +306,8 @@ async def test_connection_limits(server_url, metrics_url, num_clients=15):
     print_metrics(metrics_url)
 
 
-async def test_invalid_auth(server_url, metrics_url):
-    """Тест неверной аутентификации"""
+async def run_invalid_auth_scenario(server_url, metrics_url):
+    """Сценарий неверной аутентификации (скрипт, не pytest)."""
     # Клиент с неверным токеном
     invalid_client = WebSocketClient(server_url, "invalid_user", token="invalid_token")
     await invalid_client.connect()
@@ -338,19 +338,19 @@ async def main():
 
     if args.test == "single" or args.test == "all":
         print("=== ТЕСТ ОДНОГО КЛИЕНТА ===")
-        await test_single_client(args.server, args.metrics)
+        await run_single_client_scenario(args.server, args.metrics)
 
     if args.test == "multiple" or args.test == "all":
         print("\n=== ТЕСТ МНОЖЕСТВЕННЫХ КЛИЕНТОВ ===")
-        await test_multiple_clients(args.server, args.metrics)
+        await run_multiple_clients_scenario(args.server, args.metrics)
 
     if args.test == "limits" or args.test == "all":
         print("\n=== ТЕСТ ЛИМИТОВ ПОДКЛЮЧЕНИЙ ===")
-        await test_connection_limits(args.server, args.metrics)
+        await run_connection_limits_scenario(args.server, args.metrics)
 
     if args.test == "auth" or args.test == "all":
         print("\n=== ТЕСТ НЕВЕРНОЙ АУТЕНТИФИКАЦИИ ===")
-        await test_invalid_auth(args.server, args.metrics)
+        await run_invalid_auth_scenario(args.server, args.metrics)
 
 
 if __name__ == "__main__":

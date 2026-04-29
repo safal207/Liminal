@@ -30,6 +30,11 @@ from .dependencies import (
 )
 from .routes import auth, billing, debug, fragments, waves, ws
 
+try:
+    from backend.personality.router import router as personality_router
+except Exception:  # pragma: no cover - optional GraphQL stack
+    personality_router = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -155,6 +160,9 @@ app.include_router(
     burnout_router,
     dependencies=[Depends(require_burnout_pro)],
 )
+
+if personality_router is not None:
+    app.include_router(personality_router)
 
 
 # Application state ----------------------------------------------------

@@ -3,12 +3,33 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import dataclass
 from importlib import import_module
 from typing import TYPE_CHECKING, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from ..auth.jwt_utils import User, get_current_user
+from backend.auth.dependencies import token_verifier
+
+
+@dataclass
+class PersonalityUser:
+    """Минимальная модель пользователя для маршрутов персонализации."""
+
+    id: str
+
+
+async def personality_current_user(
+    payload: dict = Depends(token_verifier),
+) -> PersonalityUser:
+    sub = payload.get("sub")
+    if not sub:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Недействительный токен",
+        )
+    return PersonalityUser(id=str(sub))
+
 
 if TYPE_CHECKING:  # pragma: no cover
     from strawberry.fastapi import GraphQLRouter as _GraphQLRouter
@@ -23,15 +44,11 @@ def _create_graphql_router() -> Optional["_GraphQLRouter"]:
     try:
         strawberry_fastapi = import_module("strawberry.fastapi")
         GraphQLRouter = getattr(strawberry_fastapi, "GraphQLRouter")
-        schema_config = import_module("strawberry.schema.config")
-        StrawberryConfig = getattr(schema_config, "StrawberryConfig")
         from .schema import schema
 
         return GraphQLRouter(
             schema,
-            graphiql=True,
             context_getter=lambda: {"request": None},
-            config=StrawberryConfig(auto_camel_case=True),
         )
     except ModuleNotFoundError as exc:  # pragma: no cover - зависит от окружения CI
         logger.warning(
@@ -60,7 +77,7 @@ async def store_emotion(
     emotion_type: str,
     intensity: float,
     context: str = None,
-    user: User = Depends(get_current_user),
+    user: PersonalityUser = Depends(personality_current_user),
 ):
     """
     REST эндпоинт для сохранения эмоционального состояния.
@@ -81,7 +98,7 @@ async def store_emotion(
 
 
 @router.get("/profile")
-async def get_profile(user: User = Depends(get_current_user)):
+async def get_profile(user: PersonalityUser = Depends(personality_current_user)):
     """
     REST эндпоинт для получения профиля пользователя.
 
@@ -99,7 +116,9 @@ async def get_profile(user: User = Depends(get_current_user)):
 
 @router.get("/recommendations")
 async def get_recommendations(
-    limit: int = 5, context: str = None, user: User = Depends(get_current_user)
+    limit: int = 5,
+    context: str = None,
+    user: PersonalityUser = Depends(personality_current_user),
 ):
     """
     REST эндпоинт для получения рекомендаций.

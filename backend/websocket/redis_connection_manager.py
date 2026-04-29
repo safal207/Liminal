@@ -9,6 +9,7 @@ import logging
 from typing import Any, Callable, Dict, List, Optional, Set
 
 from fastapi import WebSocket
+
 from logging_config import get_logger
 
 from .connection_manager import ConnectionManager
@@ -39,7 +40,11 @@ class RedisConnectionManager(ConnectionManager):
             max_connections_per_ip: Максимальное количество соединений с одного IP.
             redis_prefix: Префикс для ключей в Redis.
         """
-        super().__init__(max_connections, max_connections_per_ip)
+        super().__init__(
+            redis_client=None,
+            max_connections=max_connections,
+            max_connections_per_ip=max_connections_per_ip,
+        )
         self.redis = RedisClient(redis_url, redis_prefix)
         self._is_connected = False
         self._local_channels = set()  # Каналы, на которые подписан локальный экземпляр
