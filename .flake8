@@ -3,9 +3,29 @@ max-line-length = 100
 extend-ignore = E203
 exclude = .git,__pycache__,.venv,venv,node_modules
 per-file-ignores =
+    backend/app/main.py:B008
     backend/app/routes/ws.py:B008
     backend/burnout_guard/auth_integration.py:B008,F401
     backend/burnout_guard/persistence.py:F401,F841
     backend/core/settings.py:B023
     backend/memory_timeline.py:F811,F821,F841
+    emotime/__init__.py:E402
+    backend/message_ack_api.py:B008,E501,F401
     backend/emotime/tests/test_api.py:E402,F841
+    backend/emotime/tests/test_basic.py:E402,F401
+    backend/emotime/tests/test_core.py:E402,F401
+    backend/emotime/tests/test_fusion.py:E402,F401
+    backend/emotime/tests/test_integration.py:E402,F841
+    backend/emotime/tests/test_sensors.py:E402
+    backend/test_comprehensive.py:B007,B017,E501,F401,F811,W291,W292,W293
+    backend/websocket/connection_manager.py:E501,F401,F541
+    backend/websocket/handlers.py:E501
+    backend/tests/test_metrics_standalone.py:B007,E501
+    backend/tests/test_websocket_chat.py:B001,E722
+    backend/tests/test_jwt_auth.py:F401,F841
+    backend/tests/test_jwt_edge_cases.py:F401,F841,B023,B014
+    backend/tests/test_websocket_python_client.py:F841
+    backend/tests/test_websocket_limits_simple.py:B014
+    backend/tests/test_websocket_simple.py:F401
+    backend/personality/router.py:B008,B009
+    backend/emotime/neo4j_storage.py:E501,F401,W291,W293

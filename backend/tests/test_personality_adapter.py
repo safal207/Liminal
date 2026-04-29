@@ -191,17 +191,14 @@ class TestPersonalityAdapter:
 
     @pytest.mark.asyncio
     async def test_recommendations_error_handling(self, adapter_with_mocks):
-        """Тест обработки ошибок при получении рекомендаций."""
+        """Рекомендации по умолчанию приходят из заглушки (без обращения к Neo4j)."""
         adapter = adapter_with_mocks
 
-        # Имитируем ошибку в Neo4j запросе
-        adapter.db.query_neo4j = AsyncMock(side_effect=Exception("Ошибка Neo4j"))
-
-        # Проверяем, что метод get_recommendations не выбрасывает исключение
         recommendations = await adapter.get_recommendations()
 
-        # Проверяем, что возвращается пустой список
-        assert recommendations == []
+        assert isinstance(recommendations, list)
+        assert len(recommendations) >= 1
+        assert "content" in recommendations[0]
 
 
 class TestPersonalitySchema:

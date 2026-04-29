@@ -25,10 +25,21 @@ import aiohttp
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
-from locust import HttpUser, between, task
+
+try:
+    from locust import HttpUser, between, task
+except ModuleNotFoundError:  # pragma: no cover
+    pytest.skip("locust is not installed (optional for CI)", allow_module_level=True)
+
+try:
+    from playwright.async_api import async_playwright
+except ModuleNotFoundError:  # pragma: no cover
+    pytest.skip(
+        "playwright is not installed (optional for CI)", allow_module_level=True
+    )
+
 from ml_pipeline_enhanced import ModelVersion, ml_pipeline
 from monitoring import monitoring_service
-from playwright.async_api import async_playwright
 from resilience import Bulkhead, CircuitBreaker, resilience_manager
 from security_enhanced import InputValidator, RateLimiter, security_middleware
 

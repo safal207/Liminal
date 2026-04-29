@@ -281,15 +281,14 @@ async def analyze_multilingual_text(
     # Анализируем текст
     result = await analyzer_func(text)
 
-    # Если язык результата отличается от целевого, переводим эмоцию
     if detected_lang != target_lang:
         result["original_emotion"] = result["emotion_type"]
         result["original_language"] = detected_lang
         result["emotion_type"] = get_emotion_in_language(
             result["emotion_type"], target_lang
         )
-        result["target_language"] = target_lang
 
+    result["target_language"] = target_lang
     return result
 
 

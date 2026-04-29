@@ -1,28 +1,67 @@
-"""
-FastAPI роутер для интеграции GraphQL схемы PersonalityAdapter.
-"""
+"""FastAPI роутер для интеграции GraphQL схемы PersonalityAdapter."""
 
-from fastapi import APIRouter, Depends
+from __future__ import annotations
 
-graphql_app = None
-try:  # Защита CI от отсутствия extra-зависимостей strawberry[fastapi]
-    from strawberry.fastapi import GraphQLRouter
-    from strawberry.schema.config import StrawberryConfig
+import logging
+from dataclasses import dataclass
+from importlib import import_module
+from typing import TYPE_CHECKING, Optional
 
-    from .schema import schema
+from fastapi import APIRouter, Depends, HTTPException, status
 
-    # Создаем GraphQL роутер с настройками
-    graphql_app = GraphQLRouter(
-        schema,
-        graphiql=True,  # Включаем GraphiQL интерфейс для тестирования
-        context_getter=lambda: {
-            "request": None
-        },  # Будет расширено для передачи контекста
-        config=StrawberryConfig(auto_camel_case=True),
-    )
-except Exception:  # pragma: no cover
-    graphql_app = None
-from ..auth.jwt_utils import User, get_current_user
+from backend.auth.dependencies import token_verifier
+
+
+@dataclass
+class PersonalityUser:
+    """Минимальная модель пользователя для маршрутов персонализации."""
+
+    id: str
+
+
+async def personality_current_user(
+    payload: dict = Depends(token_verifier),
+) -> PersonalityUser:
+    sub = payload.get("sub")
+    if not sub:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Недействительный токен",
+        )
+    return PersonalityUser(id=str(sub))
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from strawberry.fastapi import GraphQLRouter as _GraphQLRouter
+
+
+logger = logging.getLogger(__name__)
+
+
+def _create_graphql_router() -> Optional["_GraphQLRouter"]:
+    """Создает GraphQL роутер, если доступна зависимость strawberry."""
+
+    try:
+        strawberry_fastapi = import_module("strawberry.fastapi")
+        GraphQLRouter = getattr(strawberry_fastapi, "GraphQLRouter")
+        from .schema import schema
+
+        return GraphQLRouter(
+            schema,
+            context_getter=lambda: {"request": None},
+        )
+    except ModuleNotFoundError as exc:  # pragma: no cover - зависит от окружения CI
+        logger.warning(
+            "Strawberry GraphQL dependency is missing. Personality GraphQL endpoint disabled: %s",
+            exc,
+        )
+    except Exception as exc:  # pragma: no cover - защитный сценарий
+        logger.error("Failed to initialize Strawberry GraphQL router: %s", exc)
+
+    return None
+
+
+graphql_app = _create_graphql_router()
 
 # Создаем FastAPI роутер
 router = APIRouter(prefix="/personality", tags=["Personality"])
@@ -38,7 +77,7 @@ async def store_emotion(
     emotion_type: str,
     intensity: float,
     context: str = None,
-    user: User = Depends(get_current_user),
+    user: PersonalityUser = Depends(personality_current_user),
 ):
     """
     REST эндпоинт для сохранения эмоционального состояния.
@@ -59,7 +98,7 @@ async def store_emotion(
 
 
 @router.get("/profile")
-async def get_profile(user: User = Depends(get_current_user)):
+async def get_profile(user: PersonalityUser = Depends(personality_current_user)):
     """
     REST эндпоинт для получения профиля пользователя.
 
@@ -77,7 +116,9 @@ async def get_profile(user: User = Depends(get_current_user)):
 
 @router.get("/recommendations")
 async def get_recommendations(
-    limit: int = 5, context: str = None, user: User = Depends(get_current_user)
+    limit: int = 5,
+    context: str = None,
+    user: PersonalityUser = Depends(personality_current_user),
 ):
     """
     REST эндпоинт для получения рекомендаций.

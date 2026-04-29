@@ -137,7 +137,7 @@ class TestEmotimeConfigurable:
     def test_engine_configuration(self):
         """Test engine with different configurations."""
         # Minimal config
-        engine1 = EmotimeEngine()
+        engine1 = EmotimeEngine(enable_neo4j=False)
         assert engine1.user_id == "default_user"
 
         # Custom config

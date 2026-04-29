@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 def test_root_endpoint():
     """Проверяем, что корневой эндпоинт работает."""
-    from api import app
+    from backend.app.main import app
 
     client = TestClient(app)
     response = client.get("/")
@@ -20,9 +20,11 @@ def test_memory_timeline():
     import pytest
     from fastapi.testclient import TestClient
 
-    from api import app, memory_timeline
+    from backend.app.main import app
+    from backend.memory_timeline import timeline
 
-    # Используем контекстный менеджер для тестового клиента
+    timeline.timeline.clear()
+
     with TestClient(app) as client:
         # 1. Проверяем пустой список с таймаутом
         try:
@@ -36,7 +38,7 @@ def test_memory_timeline():
         test_memory = {
             "content": "Test memory content",
             "memory_type": "test",
-            "metadata": {"test": "data"},
+            "metadata": {"growth_stage": "seedling", "test": "data"},
         }
 
         try:
@@ -59,4 +61,4 @@ def test_memory_timeline():
             pytest.fail(f"Second GET /timeline/memories/ failed: {str(e)}")
 
         # 4. Очищаем тестовые данные
-        memory_timeline.timeline = []
+        timeline.timeline.clear()

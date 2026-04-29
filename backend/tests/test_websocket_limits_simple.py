@@ -4,6 +4,8 @@ import pytest
 import websockets
 from websockets.exceptions import ConnectionClosed
 
+pytestmark = pytest.mark.integration
+
 
 class TestWebSocketLimitsSimple:
     """

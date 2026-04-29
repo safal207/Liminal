@@ -8,6 +8,8 @@ import websockets
 
 BASE_URL = "ws://localhost:8000"
 
+pytestmark = pytest.mark.integration
+
 
 class WebSocketClient:
     def __init__(self, user_id):

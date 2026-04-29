@@ -5,7 +5,7 @@ Configures structured logging on startup
 
 import os
 
-from backend.logging_config import configure_structured_logging
+from logging_config import configure_structured_logging
 
 
 def init_logging():
@@ -24,7 +24,7 @@ def init_logging():
     )
 
     # Log initialization
-    from backend.logging_config import get_logger
+    from logging_config import get_logger
 
     logger = get_logger(__name__)
 
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     # Test logging configuration
     init_logging()
 
-    from backend.logging_config import get_logger
+    from logging_config import get_logger
 
     logger = get_logger("test")
 

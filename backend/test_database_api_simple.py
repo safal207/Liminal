@@ -11,7 +11,7 @@
 import asyncio
 import os
 import sys
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 # Добавляем путь к модулям
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -110,7 +110,7 @@ def test_database_adapter_fallback():
         return False
 
 
-async def test_database_adapter_store_data():
+def test_database_adapter_store_data():
     """Тест сохранения данных."""
     print("🧪 Тестирование сохранения данных...")
 
@@ -138,11 +138,13 @@ async def test_database_adapter_store_data():
             "context": "успешное завершение задачи",
         }
 
-        result_id = await adapter.store_data(
-            data=emotion_data,
-            data_type=DataType.EMOTION_HISTORY,
-            user_id="user-123",
-            session_id="session-456",
+        result_id = asyncio.run(
+            adapter.store_data(
+                data=emotion_data,
+                data_type=DataType.EMOTION_HISTORY,
+                user_id="user-123",
+                session_id="session-456",
+            )
         )
 
         assert result_id == "emotion-123", f"❌ Неожиданный ID результата: {result_id}"
@@ -163,7 +165,7 @@ async def test_database_adapter_store_data():
         return False
 
 
-async def test_database_adapter_query_data():
+def test_database_adapter_query_data():
     """Тест запроса данных."""
     print("🧪 Тестирование запроса данных...")
 
@@ -185,10 +187,12 @@ async def test_database_adapter_query_data():
         adapter.neo4j_available = True
 
         # Тест запроса истории эмоций
-        emotions = await adapter.query_data(
-            data_type=DataType.EMOTION_HISTORY,
-            filters={"user_id": "user-123"},
-            limit=10,
+        emotions = asyncio.run(
+            adapter.query_data(
+                data_type=DataType.EMOTION_HISTORY,
+                filters={"user_id": "user-123"},
+                limit=10,
+            )
         )
 
         assert len(emotions) == 2, f"❌ Ожидалось 2 записи, получено {len(emotions)}"
@@ -251,7 +255,7 @@ def test_database_adapter_health():
         health = adapter.get_health_status()
         assert (
             health["status"] == "unhealthy"
-        ), f"❌ При недоступности БД статус должен быть unhealthy"
+        ), "❌ При недоступности БД статус должен быть unhealthy"
 
         print("✅ Проверка здоровья работает корректно")
         return True
@@ -323,7 +327,7 @@ async def run_all_tests():
             failed += 1
 
     print("\n" + "=" * 50)
-    print(f"📊 Результаты тестирования:")
+    print("📊 Результаты тестирования:")
     print(f"✅ Пройдено: {passed}")
     print(f"❌ Провалено: {failed}")
     print(f"📈 Успешность: {passed/(passed+failed)*100:.1f}%")

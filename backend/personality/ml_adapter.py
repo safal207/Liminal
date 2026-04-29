@@ -353,16 +353,15 @@ class EmotionMLAdapter:
         normalized_text = text.strip()
 
         try:
-            # Используем кэшированный анализ
             cached_result = await self._cached_analyze(normalized_text)
+            from_cache = cached_result.pop("_from_cache", False)
+            cached_result["cached"] = from_cache
 
-            # Добавляем информацию о кэшировании
-            cached_result["cached"] = True
+            if from_cache:
+                self.cache_hits += 1
+            else:
+                self.cache_misses += 1
 
-            # Обновляем статистику кэша
-            self.cache_hits += 1
-
-            # Логируем использование кэша каждые 100 запросов
             if (self.cache_hits + self.cache_misses) % 100 == 0:
                 self._log_cache_stats()
 
@@ -449,21 +448,20 @@ class EmotionMLAdapter:
         Returns:
             Результат анализа
         """
-        # Используем run_in_executor для выполнения синхронной функции в отдельном потоке
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
+        wrapper = self._analyze_text_cached
+        hits_before = wrapper.cache_info().hits
 
-        # Проверяем, есть ли результат в кэше
-        if text in self._analyze_text_cached.__wrapped__.__cache__:
-            self.cache_hits += 1
-        else:
-            self.cache_misses += 1
-
-        # Выполняем кэшированную функцию в отдельном потоке с использованием пула потоков
         result = await loop.run_in_executor(
-            THREAD_POOL, functools.partial(self._analyze_text_cached, text)
+            THREAD_POOL,
+            functools.partial(wrapper, text),
         )
+        hits_after = wrapper.cache_info().hits
+        from_cache = hits_after > hits_before
 
-        return result
+        out = dict(result)
+        out["_from_cache"] = from_cache
+        return out
 
     async def analyze_text_batch(self, texts: List[str]) -> List[Dict[str, Any]]:
         """
@@ -558,13 +556,15 @@ class EmotionMLAdapter:
         min_distance = float("inf")
         closest_emotion = "нейтральность"
 
+        vad_keys = ("valence", "arousal", "dominance")
         for emotion, emotion_dims in EMOTION_MAPPING.items():
             if emotion == "BASE_EMOTIONS":
                 continue
-            # Вычисляем расстояние между измерениями
+            # Сравниваем только числовые VAD-оси; в карте есть поля вроде "category": str
             distance = sum(
                 (dimensions.get(dim, 0.5) - val) ** 2
                 for dim, val in emotion_dims.items()
+                if dim in vad_keys and isinstance(val, (int, float))
             )
             distance = distance**0.5  # Корень из суммы квадратов (евклидово расстояние)
 
@@ -573,8 +573,14 @@ class EmotionMLAdapter:
                 closest_emotion = emotion
 
         # Вычисляем интенсивность на основе отклонения от нейтральной точки (0.5)
-        neutral_point = {dim: 0.5 for dim in dimensions}
-        intensity = sum((val - 0.5) ** 2 for val in dimensions.values()) ** 0.5
+        intensity = (
+            sum(
+                (float(val) - 0.5) ** 2
+                for val in dimensions.values()
+                if isinstance(val, (int, float))
+            )
+            ** 0.5
+        )
 
         # Нормализуем интенсивность до диапазона 0-1
         # Максимальное расстояние от нейтральной точки в 3D пространстве = sqrt(3 * 0.5^2) ≈ 0.866
@@ -710,7 +716,7 @@ emotion_ml_adapter = EmotionMLAdapter()
 # Экспортируем функцию для очистки кэша
 async def clear_emotion_cache():
     """Очищает кэш анализа эмоций."""
-    before_size = len(emotion_ml_adapter._analyze_text_cached.__wrapped__.__cache__)
+    before_size = emotion_ml_adapter._analyze_text_cached.cache_info().currsize
     emotion_ml_adapter._analyze_text_cached.cache_clear()
     logger.info(f"Emotion analysis cache cleared. Removed {before_size} entries.")
     return {"cleared_entries": before_size}

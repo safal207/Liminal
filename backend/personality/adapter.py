@@ -106,7 +106,7 @@ class PersonalityAdapter:
 
         # Сохраняем в Datomic через DatabaseAdapter
         await self.db.store_data(
-            data=emotion_data, data_type=DataType.EMOTION, user_id=self.user_id
+            data=emotion_data, data_type=DataType.EMOTION_HISTORY, user_id=self.user_id
         )
 
         return emotion_data
@@ -212,7 +212,9 @@ class PersonalityAdapter:
 
         # Сохраняем в Neo4j через DatabaseAdapter
         await self.db.store_data(
-            data=preference_data, data_type=DataType.PREFERENCE, user_id=self.user_id
+            data=preference_data,
+            data_type=DataType.PREFERENCE,
+            user_id=self.user_id,
         )
 
         return preference_data

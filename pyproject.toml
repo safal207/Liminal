@@ -1,12 +1,2 @@
-[tool.black]
-line-length = 88
-target-version = ["py311"]
-skip-magic-trailing-comma = false
-
 [tool.isort]
 profile = "black"
-line_length = 88
-
-[tool.mypy]
-ignore_missing_imports = true
-exclude = ["liminal-prototype/"]

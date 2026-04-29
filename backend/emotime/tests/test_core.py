@@ -73,7 +73,7 @@ class TestEmotimeEngine:
 
         # Check that data was added to buffer
         assert len(self.engine._sensor_buffer) == 1
-        assert self.engine._sensor_buffer[0].data["text"] == "I feel great today!"
+        assert self.engine._sensor_buffer[0].raw_data.text == "I feel great today!"
 
     @pytest.mark.asyncio
     async def test_get_current_state(self):
@@ -185,6 +185,8 @@ class TestEmotimeEngine:
         with patch.object(
             self.engine.fusion, "process_batch", return_value=mock_features
         ) as mock_fusion:
+            # Force classic mode classification path for deterministic assertion.
+            self.engine.adaptive_engine = None
             with patch.object(self.engine.modes, "classify_mode") as mock_classify:
                 mock_mode = EmotionalMode(
                     name="Focus",

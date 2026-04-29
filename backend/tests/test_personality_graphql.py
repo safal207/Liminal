@@ -18,9 +18,17 @@ from fastapi.testclient import TestClient
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from backend.auth.dependencies import token_verifier
 from backend.main import app
 from backend.personality import PersonalityAdapter
 from backend.personality.schema import schema
+
+
+def _auth_override():
+    async def _fake_token():
+        return {"sub": "test-user-123", "username": "testuser"}
+
+    return _fake_token
 
 
 class TestPersonalityGraphQL:
@@ -86,8 +94,11 @@ class TestPersonalityGraphQL:
 
     @pytest.fixture
     def client(self):
-        """TestClient для FastAPI."""
-        return TestClient(app)
+        """TestClient для FastAPI с валидным payload JWT dependency."""
+
+        app.dependency_overrides[token_verifier] = _auth_override()
+        yield TestClient(app)
+        app.dependency_overrides.pop(token_verifier, None)
 
     @pytest.fixture
     def auth_headers(self):
@@ -97,19 +108,18 @@ class TestPersonalityGraphQL:
 
     def test_graphql_schema(self):
         """Тест структуры GraphQL схемы."""
-        # Проверяем наличие типов в схеме
-        type_map = schema.schema_obj.type_map
-        assert "Emotion" in type_map
-        assert "Preference" in type_map
-        assert "Recommendation" in type_map
-        assert "PersonalityProfile" in type_map
+        for name in (
+            "Emotion",
+            "Preference",
+            "Recommendation",
+            "PersonalityProfile",
+            "Query",
+            "Mutation",
+            "Subscription",
+        ):
+            assert schema.get_type_by_name(name) is not None
 
-        # Проверяем наличие запросов
-        assert "Query" in type_map
-        assert "Mutation" in type_map
-        assert "Subscription" in type_map
-
-    @patch("backend.personality.schema.PersonalityAdapter")
+    @patch("backend.personality.adapter.PersonalityAdapter")
     def test_query_personality_profile(
         self, mock_adapter_class, mock_personality_adapter, client, auth_headers
     ):
@@ -161,7 +171,7 @@ class TestPersonalityGraphQL:
         # Проверяем, что метод get_profile был вызван
         mock_personality_adapter.get_profile.assert_called_once()
 
-    @patch("backend.personality.schema.PersonalityAdapter")
+    @patch("backend.personality.adapter.PersonalityAdapter")
     def test_query_recommendations(
         self, mock_adapter_class, mock_personality_adapter, client, auth_headers
     ):
@@ -203,7 +213,7 @@ class TestPersonalityGraphQL:
             3, "тестирование"
         )
 
-    @patch("backend.personality.schema.PersonalityAdapter")
+    @patch("backend.personality.adapter.PersonalityAdapter")
     def test_mutation_store_emotion(
         self, mock_adapter_class, mock_personality_adapter, client, auth_headers
     ):
@@ -249,7 +259,7 @@ class TestPersonalityGraphQL:
             "спокойствие", 0.7, "тестирование мутации"
         )
 
-    @patch("backend.personality.schema.PersonalityAdapter")
+    @patch("backend.personality.adapter.PersonalityAdapter")
     def test_mutation_update_preference(
         self, mock_adapter_class, mock_personality_adapter, client, auth_headers
     ):
@@ -330,8 +340,11 @@ class TestPersonalityRESTAPI:
 
     @pytest.fixture
     def client(self):
-        """TestClient для FastAPI."""
-        return TestClient(app)
+        """TestClient для FastAPI с валидным JWT dependency (без реального Bearer)."""
+
+        app.dependency_overrides[token_verifier] = _auth_override()
+        yield TestClient(app)
+        app.dependency_overrides.pop(token_verifier, None)
 
     @pytest.fixture
     def auth_headers(self):
@@ -339,7 +352,7 @@ class TestPersonalityRESTAPI:
         # В реальном тесте здесь был бы настоящий JWT токен
         return {"Authorization": "Bearer test_token"}
 
-    @patch("backend.personality.router.PersonalityAdapter")
+    @patch("backend.personality.adapter.PersonalityAdapter")
     def test_rest_store_emotion(
         self, mock_adapter_class, mock_personality_adapter, client, auth_headers
     ):
@@ -365,7 +378,7 @@ class TestPersonalityRESTAPI:
             "радость", 0.8, "тестирование REST"
         )
 
-    @patch("backend.personality.router.PersonalityAdapter")
+    @patch("backend.personality.adapter.PersonalityAdapter")
     def test_rest_get_profile(
         self, mock_adapter_class, mock_personality_adapter, client, auth_headers
     ):
@@ -386,7 +399,7 @@ class TestPersonalityRESTAPI:
         # Проверяем, что метод get_profile был вызван
         mock_personality_adapter.get_profile.assert_called_once()
 
-    @patch("backend.personality.router.PersonalityAdapter")
+    @patch("backend.personality.adapter.PersonalityAdapter")
     def test_rest_get_recommendations(
         self, mock_adapter_class, mock_personality_adapter, client, auth_headers
     ):

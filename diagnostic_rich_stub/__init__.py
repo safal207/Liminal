@@ -1,10 +1,7 @@
-"""Minimal stub for the :mod:`rich` package used by diagnostics tests.
+"""Minimal stub for :mod:`rich` used by ``tests/diagnostic_test.py`` only.
 
-Only the small subset of the API that the tests exercise is implemented
-here so that the suite can run in environments where the real ``rich``
-package is not available.  The goal is not to be feature complete but to
-provide a tiny, well-behaved facade that mirrors the public signatures
-we rely on.
+Named ``diagnostic_rich_stub`` so it does not shadow the real PyPI ``rich``
+package on ``sys.path`` (Prefect and other tools require ``rich.traceback``).
 """
 
 from __future__ import annotations

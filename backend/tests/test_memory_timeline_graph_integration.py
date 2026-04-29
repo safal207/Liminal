@@ -2,24 +2,25 @@
 
 from __future__ import annotations
 
-from typing import Dict
+from typing import Dict, Iterator
 
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app.dependencies import reset_neo4j_gateway, set_neo4j_gateway
 from backend.app.main import app
 from backend.infrastructure.neo4j.mock import MockNeo4jGateway
 
 
 @pytest.fixture()
-def client_with_mock_gateway() -> TestClient:
-    gateway = MockNeo4jGateway()
-    set_neo4j_gateway(gateway)
+def client_with_mock_gateway(
+    override_neo4j_service: MockNeo4jGateway,
+) -> Iterator[TestClient]:
+    """Use the autouse mock gateway so routes and the timeline bridge share one instance."""
+
+    gateway = override_neo4j_service
     with TestClient(app) as client:
         client.app.state.mock_gateway = gateway  # type: ignore[attr-defined]
         yield client
-    reset_neo4j_gateway()
 
 
 def _gateway(client: TestClient) -> MockNeo4jGateway:

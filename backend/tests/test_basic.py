@@ -79,34 +79,22 @@ def test_memory_timeline_endpoint():
 
 
 def test_websocket_disconnect():
-    """Проверяем корректное отключение WebSocket клиента."""
+    """Проверяем, что неаутентифицированный WebSocket не подписывается на таймлайн."""
     print("\n=== Starting test_websocket_disconnect ===")
     client = TestClient(app)
 
     try:
         # Подключаем WebSocket клиента
         print("1. Connecting WebSocket...")
-        with client.websocket_connect("/ws/timeline") as websocket:
-            # Проверяем, что клиент добавился в подписчики
-            print("2. Verifying subscription...")
+        with client.websocket_connect("/ws/timeline"):
+            # Неаутентифицированное соединение не должно попадать в подписчики.
+            print("2. Verifying unauthenticated connection is not subscribed...")
             response = client.get("/debug/subscribers/count")
             assert response.status_code == 200
-            assert response.json()["count"] == 1
-
-            # Имитируем отправку сообщения
-            print("3. Sending test message...")
-            test_data = {"content": "Test disconnect", "memory_type": "test"}
-            response = client.post("/timeline/memories/", json=test_data)
-            assert response.status_code in [200, 201]
-
-            # Проверяем, что сообщение пришло через WebSocket
-            print("4. Verifying WebSocket message...")
-            data = websocket.receive_json()
-            assert data["event"] == "memory_added"
-            assert data["data"]["content"] == test_data["content"]
+            assert response.json()["count"] == 0
 
         # После выхода из контекстного менеджера соединение должно закрыться
-        print("5. Verifying WebSocket disconnection...")
+        print("3. Verifying WebSocket disconnection...")
         response = client.get("/debug/subscribers/count")
         assert response.status_code == 200
         assert response.json()["count"] == 0

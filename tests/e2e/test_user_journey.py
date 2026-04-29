@@ -4,10 +4,17 @@
 import time
 
 import pytest
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
+
+try:
+    from selenium import webdriver
+    from selenium.webdriver.common.by import By
+    from selenium.webdriver.support import expected_conditions as EC
+    from selenium.webdriver.support.ui import WebDriverWait
+except Exception as exc:  # pragma: no cover
+    pytest.skip(
+        f"Selenium e2e prerequisites unavailable: {exc}",
+        allow_module_level=True,
+    )
 
 
 class TestUserJourney:

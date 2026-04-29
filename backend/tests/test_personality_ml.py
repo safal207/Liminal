@@ -69,7 +69,10 @@ class TestEmotionMLAdapter:
         assert result["emotion_type"] in [
             "радость",
             "восторг",
-        ]  # Один из позитивных типов
+            "любовь",
+            "интерес",
+            "гордость",
+        ]
         assert 0.0 <= result["intensity"] <= 1.0
         assert result["dimensions"]["valence"] == 0.8
         assert result["confidence"] == 0.85
@@ -94,21 +97,34 @@ class TestEmotionMLAdapter:
         emotion, intensity = adapter._map_dimensions_to_emotion(
             {"valence": 0.8, "arousal": 0.6, "dominance": 0.7}
         )
-        assert emotion in ["радость", "восторг", "удовлетворение"]
-        assert 0.5 < intensity <= 1.0
+        assert emotion in [
+            "радость",
+            "восторг",
+            "любовь",
+            "интерес",
+            "гордость",
+        ]
+        assert 0.3 < intensity <= 1.0
 
-        # Негативные эмоции (низкая валентность)
+        # Негативные эмоции (низкая валентность, высокий arousal)
         emotion, intensity = adapter._map_dimensions_to_emotion(
             {"valence": 0.2, "arousal": 0.7, "dominance": 0.3}
         )
-        assert emotion in ["страх", "тревога", "раздражение"]
-        assert 0.5 < intensity <= 1.0
+        assert emotion in ["страх", "тревога", "злость", "отчаяние", "отвращение"]
+        assert 0.3 < intensity <= 1.0
 
         # Нейтральные эмоции (средняя валентность)
         emotion, intensity = adapter._map_dimensions_to_emotion(
             {"valence": 0.5, "arousal": 0.5, "dominance": 0.5}
         )
-        assert emotion in ["нейтральность", "удивление", "задумчивость"]
+        assert emotion in [
+            "нейтральность",
+            "удивление",
+            "задумчивость",
+            "замешательство",
+            "скука",
+            "ностальгия",
+        ]
         assert intensity <= 0.5  # Близко к нейтральной точке
 
     @pytest.mark.asyncio

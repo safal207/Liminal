@@ -12,8 +12,10 @@ Principle: "No randomness is random" - every database choice is justified by dat
 """
 
 import asyncio
+import inspect
 import logging
 import os
+import sys
 import uuid
 from datetime import datetime
 from enum import Enum
@@ -34,6 +36,7 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
+sys.modules.setdefault("database_adapter", sys.modules[__name__])
 
 
 class DataType(Enum):
@@ -52,6 +55,7 @@ class DataType(Enum):
     PHILOSOPHY = "philosophy"  # Философские состояния
     CONCEPT_MAP = "concept_map"  # Карты концептов
     USER_NETWORK = "user_network"  # Сети пользователей
+    PREFERENCE = "preference"  # Пользовательские предпочтения (узлы/связи в графе)
 
 
 class DatabaseAdapter:
@@ -126,10 +130,14 @@ class DatabaseAdapter:
             "errors": 0,
         }
 
-        if auto_connect:
-            self.connect()
+    async def _maybe_await(self, value: Any) -> Any:
+        """Support both async and sync legacy database client methods."""
 
-    def connect(self) -> bool:
+        if inspect.isawaitable(value):
+            return await value
+        return value
+
+    async def connect(self) -> bool:
         """
         Подключение к обеим БД.
 
@@ -139,7 +147,7 @@ class DatabaseAdapter:
         if self.mock_mode:
             self.datomic_available = True
             self.neo4j_available = True
-            logger.info("DatabaseAdapter running in mock mode")
+            logger.info("✅ DatabaseAdapter в mock-режиме")
             return True
 
         logger.info("🔌 Подключение к базам данных...")
@@ -151,7 +159,9 @@ class DatabaseAdapter:
                 db_name=self.datomic_db_name,
                 storage_type=self.datomic_storage_type,
             )
-            self.datomic_available = self.datomic_client.connect()
+            self.datomic_available = bool(
+                await self._maybe_await(self.datomic_client.connect())
+            )
             if self.datomic_available:
                 logger.info("✅ Datomic подключен")
             else:
@@ -212,6 +222,7 @@ class DatabaseAdapter:
             DataType.PHILOSOPHY,
             DataType.CONCEPT_MAP,
             DataType.USER_NETWORK,
+            DataType.PREFERENCE,
         ]:
             return "neo4j"
 
@@ -302,10 +313,12 @@ class DatabaseAdapter:
 
         if data_type == DataType.EMOTION_HISTORY:
             # Специальная обработка для эмоций
-            result = self.datomic_client.add_emotion_entry(
-                user_id=data.get("user_id"),
-                emotion=data.get("emotion", "unknown"),
-                intensity=data.get("intensity", 0.5),
+            result = await self._maybe_await(
+                self.datomic_client.add_emotion_entry(
+                    user_id=data.get("user_id"),
+                    emotion=data.get("emotion", "unknown"),
+                    intensity=data.get("intensity", 0.5),
+                )
             )
             return str(result)
         else:
@@ -373,8 +386,10 @@ class DatabaseAdapter:
 
         if data_type == DataType.EMOTION_HISTORY and filters and "user_id" in filters:
             # Специальный запрос истории эмоций
-            history = self.datomic_client.get_emotion_history(
-                user_id=filters["user_id"], limit=limit
+            history = await self._maybe_await(
+                self.datomic_client.get_emotion_history(
+                    user_id=filters["user_id"], limit=limit
+                )
             )
             return [
                 {"emotion": h[1], "intensity": h[2], "timestamp": h[3]} for h in history

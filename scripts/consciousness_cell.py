@@ -12,7 +12,10 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from liminal.workflows.prefect_flows import consciousness_cell_flow
+from liminal.workflows.consciousness_agent import ConsciousnessCell  # noqa: E402
+from liminal.workflows.prefect_flows import consciousness_cell_flow  # noqa: E402
+
+__all__ = ["ConsciousnessCell", "consciousness_cell_flow", "main", "parse_args"]
 
 
 def parse_args() -> argparse.Namespace:
@@ -32,7 +35,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output-path",
-        help="Explicit path for the generated report (defaults to scripts/consciousness_insights_agent.md).",
+        help=(
+            "Explicit path for the generated report "
+            "(defaults to scripts/consciousness_insights_agent.md)."
+        ),
     )
     return parser.parse_args()
 

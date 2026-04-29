@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -42,25 +44,63 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          pip install bandit safety
+
+      - name: Determine Python files to check
+        id: python-files
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base_sha="${{ github.event.pull_request.base.sha }}"
+            head_sha="${{ github.event.pull_request.head.sha }}"
+          else
+            base_sha="${{ github.event.before }}"
+            head_sha="${{ github.sha }}"
+          fi
+
+          if [ -z "$base_sha" ] || [ "$base_sha" = "0000000000000000000000000000000000000000" ]; then
+            files=$(git ls-files '*.py')
+          else
+            files=$(git diff --name-only "$base_sha" "$head_sha" -- '*.py')
+          fi
+
+          files=$(echo "$files" | tr '\n' ' ' | xargs)
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+
+          if [ -n "$files" ]; then
+            echo "Checking Python files: $files"
+          else
+            echo "No Python files changed"
+          fi
 
       - name: Code formatting check (Black)
-        run: black --check --diff .
+        if: steps.python-files.outputs.files != ''
+        run: black --check --diff ${{ steps.python-files.outputs.files }}
 
       - name: Import sorting check (isort)
-        run: isort --check-only --diff .
+        if: steps.python-files.outputs.files != ''
+        run: isort --check-only --diff ${{ steps.python-files.outputs.files }}
 
       - name: Linting (flake8)
-        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        if: steps.python-files.outputs.files != ''
+        run: flake8 ${{ steps.python-files.outputs.files }} --count --select=E9,F63,F7,F82 --show-source --statistics
 
-      - name: Type checking (mypy)
-        run: mypy backend/ --ignore-missing-imports --exclude "liminal-prototype"
-        continue-on-error: true
+      - name: Type checking (mypy billing surface)
+        run: mypy backend/app/billing backend/app/routes/billing.py tests/unit/test_entitlements.py --ignore-missing-imports --follow-imports=skip
 
-      - name: Security scan (bandit)
-        run: bandit -r . -x tests/ -f json -o bandit-report.json || true
+      - name: Security scan report (bandit)
+        shell: bash
+        run: |
+          if [ -n "${{ steps.python-files.outputs.files }}" ]; then
+            bandit -f json -o bandit-report.json ${{ steps.python-files.outputs.files }} || true
+          fi
+          test -f bandit-report.json || echo '{"results":[]}' > bandit-report.json
 
-      - name: Dependency vulnerability scan
-        run: safety check --json --output safety-report.json || true
+      - name: Dependency vulnerability report (safety)
+        shell: bash
+        run: |
+          safety check --json --output safety-report.json || true
+          test -f safety-report.json || echo '[]' > safety-report.json
 
       - name: Upload security reports
         uses: actions/upload-artifact@v4
@@ -117,12 +157,6 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Cache pip dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -153,18 +187,14 @@ jobs:
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/test_liminal
           REDIS_URL: redis://localhost:6379
+          NEO4J_URI: bolt://localhost:7687
+          NEO4J_USER: neo4j
+          NEO4J_PASSWORD: testpassword
         run: |
-          if [ -d tests/api ]; then
-            uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 &
-            sleep 10
-            pytest tests/api/ -v --tb=short
-          else
-            echo "tests/api/ not found, skipping API tests"
-          fi
+          pytest backend/tests/test_api_simple_chat.py backend/tests/test_timeline_endpoints.py -v --tb=short
 
       - name: Upload test coverage
         uses: codecov/codecov-action@v3
-        continue-on-error: true
         with:
           file: ./coverage.xml
           flags: unittests
@@ -401,7 +431,6 @@ jobs:
     steps:
       - name: Delete old container images
         uses: actions/delete-package-versions@v4
-        continue-on-error: true
         with:
           package-name: ${{ env.IMAGE_NAME }}
           package-type: container

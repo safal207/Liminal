@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Обработчики WebSocket сообщений.
 """
@@ -5,12 +7,14 @@
 import json
 import uuid
 from datetime import datetime
-from typing import Any, Awaitable, Callable, Dict
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Dict
 
 from fastapi import WebSocket
 
-from backend.logging_config import get_logger
-from backend.websocket.connection_manager import ConnectionManager
+from logging_config import get_logger
+
+if TYPE_CHECKING:
+    from .connection_manager import ConnectionManager
 
 logger = get_logger("websocket.handlers")
 
@@ -34,7 +38,7 @@ def register_handler(message_type: str):
 
 
 async def handle_message(
-    message: str, websocket: WebSocket, manager: "ConnectionManager"
+    message: str, websocket: WebSocket, manager: ConnectionManager
 ):
     """
     Обрабатывает входящее сообщение и вызывает соответствующий обработчик.
@@ -85,7 +89,7 @@ async def handle_message(
 # Регистрируем обработчики
 @register_handler("subscribe")
 async def handle_subscribe(
-    data: Dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"
+    data: Dict[str, Any], websocket: WebSocket, manager: ConnectionManager
 ):
     """
     Обработчик подписки на канал.
@@ -126,7 +130,7 @@ async def handle_subscribe(
 
 @register_handler("unsubscribe")
 async def handle_unsubscribe(
-    data: Dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"
+    data: Dict[str, Any], websocket: WebSocket, manager: ConnectionManager
 ):
     """
     Обработчик отписки от канала.
@@ -167,7 +171,7 @@ async def handle_unsubscribe(
 
 @register_handler("message")
 async def handle_message_event(
-    data: Dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"
+    data: Dict[str, Any], websocket: WebSocket, manager: ConnectionManager
 ):
     """
     Обработчик отправки сообщения в канал.
@@ -237,7 +241,7 @@ def register_handlers():
 # Heartbeat: обработчик ответа pong от клиента
 @register_handler("pong")
 async def handle_pong(
-    data: Dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"
+    data: Dict[str, Any], websocket: WebSocket, manager: ConnectionManager
 ):
     """
     Клиент отвечает на ping сообщением {"type": "pong"}.
@@ -252,7 +256,7 @@ async def handle_pong(
 
 @register_handler("ack")
 async def handle_acknowledgment(
-    data: Dict[str, Any], websocket: WebSocket, manager: "ConnectionManager"
+    data: Dict[str, Any], websocket: WebSocket, manager: ConnectionManager
 ):
     """
     Обработчик подтверждения получения сообщения (acknowledgment).

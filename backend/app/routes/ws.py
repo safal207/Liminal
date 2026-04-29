@@ -7,7 +7,6 @@ from typing import Optional
 from fastapi import APIRouter, Depends, WebSocket
 
 from ..dependencies import get_websocket_service
-from ..services.websocket import TimelineWebSocketService
 
 router = APIRouter()
 
@@ -16,6 +15,8 @@ router = APIRouter()
 async def websocket_timeline(
     websocket: WebSocket,
     token: Optional[str] = None,
-    service: TimelineWebSocketService = Depends(get_websocket_service),
+    service=Depends(get_websocket_service),
 ):
+    """Delegate WebSocket lifecycle handling to the service layer."""
+
     await service.handle_connection(websocket, token)

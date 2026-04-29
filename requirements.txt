@@ -23,11 +23,15 @@ pandas>=2.0.0
 # Мониторинг и метрики
 prometheus-client>=0.17.0
 
+# Billing (Stripe Checkout, webhooks, Customer Portal)
+stripe>=8.0.0
+
 # Тестирование
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
 dependency-injector>=4.41.0
-prefect>=2.14.0,<3.0
+prefect>=2.14.0,<3
+rich>=13.7.0
 
 # Selenium для автоматизации
 selenium>=4.0.0

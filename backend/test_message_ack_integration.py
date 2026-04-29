@@ -4,8 +4,6 @@ Tests the complete ACK system including API endpoints and metrics.
 """
 
 import asyncio
-import json
-import time
 
 import requests
 from websocket.connection_manager import ConnectionManager, PendingMessage
@@ -21,7 +19,7 @@ def test_api_endpoint():
         response = requests.get("http://localhost:8000/message-ack/stats", timeout=5)
         if response.status_code == 200:
             stats = response.json()
-            print(f"   API Status: OK")
+            print("   API Status: OK")
             print(f"   Total pending: {stats['total_pending_messages']}")
             print(f"   Timeout: {stats['ack_timeout_seconds']}s")
             return True
@@ -49,7 +47,7 @@ def test_prometheus_metrics():
                 "websocket_message_acks_total",
                 "websocket_pending_messages",
                 "websocket_message_retries_total",
-                "websocket_ack_response_time",
+                "websocket_ack_response_time_seconds",
             ]
 
             found_metrics = []
@@ -57,7 +55,7 @@ def test_prometheus_metrics():
                 if metric in metrics_text:
                     found_metrics.append(metric)
 
-            print(f"   Metrics Status: OK")
+            print("   Metrics Status: OK")
             print(f"   Found ACK metrics: {len(found_metrics)}/{len(ack_metrics)}")
             for metric in found_metrics:
                 print(f"     - {metric}")

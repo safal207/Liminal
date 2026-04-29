@@ -12,6 +12,11 @@ module has no side effects beyond importing :mod:`backend.api`.
 
 from __future__ import annotations
 
-from backend.api import app, lifespan
+from backend.api import app
+
+try:
+    from backend.api import lifespan  # type: ignore[attr-defined]
+except ImportError:
+    lifespan = None  # Backward compatibility for environments without lifespan export.
 
 __all__ = ["app", "lifespan"]

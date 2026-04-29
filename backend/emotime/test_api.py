@@ -4,10 +4,25 @@
 """
 
 import json
+import socket
 
+import pytest
 import requests
 
 BASE_URL = "http://localhost:8000"
+
+
+def _server_available(host: str = "localhost", port: int = 8000) -> bool:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(0.5)
+        return sock.connect_ex((host, port)) == 0
+
+
+if not _server_available():
+    pytest.skip(
+        "Emotime API tests require a running server on localhost:8000",
+        allow_module_level=True,
+    )
 
 
 def test_create_user():

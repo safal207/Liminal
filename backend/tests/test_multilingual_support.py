@@ -44,7 +44,10 @@ class TestMultilingualSupport:
 
     def test_detect_language_german(self):
         """Тест определения немецкого языка."""
-        text = "Hallo, wie geht es dir? Dies ist ein Testtext auf Deutsch."
+        text = (
+            "Hallo, wie geht es dir? Grüße aus München. "
+            "Dies ist ein Testtext auf Deutsch mit Umlauten."
+        )
         lang = detect_language(text)
         assert lang == "de"
 

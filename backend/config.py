@@ -9,15 +9,15 @@ import os
 from functools import lru_cache
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class Settings(BaseModel):
-    """Application settings for local testing."""
+    """Application settings - secure by default."""
 
     # Environment
     environment: str = "development"
-    debug: bool = True
+    debug: bool = False  # Default to False for security
 
     # Server
     host: str = "0.0.0.0"
@@ -26,14 +26,16 @@ class Settings(BaseModel):
     # Database
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_user: str = "neo4j"
-    neo4j_password: str = "NewStrongPass123!"
+    neo4j_password: str = "NewStrongPass123!"  # Override via NEO4J_PASSWORD env var
 
     # Redis (optional)
     redis_url: str = "redis://localhost:6379"
     use_redis: bool = False
 
     # JWT
-    jwt_secret_key: str = "test-jwt-secret-key-for-local-development-only"
+    jwt_secret_key: str = (
+        "test-jwt-secret-key-for-local-development-only"  # Override via JWT_SECRET_KEY env var
+    )
     jwt_algorithm: str = "HS256"
 
     # ML
@@ -44,9 +46,13 @@ class Settings(BaseModel):
     metrics_enabled: bool = True
 
     def __init__(self, **kwargs):
-        # Load from environment variables
+        # Get environment
+        environment = os.getenv("ENV", "development")
+
+        # Load from environment variables with fallbacks
         env_values = {
-            "environment": os.getenv("ENV", "development"),
+            "environment": environment,
+            "debug": environment == "development",  # Auto-disable debug in production
             "neo4j_uri": os.getenv("NEO4J_URI", "bolt://localhost:7687"),
             "neo4j_user": os.getenv("NEO4J_USER", "neo4j"),
             "neo4j_password": os.getenv("NEO4J_PASSWORD", "NewStrongPass123!"),
@@ -60,6 +66,31 @@ class Settings(BaseModel):
             "metrics_enabled": os.getenv("PROMETHEUS_ENABLED", "true").lower()
             == "true",
         }
+
+        # In production, warn if using default secrets (but don't fail startup for CI)
+        if environment != "development":
+            if (
+                env_values["jwt_secret_key"]
+                == "test-jwt-secret-key-for-local-development-only"
+            ):
+                import warnings
+
+                warnings.warn(
+                    "⚠️  WARNING: Using default JWT_SECRET_KEY in production! "
+                    "Set JWT_SECRET_KEY environment variable immediately!",
+                    UserWarning,
+                    stacklevel=2,
+                )
+            if env_values["neo4j_password"] == "NewStrongPass123!":
+                import warnings
+
+                warnings.warn(
+                    "⚠️  WARNING: Using default NEO4J_PASSWORD in production! "
+                    "Set NEO4J_PASSWORD environment variable immediately!",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
         # Override with environment values
         kwargs.update({k: v for k, v in env_values.items() if v is not None})
         super().__init__(**kwargs)
