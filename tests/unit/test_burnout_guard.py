@@ -22,6 +22,10 @@ import pytest
 
 def _make_numpy_stub() -> types.ModuleType:
     np = types.ModuleType("numpy")
+    np.__version__ = "0.0.0"  # import-time checks (e.g. sklearn) expect this
+    np.bool_ = bool  # neo4j packstream uses np.bool_(...) at import time
+    np.integer = int  # neo4j packstream INT_TYPES
+    np.floating = float
     np.array = lambda x, **kw: x  # type: ignore[assignment]
     np.mean = lambda x, **kw: sum(x) / len(x) if x else 0.0
     np.std = lambda x, **kw: 0.0
@@ -47,9 +51,15 @@ _numpy_stub = _make_numpy_stub()
 
 @pytest.fixture(autouse=True, scope="module")
 def _patch_numpy():
-    """Inject numpy stub for the duration of this module."""
+    """Prefer real numpy (neo4j driver expects np.integers/bool_); stub only if missing."""
     original = sys.modules.get("numpy")
-    sys.modules["numpy"] = _numpy_stub  # type: ignore[assignment]
+    stub_installed = False
+    if original is None:
+        try:
+            import numpy  # noqa: F401
+        except ImportError:
+            sys.modules["numpy"] = _numpy_stub  # type: ignore[assignment]
+            stub_installed = True
 
     # Also stub heavy ML / emotime sub-modules that may not be installed
     for mod in [
@@ -64,11 +74,11 @@ def _patch_numpy():
 
     yield
 
-    # Restore
-    if original is None:
-        sys.modules.pop("numpy", None)
-    else:
-        sys.modules["numpy"] = original
+    if stub_installed:
+        if original is None:
+            sys.modules.pop("numpy", None)
+        else:
+            sys.modules["numpy"] = original
 
 
 # ---------------------------------------------------------------------------
@@ -290,9 +300,10 @@ class TestBurnoutDatabaseAdapter:
         from backend.burnout_guard.modes import BurnoutRiskLevel
         from backend.burnout_guard.persistence import BurnoutDatabaseAdapter
 
-        adapter = BurnoutDatabaseAdapter()
-        # No real DB — falls back to mock
-        assert adapter.db_adapter is None or True
+        # Explicit mock_mode: default ctor wires DatabaseAdapter when imports succeed,
+        # which breaks "no DB" expectations in CI.
+        adapter = BurnoutDatabaseAdapter(mock_mode=True)
+        assert adapter.db_adapter is None
 
         risk = BurnoutRisk(
             score=0.65,
@@ -312,7 +323,7 @@ class TestBurnoutDatabaseAdapter:
     async def test_get_risk_history_returns_list(self):
         from backend.burnout_guard.persistence import BurnoutDatabaseAdapter
 
-        adapter = BurnoutDatabaseAdapter()
+        adapter = BurnoutDatabaseAdapter(mock_mode=True)
         history = await adapter.get_risk_history("user_test", days=7)
         assert isinstance(history, list)
 
@@ -320,7 +331,7 @@ class TestBurnoutDatabaseAdapter:
     async def test_track_recommendation_usage(self):
         from backend.burnout_guard.persistence import BurnoutDatabaseAdapter
 
-        adapter = BurnoutDatabaseAdapter()
+        adapter = BurnoutDatabaseAdapter(mock_mode=True)
         ok = await adapter.track_recommendation_usage(
             user_id="u1",
             recommendation_id="rec_001",
