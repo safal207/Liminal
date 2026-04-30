@@ -392,8 +392,8 @@ class AuthenticatedClient:
             return []
 
 
-async def test_with_auth(server_url, metrics_url, api_url):
-    """Тест с аутентификацией"""
+async def run_with_auth_scenario(server_url, metrics_url, api_url):
+    """Сценарий с JWT аутентификацией (скрипт, не pytest)."""
     print(f"\n{Fore.GREEN}=== ТЕСТ JWT АУТЕНТИФИКАЦИИ И МЕТРИК ==={Style.RESET_ALL}")
 
     client = AuthenticatedClient(server_url, metrics_url, api_url)
@@ -471,7 +471,7 @@ async def main():
     print(f"Metrics endpoint: {args.metrics}")
     print(f"API endpoint: {args.api}{Style.RESET_ALL}")
 
-    await test_with_auth(args.server, args.metrics, args.api)
+    await run_with_auth_scenario(args.server, args.metrics, args.api)
 
     print(f"\n{Fore.GREEN}=========================================")
     print(f"ТЕСТИРОВАНИЕ ЗАВЕРШЕНО")

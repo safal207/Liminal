@@ -30,6 +30,8 @@ CONNECT_TIMEOUT = 5.0
 MESSAGE_TIMEOUT = 3.0
 TEST_TIMEOUT = 30.0
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.mark.asyncio
 @pytest.mark.timeout(TEST_TIMEOUT)

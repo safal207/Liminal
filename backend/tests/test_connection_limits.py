@@ -1,9 +1,11 @@
 import asyncio
-import json
 
 import pytest
 import websockets
 from websockets.exceptions import ConnectionClosed
+
+# Requires uvicorn on 127.0.0.1:8000; CI unit job uses -m "not integration"
+pytestmark = pytest.mark.integration
 
 
 class TestConnectionLimits:
@@ -60,7 +62,7 @@ class TestConnectionLimits:
         # Создаём несколько подключений
         connections = []
         try:
-            for i in range(3):
+            for _ in range(3):
                 websocket = await websockets.connect(websocket_url)
                 connections.append(websocket)
 

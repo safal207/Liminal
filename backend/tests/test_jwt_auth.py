@@ -14,9 +14,11 @@ import websockets
 BASE_URL = "http://127.0.0.1:8000"
 WS_URL = "ws://127.0.0.1:8000/ws/timeline"
 
+pytestmark = pytest.mark.integration
+
 
 class TestJWTAuth:
-    """Тесты JWT аутентификации."""
+    """Тесты JWT аутентификации (нужен сервер на 127.0.0.1:8000)."""
 
     def test_login_endpoint(self):
         """Тест эндпоинта логина."""

@@ -4,7 +4,7 @@
 """
 
 import json
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import websockets
@@ -63,25 +63,24 @@ async def test_websocket_connection():
 @pytest.mark.asyncio
 async def test_websocket_broadcast():
     """Тест отправки широковещательного сообщения через WebSocket."""
-    # Создаем экземпляр менеджера соединений для тестирования
     connection_manager = ConnectionManager()
 
-    # Создаем фиктивное соединение
     mock_websocket = AsyncMock()
+    mock_websocket.client = MagicMock()
+    mock_websocket.client.host = "127.0.0.1"
 
-    # Подписываемся на канал
+    user_id = "test_user"
     channel = "test_channel"
-    await connection_manager.connect(mock_websocket, user_id="test_user")
-    await connection_manager.subscribe(mock_websocket, channel)
+    await connection_manager.connect(mock_websocket, user_id)
+    await connection_manager.subscribe(user_id, channel, mock_websocket)
 
-    # Отправляем сообщение в канал
     test_message = {"type": "message", "content": "Hello, WebSocket!"}
     await connection_manager.broadcast(channel, test_message)
 
-    # Проверяем, что сообщение было отправлено
-    mock_websocket.send_text.assert_called_with(json.dumps(test_message))
+    mock_websocket.send_json.assert_called_with(test_message)
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_redis_integration():
     """Тест интеграции с Redis для синхронизации между экземплярами."""
@@ -131,6 +130,7 @@ async def test_redis_integration():
         assert channel in manager2.remote_subscriptions
 
 
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_rinse_integration():
     """Тест интеграции с Haskell Rinse модулем."""

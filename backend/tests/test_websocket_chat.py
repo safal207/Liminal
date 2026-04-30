@@ -16,6 +16,8 @@ except Exception as exc:  # pragma: no cover
         allow_module_level=True,
     )
 
+pytestmark = pytest.mark.integration
+
 
 @pytest.fixture(scope="module")
 def driver():

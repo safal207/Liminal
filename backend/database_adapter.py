@@ -55,6 +55,7 @@ class DataType(Enum):
     PHILOSOPHY = "philosophy"  # Философские состояния
     CONCEPT_MAP = "concept_map"  # Карты концептов
     USER_NETWORK = "user_network"  # Сети пользователей
+    PREFERENCE = "preference"  # Пользовательские предпочтения (узлы/связи в графе)
 
 
 class DatabaseAdapter:
@@ -221,6 +222,7 @@ class DatabaseAdapter:
             DataType.PHILOSOPHY,
             DataType.CONCEPT_MAP,
             DataType.USER_NETWORK,
+            DataType.PREFERENCE,
         ]:
             return "neo4j"
 

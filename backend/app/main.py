@@ -30,6 +30,11 @@ from .dependencies import (
 )
 from .routes import auth, billing, debug, fragments, waves, ws
 
+try:
+    from backend.personality.router import router as personality_router
+except Exception:  # pragma: no cover - optional GraphQL stack
+    personality_router = None
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -156,6 +161,9 @@ app.include_router(
     dependencies=[Depends(require_burnout_pro)],
 )
 
+if personality_router is not None:
+    app.include_router(personality_router)
+
 
 # Application state ----------------------------------------------------
 app.state.redis_client = RedisClient()
@@ -179,6 +187,7 @@ async def health_check():
         "ml_enabled": get_ml_service().enabled,
         "redis_connected": hasattr(app.state.connection_manager, "redis")
         and getattr(app.state.connection_manager, "redis", None) is not None,
+        "timestamp": datetime.utcnow().isoformat(),
     }
 
 

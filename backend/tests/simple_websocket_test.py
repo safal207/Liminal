@@ -6,12 +6,15 @@
 import asyncio
 import json
 
+import pytest
 import requests
 import websockets
 from colorama import Fore, Style, init
 
 # Инициализация colorama для Windows
 init()
+
+pytestmark = pytest.mark.integration
 
 
 async def test_websocket_connection():

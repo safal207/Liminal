@@ -283,8 +283,8 @@ def print_metrics(url):
         return []
 
 
-async def test_single_client(server_url, metrics_url):
-    """Тест одного клиента - основной сценарий использования"""
+async def run_single_client_scenario(server_url, metrics_url):
+    """Сценарий одного клиента - основной сценарий использования (скрипт, не pytest)."""
     print(f"\n{Fore.GREEN}=== ТЕСТ ОДНОГО КЛИЕНТА ==={Style.RESET_ALL}")
 
     client = WebSocketClient(server_url, f"test_user_{uuid.uuid4().hex[:8]}")
@@ -334,8 +334,8 @@ async def test_single_client(server_url, metrics_url):
     listener_task.cancel()
 
 
-async def test_multiple_clients(server_url, metrics_url, num_clients=5):
-    """Тест множественных клиентов для проверки счетчиков соединений"""
+async def run_multiple_clients_scenario(server_url, metrics_url, num_clients=5):
+    """Сценарий множественных клиентов для проверки счетчиков соединений (скрипт, не pytest)."""
     print(f"\n{Fore.GREEN}=== ТЕСТ {num_clients} КЛИЕНТОВ ==={Style.RESET_ALL}")
 
     clients = []
@@ -406,8 +406,8 @@ async def test_multiple_clients(server_url, metrics_url, num_clients=5):
     print_metrics(metrics_url)
 
 
-async def test_connection_limits(server_url, metrics_url, num_clients=12):
-    """Тест лимитов подключений для проверки защиты от DoS"""
+async def run_connection_limits_scenario(server_url, metrics_url, num_clients=12):
+    """Сценарий лимитов подключений для проверки защиты от DoS (скрипт, не pytest)."""
     print(
         f"\n{Fore.GREEN}=== ТЕСТ ЛИМИТОВ ПОДКЛЮЧЕНИЙ ({num_clients} попыток) ==={Style.RESET_ALL}"
     )
@@ -464,8 +464,8 @@ async def test_connection_limits(server_url, metrics_url, num_clients=12):
     print_metrics(metrics_url)
 
 
-async def test_invalid_auth(server_url, metrics_url):
-    """Тест неверной аутентификации"""
+async def run_invalid_auth_scenario(server_url, metrics_url):
+    """Сценарий неверной аутентификации (скрипт, не pytest)."""
     print(f"\n{Fore.GREEN}=== ТЕСТ НЕВЕРНОЙ АУТЕНТИФИКАЦИИ ==={Style.RESET_ALL}")
 
     # Клиент с неверным токеном
@@ -530,16 +530,16 @@ async def main():
     print(f"Выбранные тесты: {args.test}{Style.RESET_ALL}")
 
     if args.test == "single" or args.test == "all":
-        await test_single_client(args.server, args.metrics)
+        await run_single_client_scenario(args.server, args.metrics)
 
     if args.test == "multiple" or args.test == "all":
-        await test_multiple_clients(args.server, args.metrics, args.clients)
+        await run_multiple_clients_scenario(args.server, args.metrics, args.clients)
 
     if args.test == "limits" or args.test == "all":
-        await test_connection_limits(args.server, args.metrics)
+        await run_connection_limits_scenario(args.server, args.metrics)
 
     if args.test == "auth" or args.test == "all":
-        await test_invalid_auth(args.server, args.metrics)
+        await run_invalid_auth_scenario(args.server, args.metrics)
 
     print(f"\n{Fore.GREEN}=========================================")
     print(f"ТЕСТИРОВАНИЕ ЗАВЕРШЕНО")
