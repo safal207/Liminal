@@ -78,6 +78,10 @@ simple_*.py
 models/
 data/cache/
 
+# Playwright (generated; breaks Jekyll on GitHub Pages if not excluded)
+playwright-report/
+test-results/
+
 # Neo4j data
 neo4j_data/
 

@@ -1,0 +1,3 @@
+# GitHub Pages (Jekyll). Playwright HTML report embeds {% extends %}; Liquid treats it as a tag and fails.
+exclude:
+  - playwright-report
