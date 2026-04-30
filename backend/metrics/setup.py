@@ -6,10 +6,12 @@ import time
 from typing import Callable
 
 from fastapi import FastAPI, Request, Response
+
 try:
     from loguru import logger  # type: ignore
 except Exception:  # pragma: no cover
     import logging
+
     logger = logging.getLogger(__name__)
     if not logger.handlers:
         logging.basicConfig(level=logging.INFO)
@@ -17,8 +19,7 @@ from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response as StarletteResponse
 
-from .collectors import (connection_limits, http_requests_total,
-                         websocket_connections)
+from .collectors import connection_limits, http_requests_total, websocket_connections
 
 
 def setup_metrics(app: FastAPI) -> None:

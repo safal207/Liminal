@@ -1,10 +1,11 @@
 # Test fixtures for Resonance-Liminal
 # Фикстуры для тестирования компонентов системы
 
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock
-from typing import Dict, Any
+from typing import Any, Dict
+from unittest.mock import AsyncMock, Mock
+
+import pytest
 
 
 @pytest.fixture
@@ -15,11 +16,7 @@ def sample_user_data() -> Dict[str, Any]:
         "session_id": "session_456",
         "enhancement_level": 0.5,
         "active_systems": ["emotion_analysis", "consciousness_tracking"],
-        "preferences": {
-            "language": "ru",
-            "theme": "dark",
-            "notifications": True
-        }
+        "preferences": {"language": "ru", "theme": "dark", "notifications": True},
     }
 
 
@@ -33,10 +30,10 @@ def sample_emotion_data() -> Dict[str, Any]:
             "sadness": 0.05,
             "anger": 0.03,
             "fear": 0.02,
-            "surprise": 0.05
+            "surprise": 0.05,
         },
         "dominant_emotion": "joy",
-        "confidence": 0.92
+        "confidence": 0.92,
     }
 
 
@@ -49,9 +46,9 @@ def sample_websocket_message() -> Dict[str, Any]:
         "data": {
             "current_emotion": "joy",
             "intensity": 0.8,
-            "timestamp": "2024-01-15T10:30:00Z"
+            "timestamp": "2024-01-15T10:30:00Z",
         },
-        "session_id": "session_456"
+        "session_id": "session_456",
     }
 
 
@@ -74,9 +71,9 @@ def mock_database_response() -> Dict[str, Any]:
             "user_id": "test_user_123",
             "consciousness_score": 0.75,
             "last_activity": "2024-01-15T10:30:00Z",
-            "insights_count": 15
+            "insights_count": 15,
         },
-        "timestamp": "2024-01-15T10:30:00Z"
+        "timestamp": "2024-01-15T10:30:00Z",
     }
 
 
@@ -87,8 +84,8 @@ def mock_ml_model_response() -> Dict[str, Any]:
         "predictions": {
             "emotion": "joy",
             "confidence": 0.89,
-            "secondary_emotions": ["happiness", "contentment"]
+            "secondary_emotions": ["happiness", "contentment"],
         },
         "processing_time": 0.15,
-        "model_version": "v2.1.0"
+        "model_version": "v2.1.0",
     }

@@ -3,6 +3,7 @@
 Интеграционный тест XAI + OpenAI для ML системы Resonance Liminal
 Проверяет работу объяснений ML-предсказаний с использованием SHAP/LIME + OpenAI GPT-4
 """
+
 import asyncio
 import json
 import os
@@ -98,8 +99,12 @@ else:
 
 # Импорт ML сервисов
 try:
-    from backend.ml.openai_service import (AnalysisRequest, AnalysisResponse,
-                                           OpenAIService, openai_service)
+    from backend.ml.openai_service import (
+        AnalysisRequest,
+        AnalysisResponse,
+        OpenAIService,
+        openai_service,
+    )
 
     print_success("OpenAI сервис успешно импортирован")
 except ImportError as e:

@@ -1,4 +1,5 @@
 """Declarative Prefect flows for LIMINAL workflows."""
+
 from __future__ import annotations
 
 import json
@@ -22,7 +23,9 @@ def _coerce_threshold(threshold: float | None) -> float | None:
 
 
 @task(name="fetch-top-at-risk")
-def fetch_top_at_risk(limit: int, threshold: float | None = None) -> List[Dict[str, Any]]:
+def fetch_top_at_risk(
+    limit: int, threshold: float | None = None
+) -> List[Dict[str, Any]]:
     logger = get_run_logger()
     thresh = _coerce_threshold(threshold)
     if thresh is not None:
@@ -123,7 +126,9 @@ def persist_consciousness_report(
 
 
 @flow(name="top-at-risk-workflow")
-def top_at_risk_flow(limit: int = 5, threshold: float | None = None) -> List[Dict[str, Any]]:
+def top_at_risk_flow(
+    limit: int = 5, threshold: float | None = None
+) -> List[Dict[str, Any]]:
     container = get_container()
     audit = container.workflow_audit_logger()
     run_id = str(uuid.uuid4())
@@ -172,8 +177,14 @@ def consciousness_cell_flow(
         cell = build_consciousness_cell(project_root)
         insights = collect_consciousness_insights(cell)
         report = generate_consciousness_report(cell)
-        output = Path(output_path) if output_path else Path(project_root) / "scripts" / "consciousness_insights_agent.md"
-        persisted_path = persist_consciousness_report(report, output, enabled=persist_report)
+        output = (
+            Path(output_path)
+            if output_path
+            else Path(project_root) / "scripts" / "consciousness_insights_agent.md"
+        )
+        persisted_path = persist_consciousness_report(
+            report, output, enabled=persist_report
+        )
         summary = {
             "report_path": persisted_path,
             "report": report,

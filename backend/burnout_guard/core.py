@@ -18,38 +18,27 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 
 try:
-    from backend.emotime.core import EmotimeEngine, EmotimeState
-    from backend.emotime.fusion import EmotionalFeatures
-    from backend.emotime.modes import EmotionalMode
-except ImportError:  # pragma: no cover
-    try:
-        from ..emotime.core import EmotimeEngine, EmotimeState
-        from ..emotime.fusion import EmotionalFeatures
-        from ..emotime.modes import EmotionalMode
-    except ImportError:  # pragma: no cover
-        from emotime.core import EmotimeEngine, EmotimeState
-        from emotime.fusion import EmotionalFeatures
-        from emotime.modes import EmotionalMode
-
+    from ..emotime.core import EmotimeEngine, EmotimeState
+    from ..emotime.fusion import EmotionalFeatures
+    from ..emotime.modes import EmotionalMode
+except ImportError:  # pragma: no cover - support legacy top-level package imports
+    from emotime.core import EmotimeEngine, EmotimeState
+    from emotime.fusion import EmotionalFeatures
+    from emotime.modes import EmotionalMode
 from .modes import BurnoutMode, BurnoutModeMapper, BurnoutRiskLevel
 from .utils import safe_logger
 
 try:
-    from backend.emotime import ml as _emotime_ml  # noqa: F401
+    from ..emotime import ml as _emotime_ml  # noqa: F401
 
     ML_AVAILABLE = True
 except ImportError:
     try:
-        from ..emotime import ml as _emotime_ml  # noqa: F401
+        from emotime import ml as _emotime_ml  # noqa: F401
 
         ML_AVAILABLE = True
     except ImportError:
-        try:
-            from emotime import ml as _emotime_ml  # noqa: F401
-
-            ML_AVAILABLE = True
-        except ImportError:
-            ML_AVAILABLE = False
+        ML_AVAILABLE = False
 
 
 @dataclass
@@ -230,12 +219,11 @@ class BurnoutRiskScorer:
 
         # Анализ режима
         try:
-            from backend.emotime.modes import ModeType
-        except ImportError:  # pragma: no cover
-            try:
-                from ..emotime.modes import ModeType
-            except ImportError:  # pragma: no cover
-                from emotime.modes import ModeType  # type: ignore
+            from ..emotime.modes import ModeType
+        except (
+            ImportError
+        ):  # pragma: no cover - support legacy top-level package imports
+            from emotime.modes import ModeType
         if mode.type == ModeType.STRESS:
             total_risk += self.EMOTIONAL_RISK_CRITERIA["high_stress"]["weight"]
             indicators.append(f"Режим стресса (интенсивность: {mode.intensity:.2f})")

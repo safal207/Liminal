@@ -11,6 +11,7 @@ WebSocket Relay Automated Tests
 
 import asyncio
 import json
+
 # Включаем подробное логирование
 import logging
 import time
@@ -20,8 +21,11 @@ from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 import requests
 import websockets
+
+pytestmark = pytest.mark.integration
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -164,8 +168,9 @@ class WebSocketRelayTest(unittest.TestCase):
         fake_ws = MagicMock()
         fake_ws.recv = AsyncMock(return_value=json.dumps(test_event))
         fake_ws.close = AsyncMock()
-        with patch("requests.post", return_value=http_ok), patch(
-            "websockets.connect", new=AsyncMock(return_value=fake_ws)
+        with (
+            patch("requests.post", return_value=http_ok),
+            patch("websockets.connect", new=AsyncMock(return_value=fake_ws)),
         ):
             # Выполняем тест
             received_event, success = asyncio.run(

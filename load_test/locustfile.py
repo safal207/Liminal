@@ -10,7 +10,9 @@ from typing import Any, Dict, List
 
 from locust import FastHttpUser, between, events, task
 from locust.env import Environment
+from locust.runners import MasterRunner, WorkerRunner
 from prometheus_client import start_http_server
+
 # Import scenarios
 from scenarios.websocket_scenario import WebSocketScenario
 

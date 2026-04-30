@@ -3,7 +3,10 @@ import os
 import sys
 from unittest.mock import patch
 
+import pytest
 from fastapi.testclient import TestClient
+
+pytestmark = pytest.mark.integration
 
 
 def get_app_with_env(use_redis: bool):

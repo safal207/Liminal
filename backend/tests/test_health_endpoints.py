@@ -6,6 +6,7 @@ os.environ.setdefault("TEST_MODE", "true")
 from backend.app.main import app  # noqa: E402
 from backend.redis_client import DummyRedis  # noqa: E402
 
+
 def test_health_live_ok(client):
     r = client.get("/health/live")
     assert r.status_code == 200

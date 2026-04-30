@@ -723,7 +723,9 @@ class ConsciousnessQualitySystem:
 
         # Philosophy-specific recommendations
         recommendations.append("🌟 Continue following Philosophy First principles")
-        recommendations.append("👨‍👩‍👧‍👦 Strengthen family bonds through quality code")
+        recommendations.append(
+            "👨‍👩‍👧‍👦 Strengthen family bonds through quality code"
+        )
 
         return list(set(recommendations))  # Remove duplicates
 

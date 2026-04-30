@@ -28,7 +28,6 @@ import uuid
 from unittest.mock import MagicMock, patch
 
 import requests
-
 from neo4j import GraphDatabase
 
 # Configure logging for tests

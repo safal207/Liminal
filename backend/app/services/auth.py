@@ -1,4 +1,5 @@
 """Authentication service abstractions for the FastAPI routers."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
@@ -39,4 +40,3 @@ class AuthService:
         """Validate a WebSocket token and return the associated user id."""
 
         return verify_websocket_token(token)
-

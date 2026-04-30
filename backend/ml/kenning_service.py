@@ -17,14 +17,15 @@ import lime
 import lime.lime_tabular
 import matplotlib
 import numpy as np
+
 # XAI библиотеки
 import shap
 from alibi.explainers import AnchorTabular
 from fastapi import BackgroundTasks, FastAPI, HTTPException
-from loguru import logger
 from pydantic import BaseModel
 
 import redis
+from loguru import logger
 
 matplotlib.use("Agg")  # Не-интерактивный бэкенд для matplotlib
 import base64

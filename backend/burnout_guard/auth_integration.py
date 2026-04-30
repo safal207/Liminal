@@ -17,13 +17,8 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import Depends, HTTPException, status
 
-try:
-    from backend.auth.auth_router import get_current_active_user
-except ImportError:  # pragma: no cover - fallback for standalone / legacy paths
-    try:
-        from ..auth.auth_router import get_current_active_user
-    except ImportError:
-        from auth.auth_router import get_current_active_user  # type: ignore
+# Import existing auth system
+from ..auth.auth_router import get_current_active_user
 
 
 class BurnoutPermission(Enum):

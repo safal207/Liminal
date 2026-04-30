@@ -5,17 +5,18 @@
 Скрипт для проверки синтаксической корректности файлов Python.
 """
 
-import sys
 import os
 import py_compile
+import sys
+
 
 def check_syntax(file_path):
     """
     Проверяет синтаксическую корректность файла Python.
-    
+
     Args:
         file_path: Путь к файлу для проверки
-        
+
     Returns:
         bool: True, если синтаксис корректен, иначе False
     """
@@ -32,19 +33,20 @@ def check_syntax(file_path):
         print(f"  {e}")
         return False
 
+
 if __name__ == "__main__":
     # Проверяем файлы
     files_to_check = [
         "backend/personality/ml_adapter.py",
-        "backend/personality/multilingual_support.py"
+        "backend/personality/multilingual_support.py",
     ]
-    
+
     success = True
     for file_path in files_to_check:
         full_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), file_path)
         if not check_syntax(full_path):
             success = False
-    
+
     # Выводим общий результат
     if success:
         print("\n✅ Все файлы прошли проверку синтаксиса успешно!")

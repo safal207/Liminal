@@ -2,6 +2,7 @@
 """
 Utility script to analyze and visualize load test results.
 """
+
 import argparse
 import json
 import os

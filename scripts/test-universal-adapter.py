@@ -6,6 +6,7 @@
 для API интеграций с OpenAI, Anthropic и XAI, поддерживая как реальную
 работу с API, так и мок-режим для локальной разработки.
 """
+
 import asyncio
 import json
 import os
@@ -106,9 +107,11 @@ async def run_openai_wrapper_test():
 
     try:
         # Импортируем универсальный адаптер
-        from backend.ml.openai_wrapper import (LLMRequest,
-                                               initialize_llm_client,
-                                               llm_client)
+        from backend.ml.openai_wrapper import (
+            LLMRequest,
+            initialize_llm_client,
+            llm_client,
+        )
 
         print_success("Модуль openai_wrapper успешно импортирован")
 
@@ -279,9 +282,11 @@ async def test_openai_service_integration():
 
     try:
         # Импортируем OpenAI сервис
-        from backend.ml.openai_service import (AnalysisRequest,
-                                               AnalysisResponse,
-                                               openai_service)
+        from backend.ml.openai_service import (
+            AnalysisRequest,
+            AnalysisResponse,
+            openai_service,
+        )
 
         print_success("Модуль openai_service успешно импортирован")
 

@@ -5,53 +5,54 @@ Quick Performance Optimizations for LIMINAL
 
 import asyncio
 import time
-import requests
 from datetime import datetime
+
+import requests
 
 
 class QuickPerformanceTest:
     """Быстрое тестирование производительности."""
-    
+
     def __init__(self, base_url: str = "http://localhost:8000"):
         self.base_url = base_url
-    
+
     def run_quick_analysis(self):
         """Быстрый анализ основных проблем."""
         print("QUICK PERFORMANCE ANALYSIS")
         print("=" * 40)
-        
+
         # 1. Response time test
         print("1. Response Time Analysis")
         print("-" * 25)
-        
+
         endpoints = ["/health", "/emotime/status", "/metrics"]
         for endpoint in endpoints:
             avg_time = self._measure_response_time(endpoint)
             status = "OK" if avg_time < 2000 else "SLOW"
             print(f"   {endpoint}: {avg_time:.0f}ms [{status}]")
-        
+
         # 2. Emotime confidence test
         print(f"\n2. Emotime Confidence Test")
         print("-" * 25)
-        
+
         confidence = self._test_emotime_confidence()
         status = "OK" if confidence > 0.5 else "LOW"
         print(f"   Average confidence: {confidence:.2f} [{status}]")
-        
+
         # 3. Simple throughput test
         print(f"\n3. Basic Throughput Test")
         print("-" * 25)
-        
+
         throughput = self._test_basic_throughput()
         status = "OK" if throughput > 10 else "LOW"
         print(f"   Throughput: {throughput:.1f} req/sec [{status}]")
-        
+
         print(f"\nAnalysis completed: {datetime.now().strftime('%H:%M:%S')}")
-    
+
     def _measure_response_time(self, endpoint: str, samples: int = 3) -> float:
         """Измеряет среднее время ответа endpoint."""
         times = []
-        
+
         for _ in range(samples):
             start = time.time()
             try:
@@ -62,19 +63,19 @@ class QuickPerformanceTest:
                     times.append(5000)  # Penalty for errors
             except:
                 times.append(5000)  # Penalty for timeout
-        
+
         return sum(times) / len(times) if times else 5000
-    
+
     def _test_emotime_confidence(self) -> float:
         """Тестирует уверенность Emotime обработки."""
         confidences = []
-        
+
         test_texts = [
             "I feel happy and energetic!",
             "This makes me sad and worried",
-            "I'm in a peaceful state of mind"
+            "I'm in a peaceful state of mind",
         ]
-        
+
         for text in test_texts:
             try:
                 response = requests.post(
@@ -82,30 +83,30 @@ class QuickPerformanceTest:
                     json={
                         "text": text,
                         "user_id": "quick_test_user",
-                        "session_id": "quick_session"
+                        "session_id": "quick_session",
                     },
-                    timeout=8
+                    timeout=8,
                 )
-                
+
                 if response.status_code == 200:
                     data = response.json()
                     confidence = data.get("confidence", 0.0)
                     confidences.append(confidence)
                 else:
                     confidences.append(0.0)
-                    
+
             except Exception:
                 confidences.append(0.0)
-        
+
         return sum(confidences) / len(confidences) if confidences else 0.0
-    
+
     def _test_basic_throughput(self) -> float:
         """Базовый тест пропускной способности."""
         start_time = time.time()
         request_count = 0
         success_count = 0
         test_duration = 5.0  # 5 seconds
-        
+
         while (time.time() - start_time) < test_duration:
             try:
                 response = requests.get(f"{self.base_url}/health", timeout=1)
@@ -114,17 +115,17 @@ class QuickPerformanceTest:
                     success_count += 1
             except:
                 request_count += 1
-            
+
             # Small delay to prevent overwhelming
             time.sleep(0.1)
-        
+
         actual_duration = time.time() - start_time
         return success_count / actual_duration
 
 
 def create_performance_optimizations():
     """Создает файлы с оптимизациями производительности."""
-    
+
     # 1. Caching layer для Emotime
     caching_code = '''"""
 Emotime Performance Optimizations - Caching Layer
@@ -224,12 +225,15 @@ class EmotimeCacheManager:
 # Глобальный экземпляр кэша
 emotime_cache = EmotimeCacheManager()
 '''
-    
-    with open("C:\\Users\\safal\\OneDrive\\Documente\\GitHub\\resonance-liminal\\backend\\emotime\\cache.py", "w") as f:
+
+    with open(
+        "C:\\Users\\safal\\OneDrive\\Documente\\GitHub\\resonance-liminal\\backend\\emotime\\cache.py",
+        "w",
+    ) as f:
         f.write(caching_code)
-    
+
     print("✅ Created: emotime/cache.py")
-    
+
     # 2. Batch processing для улучшения throughput
     batch_processing_code = '''"""
 Batch Processing Optimizations
@@ -391,12 +395,15 @@ class EmotimeBatchProcessor(BatchProcessor):
 # Глобальный батч процессор
 emotime_batch_processor = EmotimeBatchProcessor()
 '''
-    
-    with open("C:\\Users\\safal\\OneDrive\\Documente\\GitHub\\resonance-liminal\\backend\\performance\\batch_processor.py", "w") as f:
+
+    with open(
+        "C:\\Users\\safal\\OneDrive\\Documente\\GitHub\\resonance-liminal\\backend\\performance\\batch_processor.py",
+        "w",
+    ) as f:
         f.write(batch_processing_code)
-    
+
     print("✅ Created: performance/batch_processor.py")
-    
+
     # 3. Connection pooling оптимизации
     connection_pool_code = '''"""
 Connection Pooling Optimizations
@@ -590,10 +597,13 @@ LIMIT $limit
             """
         }
 '''
-    
-    with open("C:\\Users\\safal\\OneDrive\\Documente\\GitHub\\resonance-liminal\\backend\\performance\\connection_optimizations.py", "w") as f:
+
+    with open(
+        "C:\\Users\\safal\\OneDrive\\Documente\\GitHub\\resonance-liminal\\backend\\performance\\connection_optimizations.py",
+        "w",
+    ) as f:
         f.write(connection_pool_code)
-    
+
     print("✅ Created: performance/connection_optimizations.py")
 
 
@@ -601,23 +611,23 @@ def main():
     """Создает оптимизации и запускает быстрый тест."""
     print("PERFORMANCE OPTIMIZATION SETUP")
     print("=" * 40)
-    
+
     # Создаем файлы оптимизаций
     print("\n1. Creating optimization files...")
     create_performance_optimizations()
-    
+
     print("\n2. Running quick performance test...")
     tester = QuickPerformanceTest()
     tester.run_quick_analysis()
-    
+
     print(f"\n3. OPTIMIZATION RECOMMENDATIONS:")
     print("   1. ✅ Implement emotime/cache.py for response caching")
-    print("   2. ✅ Use performance/batch_processor.py for throughput") 
+    print("   2. ✅ Use performance/batch_processor.py for throughput")
     print("   3. ✅ Apply connection_optimizations.py for DB performance")
     print("   4. 🔧 Configure Redis connection pooling")
     print("   5. 🔧 Enable Neo4j query optimization")
     print("   6. 🔧 Add response compression (gzip)")
-    
+
     print(f"\nNext steps:")
     print("   - Integrate caching in Emotime API endpoints")
     print("   - Replace single requests with batch processing")

@@ -10,7 +10,6 @@ from typing import Iterable, List
 
 from prometheus_client import generate_latest
 
-
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -45,7 +44,8 @@ def main() -> int:
     missing = [
         metric
         for metric in REQUIRED_METRICS
-        if f"# HELP {metric}" not in metrics_text and f"# TYPE {metric}" not in metrics_text
+        if f"# HELP {metric}" not in metrics_text
+        and f"# TYPE {metric}" not in metrics_text
     ]
 
     if missing:

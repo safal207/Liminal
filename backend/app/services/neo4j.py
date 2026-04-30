@@ -1,4 +1,5 @@
 """Neo4j integration helpers used by the FastAPI application."""
+
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
@@ -27,7 +28,9 @@ class Neo4jService:
         self.ensure_indexes()
         return self._gateway.create_dunewave_node(wave_data)
 
-    def create_fragment(self, fragment_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def create_fragment(
+        self, fragment_data: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         self.ensure_indexes()
         return self._gateway.create_memory_fragment_node(fragment_data)
 

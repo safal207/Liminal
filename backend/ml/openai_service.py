@@ -16,8 +16,13 @@ from loguru import logger
 
 # Импортируем универсальный адаптер
 try:
-    from .openai_wrapper import (AsyncOpenAI, LLMRequest, LLMResponse,
-                                 initialize_llm_client, llm_client)
+    from .openai_wrapper import (
+        AsyncOpenAI,
+        LLMRequest,
+        LLMResponse,
+        initialize_llm_client,
+        llm_client,
+    )
 
     logger.success("Универсальный OpenAI адаптер успешно импортирован")
     WRAPPER_AVAILABLE = True
@@ -594,7 +599,7 @@ XAI АНАЛИЗ:
         Returns:
             Ответ от OpenAI API
         """
-        if not OPENAI_AVAILABLE:
+        if not WRAPPER_AVAILABLE:
             logger.error("OpenAI API недоступно")
             return "Ошибка: OpenAI API недоступно. Установите библиотеку openai."
 

@@ -10,6 +10,7 @@
 5. WebSocket соединения
 6. Базы данных и кэширование
 """
+
 import asyncio
 import json
 import os
@@ -247,9 +248,11 @@ async def check_openai_integration():
 
     try:
         # Импортируем наш универсальный адаптер
-        from backend.ml.openai_wrapper import (LLMRequest,
-                                               initialize_llm_client,
-                                               llm_client)
+        from backend.ml.openai_wrapper import (
+            LLMRequest,
+            initialize_llm_client,
+            llm_client,
+        )
 
         print_success("Универсальный адаптер импортирован")
 

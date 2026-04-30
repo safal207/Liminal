@@ -5,7 +5,6 @@ import sys
 from neo4j import GraphDatabase
 from neo4j.exceptions import Neo4jError, ServiceUnavailable
 
-
 logger = logging.getLogger(__name__)
 
 

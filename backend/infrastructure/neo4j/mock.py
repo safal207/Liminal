@@ -36,7 +36,9 @@ class MockNeo4jGateway(Neo4jGateway):
     def _timestamp(self) -> str:
         return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
-    def create_dunewave_node(self, wave_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def create_dunewave_node(
+        self, wave_data: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         node = {
             **wave_data,
             "id": wave_data.get("id", f"wave_{len(self.dunewaves) + 1}"),

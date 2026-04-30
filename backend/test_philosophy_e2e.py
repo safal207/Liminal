@@ -561,7 +561,9 @@ class TestPhilosophyPipeline(unittest.TestCase):
             return True
         except ImportError:
             try:
-                from philosophy_websocket_bridge import PhilosophyWebSocketBridge  # type: ignore[no-redef]
+                from philosophy_websocket_bridge import (
+                    PhilosophyWebSocketBridge,  # type: ignore[no-redef]
+                )
 
                 return True
             except ImportError:

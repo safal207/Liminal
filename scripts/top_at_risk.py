@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """CLI wrapper for the Top At-Risk Prefect workflow."""
+
 from __future__ import annotations
 
 import argparse
@@ -48,7 +49,9 @@ def render_table(rows: List[dict[str, Any]]) -> None:
     print("-" * 72)
     for row in rows:
         advice = ", ".join(row.get("advice", []))
-        print(f"{row['sourceId']:<12} {row['targetId']:<12} {row['score']:<8.3f} {advice}")
+        print(
+            f"{row['sourceId']:<12} {row['targetId']:<12} {row['score']:<8.3f} {advice}"
+        )
 
 
 def main() -> None:

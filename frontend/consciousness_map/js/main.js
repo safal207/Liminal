@@ -8,7 +8,9 @@ const app = {
   isConnected: false,
   lastActiveState: null,
   temporalInsights: [],
-  maxInsightHistory: 5
+  maxInsightHistory: 5,
+  emotimeMode: null,
+  emotimePollInterval: null,
 };
 
 // Инициализация при загрузке DOM
@@ -17,18 +19,21 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Инициализация визуализации
   initGraphRenderer();
-  
+
   // Инициализация контроллера состояний
   initStateController();
-  
+
   // Подключение к WebSocket
   connectToWebSocket();
-  
+
   // Попытка загрузки данных из Neo4j
   loadDataFromNeo4j();
-  
+
   // Дополнительная инициализация временных паттернов
   initTemporalPatterns();
+
+  // Запуск опроса Emotime
+  initEmotimePolling();
 });
 
 /**
@@ -175,6 +180,83 @@ function analyzeTransitionPatterns() {
       insightPanel.appendChild(recSection);
     }
   }
+}
+
+// ---- Emotime mode polling ----
+
+const EMOTIME_API = 'http://localhost:8000/emotime/status';
+const EMOTIME_POLL_MS = 10000; // 10 секунд
+
+const EMOTIME_META = {
+  calm:          { label: 'Спокойствие',    color: '#4CAF50', emoji: '🌿' },
+  focus:         { label: 'Фокус',          color: '#2196F3', emoji: '🎯' },
+  stress:        { label: 'Стресс',         color: '#f44336', emoji: '⚡' },
+  joy:           { label: 'Радость',        color: '#FFC107', emoji: '✨' },
+  contemplation: { label: 'Созерцание',     color: '#9C27B0', emoji: '🌀' },
+  neutral:       { label: 'Нейтральный',    color: '#607D8B', emoji: '○'  },
+};
+
+function initEmotimePolling() {
+  // Создаём бейдж в шапке
+  const header = document.querySelector('.mit-header .container');
+  if (header) {
+    const badge = document.createElement('div');
+    badge.id = 'emotime-badge';
+    badge.className = 'emotime-badge';
+    badge.innerHTML = '<span class="emotime-dot"></span><span class="emotime-label">Emotime: —</span>';
+    header.appendChild(badge);
+  }
+
+  // Первый запрос сразу
+  pollEmotimeStatus();
+
+  // Периодический опрос
+  app.emotimePollInterval = setInterval(pollEmotimeStatus, EMOTIME_POLL_MS);
+}
+
+async function pollEmotimeStatus() {
+  try {
+    const res = await fetch(EMOTIME_API);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    // Emotime API возвращает { mode: { name: "Calm" } } или { mode: "calm" }
+    const rawMode = (data.mode?.name || data.mode || '').toLowerCase();
+    const mode = Object.keys(EMOTIME_META).find(k => rawMode.includes(k)) || 'neutral';
+
+    if (mode !== app.emotimeMode) {
+      app.emotimeMode = mode;
+      updateEmotimeBadge(mode, true);
+      if (graphRendererInstance) {
+        graphRendererInstance.applyEmotimeMode(mode);
+      }
+    }
+  } catch {
+    // API недоступен — сбрасываем overlay тихо
+    if (app.emotimeMode !== null) {
+      app.emotimeMode = null;
+      updateEmotimeBadge(null, false);
+      if (graphRendererInstance) {
+        graphRendererInstance.clearEmotimeMode();
+      }
+    }
+  }
+}
+
+function updateEmotimeBadge(mode, online) {
+  const badge = document.getElementById('emotime-badge');
+  if (!badge) return;
+  if (!online || !mode) {
+    badge.innerHTML = '<span class="emotime-dot" style="background:#555"></span><span class="emotime-label">Emotime: офлайн</span>';
+    badge.style.borderColor = '#555';
+    return;
+  }
+  const meta = EMOTIME_META[mode];
+  badge.innerHTML = `
+    <span class="emotime-dot" style="background:${meta.color};box-shadow:0 0 6px ${meta.color}"></span>
+    <span class="emotime-label">${meta.emoji} ${meta.label}</span>
+  `;
+  badge.style.borderColor = meta.color;
 }
 
 // Добавляем CSS для индикатора подключения

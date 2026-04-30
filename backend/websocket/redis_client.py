@@ -10,7 +10,8 @@ import time
 import uuid
 from typing import Any, Callable, Dict, List, Optional, Set, Union
 
-from logging_config import get_logger
+from backend.logging_config import get_logger
+
 logger = get_logger(__name__)
 
 import redis.asyncio as redis
@@ -19,9 +20,13 @@ from redis.exceptions import ConnectionError, RedisError
 
 # Условный импорт метрик Prometheus
 try:
-    from metrics import (redis_connection_status, redis_errors_total,
-                         redis_operation_duration_seconds,
-                         redis_operations_total, redis_pubsub_messages_total)
+    from metrics import (
+        redis_connection_status,
+        redis_errors_total,
+        redis_operation_duration_seconds,
+        redis_operations_total,
+        redis_pubsub_messages_total,
+    )
 
     METRICS_ENABLED = True
     logger.info("Prometheus Redis metrics module loaded successfully")

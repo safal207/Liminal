@@ -3,15 +3,18 @@ Stub implementation for relationship health metric.
 Ensures monotonic behavior for positive traits in tests (Variant A).
 Later, replace with real graph/DB-backed computation.
 """
+
 from __future__ import annotations
 
 from typing import Tuple
 
 try:
     import structlog
+
     logger = structlog.get_logger(__name__)
 except Exception:  # pragma: no cover
     import logging
+
     logger = logging.getLogger(__name__)
 
 EPS = 1e-6

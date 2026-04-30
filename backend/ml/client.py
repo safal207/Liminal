@@ -1,4 +1,5 @@
 """Client wrapper for interacting with the ML inference microservice."""
+
 from __future__ import annotations
 
 import logging
@@ -85,12 +86,16 @@ class MLInferenceClient:
     def enabled(self) -> bool:
         return bool(self.base_url) or self._fallback.enabled
 
-    def _request(self, method: str, path: str, payload: Optional[Dict[str, Any]] = None) -> Any:
+    def _request(
+        self, method: str, path: str, payload: Optional[Dict[str, Any]] = None
+    ) -> Any:
         if not self._session or not self.base_url:
             raise MLInferenceError("ML service URL is not configured")
 
         url = f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
-        response = self._session.request(method, url, json=payload, timeout=self.timeout)
+        response = self._session.request(
+            method, url, json=payload, timeout=self.timeout
+        )
         response.raise_for_status()
         if response.headers.get("content-type", "").startswith("application/json"):
             return response.json()

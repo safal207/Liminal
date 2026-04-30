@@ -552,9 +552,7 @@ async def create_wave(
 
 
 @app.get("/waves/", response_model=List[dict])
-async def get_waves(
-    limit: int = 10, writer: Neo4jGateway = Depends(get_neo4j_gateway)
-):
+async def get_waves(limit: int = 10, writer: Neo4jGateway = Depends(get_neo4j_gateway)):
     try:
         return writer.list_dunewaves(limit=limit)
     except Exception as e:

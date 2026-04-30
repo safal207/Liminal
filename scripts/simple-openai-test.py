@@ -3,6 +3,7 @@
 Simplified Universal OpenAI Adapter Test
 Outputs results to both console and a log file for reliable diagnostics
 """
+
 import asyncio
 import json
 import os
@@ -52,9 +53,11 @@ async def test_adapter():
     # Load universal adapter
     try:
         log("\n--- Loading Adapter ---")
-        from backend.ml.openai_wrapper import (LLMRequest,
-                                               initialize_llm_client,
-                                               llm_client)
+        from backend.ml.openai_wrapper import (
+            LLMRequest,
+            initialize_llm_client,
+            llm_client,
+        )
 
         log("✓ Universal adapter module loaded")
 

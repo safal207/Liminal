@@ -2,6 +2,9 @@
 Тесты для refresh токенов, scopes и roles в JWT.
 """
 
+import json
+from unittest.mock import patch
+
 import pytest
 from fastapi.testclient import TestClient
 

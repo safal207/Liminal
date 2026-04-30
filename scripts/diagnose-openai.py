@@ -2,6 +2,7 @@
 """
 Диагностический скрипт для проверки OpenAI API ключа и доступа к API
 """
+
 import json
 import os
 import sys

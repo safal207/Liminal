@@ -14,6 +14,7 @@ from .calibration import AdaptiveCalibrator, get_calibrator
 
 try:
     from .adaptive_engine import AdaptiveEmotionalEngine, get_adaptive_engine
+
     ADAPTIVE_ENGINE_AVAILABLE = True
 except ImportError:
     ADAPTIVE_ENGINE_AVAILABLE = False
@@ -22,6 +23,7 @@ except ImportError:
 
 try:
     from .feature_learning import DeepFeatureLearner, get_feature_learner
+
     FEATURE_LEARNING_AVAILABLE = True
 except ImportError:
     FEATURE_LEARNING_AVAILABLE = False
@@ -29,12 +31,12 @@ except ImportError:
     get_feature_learner = None
 
 __all__ = [
-    'AdaptiveCalibrator',
-    'get_calibrator',
-    'AdaptiveEmotionalEngine',
-    'get_adaptive_engine',
-    'DeepFeatureLearner',
-    'get_feature_learner',
-    'ADAPTIVE_ENGINE_AVAILABLE',
-    'FEATURE_LEARNING_AVAILABLE'
+    "AdaptiveCalibrator",
+    "get_calibrator",
+    "AdaptiveEmotionalEngine",
+    "get_adaptive_engine",
+    "DeepFeatureLearner",
+    "get_feature_learner",
+    "ADAPTIVE_ENGINE_AVAILABLE",
+    "FEATURE_LEARNING_AVAILABLE",
 ]

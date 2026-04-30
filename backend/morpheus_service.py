@@ -1,7 +1,8 @@
-from .morpheus_schemas import MorpheusChoiceRequest
 from .app_logging import get_logger
+from .morpheus_schemas import MorpheusChoiceRequest
 
 logger = get_logger(__name__)
+
 
 class MorpheusService:
     """
@@ -25,13 +26,13 @@ class MorpheusService:
 
         if choice_request.choice == "red":
             # Логика для "красной таблетки"
-            # TODO: 
+            # TODO:
             # 1. Записать выбор в Neo4j.
             # 2. Активировать новый слой графа или изменить свойства пользователя.
             # 3. Отправить событие о начале трансформации.
             logger.info("Initiating the path of growth and transformation.")
             # result = await self.db_adapter.set_user_path(choice_request.user_id, "transformation")
-            
+
         elif choice_request.choice == "blue":
             # Логика для "синей таблетки"
             # TODO:
@@ -46,6 +47,7 @@ class MorpheusService:
             "status": "success",
             "message": f"Choice '{choice_request.choice.value}' processed successfully for user {choice_request.user_id}.",
         }
+
 
 # Создаем синглтон-экземпляр сервиса
 # В реальном приложении управление зависимостями будет сложнее (e.g., using FastAPI's Depends)

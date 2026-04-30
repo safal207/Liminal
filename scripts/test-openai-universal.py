@@ -5,6 +5,7 @@ Test Universal OpenAI Adapter for Resonance Liminal
 This script tests the universal adapter for OpenAI API integration,
 which provides both real API and mock implementations.
 """
+
 import argparse
 import asyncio
 import json
@@ -82,9 +83,11 @@ async def test_universal_adapter(show_response=False, mock_only=False):
     print_section("Universal Adapter Module")
 
     try:
-        from backend.ml.openai_wrapper import (LLMRequest,
-                                               initialize_llm_client,
-                                               llm_client)
+        from backend.ml.openai_wrapper import (
+            LLMRequest,
+            initialize_llm_client,
+            llm_client,
+        )
 
         print_success("Module imported successfully")
 

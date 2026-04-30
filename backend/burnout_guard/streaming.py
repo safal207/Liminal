@@ -12,35 +12,25 @@
 """
 
 import asyncio
+import json
+import time
 import uuid
 from collections import deque
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
-try:  # Allow module to work whether imported via `backend` namespace or locally
-    from backend.emotime.websocket.streaming_engine import (
-        AdaptiveQualityController,
-        SafetyFilter,
-        StreamingConfig,
-    )
-except ImportError:  # pragma: no cover - fallback for local runs
-    from emotime.websocket.streaming_engine import (
-        AdaptiveQualityController,
-        SafetyFilter,
-        StreamingConfig,
-    )
-
-try:
-    from backend.websocket.connection_manager import (
-        EmotionalUpdate,
-        get_connection_manager,
-    )
-except ImportError:  # pragma: no cover
-    from websocket.connection_manager import EmotionalUpdate, get_connection_manager  # type: ignore
-
-from .core import BurnoutGuardEngine, BurnoutState
-from .utils import create_alert_message, safe_logger
+from ..emotime.websocket.streaming_engine import (
+    AdaptiveQualityController,
+    RealTimeEmotionalStreamer,
+    SafetyFilter,
+    StreamingConfig,
+    StreamingMetrics,
+)
+from ..websocket.connection_manager import EmotionalUpdate, get_connection_manager
+from .core import BurnoutGuardEngine, BurnoutRisk, BurnoutState
+from .modes import BurnoutMode, BurnoutRiskLevel
+from .utils import create_alert_message, format_risk_score, safe_logger
 
 
 @dataclass
@@ -435,11 +425,10 @@ class BurnoutStreamingEngine:
             update_data["type"] = "burnout_update"
 
             # Отправляем персональное обновление
-            # Требуем подтверждение для важных сообщений
             await self.connection_manager.send_to_user(
                 self.user_id,
                 update_data,
-                require_ack=update.intervention_needed,
+                require_ack=update.intervention_needed,  # требуем подтверждение для важных сообщений
             )
 
             # Отправляем командное обновление (если нужно)

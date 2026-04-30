@@ -3,6 +3,7 @@
 Расширенная мок-реализация OpenAI API для Resonance Liminal ML
 Используется для разработки и тестирования без реальной библиотеки OpenAI
 """
+
 import asyncio
 import hashlib
 import json

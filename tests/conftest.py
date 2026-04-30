@@ -17,11 +17,16 @@ sys.path.append(str(Path(__file__).parent.parent))
 sys.path.append(str(Path(__file__).parent.parent / "scripts"))
 # Add src/ for packages like rince
 sys.path.append(str(Path(__file__).parent.parent / "src"))
+# Add backend/ so bare imports like `from logging_config import ...` resolve
+sys.path.append(str(Path(__file__).parent.parent / "backend"))
 
 # Import SOMA modules
-from scripts.consciousness_maturation import (ConsciousnessMaturationSystem,
-                                              InMemoryHistoryStorage,
-                                              LearningEvent, MaturationStage)
+from scripts.consciousness_maturation import (
+    ConsciousnessMaturationSystem,
+    InMemoryHistoryStorage,
+    LearningEvent,
+    MaturationStage,
+)
 
 
 def pytest_configure(config):
@@ -108,7 +113,9 @@ def pytest_collection_modifyitems(config, items):
             )
             continue
 
-        if ("/tests/e2e/" in node_path or item.get_closest_marker("e2e")) and not allow_e2e:
+        if (
+            "/tests/e2e/" in node_path or item.get_closest_marker("e2e")
+        ) and not allow_e2e:
             item.add_marker(
                 pytest.mark.skip(reason="E2E tests require RUN_E2E_TESTS=1")
             )
@@ -120,7 +127,9 @@ def pytest_collection_modifyitems(config, items):
 
 
 @pytest.fixture(autouse=True)
-def _sandbox_persistent_state(tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch) -> None:
+def _sandbox_persistent_state(
+    tmp_path_factory: pytest.TempPathFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Redirect persistent artefacts into a disposable sandbox during tests."""
 
     sandbox = tmp_path_factory.mktemp("liminal_state")

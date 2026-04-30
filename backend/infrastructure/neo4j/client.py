@@ -71,7 +71,9 @@ class Neo4jClient(Neo4jGateway):
             neo4j_operations_total.labels(operation=operation, status="success").inc()
         finally:
             duration = perf_counter() - start_time
-            neo4j_operation_duration_seconds.labels(operation=operation).observe(duration)
+            neo4j_operation_duration_seconds.labels(operation=operation).observe(
+                duration
+            )
             with self._lock:
                 self._active_sessions = max(self._active_sessions - 1, 0)
                 current_active = self._active_sessions
@@ -82,10 +84,18 @@ class Neo4jClient(Neo4jGateway):
         with self._track_operation("create_indexes"):
             with self.driver.session() as session:
                 session.run("CREATE INDEX IF NOT EXISTS FOR (d:DuneWave) ON (d.id)")
-                session.run("CREATE INDEX IF NOT EXISTS FOR (m:MemoryFragment) ON (m.id)")
-                session.run("CREATE INDEX IF NOT EXISTS FOR (d:DuneWave) ON (d.emotion)")
-                session.run("CREATE INDEX IF NOT EXISTS FOR (d:DuneWave) ON (d.timestamp)")
-                session.run("CREATE INDEX IF NOT EXISTS FOR (m:MemoryFragment) ON (m.type)")
+                session.run(
+                    "CREATE INDEX IF NOT EXISTS FOR (m:MemoryFragment) ON (m.id)"
+                )
+                session.run(
+                    "CREATE INDEX IF NOT EXISTS FOR (d:DuneWave) ON (d.emotion)"
+                )
+                session.run(
+                    "CREATE INDEX IF NOT EXISTS FOR (d:DuneWave) ON (d.timestamp)"
+                )
+                session.run(
+                    "CREATE INDEX IF NOT EXISTS FOR (m:MemoryFragment) ON (m.type)"
+                )
                 session.run(
                     "CREATE CONSTRAINT IF NOT EXISTS FOR (d:DuneWave) REQUIRE d.id IS UNIQUE"
                 )
@@ -96,7 +106,9 @@ class Neo4jClient(Neo4jGateway):
     def close(self) -> None:
         self.driver.close()
 
-    def create_dunewave_node(self, wave_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def create_dunewave_node(
+        self, wave_data: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         with self._track_operation("create_dunewave_node"):
             with self.driver.session() as session:
                 query = """
@@ -181,9 +193,7 @@ class Neo4jClient(Neo4jGateway):
                 SET r.created_at = datetime()
                 RETURN r
                 """
-                result = session.run(
-                    query, younger_id=younger_id, mentor_id=mentor_id
-                )
+                result = session.run(query, younger_id=younger_id, mentor_id=mentor_id)
                 return result.single() is not None
 
     def find_wisdom_fragments(

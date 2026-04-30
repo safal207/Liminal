@@ -1,4 +1,5 @@
 """Workflow execution auditing helpers."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -16,7 +17,9 @@ class WorkflowAuditLogger:
     def _ts(self) -> str:
         return datetime.utcnow().isoformat() + "Z"
 
-    def log_start(self, workflow: str, run_id: str, parameters: Mapping[str, Any]) -> None:
+    def log_start(
+        self, workflow: str, run_id: str, parameters: Mapping[str, Any]
+    ) -> None:
         self._logger.info(
             "workflow.start",
             workflow=workflow,
@@ -29,7 +32,9 @@ class WorkflowAuditLogger:
         self, workflow: str, run_id: str, message: str, **fields: Any
     ) -> None:
         payload = {"workflow": workflow, "run_id": run_id, **fields}
-        self._logger.info("workflow.event", message=message, timestamp=self._ts(), **payload)
+        self._logger.info(
+            "workflow.event", message=message, timestamp=self._ts(), **payload
+        )
 
     def log_failure(
         self,
@@ -65,11 +70,16 @@ class WorkflowAuditLogger:
     @staticmethod
     def _summarise(result: Any) -> Any:
         if isinstance(result, Mapping):
-            return {k: WorkflowAuditLogger._summarise(v) for k, v in list(result.items())[:5]}
+            return {
+                k: WorkflowAuditLogger._summarise(v)
+                for k, v in list(result.items())[:5]
+            }
         if isinstance(result, (list, tuple)):
             return [WorkflowAuditLogger._summarise(v) for v in result[:5]]
         if hasattr(result, "__dict__"):
-            return {k: WorkflowAuditLogger._summarise(v) for k, v in vars(result).items()}
+            return {
+                k: WorkflowAuditLogger._summarise(v) for k, v in vars(result).items()
+            }
         return result
 
 

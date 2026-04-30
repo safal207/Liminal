@@ -7,7 +7,6 @@ from typing import Optional
 
 from prometheus_client import Counter, Gauge, Histogram
 
-
 ml_pipeline_runs_total = Counter(
     "ml_pipeline_runs_total",
     "Количество запусков ML-пайплайнов по стадиям и статусам",

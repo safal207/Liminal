@@ -14,9 +14,8 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Tuple
 
 try:
-    from neo4j.exceptions import ServiceUnavailable
-
     from neo4j import GraphDatabase
+    from neo4j.exceptions import ServiceUnavailable
 except ImportError:
     print("Neo4j driver не установлен. Установите: pip install neo4j")
     raise

@@ -17,7 +17,6 @@ import uuid
 from datetime import datetime
 
 import requests
-
 from neo4j import GraphDatabase
 
 # Create output file
@@ -79,20 +78,17 @@ def check_neo4j_connection(
 
             # Check consciousness states
             log_to_file("\n=== CONSCIOUSNESS STATES COUNT ===")
-            result = session.run(
-                """
+            result = session.run("""
                 MATCH (n:ConsciousnessNode) 
                 RETURN n.state as state, count(n) as count 
                 ORDER BY count DESC
-            """
-            )
+            """)
             for record in result:
                 log_to_file(f"State: {record['state']} - Count: {record['count']}")
 
             # Sample transitions
             log_to_file("\n=== SAMPLE TRANSITIONS ===")
-            result = session.run(
-                """
+            result = session.run("""
                 MATCH (source:ConsciousnessNode)-[t:TRANSITIONS_TO]->(target:ConsciousnessNode)
                 RETURN source.state as source_state, 
                        target.state as target_state,
@@ -100,8 +96,7 @@ def check_neo4j_connection(
                        t.timestamp as timestamp,
                        t.philosophical_significance as significance
                 LIMIT 5
-            """
-            )
+            """)
             for i, record in enumerate(result):
                 log_to_file(f"\nTransition #{i+1}:")
                 log_to_file(

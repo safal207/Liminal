@@ -14,14 +14,16 @@ API endpoints для командной аналитики и управлени
 import asyncio
 import csv
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from io import StringIO
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
 from .analytics import (
+    DepartmentAnalytics,
     DepartmentAnalyzer,
     TeamAlertLevel,
     TeamAnalytics,
@@ -29,13 +31,52 @@ from .analytics import (
     TeamMember,
 )
 from .auth_integration import (
+    BurnoutAuditLogger,
+    BurnoutAuthService,
     BurnoutPermission,
+    BurnoutPermissionChecker,
     BurnoutUserContext,
     require_burnout_permission,
     require_hr_access,
+    require_team_access,
+    require_user_consent,
 )
+from .core import BurnoutGuardEngine, BurnoutState
 from .modes import BurnoutRiskLevel
+from .persistence import BurnoutDatabaseAdapter
+from .recommendations import RecommendationEngine
 from .utils import safe_logger
+
+try:
+    from ..emotime.core import EmotimeEngine
+
+    EMOTIME_AVAILABLE = True
+except ImportError:
+    EMOTIME_AVAILABLE = False
+
+
+# ---- Pydantic models for user assessment ----
+
+
+class UserAssessmentRequest(BaseModel):
+    """Optional context for user assessment."""
+
+    context: Optional[Dict[str, Any]] = Field(
+        None, description="Дополнительный контекст (устройство, активность и т.д.)"
+    )
+
+
+class FeedbackRequest(BaseModel):
+    """Feedback on a recommendation."""
+
+    recommendation_id: str = Field(..., description="ID рекомендации")
+    action: str = Field(
+        ..., description="Действие: viewed | accepted | dismissed | completed"
+    )
+    effectiveness_rating: Optional[float] = Field(
+        None, ge=0.0, le=1.0, description="Оценка эффективности 0.0-1.0"
+    )
+
 
 # Create API router
 router = APIRouter(prefix="/api/v1/burnout", tags=["BurnoutGuard"])
@@ -505,6 +546,234 @@ def _export_json_report(analytics: TeamAnalytics, team_id: str) -> StreamingResp
             "Content-Disposition": f"attachment; filename=team_{team_id}_report.json"
         },
     )
+
+
+# ---- Individual user assessment ----
+
+
+@router.post("/user/{user_id}/assess")
+async def assess_user(
+    user_id: str,
+    body: UserAssessmentRequest = UserAssessmentRequest(),
+) -> Dict[str, Any]:
+    """
+    Выполняет оценку риска выгорания для конкретного пользователя.
+
+    Возвращает:
+    - risk_assessment: скор, уровень и факторы риска
+    - recommendations: до 5 персонализированных рекомендаций
+    - next_actions: срочные действия при высоком риске
+    """
+    try:
+        if not EMOTIME_AVAILABLE:
+            raise HTTPException(status_code=503, detail="Emotime engine unavailable")
+
+        emotime_engine = EmotimeEngine(user_id=user_id)
+        burnout_engine = BurnoutGuardEngine(
+            user_id=user_id,
+            emotime_engine=emotime_engine,
+        )
+
+        # Запускаем единичный анализ (без фонового цикла)
+        state: Optional[BurnoutState] = await burnout_engine.analyze_now(body.context)
+
+        if state is None:
+            # Emotime ещё не накопил данных — возвращаем базовое состояние
+            return {
+                "user_id": user_id,
+                "assessment_timestamp": datetime.now().isoformat(),
+                "status": "no_data",
+                "message": "Недостаточно данных. Отправьте текст/аудио/касание через /emotime перед оценкой.",
+            }
+
+        risk = state.risk_assessment
+
+        # Рекомендации
+        rec_engine = RecommendationEngine(user_id=user_id)
+        recommendations = await rec_engine.get_recommendations(state, body.context)
+
+        # Срочные действия при высоком риске
+        next_actions = []
+        if risk.level.value in ("high", "critical"):
+            next_actions = [
+                {
+                    "action": "Сделайте перерыв прямо сейчас (5-10 минут)",
+                    "urgency": "immediate",
+                },
+                {
+                    "action": "Уберите лишние задачи из сегодняшнего списка",
+                    "urgency": "high",
+                },
+                {"action": "Поговорите с кем-то о нагрузке", "urgency": "medium"},
+            ]
+        elif risk.level.value == "medium":
+            next_actions = [
+                {
+                    "action": "Запланируйте короткий перерыв в ближайший час",
+                    "urgency": "medium",
+                },
+                {"action": "Проверьте приоритеты задач на сегодня", "urgency": "low"},
+            ]
+
+        # Сохраняем оценку
+        db = BurnoutDatabaseAdapter()
+        await db.store_risk_assessment(user_id, risk, body.context)
+
+        return {
+            "user_id": user_id,
+            "assessment_timestamp": state.timestamp.isoformat(),
+            "status": "assessed",
+            "risk_assessment": {
+                "score": round(risk.score, 3),
+                "level": risk.level.value,
+                "confidence": round(risk.confidence, 3),
+                "factors": {k: round(v, 3) for k, v in risk.factors.items()},
+                "emotional_indicators": risk.emotional_indicators,
+                "behavioral_patterns": risk.behavioral_patterns,
+                "duration_risk": round(risk.duration_risk, 3),
+                "trend_risk": round(risk.trend_risk, 3),
+            },
+            "burnout_mode": {
+                "type": state.burnout_mode.type.value,
+                "risk_score": round(state.burnout_mode.risk_score, 3),
+                "confidence": round(state.burnout_mode.confidence, 3),
+                "primary_indicators": state.burnout_mode.primary_indicators,
+            },
+            "mode_stability": round(state.mode_stability, 3),
+            "intervention_needed": state.intervention_needed,
+            "recommendations": [
+                {
+                    "id": r.id,
+                    "type": r.type.value,
+                    "title": r.title,
+                    "description": r.description,
+                    "priority": r.priority,
+                    "estimated_time_minutes": r.estimated_time,
+                    "difficulty": r.difficulty,
+                    "effectiveness_score": round(r.effectiveness_score, 3),
+                }
+                for r in recommendations
+            ],
+            "next_actions": next_actions,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        safe_logger.error(f"Error assessing user {user_id}: {e}")
+        raise HTTPException(
+            status_code=500, detail="Ошибка оценки состояния пользователя"
+        )
+
+
+@router.get("/user/{user_id}/progress")
+async def get_user_progress(
+    user_id: str,
+    days: int = Query(30, ge=1, le=90, description="Количество дней истории"),
+) -> Dict[str, Any]:
+    """
+    Возвращает прогресс пользователя: историю риска и текущее состояние.
+
+    Используется consciousness map для визуализации динамики выгорания.
+    """
+    try:
+        db = BurnoutDatabaseAdapter()
+
+        # История риска за период
+        risk_history = await db.get_risk_history(user_id, days)
+
+        # Последнее состояние
+        latest = await db.get_latest_burnout_state(user_id)
+
+        # Тренд: сравниваем среднее за последние 7 дней vs предыдущие 7
+        trend = "stable"
+        if len(risk_history) >= 14:
+            recent_scores = [p.get("risk_score", 0) for p in risk_history[-7:]]
+            prev_scores = [p.get("risk_score", 0) for p in risk_history[-14:-7]]
+            recent_avg = sum(recent_scores) / len(recent_scores)
+            prev_avg = sum(prev_scores) / len(prev_scores)
+            delta = recent_avg - prev_avg
+            if delta > 0.05:
+                trend = "worsening"
+            elif delta < -0.05:
+                trend = "improving"
+
+        # Распределение уровней риска за период
+        level_counts: Dict[str, int] = {}
+        for point in risk_history:
+            lvl = point.get("risk_level", "unknown")
+            level_counts[lvl] = level_counts.get(lvl, 0) + 1
+
+        # Средний скор за период
+        scores = [p.get("risk_score", 0) for p in risk_history]
+        avg_score = round(sum(scores) / len(scores), 3) if scores else 0.0
+
+        return {
+            "user_id": user_id,
+            "period_days": days,
+            "generated_at": datetime.now().isoformat(),
+            "summary": {
+                "average_risk_score": avg_score,
+                "trend": trend,
+                "data_points": len(risk_history),
+                "risk_distribution": level_counts,
+            },
+            "current_state": latest,
+            "risk_history": [
+                {
+                    "timestamp": p.get("timestamp"),
+                    "risk_score": round(p.get("risk_score", 0), 3),
+                    "risk_level": p.get("risk_level", "unknown"),
+                    "confidence": round(p.get("confidence", 0), 3),
+                }
+                for p in risk_history
+            ],
+        }
+
+    except Exception as e:
+        safe_logger.error(f"Error getting progress for user {user_id}: {e}")
+        raise HTTPException(
+            status_code=500, detail="Ошибка получения прогресса пользователя"
+        )
+
+
+@router.post("/user/{user_id}/feedback")
+async def submit_recommendation_feedback(
+    user_id: str,
+    body: FeedbackRequest,
+) -> Dict[str, Any]:
+    """
+    Принимает обратную связь по рекомендации.
+
+    Используется для улучшения персонализации со временем.
+    """
+    valid_actions = {"viewed", "accepted", "dismissed", "completed"}
+    if body.action not in valid_actions:
+        raise HTTPException(
+            status_code=422,
+            detail=f"action должен быть одним из: {', '.join(valid_actions)}",
+        )
+
+    try:
+        db = BurnoutDatabaseAdapter()
+        stored = await db.track_recommendation_usage(
+            user_id=user_id,
+            recommendation_id=body.recommendation_id,
+            action=body.action,
+            effectiveness_rating=body.effectiveness_rating,
+        )
+
+        return {
+            "user_id": user_id,
+            "recommendation_id": body.recommendation_id,
+            "action": body.action,
+            "stored": stored,
+            "timestamp": datetime.now().isoformat(),
+        }
+
+    except Exception as e:
+        safe_logger.error(f"Error storing feedback for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Ошибка сохранения обратной связи")
 
 
 # Background task for periodic analytics updates

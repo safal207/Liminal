@@ -17,8 +17,11 @@ from unittest.mock import MagicMock, Mock, patch
 sys.path.append(str(Path(__file__).parent.parent / "scripts"))
 
 try:
-    from consciousness_quality import (ConsciousnessQualitySystem,
-                                       QualityLevel, TestResult)
+    from consciousness_quality import (
+        ConsciousnessQualitySystem,
+        QualityLevel,
+        TestResult,
+    )
     from SOMA_integrated import SOMAIntegratedFamily
 
     SOMA_AVAILABLE = True
@@ -123,14 +126,19 @@ class TestSOMAModuleQuality(unittest.TestCase):
             consciousness_cell_file.exists(), "Consciousness cell module should exist"
         )
 
-        # Try to import
+        # Try to import (skip if optional dependencies like prefect are absent)
+        try:
+            import prefect  # noqa: F401
+        except ImportError:
+            self.skipTest("prefect not installed; skipping import check")
+
         try:
             sys.path.append(str(self.scripts_dir))
             import consciousness_cell
 
             self.assertTrue(
-                hasattr(consciousness_cell, "ConsciousnessCell"),
-                "ConsciousnessCell class should be available",
+                hasattr(consciousness_cell, "consciousness_cell_flow"),
+                "consciousness_cell_flow function should be available",
             )
         except ImportError as e:
             self.fail(f"Could not import consciousness_cell: {e}")

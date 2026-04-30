@@ -2,6 +2,7 @@
 """
 Simple diagnostic script for Universal OpenAI Adapter
 """
+
 import asyncio
 import json
 import os
@@ -78,9 +79,11 @@ async def run_tests():
     # Try to import the wrapper module
     try:
         log_msg("Importing openai_wrapper...")
-        from backend.ml.openai_wrapper import (LLMRequest,
-                                               initialize_llm_client,
-                                               llm_client)
+        from backend.ml.openai_wrapper import (
+            LLMRequest,
+            initialize_llm_client,
+            llm_client,
+        )
 
         log_msg("[OK] Module imported successfully")
 

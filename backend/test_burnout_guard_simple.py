@@ -9,11 +9,10 @@
 """
 
 import asyncio
+import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-
-import pytest
 
 # Добавляем путь к backend
 backend_path = Path(__file__).parent
@@ -25,12 +24,13 @@ try:
     from dataclasses import dataclass
 
     # Создаем простые mock классы для Emotime
+    from datetime import datetime
     from enum import Enum
-    from typing import List
+    from typing import List, Optional
 
     from burnout_guard.core import BurnoutRiskScorer
     from burnout_guard.modes import BurnoutModeMapper, BurnoutModeType, BurnoutRiskLevel
-    from burnout_guard.recommendations import RecommendationEngine
+    from burnout_guard.recommendations import RecommendationEngine, RecommendationType
     from burnout_guard.utils import create_alert_message, format_risk_score
 
     class EmotionalModeType(Enum):
@@ -142,7 +142,7 @@ def create_test_emotime_state(
     )
 
 
-async def run_burnout_mode_mapping():
+async def test_burnout_mode_mapping():
     """Тест маппинга эмоциональных режимов в режимы выгорания."""
     print("\n🧪 Тестирование маппинга режимов выгорания...")
 
@@ -211,13 +211,11 @@ async def run_burnout_mode_mapping():
             print("    ✅ Средний риск правильно определен")
         else:
             print(
-                "    ⚠️ Ожидался "
-                f"{scenario['expected_risk']} риск, получен скор "
-                f"{burnout_mode.risk_score:.2f}"
+                f"    ⚠️ Ожидался {scenario['expected_risk']} риск, получен скор {burnout_mode.risk_score:.2f}"
             )
 
 
-async def run_risk_scoring():
+async def test_risk_scoring():
     """Тест системы скоринга риска."""
     print("\n🧪 Тестирование скоринга риска...")
 
@@ -274,7 +272,7 @@ async def run_risk_scoring():
         print(f"    Индикаторы: {', '.join(risk_assessment.emotional_indicators[:3])}")
 
 
-async def run_recommendations():
+async def test_recommendations():
     """Тест системы рекомендаций."""
     print("\n🧪 Тестирование системы рекомендаций...")
 
@@ -329,9 +327,7 @@ async def run_recommendations():
         print(f"    {i}. {rec.title}")
         print(f"       {rec.description}")
         print(
-            f"       Тип: {rec.type.value}, "
-            f"Приоритет: {rec.priority}, "
-            f"Время: {rec.estimated_time} мин"
+            f"       Тип: {rec.type.value}, Приоритет: {rec.priority}, Время: {rec.estimated_time} мин"
         )
 
     # Здоровое состояние
@@ -380,7 +376,7 @@ async def run_recommendations():
         print(f"       Тип: {rec.type.value}, Приоритет: {rec.priority}")
 
 
-async def run_utils():
+async def test_utils():
     """Тест утилит."""
     print("\n🧪 Тестирование утилит...")
 
@@ -399,36 +395,16 @@ async def run_utils():
     print(f"    Алерт: {alert_message}")
 
 
-@pytest.mark.asyncio
-async def test_burnout_mode_mapping():
-    await run_burnout_mode_mapping()
-
-
-@pytest.mark.asyncio
-async def test_risk_scoring():
-    await run_risk_scoring()
-
-
-@pytest.mark.asyncio
-async def test_recommendations():
-    await run_recommendations()
-
-
-@pytest.mark.asyncio
-async def test_utils():
-    await run_utils()
-
-
 async def main():
     """Главная функция тестирования."""
     print("🚀🛡️ Тестирование BurnoutGuard - AI защита от выгорания")
     print("=" * 60)
 
     try:
-        await run_burnout_mode_mapping()
-        await run_risk_scoring()
-        await run_recommendations()
-        await run_utils()
+        await test_burnout_mode_mapping()
+        await test_risk_scoring()
+        await test_recommendations()
+        await test_utils()
 
         print("\n" + "=" * 60)
         print("✅ Все тесты BurnoutGuard завершены успешно!")
