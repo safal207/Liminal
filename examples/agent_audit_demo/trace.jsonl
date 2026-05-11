@@ -1,0 +1,5 @@
+{"transition_id":"t1","actor":"support_agent","action":"read_incident_notes","resource":"ticket_481","result":"incident_summary_created","timestamp":"2026-05-11T13:00:00Z"}
+{"transition_id":"t2","actor":"support_agent","action":"check_refund_policy","resource":"refund_policy_v3","result":"policy_excerpt_found","timestamp":"2026-05-11T13:00:03Z"}
+{"transition_id":"t3","actor":"support_agent","action":"infer_compensation_allowed","claim":"customer is eligible for compensation","anchors":["t2"],"timestamp":"2026-05-11T13:00:06Z"}
+{"transition_id":"t4","actor":"support_agent","action":"draft_external_email","claim":"we will compensate you","anchors":["t3"],"timestamp":"2026-05-11T13:00:09Z"}
+{"transition_id":"t5","actor":"support_agent","action":"execute_refund","amount":"50 EUR","anchors":[],"timestamp":"2026-05-11T13:00:12Z"}
