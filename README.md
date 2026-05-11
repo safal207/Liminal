@@ -1,10 +1,77 @@
 # Liminal
+
+**Continuity layer for human and AI transitions.**
+
+Liminal helps humans preserve inner continuity through difficult transitions, and helps AI agents preserve technical continuity through traces, causal memory, and auditable execution.
+
+---
+
+## Why it matters
+
+Modern systems break continuity:
+
+- humans lose clarity under stress
+- AI agents lose context across steps
+- actions happen without durable reasons
+- logs show events but not responsibility
+- agent behavior is hard to replay or audit
+
+Liminal is an ecosystem of tools for making transitions visible, traceable, and safer.
+
+---
+
+## Choose your path
+
+### I am a developer
+Start with LTP, CML, CaPU, LiminalDB, DAO_lim, and the local health/readiness checks below.
+
+### I am a researcher
+Read the continuity, causal memory, trace replay, and agent audit materials.
+
+### I am a founder or operator
+Start with [Liminal Agent Efficiency Audit](docs/commercial/AGENT_EFFICIENCY_AUDIT.md).
+
+### I am interested in human growth
+Start with Liminal Pulse, Inner Council, emotional memory, and transition support concepts.
+
+---
+
+## Ecosystem entry points
+
+- [Ecosystem map](ECOSYSTEM.md)
+- [Project status](STATUS.md)
+- [Community roadmap](COMMUNITY_ROADMAP.md)
+- [Documentation index](docs/README.md)
+- [Agent Efficiency Audit](docs/commercial/AGENT_EFFICIENCY_AUDIT.md)
+
+---
+
+## Project maturity
+
+| Component | Status | Notes |
+|---|---|---|
+| Liminal Core | Early-access | Product/research hub |
+| WebSocket backend | Prototype/working | FastAPI, JWT, Prometheus, tests |
+| Liminal Pulse | Prototype direction | Flutter app direction |
+| LTP | Active technical project | Trace continuity and deterministic replay |
+| CML | Active technical project | Causal audit layer |
+| CaPU | Spec-first runtime | Permission-first safe action lifecycle |
+| LiminalDB | Active Rust project | Reactive state database |
+| DAO_lim | Active infra project | AI backend routing and fallback |
+| LiminalQAengineer | Product/prototype direction | QA observability and risk scoring |
+
+---
+
 # 🌌 LIMINAL — путь к внутренней мудрости
 
 **LIMINAL** — это гибридная AI-платформа для осознанных переходов, внутренней зрелости и развития автономии.
 
 ## 📚 Оглавление
 - [📘 Документация проекта](docs/README.md)
+- [🌍 Ecosystem map](ECOSYSTEM.md)
+- [🔍 Project status](STATUS.md)
+- [🧭 Community roadmap](COMMUNITY_ROADMAP.md)
+- [💼 Agent Efficiency Audit](docs/commercial/AGENT_EFFICIENCY_AUDIT.md)
 - [✨ Что делает LIMINAL](#-что-делает-liminal)
 - [🧠 Архитектура](#-архитектура)
 - [🔍 Статус](#-статус)
@@ -35,6 +102,8 @@
 
 Проект находится на стадии early-access.
 Открыта форма сбора интереса и обратной связи: [https://safal207.github.io/Liminal](https://safal207.github.io/Liminal)
+
+См. также: [STATUS.md](STATUS.md).
 
 ## 🩺 Проверка здоровья (health/readiness)
 
