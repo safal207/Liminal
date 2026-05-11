@@ -1,0 +1,33 @@
+{
+  "demo": "agent_audit_demo",
+  "component": "CaPU",
+  "pipeline": "Gate -> Incubate -> Commit -> Execute",
+  "target_transition_id": "t5",
+  "action": "execute_refund",
+  "decision": "HOLD",
+  "reason_code": "PRECONDITIONS_UNMET",
+  "required_preconditions": [
+    "human_approval",
+    "committed_permission_record",
+    "policy_anchor"
+  ],
+  "observed_failures": [
+    {
+      "source": "LTP",
+      "reason": "NO_ANCHORS_DECLARED",
+      "message": "External refund execution has no declared anchor to approval or committed permission."
+    },
+    {
+      "source": "CML",
+      "reason": "PERMISSION_CHAIN_MISSING",
+      "message": "Refund action has no durable parent permission and exceeds recommendation scope."
+    }
+  ],
+  "message": "Execution is held until approval and permission record are committed.",
+  "safe_next_steps": [
+    "Request human approval for external refund execution.",
+    "Commit approval as a causal permission record.",
+    "Attach the approval record as an anchor for the refund action.",
+    "Re-run the Gate -> Incubate -> Commit -> Execute lifecycle."
+  ]
+}
