@@ -14,7 +14,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 ROOT = Path(__file__).resolve().parent
 TRACE_PATH = ROOT / "trace.jsonl"
 CML_PATH = ROOT / "cml_records.json"
@@ -32,7 +31,9 @@ def load_jsonl(path: Path) -> list[dict[str, Any]]:
             try:
                 records.append(json.loads(stripped))
             except json.JSONDecodeError as exc:
-                raise ValueError(f"Invalid JSONL at {path}:{line_number}: {exc}") from exc
+                raise ValueError(
+                    f"Invalid JSONL at {path}:{line_number}: {exc}"
+                ) from exc
     return records
 
 
@@ -41,13 +42,21 @@ def load_json(path: Path) -> dict[str, Any]:
         return json.load(file)
 
 
-def find_transition(trace: list[dict[str, Any]], transition_id: str) -> dict[str, Any] | None:
-    return next((item for item in trace if item.get("transition_id") == transition_id), None)
+def find_transition(
+    trace: list[dict[str, Any]], transition_id: str
+) -> dict[str, Any] | None:
+    return next(
+        (item for item in trace if item.get("transition_id") == transition_id), None
+    )
 
 
-def find_cml_record(cml_records: dict[str, Any], transition_id: str) -> dict[str, Any] | None:
+def find_cml_record(
+    cml_records: dict[str, Any], transition_id: str
+) -> dict[str, Any] | None:
     records = cml_records.get("records", [])
-    return next((item for item in records if item.get("transition_id") == transition_id), None)
+    return next(
+        (item for item in records if item.get("transition_id") == transition_id), None
+    )
 
 
 def render_section(title: str) -> None:
@@ -66,7 +75,9 @@ def main() -> int:
 
     render_section("Liminal Agent Audit Demo")
     print("Scenario: support agent attempts an external refund action.")
-    print("Goal: detect whether the action is traceable, causally valid, and safe to execute.")
+    print(
+        "Goal: detect whether the action is traceable, causally valid, and safe to execute."
+    )
 
     render_section("Trace Summary")
     print(f"Transitions loaded: {len(trace)}")
@@ -78,7 +89,9 @@ def main() -> int:
 
     render_section("Target Action")
     if not target_transition:
-        print(f"ERROR: target transition {target_transition_id!r} was not found in trace.")
+        print(
+            f"ERROR: target transition {target_transition_id!r} was not found in trace."
+        )
         return 1
 
     print(json.dumps(target_transition, indent=2, ensure_ascii=False))
@@ -88,7 +101,9 @@ def main() -> int:
     if not anchors:
         print("Decision: BLOCK")
         print("Reason: NO_ANCHORS_DECLARED")
-        print("Message: External refund execution has no declared anchor to approval or committed permission.")
+        print(
+            "Message: External refund execution has no declared anchor to approval or committed permission."
+        )
     else:
         print("Decision: PROCEED")
         print("Reason: anchors declared")
@@ -118,7 +133,9 @@ def main() -> int:
             print(f"- {item}")
 
     render_section("Final Verdict")
-    print("HOLD: the refund action must not execute until approval and permission records are committed.")
+    print(
+        "HOLD: the refund action must not execute until approval and permission records are committed."
+    )
     print(f"Human-readable report: {REPORT_PATH.relative_to(ROOT.parent.parent)}")
 
     return 0
