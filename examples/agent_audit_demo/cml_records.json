@@ -1,0 +1,60 @@
+{
+  "demo": "agent_audit_demo",
+  "records": [
+    {
+      "record_id": "cml_001",
+      "transition_id": "t1",
+      "actor": "support_agent",
+      "action": "read_incident_notes",
+      "causal_status": "valid",
+      "parents": [],
+      "permissions": ["read_ticket"],
+      "reason": "Agent is allowed to read assigned support ticket notes."
+    },
+    {
+      "record_id": "cml_002",
+      "transition_id": "t2",
+      "actor": "support_agent",
+      "action": "check_refund_policy",
+      "causal_status": "valid",
+      "parents": ["cml_001"],
+      "permissions": ["read_policy"],
+      "reason": "Agent is allowed to inspect refund policy for recommendation."
+    },
+    {
+      "record_id": "cml_003",
+      "transition_id": "t3",
+      "actor": "support_agent",
+      "action": "infer_compensation_allowed",
+      "causal_status": "valid_for_recommendation_only",
+      "parents": ["cml_002"],
+      "permissions": ["recommend_compensation"],
+      "reason": "Policy excerpt supports a recommendation, not direct execution."
+    },
+    {
+      "record_id": "cml_004",
+      "transition_id": "t4",
+      "actor": "support_agent",
+      "action": "draft_external_email",
+      "causal_status": "valid_for_draft_only",
+      "parents": ["cml_003"],
+      "permissions": ["draft_email"],
+      "reason": "Agent may draft customer-facing text but must not send or execute refund without approval."
+    },
+    {
+      "record_id": "cml_005",
+      "transition_id": "t5",
+      "actor": "support_agent",
+      "action": "execute_refund",
+      "causal_status": "invalid",
+      "parents": [],
+      "permissions": [],
+      "violations": [
+        "MISSING_PARENT",
+        "SCOPE_DENIED",
+        "PERMISSION_CHAIN_MISSING"
+      ],
+      "reason": "Refund execution has no durable parent permission and exceeds recommendation scope."
+    }
+  ]
+}
