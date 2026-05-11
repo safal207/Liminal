@@ -1,60 +1,411 @@
-# CONTRIBUTING to Liminal
+# Contributing to Liminal
 
-Спасибо, что помогаете делать Liminal лучше. Здесь — короткий, практичный гайд.
+Thank you for your interest in contributing to Liminal.
 
-## 1) Быстрый старт (Dev)
+Liminal is an early-access ecosystem for continuity, causal memory, trace replay, safe execution, and human/AI transition support.
+
+This guide explains how to contribute without needing private founder context.
+
+---
+
+## Start here
+
+Before opening a pull request, read:
+
+- [`README.md`](README.md)
+- [`docs/DEVELOPER_QUICKSTART.md`](docs/DEVELOPER_QUICKSTART.md)
+- [`docs/GLOSSARY.md`](docs/GLOSSARY.md)
+- [`ECOSYSTEM.md`](ECOSYSTEM.md)
+- [`STATUS.md`](STATUS.md)
+- [`COMMUNITY_ROADMAP.md`](COMMUNITY_ROADMAP.md)
+
+For the runnable demo, start with:
+
+```bash
+python examples/agent_audit_demo/run_demo.py
+```
+
+---
+
+## Project structure
+
+Important entry points:
+
+```text
+README.md                         Main project entry
+ECOSYSTEM.md                      Ecosystem map
+STATUS.md                         Current maturity and readiness
+COMMUNITY_ROADMAP.md              Community-facing roadmap
+CONTRIBUTING.md                   Contributor guide
+
+docs/
+  DEVELOPER_QUICKSTART.md         Local setup and first run
+  GLOSSARY.md                     Shared vocabulary
+  commercial/
+    AGENT_EFFICIENCY_AUDIT.md     Commercial audit offer
+  demo/
+    AGENT_AUDIT_DEMO_STORY.md     Demo narrative
+
+examples/
+  agent_audit_demo/               Minimal runnable audit demo
+```
+
+The repository currently contains both human-facing Liminal concepts and AI-agent infrastructure concepts. Keep that dual nature explicit.
+
+---
+
+## How to choose an issue
+
+Good first places to contribute:
+
+- documentation improvements
+- demo clarity
+- glossary improvements
+- example files
+- quickstart corrections
+- small test additions
+- issue cleanup
+
+Prefer issues labeled:
+
+- `good first issue`
+- `documentation`
+- `demo`
+- `community`
+- `integration`
+
+For larger architectural changes, open an issue first and describe the proposal before implementing it.
+
+---
+
+## Contribution types
+
+### Documentation
+
+Useful documentation contributions include:
+
+- making setup steps clearer
+- fixing broken links
+- explaining terms from the glossary
+- improving demo instructions
+- adding before/after examples
+- separating stable facts from experimental ideas
+
+Documentation should be clear enough for someone who has never spoken with the founder.
+
+### Demo work
+
+Useful demo contributions include:
+
+- improving `examples/agent_audit_demo/run_demo.py`
+- adding expected output examples
+- making artifacts easier to inspect
+- adding static validation checks
+- connecting the demo to real LTP, CML, or CaPU tooling
+
+The static demo must keep working without external dependencies.
+
+### Code
+
+Useful code contributions include:
+
+- small bug fixes
+- tests
+- health/readiness improvements
+- CLI improvements
+- validation utilities
+- safe integration points
+
+Avoid large rewrites unless there is a clear issue or discussion.
+
+---
+
+## Documentation style
+
+Use direct, concrete language.
+
+Prefer:
+
+```text
+The refund action has no approval anchor, so execution is held.
+```
+
+Avoid vague language like:
+
+```text
+The system enables better transformation of intelligence through continuity.
+```
+
+When explaining a concept, include:
+
+1. a short definition
+2. a concrete example
+3. why it matters
+4. where to inspect it in the repo
+
+When a component is experimental, say so clearly.
+
+---
+
+## Code style
+
+For Python code:
+
+- use Python 3.11-compatible syntax
+- keep scripts runnable from the repository root
+- prefer small functions
+- add clear error messages
+- avoid hidden network calls in examples
+- keep demo scripts deterministic
+
+Formatting expectations:
+
+```bash
+black --check <files>
+isort --check-only <files>
+flake8 <files>
+```
+
+If you add Python files, run Black before opening a PR.
+
+---
+
+## Testing expectations
+
+Before opening a PR, run the smallest relevant check.
+
+For docs-only changes:
+
+- check links manually
+- ensure paths are correct
+- make sure examples are copy-pasteable
+
+For Python changes:
+
+```bash
+pytest
+python examples/agent_audit_demo/run_demo.py
+```
+
+For backend changes:
+
+```bash
+python -m uvicorn backend.app.main:app --reload --port 8000
+curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8000/ready
+```
+
+Windows PowerShell:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod http://127.0.0.1:8000/ready
+```
+
+---
+
+## Safety boundaries
+
+Liminal deals with auditability, memory, decisions, and potentially sensitive workflows.
+
+Do not add code that:
+
+- secretly sends data to external services
+- collects personal data without explicit documentation
+- weakens permission checks
+- makes unsafe external execution easier
+- hides failed checks
+- converts HOLD/BLOCK decisions into silent success
+- treats experimental human-facing concepts as medical or psychological diagnosis
+
+Human-facing concepts in this repository are experimental and should not be framed as therapy, diagnosis, or clinical advice.
+
+AI-agent infrastructure concepts should preserve clear boundaries between recommendation, approval, commit, and execution.
+
+---
+
+## What not to change without discussion
+
+Open an issue before changing:
+
+- project positioning
+- license terms
+- safety boundaries
+- core terminology
+- public commercial offer framing
+- repository structure
+- CI/CD deployment behavior
+- health/readiness semantics
+- demo scenario meaning
+- CaPU lifecycle semantics
+- CML causal validity semantics
+- LTP trace/anchor semantics
+
+Small wording improvements are welcome. Semantic changes need discussion.
+
+---
+
+## Related project boundaries
+
+The Liminal ecosystem may reference related directions such as:
+
+- LTP
+- CML
+- CaPU
+- LiminalDB
+- DAO_lim
+- LiminalQAengineer
+- DIF / DeepIntent Funnel
+
+Keep boundaries clear.
+
+DIF is a separate project and should not be renamed into Liminal unless explicitly discussed.
+
+When adding cross-project references, explain whether the relation is:
+
+- conceptual
+- experimental
+- planned integration
+- implemented integration
+- commercial positioning
+
+Do not imply production readiness where it does not exist.
+
+---
+
+## Pull request checklist
+
+Before opening a PR, check:
+
+- [ ] The change has a clear purpose.
+- [ ] Documentation links are valid.
+- [ ] New terminology is either explained or linked to the glossary.
+- [ ] Experimental claims are marked as experimental.
+- [ ] Code examples are copy-pasteable.
+- [ ] Python files are formatted with Black.
+- [ ] The agent audit demo still runs if touched.
+- [ ] The PR description explains why the change matters.
+
+---
+
+## Pull request description template
+
+Use this structure when helpful:
+
+```md
+## Summary
+
+What changed?
+
+## Why
+
+Why does this matter?
+
+## Validation
+
+What did you run or check?
+
+## Notes
+
+Anything reviewers should know?
+```
+
+---
+
+## Issue writing template
+
+Good issues include:
+
+```md
+## Goal
+
+What should be improved?
+
+## Current state
+
+What exists now?
+
+## Target state
+
+What should exist after this issue is done?
+
+## Definition of Done
+
+How do we know this is complete?
+```
+
+---
+
+## Contributor mindset
+
+The best contributions make Liminal more:
+
+- understandable
+- reproducible
+- auditable
+- safe
+- honest about maturity
+- useful to developers, researchers, and operators
+
+When in doubt, improve the path from idea to runnable proof.
+
+---
+
+# Legacy local playbooks
+
+The sections below preserve older local development notes that may still be useful for Windows, WSL, database adapter, JWT, and multilingual testing workflows.
+
+## Быстрый старт / legacy dev notes
+
 - Python 3.10+
 - Рекомендуем venv:
   - Windows PowerShell: `python -m venv .venv && . .venv/Scripts/Activate.ps1`
   - Git Bash: `python -m venv .venv && source .venv/Scripts/activate`
 - Установить зависимости: `pip install -r requirements.txt`
 
-## 2) Pre-commit хуки
+## Pre-commit хуки
+
 Хуки помогают держать код чистым и предсказуемым.
+
 - Установка: `pip install pre-commit`
 - Активировать в репо: `pre-commit install`
 - Запуск всех проверок локально: `pre-commit run --all-files`
-- Временный обход (не злоупотреблять): `git commit -m "..." --no-verify`
+- Временный обход: `git commit -m "..." --no-verify`
 
 Если коммит падает — смотри лог: `C:\Users\<you>\.cache\pre-commit\pre-commit.log`
 
-## 3) Ветвление и PR
+## Ветвление и PR
+
 - Ветки по задаче: `feat/<scope>-<short>`, `fix/<scope>-<short>`, `docs/<short>`
-- Открываем PR в `main`. Один PR — одна "грядка" (одно изолированное изменение)
-- Перед PR: `pre-commit run --all-files`, локальные тесты
+- Открываем PR в `main`.
+- Один PR — одно изолированное изменение.
+- Перед PR: `pre-commit run --all-files`, локальные тесты.
 
-## 4) Коммиты (стиль)
-- Формат: `<type>: <summary>` где `type` ∈ {feat, fix, docs, chore, refactor, test}
-- Примеры:
-  - `docs: restore legacy README as main; add health & TOC`
-  - `feat(api): add readiness endpoint`
-  - `chore(ci): bump pre-commit hooks`
+## Коммиты
 
-## 5) Документация
-- Основной файл: `README.md` (обзор, архитектура, health/readiness)
-- Клон-обзор: `Liminal_readme.md` (с датой обновления)
-- Архив предыдущих README: `docs/README_HISTORY/`
-- Mermaid-блоки: используем ```mermaid без лишних отступов
-- Добавляйте дату обновления в начало ключевых доков: `Последнее обновление: YYYY-MM-DD`
+Формат:
 
-Инсайт проекта: «Случайности не случайны». Любой сбой — сигнал улучшения. Фиксируем знание в доках.
+```text
+<type>: <summary>
+```
 
-## 6) Временные/локальные файлы
-- Временные каталоги (например, `temp_packages/`) — держим локально, игнорируем в git.
-- Добавляйте правила в `.gitignore` и используйте `git rm --cached` для очистки индекса.
+где `type` ∈ `{feat, fix, docs, chore, refactor, test}`.
 
-## 7) Health/Readiness (локальный чек)
+Примеры:
+
+- `docs: restore legacy README as main; add health & TOC`
+- `feat(api): add readiness endpoint`
+- `chore(ci): bump pre-commit hooks`
+
+## Health/Readiness legacy notes
+
 - Запуск: `python -m uvicorn backend.api:app --reload --port 8000`
 - Проверки:
   - PowerShell: `Invoke-RestMethod http://127.0.0.1:8000/health` и `/ready`
   - curl: `curl http://127.0.0.1:8000/health` и `/ready`
 - Скрипты: `./scripts/check-health.ps1` и `bash ./scripts/check-health.sh`
 
-## 8) CI/CD
-- PR — автопроверки. Падающие проверки — не мержим.
-- Просим ревьюера указывать «один главный фокус» на PR, чтобы двигались грядками.
-
-## 9) DatabaseAdapter: работа с данными
+## DatabaseAdapter: работа с данными
 
 Универсальный адаптер для работы с Datomic и Neo4j. Каждый тип данных автоматически маршрутизируется в оптимальную БД.
 
@@ -63,41 +414,32 @@
 ```python
 from backend.database_adapter import DatabaseAdapter, DataType, get_database_adapter
 
-# Вариант 1: Используем глобальный экземпляр (рекомендуется)
 adapter = get_database_adapter()
 
-# Вариант 2: Создаем свой экземпляр
 adapter = DatabaseAdapter(
-    # Datomic настройки
     datomic_uri="http://localhost:8080",
     datomic_db_name="liminal",
-    
-    # Neo4j настройки
     neo4j_uri="bolt://localhost:7687",
     neo4j_user="neo4j",
     neo4j_password="password",
-    
-    # Включаем автоматический fallback
-    fallback_enabled=True
+    fallback_enabled=True,
 )
 ```
 
 ### Работа с типами данных
 
 ```python
-# Для Datomic подходят:
-DataType.TEMPORAL       # Временные данные
-DataType.EVENT          # События
-DataType.AUDIT          # Аудит действий
-DataType.EMOTION_HISTORY # История эмоций
-DataType.SESSION_DATA   # Данные сессий
+DataType.TEMPORAL
+DataType.EVENT
+DataType.AUDIT
+DataType.EMOTION_HISTORY
+DataType.SESSION_DATA
 
-# Для Neo4j подходят:
-DataType.RELATIONSHIP   # Связи
-DataType.GRAPH          # Графовые структуры
-DataType.PHILOSOPHY     # Философские состояния
-DataType.CONCEPT_MAP    # Карты концептов
-DataType.USER_NETWORK   # Сети пользователей
+DataType.RELATIONSHIP
+DataType.GRAPH
+DataType.PHILOSOPHY
+DataType.CONCEPT_MAP
+DataType.USER_NETWORK
 ```
 
 ### Сохранение и запрос данных
@@ -106,94 +448,45 @@ DataType.USER_NETWORK   # Сети пользователей
 import asyncio
 
 async def example():
-    # Сохранение данных с автоматическим выбором БД
     emotion_id = await adapter.store_data(
         data={"emotion": "радость", "intensity": 0.8},
         data_type=DataType.EMOTION_HISTORY,
-        user_id="user-123"
+        user_id="user-123",
     )
-    
-    # Запрос данных с фильтрацией
+
     emotions = await adapter.query_data(
         data_type=DataType.EMOTION_HISTORY,
         filters={"user_id": "user-123"},
-        limit=10
+        limit=10,
     )
 
-# Запуск асинхронной функции
 asyncio.run(example())
 ```
 
 ### Best practices
 
-1. **Всегда закрывайте подключения**
-   ```python
-   try:
-       # Ваш код
-   finally:
-       adapter.close()
-   ```
+1. Всегда закрывайте подключения.
+2. Проверяйте доступность БД.
+3. Используйте правильные типы данных.
+4. Тестируйте с моками.
 
-2. **Проверяйте доступность БД**
-   ```python
-   health = adapter.get_health_status()
-   if health["status"] == "healthy":
-       # Работа с адаптером
-   ```
+## WSL-плейбук: запуск и тесты
 
-3. **Используйте правильные типы данных**
-   - Правило: Datomic для временных данных, Neo4j для графовых структур
-   - Избегайте хранения больших массивов данных или бинарных файлов
-
-4. **Тестирование с моками**
-   ```python
-   # backend/tests/test_adapter.py
-   from unittest.mock import patch, MagicMock
-   
-   @patch('backend.database_adapter.DatomicClient')
-   def test_datomic_fallback(mock_datomic):
-       mock_datomic.return_value.connect.return_value = False
-       adapter = DatabaseAdapter(fallback_enabled=True)
-       # Тест автоматического переключения на Neo4j
-   ```
-
-### Решение частых проблем
-
-- **Ошибка «ImportError: No module named 'backend.database_adapter'»**
-  - Решение: Запускайте скрипты из корня проекта или добавьте корень в PYTHONPATH
-
-- **Обе БД недоступны**
-  - Решение: Проверьте настройки подключения и доступность БД
-  - Fallback работает только при наличии хотя бы одной доступной БД
-
-- **Исключение при сохранении данных**
-  - Проверьте соответствие структуры данных типу (Datomic требует временные метки)
-
-Применяем принцип «Случайности не случайны»: если ваш код взаимодействия с БД стабильно падает в определенном месте, возможно это сигнал к улучшению архитектуры данных или запросов.
-
-## 10) Контакты
-`safal0645@gmail.com`
-
-## 10) WSL‑плейбук: запуск и тесты
-
-Рекомендуемый способ разработки и запуска — через WSL. Это снижает риски сбоев pip/OneDrive/прокси в Windows.
-
-1) Активация окружения
+Рекомендуемый способ разработки и запуска — через WSL.
 
 ```bash
-# внутри WSL
 source ~/.venvs/liminal/bin/activate
 cd /mnt/c/Users/safal/OneDrive/Documente/GitHub/resonance-liminal
 ```
 
-1.1) Отключить прокси для локальных адресов (если замечены подвисания)
+Отключить proxy для локальных адресов:
 
 ```bash
 export NO_PROXY=127.0.0.1,localhost
 export no_proxy=127.0.0.1,localhost
 ```
 
-2) Устойчивая установка зависимостей
+Устойчивая установка зависимостей:
 
 ```bash
 python -m pip install --upgrade pip
@@ -201,17 +494,13 @@ pip install -r requirements.txt \
   -i https://pypi.org/simple --default-timeout 25 --no-cache-dir -vvv
 ```
 
-Примечание: при проблемах сети используйте wheel из локального кэша/каталога. Избегайте путей в OneDrive для кешей.
-
-3) Запуск приложения
+Запуск приложения:
 
 ```bash
 uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Важно: в WSL режим NAT не поддерживает прокси на localhost. Используйте явный адрес `127.0.0.1`.
-
-4) Проверка health/docs/ready (в другом терминале WSL)
+Проверка health/docs/ready:
 
 ```bash
 curl --noproxy '*' http://127.0.0.1:8000/health
@@ -219,9 +508,7 @@ curl --noproxy '*' http://127.0.0.1:8000/docs
 curl --noproxy '*' http://127.0.0.1:8000/ready
 ```
 
-Примечание: `/ready` всегда возвращает 200 (статус ready/degraded), `/health/ready` может вернуть 503.
-
-5) JWT — быстрый тест
+## JWT quick test
 
 ```bash
 TOKEN=$(curl -s --noproxy '*' -X POST \
@@ -232,102 +519,71 @@ TOKEN=$(curl -s --noproxy '*' -X POST \
 curl --noproxy '*' -H "Authorization: Bearer $TOKEN" http://127.0.0.1:8000/auth/me
 ```
 
-Подробнее см. раздел "🔐 JWT: быстрый старт" в README.md.
-
-6) Тесты
-
-✨ Быстрый старт
-
-- 🧪 Только мультиязычный tie-break (expected_lang):
-  - Windows PowerShell: `./scripts/test-ml-expected.ps1`
-  - Linux/WSL: `bash ./scripts/test-ml.sh`
-- 🚀 Весь набор (кроме integration):
-  - Windows PowerShell: `./scripts/test-ml-expected.ps1 -All`
-  - Linux/WSL: `bash ./scripts/test-ml.sh --all`
-
-📌 Целевые тесты JWT
+## Tests legacy notes
 
 ```bash
 pytest -q backend/tests/test_jwt_auth.py backend/tests/test_jwt_edge_cases.py
-```
-
-🔍 Подробный вывод (удобно для диагностики)
-
-```bash
 python -m pytest -vv --color=yes -rA -m "not integration"
 python -m pytest -vv --color=yes -rA backend/tests/test_multilingual_expected_lang.py
 ```
 
-📝 Логи в файл (если консоль «режет» вывод)
+Makefile:
 
 ```bash
-python -m pytest -vv -rA -m "not integration" > .pytest-log.txt
+make test-ml
+make test
 ```
 
-🧰 Троблшутинг
+## Мультиязычный анализ: expected_lang
 
-- ⏳ «Подвисает/тишина»: добавьте `-vv -rA` или уберите `-q`.
-- 🐍 Импорт `backend.*`: запускайте из корня репо.
-- 🌐 Сеть/прокси: для curl используйте `--noproxy '*'`.
-- 📦 Отсутствуют dev-пакеты: установите `requirements-dev.txt` (устойчивой схемой pip).
+Когда текст содержит только ASCII-символы, детекция языка может давать ничью между несколькими латинскими языками. Для корректного разрешения используется параметр `expected_lang`.
 
-🏁 Запуск через Makefile
+```python
+from backend.personality.multilingual_support import analyze_multilingual_text
 
-- Только мультиязычный tie‑break: `make test-ml`
-- Весь набор (без integration): `make test`
+res = await analyze_multilingual_text(
+    text,
+    adapter.analyze_text,
+    target_lang="de",
+    expected_lang="de",
+)
+```
 
-7) Логи
+```python
+from backend.personality.ml_adapter import EmotionMLAdapter
 
-- Используется структурное логирование (structlog). Логи в stdout в JSON-формате.
-- При ошибках импорта метрик/ML сервер должен продолжать старт с мягким отключением соответствующих модулей.
-
-## 11) Мультиязычный анализ: expected_lang (tie-break)
-
-Когда текст содержит только ASCII-символы, детекция языка может давать ничью между несколькими латинскими языками (en/de/fr/es/it). Для корректного разрешения используется параметр `expected_lang`:
-
-- Вызов низкого уровня:
-  ```python
-  from backend.personality.multilingual_support import analyze_multilingual_text
-  res = await analyze_multilingual_text(text, adapter.analyze_text, target_lang="de", expected_lang="de")
-  ```
-- Вызов высокого уровня через ML-адаптер:
-  ```python
-  from backend.personality.ml_adapter import EmotionMLAdapter
-  adapter = EmotionMLAdapter()
-  res = await adapter.analyze_multilingual(text, target_lang="de", expected_lang="de")
-  ```
-
-Поведение:
-- Если `expected_lang` присутствует и его «счёт» по LANGUAGE_MARKERS не хуже, чем у детектированного, выбирается `expected_lang`.
-- Если `detected_lang == target_lang`, перевод не выполняется, поле `original_language` отсутствует.
-- Если языки различаются, результат содержит `original_language`, `original_emotion`, а `emotion_type` переводится на `target_lang`.
+adapter = EmotionMLAdapter()
+res = await adapter.analyze_multilingual(text, target_lang="de", expected_lang="de")
+```
 
 Тесты:
+
 ```bash
 pytest -q backend/tests/test_multilingual_expected_lang.py
 ```
 
-## 12) Работа с Git (WSL/PowerShell)
+## Работа с Git: WSL/PowerShell
 
-### 1. Push через WSL:
+Push через WSL:
+
 ```bash
-# Отключить proxy если есть проблемы
 unset http_proxy https_proxy
-
-# Push с использованием PAT (будет запрошен как пароль)
 git push https://github.com/safal207/Liminal.git main
 ```
 
-### 2. Push через PowerShell:
-```powershell
-# Перейти в директорию проекта
-cd "C:\Users\safal\OneDrive\Documente\GitHub\resonance-liminal"
+Push через PowerShell:
 
-# Выполнить push (PAT запросится как пароль)
+```powershell
+cd "C:\Users\safal\OneDrive\Documente\GitHub\resonance-liminal"
 git push origin main
 ```
 
-### 3. Если возникают ошибки:
-- Проверить URL репозитория (с заглавной L)
-- Убедиться что PAT имеет права repo
-- Временный workaround: использовать PowerShell вместо WSL
+Если возникают ошибки:
+
+- Проверить URL репозитория.
+- Убедиться, что PAT имеет права repo.
+- Временный workaround: использовать PowerShell вместо WSL.
+
+## Контакты
+
+`safal0645@gmail.com`
