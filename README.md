@@ -29,7 +29,7 @@ Start with LTP, CML, CaPU, LiminalDB, DAO_lim, and the local health/readiness ch
 Read the continuity, causal memory, trace replay, and agent audit materials.
 
 ### I am a founder or operator
-Start with [Liminal Agent Efficiency Audit](docs/commercial/AGENT_EFFICIENCY_AUDIT.md).
+Start with [Liminal Agent Efficiency Audit](docs/commercial/AGENT_EFFICIENCY_AUDIT.md), then read the [Agent Audit Demo Story](docs/demo/AGENT_AUDIT_DEMO_STORY.md).
 
 ### I am interested in human growth
 Start with Liminal Pulse, Inner Council, emotional memory, and transition support concepts.
@@ -43,6 +43,7 @@ Start with Liminal Pulse, Inner Council, emotional memory, and transition suppor
 - [Community roadmap](COMMUNITY_ROADMAP.md)
 - [Documentation index](docs/README.md)
 - [Agent Efficiency Audit](docs/commercial/AGENT_EFFICIENCY_AUDIT.md)
+- [Agent Audit Demo Story](docs/demo/AGENT_AUDIT_DEMO_STORY.md)
 
 ---
 
@@ -72,6 +73,7 @@ Start with Liminal Pulse, Inner Council, emotional memory, and transition suppor
 - [🔍 Project status](STATUS.md)
 - [🧭 Community roadmap](COMMUNITY_ROADMAP.md)
 - [💼 Agent Efficiency Audit](docs/commercial/AGENT_EFFICIENCY_AUDIT.md)
+- [🎬 Agent Audit Demo Story](docs/demo/AGENT_AUDIT_DEMO_STORY.md)
 - [✨ Что делает LIMINAL](#-что-делает-liminal)
 - [🧠 Архитектура](#-архитектура)
 - [🔍 Статус](#-статус)
