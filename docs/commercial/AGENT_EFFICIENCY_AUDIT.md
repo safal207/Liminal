@@ -4,6 +4,8 @@
 
 It helps teams find where AI-agent workflows lose context, money, safety, and auditability.
 
+See also: [Agent Audit Demo Story](../demo/AGENT_AUDIT_DEMO_STORY.md).
+
 ---
 
 ## Problem
@@ -126,6 +128,8 @@ A simple demo should show:
 4. CML shows a missing reason or permission chain.
 5. CaPU shows the action should have been held or blocked.
 6. Liminal audit report explains what happened and how to fix it.
+
+Full version: [Agent Audit Demo Story](../demo/AGENT_AUDIT_DEMO_STORY.md).
 
 ---
 
