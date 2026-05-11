@@ -14,6 +14,23 @@ The demo shows an AI support agent that produces a helpful-looking output but at
 | `cml_records.json` | Causal memory records for each transition |
 | `capu_decision.json` | CaPU HOLD decision for unsafe execution |
 | `audit_report.md` | Human-readable audit report |
+| `run_demo.py` | Small CLI runner that prints the final audit verdict |
+
+---
+
+## Run the demo
+
+From the repository root:
+
+```bash
+python examples/agent_audit_demo/run_demo.py
+```
+
+Expected final verdict:
+
+```text
+HOLD: the refund action must not execute until approval and permission records are committed.
+```
 
 ---
 
@@ -93,10 +110,4 @@ Human can approve or reject safely.
 
 ## Next step
 
-A future implementation can add a small script that reads these files and prints the final audit decision.
-
-Suggested command:
-
-```bash
-python examples/agent_audit_demo/run_demo.py
-```
+The runner is intentionally simple. A future version can connect this example to real LTP, CML, and CaPU libraries.
