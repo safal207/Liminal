@@ -2,7 +2,7 @@
 
 This example turns the [Agent Audit Demo Story](../../docs/demo/AGENT_AUDIT_DEMO_STORY.md) into a minimal reproducible artifact.
 
-The demo shows an AI support agent that produces a helpful-looking output but attempts an external refund action without a valid approval chain.
+The demo shows an AI support workflow where the final action must be held until trace anchors, causal permission, and approval records are present.
 
 ---
 
@@ -14,7 +14,7 @@ The demo shows an AI support agent that produces a helpful-looking output but at
 | `cml_records.json` | Causal memory records for each transition |
 | `capu_decision.json` | CaPU HOLD decision for unsafe execution |
 | `audit_report.md` | Human-readable audit report |
-| `run_demo.py` | Small CLI runner that prints the final audit verdict |
+| `run_demo.py` | CLI runner with static and optional integrated modes |
 
 ---
 
@@ -26,11 +26,49 @@ From the repository root:
 python examples/agent_audit_demo/run_demo.py
 ```
 
+Equivalent explicit static mode:
+
+```bash
+python examples/agent_audit_demo/run_demo.py --mode static
+```
+
 Expected final verdict:
 
 ```text
 HOLD: the refund action must not execute until approval and permission records are committed.
 ```
+
+---
+
+## Integrated mode
+
+Integrated mode is optional. It is designed for environments where real LTP, CML, or CaPU tools are available.
+
+```bash
+python examples/agent_audit_demo/run_demo.py --mode integrated
+```
+
+By default, integrated mode still works without external dependencies. If no tools are configured, it prints that the external checks were skipped and continues with deterministic local artifact checks.
+
+Optional command templates can be provided through environment variables:
+
+```bash
+export LTP_INSPECT_CMD="ltp inspect trace --input {trace}"
+export CML_VALIDATE_CMD="cml validate --input {cml}"
+export CAPU_EVALUATE_CMD="capu evaluate --input {capu}"
+python examples/agent_audit_demo/run_demo.py --mode integrated
+```
+
+Supported placeholders:
+
+| Placeholder | Expands to |
+|---|---|
+| `{trace}` | `examples/agent_audit_demo/trace.jsonl` |
+| `{cml}` | `examples/agent_audit_demo/cml_records.json` |
+| `{capu}` | `examples/agent_audit_demo/capu_decision.json` |
+| `{report}` | `examples/agent_audit_demo/audit_report.md` |
+
+If a configured command is unavailable, fails, or times out, the runner reports that status and still prints the local artifact verdict.
 
 ---
 
@@ -44,7 +82,7 @@ Open `trace.jsonl` and inspect transition `t5`:
 {"transition_id":"t5","actor":"support_agent","action":"execute_refund","amount":"50 EUR","anchors":[]}
 ```
 
-The external refund action has no anchors.
+The final action has no anchors.
 
 ### 2. Causal validity
 
@@ -76,7 +114,7 @@ Open `capu_decision.json`:
 }
 ```
 
-The refund should be held until human approval and a committed permission record exist.
+The final action should be held until approval and a committed permission record exist.
 
 ### 4. Audit output
 
@@ -90,9 +128,9 @@ Before Liminal:
 
 ```text
 Agent output looks good.
-Refund executed.
+Final action is attempted.
 Logs exist.
-No one knows whether the action was actually authorized.
+Authorization is unclear.
 ```
 
 After Liminal:
@@ -110,4 +148,4 @@ Human can approve or reject safely.
 
 ## Next step
 
-The runner is intentionally simple. A future version can connect this example to real LTP, CML, and CaPU libraries.
+The static mode is intentionally dependency-free. Integrated mode provides a safe path for connecting real LTP, CML, and CaPU libraries or CLI tools when they are available.
