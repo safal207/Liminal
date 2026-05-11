@@ -23,7 +23,7 @@ Liminal is an ecosystem of tools for making transitions visible, traceable, and 
 ## Choose your path
 
 ### I am a developer
-Start with LTP, CML, CaPU, LiminalDB, DAO_lim, and the local health/readiness checks below.
+Start with the [Developer Quickstart](docs/DEVELOPER_QUICKSTART.md), then explore LTP, CML, CaPU, LiminalDB, DAO_lim, and the local health/readiness checks below.
 
 ### I am a researcher
 Read the continuity, causal memory, trace replay, and agent audit materials.
@@ -38,6 +38,7 @@ Start with Liminal Pulse, Inner Council, emotional memory, and transition suppor
 
 ## Ecosystem entry points
 
+- [Developer Quickstart](docs/DEVELOPER_QUICKSTART.md)
 - [Ecosystem map](ECOSYSTEM.md)
 - [Project status](STATUS.md)
 - [Community roadmap](COMMUNITY_ROADMAP.md)
@@ -68,6 +69,7 @@ Start with Liminal Pulse, Inner Council, emotional memory, and transition suppor
 **LIMINAL** — это гибридная AI-платформа для осознанных переходов, внутренней зрелости и развития автономии.
 
 ## 📚 Оглавление
+- [📘 Developer Quickstart](docs/DEVELOPER_QUICKSTART.md)
 - [📘 Документация проекта](docs/README.md)
 - [🌍 Ecosystem map](ECOSYSTEM.md)
 - [🔍 Project status](STATUS.md)
