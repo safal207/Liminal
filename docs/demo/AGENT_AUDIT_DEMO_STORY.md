@@ -12,6 +12,8 @@ It is designed to be understandable in three minutes by:
 - QA / platform teams
 - compliance-heavy teams
 
+Minimal reproducible artifact: [`examples/agent_audit_demo`](../../examples/agent_audit_demo/README.md).
+
 ---
 
 ## One-line demo
@@ -297,12 +299,13 @@ It shows the difference between:
 
 ---
 
-## Next implementation step
+## Reproducible artifact
 
-Turn this story into a minimal reproducible artifact:
+This story now has a minimal reproducible artifact:
 
 ```text
 examples/agent_audit_demo/
+  README.md
   trace.jsonl
   cml_records.json
   capu_decision.json
