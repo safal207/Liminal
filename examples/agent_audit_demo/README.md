@@ -2,6 +2,8 @@
 
 This example turns the [Agent Audit Demo Story](../../docs/demo/AGENT_AUDIT_DEMO_STORY.md) into a minimal reproducible artifact.
 
+For a step-by-step explanation of the scenario, trace gap, CML finding, CaPU HOLD decision, and business/safety meaning, read the [Agent Audit Demo Walkthrough](../../docs/demo/AGENT_AUDIT_DEMO_WALKTHROUGH.md).
+
 The demo shows an AI support workflow where the final action must be held until trace anchors, causal permission, and approval records are present.
 
 ---
