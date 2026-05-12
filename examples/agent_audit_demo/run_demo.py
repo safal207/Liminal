@@ -323,9 +323,7 @@ def run_integrated() -> int:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Run the Liminal agent audit demo."
-    )
+    parser = argparse.ArgumentParser(description="Run the Liminal agent audit demo.")
     parser.add_argument(
         "--mode",
         choices=("static", "integrated"),
