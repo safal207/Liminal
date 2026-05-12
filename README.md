@@ -23,13 +23,13 @@ Liminal is an ecosystem of tools for making transitions visible, traceable, and 
 ## Choose your path
 
 ### I am a developer
-Start with the [Developer Quickstart](docs/DEVELOPER_QUICKSTART.md), then read the [Contributing Guide](CONTRIBUTING.md) before opening a pull request.
+Start with the [Developer Quickstart](docs/DEVELOPER_QUICKSTART.md), then run the [Agent Audit Demo Walkthrough](docs/demo/AGENT_AUDIT_DEMO_WALKTHROUGH.md).
 
 ### I am a researcher
 Read the continuity, causal memory, trace replay, and agent audit materials. Use the [Glossary](docs/GLOSSARY.md) as the shared vocabulary.
 
 ### I am a founder or operator
-Start with [Liminal Agent Efficiency Audit](docs/commercial/AGENT_EFFICIENCY_AUDIT.md), then read the [Agent Audit Demo Story](docs/demo/AGENT_AUDIT_DEMO_STORY.md).
+Start with [Liminal Agent Efficiency Audit](docs/commercial/AGENT_EFFICIENCY_AUDIT.md), then read the [Agent Audit Demo Story](docs/demo/AGENT_AUDIT_DEMO_STORY.md) and [Agent Audit Demo Walkthrough](docs/demo/AGENT_AUDIT_DEMO_WALKTHROUGH.md).
 
 ### I am interested in human growth
 Start with Liminal Pulse, Inner Council, emotional memory, and transition support concepts.
@@ -47,6 +47,7 @@ Start with Liminal Pulse, Inner Council, emotional memory, and transition suppor
 - [Documentation index](docs/README.md)
 - [Agent Efficiency Audit](docs/commercial/AGENT_EFFICIENCY_AUDIT.md)
 - [Agent Audit Demo Story](docs/demo/AGENT_AUDIT_DEMO_STORY.md)
+- [Agent Audit Demo Walkthrough](docs/demo/AGENT_AUDIT_DEMO_WALKTHROUGH.md)
 
 ---
 
@@ -80,6 +81,7 @@ Start with Liminal Pulse, Inner Council, emotional memory, and transition suppor
 - [🧭 Community roadmap](COMMUNITY_ROADMAP.md)
 - [💼 Agent Efficiency Audit](docs/commercial/AGENT_EFFICIENCY_AUDIT.md)
 - [🎬 Agent Audit Demo Story](docs/demo/AGENT_AUDIT_DEMO_STORY.md)
+- [🧪 Agent Audit Demo Walkthrough](docs/demo/AGENT_AUDIT_DEMO_WALKTHROUGH.md)
 - [✨ Что делает LIMINAL](#-что-делает-liminal)
 - [🧠 Архитектура](#-архитектура)
 - [🔍 Статус](#-статус)
