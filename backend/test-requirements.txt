@@ -55,7 +55,7 @@ pydantic[dotenv]>=2.0.0
 prometheus-client>=0.17.0
 
 # ML Testing
-scikit-learn>=1.3.0
+scikit-learn>=1.5.0
 numpy>=1.24.0
 
 # Async Testing Utilities

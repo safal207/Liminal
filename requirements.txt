@@ -48,5 +48,5 @@ transformers>=4.30.0
 nltk>=3.8.1
 
 # SMTP / FTP утилиты
-aiosmtpd==1.4.2
+aiosmtpd==1.4.6
 pyftpdlib==1.5.7
