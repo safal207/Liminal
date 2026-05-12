@@ -56,6 +56,12 @@ jobs:
       run: |
         mypy src tests || true
 
+    - name: Smoke test agent audit demo runner
+      run: |
+        python examples/agent_audit_demo/run_demo.py
+        python examples/agent_audit_demo/run_demo.py --mode static
+        python examples/agent_audit_demo/run_demo.py --mode integrated
+
     - name: Run unit tests (skip integration)
       run: |
         export PYTHONPATH="${PWD}:${PYTHONPATH}"
