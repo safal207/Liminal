@@ -131,13 +131,15 @@ func (sm *SubscriptionManager) HandleSubscription(w http.ResponseWriter, r *http
 	}
 	
 	conn.SetReadLimit(maxMessageSize)
-	
-	// Запускаем горутину для чтения сообщений
+
+	// done is closed when the read goroutine exits; it signals the ping goroutine to stop.
+	done := make(chan struct{})
+
+	// Read goroutine — owns the connection lifetime.
 	go func() {
-		defer func() {
-			conn.Close()
-		}()
-		
+		defer close(done)
+		defer conn.Close()
+
 		for {
 			messageType, message, err := conn.ReadMessage()
 			if err != nil {
@@ -146,42 +148,41 @@ func (sm *SubscriptionManager) HandleSubscription(w http.ResponseWriter, r *http
 				}
 				break
 			}
-			
+
 			if messageType == websocket.TextMessage {
 				var request map[string]interface{}
 				if err := json.Unmarshal(message, &request); err != nil {
 					log.Printf("Ошибка разбора JSON: %v", err)
 					continue
 				}
-				
-				// Обрабатываем запрос подписки
+
 				if requestType, ok := request["type"].(string); ok {
 					switch requestType {
 					case "subscribe":
-						topic, _ := request["topic"].(string)
+						topic, ok := request["topic"].(string)
+						if !ok || topic == "" {
+							log.Printf("Invalid or missing topic in subscribe request")
+							continue
+						}
 						filter, _ := request["filter"].(map[string]interface{})
 						id := sm.Subscribe(topic, conn, filter)
-						
-						// Отправляем подтверждение подписки
+
 						response := map[string]interface{}{
-							"type":        "subscribed",
-							"id":          id,
-							"topic":       topic,
+							"type":  "subscribed",
+							"id":    id,
+							"topic": topic,
 						}
-						
 						jsonResponse, _ := json.Marshal(response)
 						conn.WriteMessage(websocket.TextMessage, jsonResponse)
-						
+
 					case "unsubscribe":
 						id, _ := request["id"].(string)
 						sm.Unsubscribe(id)
-						
-						// Отправляем подтверждение отписки
+
 						response := map[string]interface{}{
 							"type": "unsubscribed",
 							"id":   id,
 						}
-						
 						jsonResponse, _ := json.Marshal(response)
 						conn.WriteMessage(websocket.TextMessage, jsonResponse)
 					}
@@ -189,17 +190,16 @@ func (sm *SubscriptionManager) HandleSubscription(w http.ResponseWriter, r *http
 			}
 		}
 	}()
-	
-	// Запускаем горутину для отправки ping сообщений
+
+	// Ping goroutine — exits when done is closed; does NOT close the connection.
 	go func() {
 		ticker := time.NewTicker(pingPeriod)
-		defer func() {
-			ticker.Stop()
-			conn.Close()
-		}()
-		
+		defer ticker.Stop()
+
 		for {
 			select {
+			case <-done:
+				return
 			case <-ticker.C:
 				conn.SetWriteDeadline(time.Now().Add(writeWait))
 				if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {

@@ -5,16 +5,31 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/neo4j/neo4j-go-driver/v4/neo4j"
 )
 
-// Neo4j credentials - эти же используются в Python backend
-const (
-	neo4jURI      = "neo4j://localhost:7687"
-	neo4jUsername = "neo4j"
-	neo4jPassword = "NewStrongPass123!"
+var (
+	neo4jURI      = getEnvOrDefault("NEO4J_URI", "neo4j://localhost:7687")
+	neo4jUsername = getEnvOrDefault("NEO4J_USERNAME", "neo4j")
+	neo4jPassword = mustGetEnv("NEO4J_PASSWORD")
 )
+
+func getEnvOrDefault(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+func mustGetEnv(key string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		log.Fatalf("required environment variable %s is not set", key)
+	}
+	return v
+}
 
 // GraphData структура для представления графа состояний сознания
 type GraphData struct {
@@ -125,32 +140,44 @@ func getConsciousnessGraphFromNeo4j() (*GraphData, error) {
 	nodeIDs := make(map[string]bool)
 	for nodeRecords.Next() {
 		record := nodeRecords.Record()
-		
-		id, _ := record.Get("id")
-		state, _ := record.Get("state")
-		label, _ := record.Get("label")
-		description, _ := record.Get("description")
-		presenceLevel, _ := record.Get("presenceLevel")
-		harmonyIndex, _ := record.Get("harmonyIndex")
-		authenticityScore, _ := record.Get("authenticityScore")
-		emotionalCharge, _ := record.Get("emotionalCharge")
-		
-		// Создаем узел
-		node := Node{
-			ID:                id.(string),
-			State:             state.(string),
-			Label:             label.(string),
-			Description:       description.(string),
-			PresenceLevel:     presenceLevel.(float64),
-			HarmonyIndex:      harmonyIndex.(float64),
-			AuthenticityScore: authenticityScore.(float64),
-			EmotionalCharge:   emotionalCharge.(float64),
-			ColorClass:        "node-" + state.(string),
+
+		idVal, _ := record.Get("id")
+		stateVal, _ := record.Get("state")
+		labelVal, _ := record.Get("label")
+		descVal, _ := record.Get("description")
+		presenceVal, _ := record.Get("presenceLevel")
+		harmonyVal, _ := record.Get("harmonyIndex")
+		authVal, _ := record.Get("authenticityScore")
+		chargeVal, _ := record.Get("emotionalCharge")
+
+		id, ok1 := idVal.(string)
+		stateStr, ok2 := stateVal.(string)
+		labelStr, ok3 := labelVal.(string)
+		descStr, ok4 := descVal.(string)
+		presenceLevel, ok5 := presenceVal.(float64)
+		harmonyIndex, ok6 := harmonyVal.(float64)
+		authenticityScore, ok7 := authVal.(float64)
+		emotionalCharge, ok8 := chargeVal.(float64)
+
+		if !ok1 || !ok2 || !ok3 || !ok4 || !ok5 || !ok6 || !ok7 || !ok8 {
+			log.Printf("Skipping node record with unexpected field types: id=%v state=%v", idVal, stateVal)
+			continue
 		}
-		
-		// Добавляем узел в результат
+
+		node := Node{
+			ID:                id,
+			State:             stateStr,
+			Label:             labelStr,
+			Description:       descStr,
+			PresenceLevel:     presenceLevel,
+			HarmonyIndex:      harmonyIndex,
+			AuthenticityScore: authenticityScore,
+			EmotionalCharge:   emotionalCharge,
+			ColorClass:        "node-" + stateStr,
+		}
+
 		result.Nodes = append(result.Nodes, node)
-		nodeIDs[id.(string)] = true
+		nodeIDs[id] = true
 	}
 	
 	// Получение связей (переходов)
@@ -169,27 +196,34 @@ func getConsciousnessGraphFromNeo4j() (*GraphData, error) {
 	// Обработка результатов запроса связей
 	for linkRecords.Next() {
 		record := linkRecords.Record()
-		
-		sourceId, _ := record.Get("sourceId")
-		targetId, _ := record.Get("targetId")
-		trigger, _ := record.Get("trigger")
-		count, _ := record.Get("count")
-		
-		// Проверяем, что узлы существуют
-		if !nodeIDs[sourceId.(string)] || !nodeIDs[targetId.(string)] {
+
+		srcVal, _ := record.Get("sourceId")
+		tgtVal, _ := record.Get("targetId")
+		triggerVal, _ := record.Get("trigger")
+		countVal, _ := record.Get("count")
+
+		sourceID, ok1 := srcVal.(string)
+		targetID, ok2 := tgtVal.(string)
+		trigger, ok3 := triggerVal.(string)
+		countInt, ok4 := countVal.(int64)
+
+		if !ok1 || !ok2 || !ok3 || !ok4 {
+			log.Printf("Skipping link record with unexpected field types: src=%v tgt=%v", srcVal, tgtVal)
 			continue
 		}
-		
-		// Создаем связь
-		link := Link{
-			ID:       sourceId.(string) + "-" + targetId.(string),
-			Source:   sourceId.(string),
-			Target:   targetId.(string),
-			Trigger:  trigger.(string),
-			Count:    int(count.(int64)),
+
+		if !nodeIDs[sourceID] || !nodeIDs[targetID] {
+			continue
 		}
-		
-		// Добавляем связь в результат
+
+		link := Link{
+			ID:      sourceID + "-" + targetID,
+			Source:  sourceID,
+			Target:  targetID,
+			Trigger: trigger,
+			Count:   int(countInt),
+		}
+
 		result.Links = append(result.Links, link)
 	}
 	

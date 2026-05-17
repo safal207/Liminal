@@ -56,7 +56,7 @@ function connectToWebSocket() {
       header.appendChild(statusIndicator);
       
       // Обновляем индикатор при изменении состояния подключения
-      setInterval(() => {
+      app.statusPollInterval = setInterval(() => {
         const indicator = document.querySelector('.status-indicator');
         const statusText = document.querySelector('.status-text');
         if (indicator && statusText) {
@@ -258,6 +258,12 @@ function updateEmotimeBadge(mode, online) {
   `;
   badge.style.borderColor = meta.color;
 }
+
+// Очищаем таймеры при выгрузке страницы
+window.addEventListener('beforeunload', () => {
+  if (app.statusPollInterval) clearInterval(app.statusPollInterval);
+  if (app.emotimePollInterval) clearInterval(app.emotimePollInterval);
+});
 
 // Добавляем CSS для индикатора подключения
 const connectionStyle = document.createElement('style');

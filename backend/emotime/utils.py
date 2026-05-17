@@ -19,8 +19,8 @@ def setup_encoding():
             try:
                 import subprocess
 
-                subprocess.run(["chcp", "65001"], shell=True, capture_output=True)
-            except:
+                subprocess.run(["chcp", "65001"], capture_output=True)
+            except Exception:
                 pass
 
         # Установка переменных окружения для UTF-8
@@ -29,7 +29,7 @@ def setup_encoding():
         # Попробуем установить системную локаль на UTF-8
         try:
             locale.setlocale(locale.LC_ALL, "")
-        except:
+        except Exception:
             pass
 
         return True
@@ -49,7 +49,7 @@ def safe_print(message: str, fallback_encoding: str = "ascii"):
                 fallback_encoding
             )
             print(safe_message)
-        except:
+        except Exception:
             # Последний fallback: только ASCII символы
             ascii_message = "".join(c if ord(c) < 128 else "?" for c in message)
             print(ascii_message)

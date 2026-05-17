@@ -353,11 +353,11 @@ class DataService {
         }
       }));
       
-      this.links = data.transitions.map(transition => {
+      this.links = data.transitions.reduce((acc, transition) => {
         const source = this.nodes.find(node => node.id === transition.from_id);
         const target = this.nodes.find(node => node.id === transition.to_id);
-        
-        return {
+        if (!source || !target) return acc;
+        acc.push({
           id: `${transition.from_id}-${transition.to_id}`,
           source,
           target,
@@ -365,8 +365,9 @@ class DataService {
           triggerLabel: CONFIG.triggers[transition.trigger] || transition.trigger,
           count: transition.count || 1,
           lastTransitionData: transition.trigger_data || {}
-        };
-      });
+        });
+        return acc;
+      }, []);
       
       // Уведомляем подписчиков
       this.notifySubscribers();

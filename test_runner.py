@@ -260,7 +260,7 @@ def generate_test_report(results):
     print(f"Total Tests: {total_tests}")
     print(f"Passed: {passed_tests}")
     print(f"Failed: {failed_tests}")
-    print(f"Success Rate: {(passed_tests/total_tests)*100:.1f}%")
+    print(f"Success Rate: {(passed_tests/total_tests)*100:.1f}%" if total_tests > 0 else "Success Rate: N/A")
 
     print("\nDetailed Results:")
     for test_name, result in results.items():
@@ -275,7 +275,7 @@ def generate_test_report(results):
                 "total_tests": total_tests,
                 "passed_tests": passed_tests,
                 "failed_tests": failed_tests,
-                "success_rate": (passed_tests / total_tests) * 100,
+                "success_rate": (passed_tests / total_tests * 100) if total_tests > 0 else 0,
                 "results": results,
                 "timestamp": str(Path(__file__).stat().st_mtime),
             },

@@ -6,8 +6,10 @@ __pycache__/
 *.so
 .venv/
 venv/
+.env
 .env.local
 .env.production
+backend/.env
 backend/.env.local
 backend/.env.production
 pip-wheel-metadata/
