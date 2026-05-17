@@ -14,6 +14,7 @@ Enterprise-grade Retrosplenial Gateway Layer service with:
 import asyncio
 import json
 import logging
+import os
 import time
 import uuid
 from dataclasses import asdict, dataclass
@@ -181,7 +182,13 @@ class RGLCoreService:
 
     def _setup_middleware(self):
         """Configure middleware"""
-        _cors_origins = [o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(",") if o.strip()]
+        _cors_origins = [
+            o.strip()
+            for o in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000").split(
+                ","
+            )
+            if o.strip()
+        ]
         self.app.add_middleware(
             CORSMiddleware,
             allow_origins=_cors_origins,

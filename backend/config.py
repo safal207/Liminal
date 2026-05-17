@@ -83,7 +83,11 @@ class Settings(BaseModel):
                 )
         elif environment not in ("development", "test"):
             import warnings
-            if env_values["jwt_secret_key"] == "test-jwt-secret-key-for-local-development-only":
+
+            if (
+                env_values["jwt_secret_key"]
+                == "test-jwt-secret-key-for-local-development-only"
+            ):
                 warnings.warn(
                     "Using default JWT_SECRET_KEY. Set JWT_SECRET_KEY before going to production.",
                     UserWarning,

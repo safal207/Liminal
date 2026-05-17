@@ -38,9 +38,7 @@ log_to_file(f"Started: {datetime.now().isoformat()}")
 log_to_file(f"Output file: {OUTPUT_FILE}")
 
 
-def check_neo4j_connection(
-    uri=None, user=None, password=None
-):
+def check_neo4j_connection(uri=None, user=None, password=None):
     """Test Neo4j connection and database state"""
     uri = uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
     user = user or os.getenv("NEO4J_USER", "neo4j")
@@ -120,9 +118,7 @@ def check_neo4j_connection(
         return False
 
 
-def check_resonance_moments(
-    uri=None, user=None, password=None
-):
+def check_resonance_moments(uri=None, user=None, password=None):
     """Find resonance moments between users"""
     uri = uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
     user = user or os.getenv("NEO4J_USER", "neo4j")
@@ -170,9 +166,7 @@ def check_resonance_moments(
         return False
 
 
-def get_user_timeline(
-    user_id, uri=None, user=None, password=None
-):
+def get_user_timeline(user_id, uri=None, user=None, password=None):
     """Get timeline for a specific user"""
     uri = uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
     user = user or os.getenv("NEO4J_USER", "neo4j")
