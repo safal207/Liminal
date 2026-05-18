@@ -18,7 +18,7 @@ import logging
 import time
 import uuid
 from abc import ABC, abstractmethod
-from collections import defaultdict
+from collections import OrderedDict, defaultdict
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -352,11 +352,15 @@ class ConnectionPool:
         }
 
 
+_QUERY_CACHE_MAX_SIZE = 1000
+_SLOW_QUERY_MAX_SIZE = 1000
+
+
 class QueryOptimizer:
     """Query optimization and caching system."""
 
     def __init__(self):
-        self.query_cache: Dict[str, Any] = {}
+        self.query_cache: OrderedDict = OrderedDict()
         self.query_stats: Dict[str, Dict] = defaultdict(
             lambda: {
                 "count": 0,
@@ -384,11 +388,11 @@ class QueryOptimizer:
         if self._should_cache_query(query) and query_hash in self.query_cache:
             cache_entry = self.query_cache[query_hash]
             if time.time() - cache_entry["timestamp"] < cache_ttl:
+                self.query_cache.move_to_end(query_hash)
                 self.cache_hits += 1
                 self._update_cache_hit_rate()
                 return cache_entry["result"]
             else:
-                # Expired cache entry
                 del self.query_cache[query_hash]
 
         # Execute query
@@ -406,6 +410,8 @@ class QueryOptimizer:
                     "result": result,
                     "timestamp": time.time(),
                 }
+                while len(self.query_cache) > _QUERY_CACHE_MAX_SIZE:
+                    self.query_cache.popitem(last=False)
 
             self.cache_misses += 1
             self._update_cache_hit_rate()
@@ -427,9 +433,8 @@ class QueryOptimizer:
                     }
                 )
 
-                # Keep only recent slow queries
-                if len(self.slow_queries) > 100:
-                    self.slow_queries = self.slow_queries[-100:]
+                if len(self.slow_queries) > _SLOW_QUERY_MAX_SIZE:
+                    self.slow_queries = self.slow_queries[-_SLOW_QUERY_MAX_SIZE:]
 
             raise
 

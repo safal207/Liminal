@@ -13,11 +13,12 @@ import json
 import logging
 import time
 import uuid
+from collections import deque
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Deque, Dict, List, Optional, Union
 
 import structlog
 from prometheus_client import (
@@ -74,9 +75,12 @@ class TraceSpan:
         self.end_time = time.time()
         self.status = status
 
+    _MAX_LOGS_PER_SPAN = 100
+
     def log(self, event: str, **kwargs):
         """Add log entry to span."""
-        self.logs.append({"timestamp": time.time(), "event": event, **kwargs})
+        if len(self.logs) < self._MAX_LOGS_PER_SPAN:
+            self.logs.append({"timestamp": time.time(), "event": event, **kwargs})
 
     def set_tag(self, key: str, value: Any):
         """Set span tag."""
@@ -258,6 +262,9 @@ class PrometheusMetrics:
         )
 
 
+_ACTIVE_SPAN_TTL = 300.0  # seconds before a never-finished span is force-closed
+
+
 class DistributedTracer:
     """Distributed tracing implementation for request tracking."""
 
@@ -292,15 +299,28 @@ class DistributedTracer:
         """Finish a tracing span."""
         span.finish(status)
 
-        # Move from active to completed
         if span.span_id in self.active_spans:
             del self.active_spans[span.span_id]
 
         self.completed_spans.append(span)
 
-        # Maintain memory limit
         if len(self.completed_spans) > self.max_completed_spans:
             self.completed_spans = self.completed_spans[-self.max_completed_spans :]
+
+        self._purge_stale_active_spans()
+
+    def _purge_stale_active_spans(self):
+        """Force-close active spans that have been running too long."""
+        now = time.time()
+        stale = [
+            sid
+            for sid, s in self.active_spans.items()
+            if now - s.start_time > _ACTIVE_SPAN_TTL
+        ]
+        for sid in stale:
+            stale_span = self.active_spans.pop(sid)
+            stale_span.finish("timeout")
+            self.completed_spans.append(stale_span)
 
     @asynccontextmanager
     async def trace(
@@ -541,7 +561,7 @@ class MonitoringService:
         self.tracer = DistributedTracer()
         self.health_monitor = HealthMonitor()
         self.alert_manager = AlertManager()
-        self.business_metrics: List[BusinessMetric] = []
+        self.business_metrics: Deque[BusinessMetric] = deque(maxlen=5000)
 
         # Register default health checks
         self._register_default_health_checks()
@@ -634,12 +654,6 @@ class MonitoringService:
         )
 
         self.business_metrics.append(metric)
-
-        # Keep only recent metrics
-        cutoff = datetime.utcnow() - timedelta(hours=24)
-        self.business_metrics = [
-            m for m in self.business_metrics if m.timestamp > cutoff
-        ]
 
     async def get_monitoring_dashboard(self) -> Dict[str, Any]:
         """Get comprehensive monitoring dashboard data."""
