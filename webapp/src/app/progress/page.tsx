@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { api, ProgressResult, RISK_COLORS, TREND_META, fmtPct, fmtDate } from '@/lib/api';
 
 const CARD: React.CSSProperties = {
@@ -76,12 +76,12 @@ export default function ProgressPage() {
   const [days, setDays]         = useState(30);
   const [loading, setLoading]   = useState(false);
 
-  const load = async (d: number) => {
+  const load = useCallback(async (d: number) => {
     setLoading(true);
     try { setData(await api.progress(undefined, d)); } catch { setData(null); } finally { setLoading(false); }
-  };
+  }, []);
 
-  useEffect(() => { load(days); }, []);
+  useEffect(() => { load(days); }, [days, load]);
 
   const summary = data?.summary;
   const trendMeta = summary ? TREND_META[summary.trend] : null;

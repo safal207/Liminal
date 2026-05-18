@@ -186,11 +186,15 @@ class StateController {
       const insightPanel = document.getElementById('current-insight');
       const stateInfo = CONFIG.states[currentStep.state];
       
-      insightPanel.innerHTML = `
-        <h4>Утренний путь: ${stateInfo.label}</h4>
-        <p>${stateInfo.description}</p>
-        <p class="ritual-step">Шаг ${index + 1} из ${morningPath.length}</p>
-      `;
+      insightPanel.textContent = '';
+      const _h4 = document.createElement('h4');
+      _h4.textContent = `Утренний путь: ${stateInfo.label}`;
+      const _pDesc = document.createElement('p');
+      _pDesc.textContent = stateInfo.description;
+      const _pStep = document.createElement('p');
+      _pStep.className = 'ritual-step';
+      _pStep.textContent = `Шаг ${index + 1} из ${morningPath.length}`;
+      insightPanel.append(_h4, _pDesc, _pStep);
       
       // Переходим к следующему шагу через указанное время
       setTimeout(() => {

@@ -308,10 +308,12 @@ class GraphRenderer {
       
     // Отображаем инсайт в панели
     const insightPanel = document.getElementById('current-insight');
-    insightPanel.innerHTML = `
-      <h4>${state.label}</h4>
-      <p>${state.description}</p>
-    `;
+    insightPanel.textContent = '';
+    const _h4 = document.createElement('h4');
+    _h4.textContent = state.label;
+    const _p = document.createElement('p');
+    _p.textContent = state.description;
+    insightPanel.append(_h4, _p);
   }
   
   /**

@@ -276,7 +276,7 @@ class JWTAuthenticator:
                 session_id = payload.get("sid")
                 if session_id and session_id in self.active_sessions:
                     self.active_sessions[session_id].is_active = False
-            except:
+            except Exception:
                 pass  # Token might be malformed, but still revoke the hash
 
             safe_logger.info("JWT token revoked successfully")

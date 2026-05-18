@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
 from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Any, Dict, Optional
@@ -27,20 +28,24 @@ except (ImportError, AttributeError) as e:
     )
     CRYPTO_ENABLED = False
 
-    # Заглушка для CryptContext
-    class DummyCryptContext:
-        def __init__(self, **kwargs):
-            pass
+    # Fail closed: never silently accept all passwords when crypto is unavailable.
+    class _UnavailableCryptContext:
+        def __init__(self, error: Exception) -> None:
+            self._error = error
 
-        def verify(self, plain_password, hashed_password):
-            # В тестовом режиме всегда возвращаем True
-            return True
+        def verify(self, plain_password: str, hashed_password: str) -> bool:
+            raise RuntimeError(
+                "passlib/bcrypt failed to import; password verification is unavailable. "
+                f"Original error: {self._error}. Install with: pip install 'passlib[bcrypt]'"
+            ) from self._error
 
-        def hash(self, password):
-            # В тестовом режиме просто возвращаем хеш-подобную строку
-            return f"$2b$12$DUMMY_HASH_FOR_TESTING_{password[:5]}"
+        def hash(self, password: str) -> str:
+            raise RuntimeError(
+                "passlib/bcrypt failed to import; password hashing is unavailable. "
+                f"Original error: {self._error}. Install with: pip install 'passlib[bcrypt]'"
+            ) from self._error
 
-    pwd_context = DummyCryptContext()
+    pwd_context = _UnavailableCryptContext(e)
 
 logger = logging.getLogger("auth.jwt_utils")
 
@@ -178,23 +183,34 @@ def get_jwt_manager() -> JWTManager:
 
 jwt_manager = get_jwt_manager()
 
-# Временное хранилище пользователей (в продакшене заменить на БД)
-fake_users_db = {
-    "testuser": {
+# In-memory user store populated from environment variables.
+# Replace with a real database backend before production use.
+# Configure users by setting LIMINAL_TEST_USER_PASS and/or LIMINAL_ADMIN_PASS env vars.
+_test_user_pass = os.getenv("LIMINAL_TEST_USER_PASS", "")
+_admin_pass = os.getenv("LIMINAL_ADMIN_PASS", "")
+
+fake_users_db: Dict[str, Any] = {}
+if _test_user_pass:
+    fake_users_db["testuser"] = {
         "user_id": "testuser",
         "username": "testuser",
-        "hashed_password": jwt_manager.get_password_hash("testpass"),
+        "hashed_password": jwt_manager.get_password_hash(_test_user_pass),
         "email": "test@example.com",
         "is_active": True,
-    },
-    "admin": {
+    }
+if _admin_pass:
+    fake_users_db["admin"] = {
         "user_id": "admin",
         "username": "admin",
-        "hashed_password": jwt_manager.get_password_hash("admin123"),
+        "hashed_password": jwt_manager.get_password_hash(_admin_pass),
         "email": "admin@example.com",
         "is_active": True,
-    },
-}
+    }
+if not fake_users_db:
+    logger.warning(
+        "No users configured. Set LIMINAL_TEST_USER_PASS / LIMINAL_ADMIN_PASS env vars "
+        "or replace fake_users_db with a real database backend."
+    )
 
 
 def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:

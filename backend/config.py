@@ -67,26 +67,35 @@ class Settings(BaseModel):
             == "true",
         }
 
-        # In production, warn if using default secrets (but don't fail startup for CI)
-        if environment != "development":
+        if environment == "production":
             if (
                 env_values["jwt_secret_key"]
                 == "test-jwt-secret-key-for-local-development-only"
             ):
-                import warnings
+                raise RuntimeError(
+                    "JWT_SECRET_KEY must be set to a strong random secret in production. "
+                    "Set the JWT_SECRET_KEY environment variable."
+                )
+            if env_values["neo4j_password"] == "NewStrongPass123!":
+                raise RuntimeError(
+                    "NEO4J_PASSWORD must be changed from the default value in production. "
+                    "Set the NEO4J_PASSWORD environment variable."
+                )
+        elif environment not in ("development", "test"):
+            import warnings
 
+            if (
+                env_values["jwt_secret_key"]
+                == "test-jwt-secret-key-for-local-development-only"
+            ):
                 warnings.warn(
-                    "⚠️  WARNING: Using default JWT_SECRET_KEY in production! "
-                    "Set JWT_SECRET_KEY environment variable immediately!",
+                    "Using default JWT_SECRET_KEY. Set JWT_SECRET_KEY before going to production.",
                     UserWarning,
                     stacklevel=2,
                 )
             if env_values["neo4j_password"] == "NewStrongPass123!":
-                import warnings
-
                 warnings.warn(
-                    "⚠️  WARNING: Using default NEO4J_PASSWORD in production! "
-                    "Set NEO4J_PASSWORD environment variable immediately!",
+                    "Using default NEO4J_PASSWORD. Set NEO4J_PASSWORD before going to production.",
                     UserWarning,
                     stacklevel=2,
                 )
