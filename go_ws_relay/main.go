@@ -51,21 +51,32 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func broadcastToClients(message string) {
-    // broadcast to all clients
-
+	// Snapshot clients under lock so writes don't block new connections.
 	clientsMutex.Lock()
-	defer clientsMutex.Unlock()
-	
-	activeClients := 0
+	snapshot := make([]*websocket.Conn, 0, len(clients))
 	for client := range clients {
-		err := client.WriteMessage(websocket.TextMessage, []byte(message))
-		if err != nil {
-			log.Printf("Error broadcasting message: %v", err)
+		snapshot = append(snapshot, client)
+	}
+	clientsMutex.Unlock()
+
+	var failed []*websocket.Conn
+	activeClients := 0
+	for _, client := range snapshot {
+		if err := client.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
+			log.Printf("Error broadcasting to client: %v", err)
 			client.Close()
-			delete(clients, client)
+			failed = append(failed, client)
 		} else {
 			activeClients++
 		}
+	}
+
+	if len(failed) > 0 {
+		clientsMutex.Lock()
+		for _, client := range failed {
+			delete(clients, client)
+		}
+		clientsMutex.Unlock()
 	}
 	log.Printf("Broadcasted message to %d clients: %s", activeClients, message)
 }
