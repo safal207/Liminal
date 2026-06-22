@@ -39,6 +39,7 @@ Start with Liminal Pulse, Inner Council, emotional memory, and transition suppor
 ## Ecosystem entry points
 
 - [Developer Quickstart](docs/DEVELOPER_QUICKSTART.md)
+- [Liminal Agent Continuity Model v0.1](docs/architecture/LIMINAL_AGENT_CONTINUITY_MODEL_V0_1.md)
 - [Contributing Guide](CONTRIBUTING.md)
 - [Glossary](docs/GLOSSARY.md)
 - [Ecosystem map](ECOSYSTEM.md)
@@ -73,6 +74,7 @@ Start with Liminal Pulse, Inner Council, emotional memory, and transition suppor
 
 ## 📚 Оглавление
 - [📘 Developer Quickstart](docs/DEVELOPER_QUICKSTART.md)
+- [🧭 Liminal Agent Continuity Model v0.1](docs/architecture/LIMINAL_AGENT_CONTINUITY_MODEL_V0_1.md)
 - [🤝 Contributing Guide](CONTRIBUTING.md)
 - [📖 Glossary](docs/GLOSSARY.md)
 - [📘 Документация проекта](docs/README.md)
@@ -107,6 +109,8 @@ Start with Liminal Pulse, Inner Council, emotional memory, and transition suppor
 - `ML Pipeline (Python)`
 - `Meta-Liminal Engine` + `Maturity Engine`
 - Интерфейс на `Elm/Flutter`
+
+Публичная модель непрерывности для памяти и действий AI-агентов: [Liminal Agent Continuity Model v0.1](docs/architecture/LIMINAL_AGENT_CONTINUITY_MODEL_V0_1.md).
 
 ## 🔍 Статус
 
