@@ -1,20 +1,46 @@
 {
   "fixture_version": "0.1",
+  "revision": "2026-06-23.2",
   "title": "Framework-neutral DEFER and continuation conformance vector",
   "reference_clock": "2030-01-01T00:01:00Z",
   "hash_algorithm": "sha256",
   "canonicalization": "RFC8785-JCS",
+  "independent_generator": {
+    "path": "tools/generate_defer_continuation_vector.py",
+    "reads_fixture": false,
+    "purpose": "Independently reproduce canonical bytes and digests from the published profile inputs."
+  },
   "profiles": {
     "action_identity": "org.liminal.defer.action-identity.v0.1",
     "binding": "org.liminal.defer.binding.v0.1"
   },
+  "comparison_semantics": {
+    "normative_inputs": [
+      "action_identity_preimage canonical bytes",
+      "binding_preimage canonical bytes",
+      "action_ref",
+      "binding_digest",
+      "action_identity profile id",
+      "binding profile id",
+      "freshness state",
+      "consumption state"
+    ],
+    "framework_local_identifiers": [
+      "framework_local_action_id",
+      "framework_local_pending_id"
+    ],
+    "rule": "Framework-local identifiers may locate records but do not change profile comparability or normative digest equality."
+  },
   "base": {
+    "framework_local_action_id": "crewai-action-771",
+    "framework_local_pending_id": "crewai-pending-991",
     "action_identity_preimage": {
       "profile_id": "org.liminal.defer.action-identity.v0.1",
       "caller_id": "agent:deploy",
       "tool_id": "tool:deploy",
       "resource_scope": "tenant:acme/environment:production"
     },
+    "canonical_action_identity_bytes_utf8": "{\"caller_id\":\"agent:deploy\",\"profile_id\":\"org.liminal.defer.action-identity.v0.1\",\"resource_scope\":\"tenant:acme/environment:production\",\"tool_id\":\"tool:deploy\"}",
     "action_ref": "sha256:230aa461a30d7ae5bcb7f7507d36cbdb28c435e394a0612595f7480799adbf30",
     "binding_preimage": {
       "profile_id": "org.liminal.defer.binding.v0.1",
@@ -28,6 +54,7 @@
       },
       "target_state_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
     },
+    "canonical_binding_bytes_utf8": "{\"args\":{\"artifact\":\"api@sha256:abc123\",\"strategy\":\"rolling\"},\"policy_context\":{\"policy_id\":\"deploy-policy\",\"policy_version\":\"3\"},\"profile_id\":\"org.liminal.defer.binding.v0.1\",\"target_state_digest\":\"sha256:1111111111111111111111111111111111111111111111111111111111111111\"}",
     "binding_digest": "sha256:679eb4a0b8a16c4af6e2d4af23e8f450a8ee0733bc2aec6e4db55fa3b8113523",
     "decision_id": "dec_defer_001",
     "continuation_id": "cont_defer_001",
@@ -49,6 +76,7 @@
     {
       "case_id": "resume_unchanged_first",
       "mutation": null,
+      "expected_comparability": "COMPARABLE",
       "expected_outcome": "ACCEPT_EXECUTE_ONCE",
       "changed_dimension": null,
       "expected_additional_side_effects": 1
@@ -59,9 +87,23 @@
         "consumed": true,
         "same_resolved_record_available": true
       },
+      "expected_comparability": "COMPARABLE",
       "expected_outcome": "RETURN_EXISTING_RESOLUTION",
       "changed_dimension": null,
       "expected_additional_side_effects": 0
+    },
+    {
+      "case_id": "different_framework_local_ids_same_profile_bytes",
+      "mutation": {
+        "framework_local_action_id": "crewai-action-884",
+        "framework_local_pending_id": "crewai-pending-337"
+      },
+      "expected_action_ref_relation": "UNCHANGED",
+      "expected_binding_digest_relation": "UNCHANGED",
+      "expected_comparability": "COMPARABLE",
+      "expected_outcome": "ACCEPT_EXECUTE_ONCE",
+      "changed_dimension": "framework_local_identifiers",
+      "expected_additional_side_effects": 1
     },
     {
       "case_id": "mutate_caller",
@@ -69,6 +111,7 @@
         "caller_id": "agent:other"
       },
       "mutated_action_ref": "sha256:bd4bc06d923a2626ce6a6d67d2705ce46a1a7104ff1cd6d498a408868b57a40e",
+      "expected_comparability": "COMPARABLE",
       "expected_outcome": "ACTION_IDENTITY_MISMATCH",
       "changed_dimension": "caller_id",
       "expected_additional_side_effects": 0
@@ -79,6 +122,7 @@
         "tool_id": "tool:restart"
       },
       "mutated_action_ref": "sha256:0a8fd2ed6ddb2fa3928c53106a4603f26c28ba5ccbe896fc1b7e34fa157a7d23",
+      "expected_comparability": "COMPARABLE",
       "expected_outcome": "ACTION_IDENTITY_MISMATCH",
       "changed_dimension": "tool_id",
       "expected_additional_side_effects": 0
@@ -89,6 +133,7 @@
         "resource_scope": "tenant:acme/environment:staging"
       },
       "mutated_action_ref": "sha256:6d11062ed4304622a1540308a6a697af99c882b59c91ea097e7e4a26c818a417",
+      "expected_comparability": "COMPARABLE",
       "expected_outcome": "ACTION_IDENTITY_MISMATCH",
       "changed_dimension": "resource_scope",
       "expected_additional_side_effects": 0
@@ -99,6 +144,7 @@
         "args.strategy": "blue_green"
       },
       "mutated_binding_digest": "sha256:63ed68c6b0e33bf81ab49365e03961f7930c1129023a568d39aad65115948d9b",
+      "expected_comparability": "COMPARABLE",
       "expected_outcome": "BINDING_MISMATCH",
       "changed_dimension": "args",
       "expected_additional_side_effects": 0
@@ -109,6 +155,7 @@
         "policy_context.policy_version": "4"
       },
       "mutated_binding_digest": "sha256:2054d213d64dd73c3437d49fbaf49f84a5a6ec2816c700fca7c3b45ab8e710e6",
+      "expected_comparability": "COMPARABLE",
       "expected_outcome": "BINDING_MISMATCH",
       "changed_dimension": "policy_context",
       "expected_additional_side_effects": 0
@@ -119,24 +166,27 @@
         "target_state_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
       },
       "mutated_binding_digest": "sha256:90dfa47178a18d29c5304d737a78974585b03970078137ecaf5127ed5994aaea",
+      "expected_comparability": "COMPARABLE",
       "expected_outcome": "BINDING_MISMATCH",
       "changed_dimension": "target_state_digest",
       "expected_additional_side_effects": 0
     },
     {
-      "case_id": "action_identity_profile_mismatch",
+      "case_id": "same_framework_local_ids_different_action_profile",
       "mutation": {
         "action_identity_profile": "org.example.defer.action-identity.v9"
       },
+      "expected_comparability": "NOT_COMPARABLE",
       "expected_outcome": "NOT_COMPARABLE_PROFILE",
       "changed_dimension": "action_identity_profile",
       "expected_additional_side_effects": 0
     },
     {
-      "case_id": "binding_profile_mismatch",
+      "case_id": "same_framework_local_ids_different_binding_profile",
       "mutation": {
         "binding_profile": "org.example.defer.binding.v9"
       },
+      "expected_comparability": "NOT_COMPARABLE",
       "expected_outcome": "NOT_COMPARABLE_PROFILE",
       "changed_dimension": "binding_profile",
       "expected_additional_side_effects": 0
@@ -144,6 +194,7 @@
     {
       "case_id": "expired",
       "evaluation_time": "2030-01-01T00:05:01Z",
+      "expected_comparability": "COMPARABLE",
       "expected_outcome": "EXPIRED_CONTINUATION",
       "changed_dimension": "freshness",
       "expected_additional_side_effects": 0
@@ -154,10 +205,11 @@
         "consumed": true,
         "same_resolved_record_available": false
       },
+      "expected_comparability": "COMPARABLE",
       "expected_outcome": "ALREADY_CONSUMED",
       "changed_dimension": "consumption_state",
       "expected_additional_side_effects": 0
     }
   ],
-  "invariant": "A continuation is a locator for one frozen authorization context, not permission to execute whatever action is present at resume time."
+  "invariant": "A continuation can resume only against the same frozen authorization context under the same declared comparison profile; framework-local identifiers do not alter normative comparison semantics, and an unchanged retry must not create a second approval or side effect."
 }
