@@ -9,6 +9,7 @@
     "schema_version",
     "action_id",
     "run_id",
+    "purpose_registry",
     "purpose",
     "actor_id",
     "resource_scope",
@@ -56,17 +57,17 @@
         "maxLength": 512
       }
     },
+    "purpose_registry": {
+      "type": "string",
+      "const": "org.liminal.agent_chain_purpose/v0.1",
+      "description": "Registry defining the semantics of the purpose value. The registry identifier is signed as part of the causal context."
+    },
     "purpose": {
       "type": "string",
-      "enum": [
-        "tool_authorization",
-        "experiment_verification",
-        "answer_generation",
-        "memory_transfer",
-        "workflow_continuation",
-        "other"
-      ],
-      "description": "Declared function for which the output or action was produced."
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9_.-]*$",
+      "description": "Declared function for which the output or action was produced. Values are extensible; registered values are defined by purpose_registry."
     },
     "actor_id": {
       "type": "string",
