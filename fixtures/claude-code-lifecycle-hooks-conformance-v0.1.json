@@ -1,0 +1,210 @@
+{
+  "fixture_id": "org.liminal.claude_code.lifecycle_hooks/v0.1",
+  "status": "draft-conformance-vector",
+  "schema": "schemas/claude-code-lifecycle-hook-event-v0.1.schema.json",
+  "reference_clock": "2030-01-01T12:00:00Z",
+  "invariants": [
+    "Lifecycle events are ordered within a session by sequence.",
+    "PostCompact must causally reference one PreCompact event from the same session.",
+    "Repeated delivery of the same event_id is idempotent.",
+    "Recalled context is advisory context, not tool authorization.",
+    "A trajectory may span sessions, but authorization does not silently span sessions.",
+    "A stale workspace checkpoint must not overwrite newer workspace state."
+  ],
+  "baseline": [
+    {
+      "profile_version": "0.1",
+      "event_id": "evt_start_001",
+      "event_type": "SessionStart",
+      "session_id": "session_002",
+      "trajectory_id": "trajectory_alpha",
+      "correlation_id": "corr_alpha",
+      "causation_id": "evt_end_000",
+      "sequence": 0,
+      "delivery_attempt": 1,
+      "occurred_at": "2030-01-01T12:00:00Z",
+      "project": {
+        "cwd": "/workspace/api",
+        "project_root": "/workspace/api",
+        "repository_id": "github:example/api",
+        "workspace_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "payload": {
+        "start_reason": "resume",
+        "resume_checkpoint_ref": "checkpoint://trajectory_alpha/cp_009",
+        "parent_session_id": "session_001"
+      }
+    },
+    {
+      "profile_version": "0.1",
+      "event_id": "evt_precompact_010",
+      "event_type": "PreCompact",
+      "session_id": "session_002",
+      "trajectory_id": "trajectory_alpha",
+      "correlation_id": "corr_alpha",
+      "causation_id": "evt_start_001",
+      "sequence": 1,
+      "delivery_attempt": 1,
+      "occurred_at": "2030-01-01T12:20:00Z",
+      "project": {
+        "cwd": "/workspace/api",
+        "project_root": "/workspace/api",
+        "repository_id": "github:example/api",
+        "workspace_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "payload": {
+        "reason": "automatic_threshold",
+        "transcript_ref": "file:///sessions/session_002.jsonl",
+        "context_usage": {
+          "used_tokens": 185000,
+          "limit_tokens": 200000
+        },
+        "last_message_ref": "msg_884"
+      }
+    },
+    {
+      "profile_version": "0.1",
+      "event_id": "evt_postcompact_011",
+      "event_type": "PostCompact",
+      "session_id": "session_002",
+      "trajectory_id": "trajectory_alpha",
+      "correlation_id": "corr_alpha",
+      "causation_id": "evt_precompact_010",
+      "sequence": 2,
+      "delivery_attempt": 1,
+      "occurred_at": "2030-01-01T12:20:02Z",
+      "project": {
+        "cwd": "/workspace/api",
+        "project_root": "/workspace/api",
+        "repository_id": "github:example/api",
+        "workspace_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "payload": {
+        "precompact_event_id": "evt_precompact_010",
+        "summary_ref": "memory://provider-a/summaries/sum_011",
+        "available_tokens": 162000,
+        "compaction_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      }
+    },
+    {
+      "profile_version": "0.1",
+      "event_id": "evt_end_012",
+      "event_type": "SessionEnd",
+      "session_id": "session_002",
+      "trajectory_id": "trajectory_alpha",
+      "correlation_id": "corr_alpha",
+      "causation_id": "evt_postcompact_011",
+      "sequence": 3,
+      "delivery_attempt": 1,
+      "occurred_at": "2030-01-01T13:00:00Z",
+      "project": {
+        "cwd": "/workspace/api",
+        "project_root": "/workspace/api",
+        "repository_id": "github:example/api",
+        "workspace_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      },
+      "payload": {
+        "exit_reason": "normal",
+        "transcript_ref": "file:///sessions/session_002.jsonl",
+        "final_checkpoint_ref": "checkpoint://trajectory_alpha/cp_012"
+      }
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "ordered_lifecycle",
+      "mutation": null,
+      "expected_outcome": "ACCEPT",
+      "expected_checkpoint_writes": 2,
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "duplicate_precompact_delivery",
+      "mutation": {
+        "event_id": "evt_precompact_010",
+        "delivery_attempt": 2
+      },
+      "expected_outcome": "IDEMPOTENT_REPLAY",
+      "expected_additional_checkpoint_writes": 0,
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "postcompact_without_matching_precompact",
+      "mutation": {
+        "event_type": "PostCompact",
+        "causation_id": "evt_missing",
+        "payload.precompact_event_id": "evt_missing"
+      },
+      "expected_outcome": "REJECT_CAUSAL_MISMATCH",
+      "expected_additional_checkpoint_writes": 0,
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "postcompact_cross_session_reference",
+      "mutation": {
+        "session_id": "session_other",
+        "causation_id": "evt_precompact_010",
+        "payload.precompact_event_id": "evt_precompact_010"
+      },
+      "expected_outcome": "REJECT_SESSION_MISMATCH",
+      "expected_additional_checkpoint_writes": 0,
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "sequence_regression",
+      "mutation": {
+        "sequence": 1,
+        "event_id": "evt_end_bad"
+      },
+      "expected_outcome": "REJECT_OUT_OF_ORDER",
+      "expected_additional_checkpoint_writes": 0,
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "resume_with_changed_workspace",
+      "mutation": {
+        "event_type": "SessionStart",
+        "payload.start_reason": "resume",
+        "project.workspace_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+      },
+      "expected_outcome": "RESTART_REQUIRED",
+      "expected_additional_checkpoint_writes": 0,
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "external_context_injection",
+      "hook_result": {
+        "provider_id": "memory-provider-a",
+        "source_event_id": "evt_postcompact_011",
+        "context_ref": "memory://provider-a/recall/pack_77",
+        "context_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        "provenance": "retrieved-from-external-memory",
+        "authority": "context_only"
+      },
+      "expected_outcome": "ACCEPT_CONTEXT_ONLY",
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "external_context_attempts_authorization",
+      "hook_result": {
+        "provider_id": "memory-provider-a",
+        "source_event_id": "evt_postcompact_011",
+        "context_ref": "memory://provider-a/recall/pack_78",
+        "context_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+        "provenance": "retrieved-from-external-memory",
+        "authority": "tool_authorization"
+      },
+      "expected_outcome": "REJECT_INVALID_AUTHORITY",
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "precompact_hook_timeout",
+      "hook_failure": {
+        "type": "timeout",
+        "timeout_ms": 5000
+      },
+      "expected_outcome": "CONTINUE_BUILT_IN_COMPACTION_WITH_DIAGNOSTIC",
+      "expected_authorization_changes": 0
+    }
+  ]
+}
