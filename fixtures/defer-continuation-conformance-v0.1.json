@@ -1,0 +1,163 @@
+{
+  "fixture_version": "0.1",
+  "title": "Framework-neutral DEFER and continuation conformance vector",
+  "reference_clock": "2030-01-01T00:01:00Z",
+  "hash_algorithm": "sha256",
+  "canonicalization": "RFC8785-JCS",
+  "profiles": {
+    "action_identity": "org.liminal.defer.action-identity.v0.1",
+    "binding": "org.liminal.defer.binding.v0.1"
+  },
+  "base": {
+    "action_identity_preimage": {
+      "profile_id": "org.liminal.defer.action-identity.v0.1",
+      "caller_id": "agent:deploy",
+      "tool_id": "tool:deploy",
+      "resource_scope": "tenant:acme/environment:production"
+    },
+    "action_ref": "sha256:230aa461a30d7ae5bcb7f7507d36cbdb28c435e394a0612595f7480799adbf30",
+    "binding_preimage": {
+      "profile_id": "org.liminal.defer.binding.v0.1",
+      "args": {
+        "artifact": "api@sha256:abc123",
+        "strategy": "rolling"
+      },
+      "policy_context": {
+        "policy_id": "deploy-policy",
+        "policy_version": "3"
+      },
+      "target_state_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "binding_digest": "sha256:679eb4a0b8a16c4af6e2d4af23e8f450a8ee0733bc2aec6e4db55fa3b8113523",
+    "decision_id": "dec_defer_001",
+    "continuation_id": "cont_defer_001",
+    "checkpoint_ref": "checkpoint://run_001/action_001",
+    "issued_at": "2030-01-01T00:00:00Z",
+    "expires_at": "2030-01-01T00:05:00Z",
+    "consumed": false
+  },
+  "terminal_outcomes": [
+    "ACCEPT_EXECUTE_ONCE",
+    "RETURN_EXISTING_RESOLUTION",
+    "ACTION_IDENTITY_MISMATCH",
+    "BINDING_MISMATCH",
+    "NOT_COMPARABLE_PROFILE",
+    "EXPIRED_CONTINUATION",
+    "ALREADY_CONSUMED"
+  ],
+  "cases": [
+    {
+      "case_id": "resume_unchanged_first",
+      "mutation": null,
+      "expected_outcome": "ACCEPT_EXECUTE_ONCE",
+      "changed_dimension": null,
+      "expected_additional_side_effects": 1
+    },
+    {
+      "case_id": "retry_unchanged_after_resolution",
+      "mutation": {
+        "consumed": true,
+        "same_resolved_record_available": true
+      },
+      "expected_outcome": "RETURN_EXISTING_RESOLUTION",
+      "changed_dimension": null,
+      "expected_additional_side_effects": 0
+    },
+    {
+      "case_id": "mutate_caller",
+      "mutation": {
+        "caller_id": "agent:other"
+      },
+      "mutated_action_ref": "sha256:bd4bc06d923a2626ce6a6d67d2705ce46a1a7104ff1cd6d498a408868b57a40e",
+      "expected_outcome": "ACTION_IDENTITY_MISMATCH",
+      "changed_dimension": "caller_id",
+      "expected_additional_side_effects": 0
+    },
+    {
+      "case_id": "mutate_tool",
+      "mutation": {
+        "tool_id": "tool:restart"
+      },
+      "mutated_action_ref": "sha256:0a8fd2ed6ddb2fa3928c53106a4603f26c28ba5ccbe896fc1b7e34fa157a7d23",
+      "expected_outcome": "ACTION_IDENTITY_MISMATCH",
+      "changed_dimension": "tool_id",
+      "expected_additional_side_effects": 0
+    },
+    {
+      "case_id": "mutate_scope",
+      "mutation": {
+        "resource_scope": "tenant:acme/environment:staging"
+      },
+      "mutated_action_ref": "sha256:6d11062ed4304622a1540308a6a697af99c882b59c91ea097e7e4a26c818a417",
+      "expected_outcome": "ACTION_IDENTITY_MISMATCH",
+      "changed_dimension": "resource_scope",
+      "expected_additional_side_effects": 0
+    },
+    {
+      "case_id": "mutate_args",
+      "mutation": {
+        "args.strategy": "blue_green"
+      },
+      "mutated_binding_digest": "sha256:63ed68c6b0e33bf81ab49365e03961f7930c1129023a568d39aad65115948d9b",
+      "expected_outcome": "BINDING_MISMATCH",
+      "changed_dimension": "args",
+      "expected_additional_side_effects": 0
+    },
+    {
+      "case_id": "mutate_policy",
+      "mutation": {
+        "policy_context.policy_version": "4"
+      },
+      "mutated_binding_digest": "sha256:2054d213d64dd73c3437d49fbaf49f84a5a6ec2816c700fca7c3b45ab8e710e6",
+      "expected_outcome": "BINDING_MISMATCH",
+      "changed_dimension": "policy_context",
+      "expected_additional_side_effects": 0
+    },
+    {
+      "case_id": "mutate_target_state",
+      "mutation": {
+        "target_state_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      "mutated_binding_digest": "sha256:90dfa47178a18d29c5304d737a78974585b03970078137ecaf5127ed5994aaea",
+      "expected_outcome": "BINDING_MISMATCH",
+      "changed_dimension": "target_state_digest",
+      "expected_additional_side_effects": 0
+    },
+    {
+      "case_id": "action_identity_profile_mismatch",
+      "mutation": {
+        "action_identity_profile": "org.example.defer.action-identity.v9"
+      },
+      "expected_outcome": "NOT_COMPARABLE_PROFILE",
+      "changed_dimension": "action_identity_profile",
+      "expected_additional_side_effects": 0
+    },
+    {
+      "case_id": "binding_profile_mismatch",
+      "mutation": {
+        "binding_profile": "org.example.defer.binding.v9"
+      },
+      "expected_outcome": "NOT_COMPARABLE_PROFILE",
+      "changed_dimension": "binding_profile",
+      "expected_additional_side_effects": 0
+    },
+    {
+      "case_id": "expired",
+      "evaluation_time": "2030-01-01T00:05:01Z",
+      "expected_outcome": "EXPIRED_CONTINUATION",
+      "changed_dimension": "freshness",
+      "expected_additional_side_effects": 0
+    },
+    {
+      "case_id": "replay_after_consume_without_existing_resolution_lookup",
+      "mutation": {
+        "consumed": true,
+        "same_resolved_record_available": false
+      },
+      "expected_outcome": "ALREADY_CONSUMED",
+      "changed_dimension": "consumption_state",
+      "expected_additional_side_effects": 0
+    }
+  ],
+  "invariant": "A continuation is a locator for one frozen authorization context, not permission to execute whatever action is present at resume time."
+}
