@@ -1,0 +1,204 @@
+{
+  "fixture_id": "org.liminal.codex.operational_continuity/v0.1",
+  "schema": "schemas/codex-operational-checkpoint-v0.1.schema.json",
+  "status": "draft-conformance-vector",
+  "reference_clock": "2030-01-01T10:00:00Z",
+  "invariants": [
+    "The recent operational tail is bounded to at most five structured steps.",
+    "A checkpoint is bound to repository and workspace state.",
+    "Duplicate resume of the same checkpoint is idempotent.",
+    "A checkpoint never carries tool authorization forward.",
+    "Completion claims must be supported by verification evidence.",
+    "Rejected approaches and active constraints survive compaction."
+  ],
+  "base_checkpoint": {
+    "profile_version": "0.1",
+    "checkpoint_id": "cp_codex_042",
+    "session_id": "session_codex_008",
+    "trajectory_id": "trajectory_refactor_17",
+    "parent_checkpoint_id": "cp_codex_041",
+    "created_at": "2030-01-01T10:00:00Z",
+    "trigger": "auto_compact",
+    "workspace": {
+      "cwd": "/workspace/api",
+      "repository_id": "github:example/api",
+      "git_head": "abcdef1234567890",
+      "dirty_state_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "task": {
+      "goal": "Fix the runtime data-path bug without applying a local symptom patch.",
+      "acceptance_criteria": [
+        "Root cause is fixed in the owning module.",
+        "Existing user changes are preserved.",
+        "Targeted tests pass."
+      ],
+      "current_phase": "implementation_after_root_cause_analysis"
+    },
+    "operational_tail": [
+      {
+        "step_id": "step_101",
+        "step_type": "user_instruction",
+        "content_ref": "transcript://session_codex_008/message_101",
+        "content_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "summary": "Do not patch the UI symptom; trace and fix the runtime data path."
+      },
+      {
+        "step_id": "step_102",
+        "step_type": "decision",
+        "content_ref": "transcript://session_codex_008/decision_102",
+        "content_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+        "summary": "Approach A was rejected because it duplicates ownership logic."
+      },
+      {
+        "step_id": "step_103",
+        "step_type": "tool_call",
+        "content_ref": "tool://read/src/runtime/owner.ts",
+        "content_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        "summary": "Inspected the runtime owner module."
+      },
+      {
+        "step_id": "step_104",
+        "step_type": "tool_result",
+        "content_ref": "artifact://analysis/root-cause-104",
+        "content_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        "summary": "Root cause localized to stale owner-state propagation."
+      },
+      {
+        "step_id": "step_105",
+        "step_type": "assistant_intent",
+        "content_ref": "transcript://session_codex_008/intent_105",
+        "content_digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+        "summary": "Patch owner-state propagation, then run the targeted runtime test."
+      }
+    ],
+    "constraints": {
+      "must": [
+        "Preserve existing user changes.",
+        "Verify through the targeted runtime test."
+      ],
+      "must_not": [
+        "Do not edit the UI fallback module.",
+        "Do not reset unrelated files."
+      ],
+      "rejected_approaches": [
+        {
+          "approach": "Patch the UI fallback module.",
+          "reason": "It masks the symptom and duplicates runtime ownership logic."
+        }
+      ]
+    },
+    "touched_resources": [
+      {
+        "resource": "src/runtime/owner.ts",
+        "status": "read",
+        "digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777"
+      },
+      {
+        "resource": "src/ui/fallback.ts",
+        "status": "read",
+        "digest": "sha256:8888888888888888888888888888888888888888888888888888888888888888"
+      }
+    ],
+    "verification": {
+      "required": ["npm test -- runtime-owner"],
+      "completed": [],
+      "pending": ["npm test -- runtime-owner"]
+    },
+    "next_action": {
+      "description": "Modify stale owner-state propagation in src/runtime/owner.ts.",
+      "target_ref": "file://src/runtime/owner.ts",
+      "blocked_by": []
+    },
+    "authority": "context_only"
+  },
+  "cases": [
+    {
+      "case_id": "same_workspace_continue",
+      "mutation": null,
+      "expected_outcome": "CONTINUE",
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "duplicate_resume",
+      "mutation": {
+        "checkpoint_id": "cp_codex_042",
+        "resume_attempt": 2
+      },
+      "expected_outcome": "IDEMPOTENT_REPLAY",
+      "expected_duplicate_tool_calls": 0,
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "changed_git_head",
+      "mutation": {
+        "workspace.git_head": "fedcba0987654321"
+      },
+      "expected_outcome": "RESTART_REQUIRED",
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "changed_dirty_state",
+      "mutation": {
+        "workspace.dirty_state_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+      },
+      "expected_outcome": "REVALIDATE_WORKSPACE",
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "missing_parent_checkpoint",
+      "mutation": {
+        "parent_checkpoint_id": "cp_missing"
+      },
+      "expected_outcome": "REJECT_LINEAGE_MISMATCH",
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "tail_reduced_to_vague_summary",
+      "mutation": {
+        "operational_tail": [
+          {
+            "step_id": "step_summary",
+            "step_type": "assistant_intent",
+            "content_ref": "summary://generic",
+            "content_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "summary": "Continue fixing the bug."
+          }
+        ]
+      },
+      "expected_outcome": "INSUFFICIENT_OPERATIONAL_CONTINUITY",
+      "missing_dimensions": [
+        "latest_user_constraint",
+        "rejected_approach",
+        "tool_result",
+        "verification_target"
+      ],
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "rejected_approach_lost",
+      "mutation": {
+        "constraints.rejected_approaches": []
+      },
+      "expected_outcome": "INSUFFICIENT_OPERATIONAL_CONTINUITY",
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "unverified_completion_claim",
+      "mutation": {
+        "verification.completed": ["npm test -- runtime-owner"],
+        "verification.pending": [],
+        "evidence_ref": null
+      },
+      "expected_outcome": "REJECT_UNVERIFIED_COMPLETION",
+      "expected_authorization_changes": 0
+    },
+    {
+      "case_id": "checkpoint_requests_tool_authorization",
+      "mutation": {
+        "authority": "tool_authorization"
+      },
+      "expected_outcome": "REJECT_INVALID_AUTHORITY",
+      "expected_authorization_changes": 0
+    }
+  ]
+}
