@@ -40,6 +40,9 @@
 - [DEFER and Continuation Conformance v0.1](interop/DEFER_CONTINUATION_CONFORMANCE_V0_1.md)
 - [DEFER Continuation Machine-Readable Fixture v0.1](../fixtures/defer-continuation-conformance-v0.1.json)
 - [Independent DEFER Conformance Generator](../tools/generate_defer_continuation_vector.py)
+- [Claude Code Lifecycle Hook Interoperability Profile v0.1](interop/CLAUDE_CODE_LIFECYCLE_HOOK_PROFILE_V0_1.md)
+- [Claude Code Lifecycle Hook Event Schema v0.1](../schemas/claude-code-lifecycle-hook-event-v0.1.schema.json)
+- [Claude Code Lifecycle Hook Conformance Fixture v0.1](../fixtures/claude-code-lifecycle-hooks-conformance-v0.1.json)
 
 ## Research — "что изучаем"
 Глубокие исследования, технические архитектуры и экспериментальные концепции. Изучайте эту секцию, когда нужно принять инженерные решения или вдохновиться будущими направлениями развития.
