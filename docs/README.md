@@ -28,6 +28,7 @@
 - [Liminal Agent Continuity Model v0.1](architecture/LIMINAL_AGENT_CONTINUITY_MODEL_V0_1.md)
 - [Liminal Architectural Principles v0.1](architecture/LIMINAL_ARCHITECTURAL_PRINCIPLES_V0_1.md)
 - [Liminal Memory Helix and Homeostasis Model v0.1](architecture/LIMINAL_MEMORY_HELIX_AND_HOMEOSTASIS_MODEL_V0_1.md)
+- [Liminal Causal Stem Model v0.1](architecture/LIMINAL_CAUSAL_STEM_MODEL_V0_1.md)
 
 ## Interoperability — "как соединяем экосистемы"
 Черновики нейтральных схем и профилей совместимости между LIMINAL и внешними agent/runtime/attestation системами.
