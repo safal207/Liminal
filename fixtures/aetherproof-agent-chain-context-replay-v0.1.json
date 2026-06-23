@@ -1,0 +1,54 @@
+{
+  "fixture_id": "org.liminal.aetherproof.agent_chain_context.replay/v0.1",
+  "status": "mandatory-conformance-vector",
+  "canonicalization": "RFC8785-JCS",
+  "digest": "SHA-256",
+  "receipt_profile": "aetherproof-receipt-v1.2-native-signed-extensions",
+  "base_context": {
+    "schema_version": "0.1",
+    "action_id": "act_042",
+    "run_id": "run_017",
+    "parent_event_id": "evt_991",
+    "policy_decision_id": "dec_204",
+    "evidence_refs": ["file_88", "mem_12"],
+    "purpose_registry": "org.liminal.agent_chain_purpose/v0.1",
+    "purpose": "tool_authorization",
+    "actor_id": "agent_deployer",
+    "resource_scope": "tenant/acme/repository/api/environment/production"
+  },
+  "cases": [
+    {
+      "case_id": "baseline_valid",
+      "runtime_expectation": {
+        "policy_decision_id": "dec_204"
+      },
+      "expected_core_verification": "VALID",
+      "expected_context_verification": "VALID"
+    },
+    {
+      "case_id": "mandatory_policy_decision_replay_reject",
+      "runtime_expectation": {
+        "policy_decision_id": "dec_205"
+      },
+      "expected_core_verification": "VALID",
+      "expected_context_verification": "CONTEXT_MISMATCH",
+      "reason": "A valid receipt must not be replayed under a different policy decision."
+    },
+    {
+      "case_id": "purpose_registry_mismatch",
+      "mutation": {
+        "purpose_registry": "example.other.registry/v1"
+      },
+      "expected_context_verification": "INVALID_EXTENSION_SCHEMA"
+    },
+    {
+      "case_id": "purpose_change",
+      "mutation": {
+        "purpose": "answer_generation"
+      },
+      "expected_context_commitment_relation": "DIFFERENT",
+      "expected_context_verification": "CONTEXT_MISMATCH"
+    }
+  ],
+  "invariant": "Integrity proves that the receipt was not changed. Causal binding proves that the receipt was not moved."
+}
