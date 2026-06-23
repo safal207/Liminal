@@ -39,6 +39,7 @@
 - [AetherProof Mandatory Replay Fixture v0.1](../fixtures/aetherproof-agent-chain-context-replay-v0.1.json)
 - [DEFER and Continuation Conformance v0.1](interop/DEFER_CONTINUATION_CONFORMANCE_V0_1.md)
 - [DEFER Continuation Machine-Readable Fixture v0.1](../fixtures/defer-continuation-conformance-v0.1.json)
+- [Independent DEFER Conformance Generator](../tools/generate_defer_continuation_vector.py)
 
 ## Research — "что изучаем"
 Глубокие исследования, технические архитектуры и экспериментальные концепции. Изучайте эту секцию, когда нужно принять инженерные решения или вдохновиться будущими направлениями развития.
