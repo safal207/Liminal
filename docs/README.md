@@ -33,6 +33,8 @@
 
 - [AetherProof × LIMINAL Agent Chain Context Extension v0.1](interop/AETHERPROOF_AGENT_CHAIN_CONTEXT_V0_1.md)
 - [Agent Chain Context JSON Schema v0.1](../schemas/agent-chain-context-v0.1.schema.json)
+- [DEFER and Continuation Conformance v0.1](interop/DEFER_CONTINUATION_CONFORMANCE_V0_1.md)
+- [DEFER Continuation Machine-Readable Fixture v0.1](../fixtures/defer-continuation-conformance-v0.1.json)
 
 ## Research — "что изучаем"
 Глубокие исследования, технические архитектуры и экспериментальные концепции. Изучайте эту секцию, когда нужно принять инженерные решения или вдохновиться будущими направлениями развития.
