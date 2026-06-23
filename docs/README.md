@@ -41,7 +41,7 @@
 - [Риски и безопасность](research/RISK_ANALYSIS_2025.md) · [Расширенный анализ рисков](research/ADVANCED_RISK_ANALYSIS_2025.md) · [Lipsits Risk](research/LIPSITS_RISK_ANALYSIS_2025.md)
 - [Этические и DevOps исследования](research/AI_ETHICS_2025.md) · [Совместимость DevOps](research/DEVOPS_COMPATIBILITY_ANALYSIS_2025.md)
 - [Квантовая агентная архитектура](research/QUANTUM_AGENT_SPEC.md) · [Строковая теория](research/QUANTUM_STRING_THEORY_ANALYSIS_2025.md) · [Meta Cvants](research/meta_cvants.md)
-- [Инженерные руководства](research/DOCKER_DEPLOYMENT.md) · [Multi-LLM Quickstart](research/MULTI-LLM_QUICKSTART.md)
+- [Инженерные руководства](research/DOCKER_DEPLOYMENT.md) · [Multi-LLM Quickstart](research/MULTI-LLM-QUICKSTART.md)
 - [OpenAI Adapter Check (03.08.2025)](research/ADAPTER_CHECK_RESULTS_20250803.md) · [Neo4j snapshot note](research/NEO4J_QUERY_NOTE.md) · [Экспорт графа](research/neo4j_query_out.json)
 - [SOMA: философия и запуск](research/README_SOMA.md)
 - [Дополнительные концепции](research/agent.md) · [Cubit](research/cubit.md) · [Miro проект](research/miro_proect.md)
