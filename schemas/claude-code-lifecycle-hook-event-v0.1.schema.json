@@ -1,0 +1,267 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/safal207/Liminal/blob/main/schemas/claude-code-lifecycle-hook-event-v0.1.schema.json",
+  "title": "Claude Code Lifecycle Hook Event v0.1",
+  "description": "Framework-neutral lifecycle event envelope for external memory and continuity layers around Claude Code compaction and session boundaries.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profile_version",
+    "event_id",
+    "event_type",
+    "session_id",
+    "sequence",
+    "occurred_at",
+    "project",
+    "payload"
+  ],
+  "properties": {
+    "profile_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "SessionStart",
+        "PreCompact",
+        "PostCompact",
+        "SessionEnd"
+      ]
+    },
+    "session_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "trajectory_id": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 256,
+      "default": null,
+      "description": "Optional lineage identifier spanning related sessions without implying authorization continuity."
+    },
+    "correlation_id": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 256,
+      "default": null
+    },
+    "causation_id": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 256,
+      "default": null,
+      "description": "Immediate causal predecessor event, if applicable."
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "delivery_attempt": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 1
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cwd"],
+      "properties": {
+        "cwd": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "project_root": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 2048,
+          "default": null
+        },
+        "repository_id": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 512,
+          "default": null
+        },
+        "workspace_digest": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "default": null
+        }
+      }
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "SessionStart"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["start_reason"],
+            "properties": {
+              "start_reason": {
+                "type": "string",
+                "enum": ["new", "resume", "fork", "restart"]
+              },
+              "resume_checkpoint_ref": {
+                "type": ["string", "null"],
+                "maxLength": 2048,
+                "default": null
+              },
+              "parent_session_id": {
+                "type": ["string", "null"],
+                "maxLength": 256,
+                "default": null
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "PreCompact"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["reason", "transcript_ref", "context_usage"],
+            "properties": {
+              "reason": {
+                "type": "string",
+                "enum": ["automatic_threshold", "manual", "provider_limit", "other"]
+              },
+              "transcript_ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "context_usage": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["used_tokens"],
+                "properties": {
+                  "used_tokens": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "limit_tokens": {
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "default": null
+                  }
+                }
+              },
+              "last_message_ref": {
+                "type": ["string", "null"],
+                "maxLength": 512,
+                "default": null
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "PostCompact"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["precompact_event_id", "summary_ref", "available_tokens"],
+            "properties": {
+              "precompact_event_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              },
+              "summary_ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "available_tokens": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "compaction_digest": {
+                "type": ["string", "null"],
+                "pattern": "^sha256:[a-f0-9]{64}$",
+                "default": null
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "SessionEnd"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "payload": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["exit_reason", "transcript_ref"],
+            "properties": {
+              "exit_reason": {
+                "type": "string",
+                "enum": ["normal", "user_exit", "interrupt", "error", "quota", "provider_limit", "unknown"]
+              },
+              "transcript_ref": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              },
+              "final_checkpoint_ref": {
+                "type": ["string", "null"],
+                "maxLength": 2048,
+                "default": null
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
