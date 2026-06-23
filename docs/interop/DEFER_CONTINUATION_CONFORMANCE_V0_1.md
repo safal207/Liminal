@@ -17,6 +17,12 @@ The machine-readable fixture is:
 
 - [`fixtures/defer-continuation-conformance-v0.1.json`](../../fixtures/defer-continuation-conformance-v0.1.json)
 
+An independent dependency-free generator is:
+
+- [`tools/generate_defer_continuation_vector.py`](../../tools/generate_defer_continuation_vector.py)
+
+The generator intentionally does not read the fixture. It derives canonical bytes and digests independently from the published profile inputs.
+
 ---
 
 ## 2. Frozen authorization context
@@ -85,6 +91,28 @@ Preimage:
 
 The preimage is canonicalized with RFC 8785 JCS and hashed with SHA-256.
 
+### 2.3 Framework-local identifiers
+
+A framework may maintain local identifiers such as:
+
+```text
+framework_local_action_id
+framework_local_pending_id
+framework_local_continuation_record_id
+```
+
+These identifiers may locate framework records, but they are not part of the normative action-identity or binding preimages unless a future comparison profile explicitly says otherwise.
+
+Therefore:
+
+- the same local identifier under a different profile is `NOT_COMPARABLE_PROFILE`;
+- different local identifiers with the same profile IDs, canonical preimage bytes, and digests remain comparable;
+- a framework may rename or migrate a local record without changing the portable conformance identity.
+
+### Invariant
+
+> Framework-local names may locate records, but they must not redefine portable comparison semantics.
+
 ---
 
 ## 3. DEFER record
@@ -106,6 +134,8 @@ expires_at
 consumed or consumed_at
 ```
 
+It may additionally expose framework-local record identifiers, provided they are clearly marked non-normative for the declared comparison profiles.
+
 The implementation must persist the frozen context and blocked checkpoint before returning control to the agent.
 
 ---
@@ -121,6 +151,8 @@ A resume implementation should evaluate in this order:
 5. recompute and compare binding context;
 6. re-check policy-required executor conditions;
 7. execute the side effect at most once.
+
+Framework-local identifiers may be used to find records before this procedure, but they must not replace any normative comparison above.
 
 No external side effect may occur before these checks complete.
 
@@ -158,20 +190,37 @@ A minimal implementation should run:
 
 1. unchanged first resume;
 2. unchanged idempotent retry;
-3. changed caller;
-4. changed tool;
-5. changed resource scope;
-6. changed arguments;
-7. changed policy version;
-8. changed target-state digest;
-9. action-identity profile mismatch;
-10. binding profile mismatch;
-11. expired continuation;
-12. replay after consumption.
+3. different framework-local IDs with identical profile bytes and digests;
+4. changed caller;
+5. changed tool;
+6. changed resource scope;
+7. changed arguments;
+8. changed policy version;
+9. changed target-state digest;
+10. same framework-local IDs with an action-identity profile mismatch;
+11. same framework-local IDs with a binding profile mismatch;
+12. expired continuation;
+13. replay after consumption.
 
 Every reject case must assert zero additional side effects.
 
 When the runtime can identify the changed dimension, the failure record should name it.
+
+### Portable-profile boundary cases
+
+Two cases are mandatory for framework neutrality:
+
+```text
+same local ID + different profile ID
+→ NOT_COMPARABLE_PROFILE
+```
+
+```text
+different local ID + same profile bytes + same digests
+→ COMPARABLE
+```
+
+This avoids accidentally creating a universal framework action-ID namespace while preserving reproducible comparison behavior.
 
 ---
 
@@ -195,22 +244,49 @@ This is distinct from an unknown replay of an already-consumed continuation, whi
 
 ---
 
-## 9. Framework neutrality
+## 9. Independent generator rule
+
+The fixture, prose note, and generator should be independently checkable.
+
+The generator:
+
+- does not read the fixture;
+- starts from the published semantic inputs and profile IDs;
+- emits canonical UTF-8 preimage bytes;
+- emits SHA-256 digests for the baseline and one-field mutations;
+- uses only the Python standard library.
+
+A conforming implementation should be able to compare its own output against both the fixture and generator output.
+
+### Invariant
+
+> Conformance is stronger when no single artifact can pass only by reproducing its own hidden assumptions.
+
+---
+
+## 10. Framework neutrality
 
 The vector does not prescribe:
 
 - one policy engine;
 - one orchestration framework;
 - one checkpoint storage implementation;
-- one action-ID syntax;
+- one framework-local action-ID syntax;
 - one continuation-token security mechanism.
 
-It standardizes observable comparison and side-effect behavior.
+It standardizes:
+
+- reproducible canonical preimage bytes;
+- action and binding digests;
+- declared profile identifiers;
+- terminal mismatch classifications;
+- side-effect behavior;
+- the boundary between portable profile semantics and framework-local storage names.
 
 The same fixture can be adapted to CrewAI, AutoGen, OpenHands, LangGraph, or another agent runtime.
 
 ---
 
-## 10. Canonical principle
+## 11. Canonical principle
 
-> Deferred authorization freezes both identity and binding. Resume is valid only when both remain comparable, fresh, unspent, and exactly matched.
+> Deferred authorization freezes both identity and binding. Resume is valid only when both remain comparable, fresh, unspent, and exactly matched; framework-local identifiers do not alter the declared comparison profile.
