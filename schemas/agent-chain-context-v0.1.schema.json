@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/safal207/Liminal/blob/main/schemas/agent-chain-context-v0.1.schema.json",
+  "title": "Agent Chain Context Extension v0.1",
+  "description": "Provider-neutral causal context bound to an AI execution receipt.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "action_id",
+    "run_id",
+    "purpose",
+    "actor_id",
+    "resource_scope",
+    "evidence_refs"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "action_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Stable identity or digest of the exact action envelope."
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Identifier of the execution run containing this action."
+    },
+    "parent_event_id": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 256,
+      "default": null,
+      "description": "Immediate causal parent event, if one exists."
+    },
+    "policy_decision_id": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 256,
+      "default": null,
+      "description": "Decision or authorization record governing this action."
+    },
+    "evidence_refs": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "description": "Stable references to evidence used by the action or decision. Values must be lexicographically sorted before canonicalization.",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 512
+      }
+    },
+    "purpose": {
+      "type": "string",
+      "enum": [
+        "tool_authorization",
+        "experiment_verification",
+        "answer_generation",
+        "memory_transfer",
+        "workflow_continuation",
+        "other"
+      ],
+      "description": "Declared function for which the output or action was produced."
+    },
+    "actor_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Agent, human, service, or composite actor responsible for the action."
+    },
+    "resource_scope": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "description": "Workspace, tenant, repository, account, environment, or other bounded resource scope."
+    }
+  }
+}
