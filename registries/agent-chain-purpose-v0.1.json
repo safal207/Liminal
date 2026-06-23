@@ -1,0 +1,32 @@
+{
+  "registry_id": "org.liminal.agent_chain_purpose/v0.1",
+  "status": "draft",
+  "updated_at": "2026-06-23",
+  "values": [
+    {
+      "value": "answer_generation",
+      "meaning": "The receipt binds output produced to answer or explain, without granting tool authority."
+    },
+    {
+      "value": "experiment_verification",
+      "meaning": "The receipt binds evidence produced to verify an experiment or test result."
+    },
+    {
+      "value": "memory_transfer",
+      "meaning": "The receipt binds an explicit transfer or ratification of memory across a scope boundary."
+    },
+    {
+      "value": "tool_authorization",
+      "meaning": "The receipt binds output to a decision about one exact tool-action envelope."
+    },
+    {
+      "value": "workflow_continuation",
+      "meaning": "The receipt binds a continuation to one frozen authorization context."
+    }
+  ],
+  "extension_policy": {
+    "syntax": "^[a-z][a-z0-9_.-]*$",
+    "unknown_values": "Schema-valid but policy-dependent. A verifier requiring registered semantics MUST return UNSUPPORTED_PURPOSE.",
+    "registration_rule": "New values require a stable meaning, non-overlap justification, and at least one conformance example."
+  }
+}
