@@ -26,6 +26,7 @@
 Публичные архитектурные модели и общий язык для памяти, доказательств, решений, действий и восстановления AI-агентов.
 
 - [Liminal Agent Continuity Model v0.1](architecture/LIMINAL_AGENT_CONTINUITY_MODEL_V0_1.md)
+- [Liminal Architectural Principles v0.1](architecture/LIMINAL_ARCHITECTURAL_PRINCIPLES_V0_1.md)
 
 ## Research — "что изучаем"
 Глубокие исследования, технические архитектуры и экспериментальные концепции. Изучайте эту секцию, когда нужно принять инженерные решения или вдохновиться будущими направлениями развития.
