@@ -28,6 +28,12 @@
 - [Liminal Agent Continuity Model v0.1](architecture/LIMINAL_AGENT_CONTINUITY_MODEL_V0_1.md)
 - [Liminal Architectural Principles v0.1](architecture/LIMINAL_ARCHITECTURAL_PRINCIPLES_V0_1.md)
 
+## Interoperability — "как соединяем экосистемы"
+Черновики нейтральных схем и профилей совместимости между LIMINAL и внешними agent/runtime/attestation системами.
+
+- [AetherProof × LIMINAL Agent Chain Context Extension v0.1](interop/AETHERPROOF_AGENT_CHAIN_CONTEXT_V0_1.md)
+- [Agent Chain Context JSON Schema v0.1](../schemas/agent-chain-context-v0.1.schema.json)
+
 ## Research — "что изучаем"
 Глубокие исследования, технические архитектуры и экспериментальные концепции. Изучайте эту секцию, когда нужно принять инженерные решения или вдохновиться будущими направлениями развития.
 
@@ -35,7 +41,7 @@
 - [Риски и безопасность](research/RISK_ANALYSIS_2025.md) · [Расширенный анализ рисков](research/ADVANCED_RISK_ANALYSIS_2025.md) · [Lipsits Risk](research/LIPSITS_RISK_ANALYSIS_2025.md)
 - [Этические и DevOps исследования](research/AI_ETHICS_2025.md) · [Совместимость DevOps](research/DEVOPS_COMPATIBILITY_ANALYSIS_2025.md)
 - [Квантовая агентная архитектура](research/QUANTUM_AGENT_SPEC.md) · [Строковая теория](research/QUANTUM_STRING_THEORY_ANALYSIS_2025.md) · [Meta Cvants](research/meta_cvants.md)
-- [Инженерные руководства](research/DOCKER_DEPLOYMENT.md) · [Multi-LLM Quickstart](research/MULTI-LLM-QUICKSTART.md)
+- [Инженерные руководства](research/DOCKER_DEPLOYMENT.md) · [Multi-LLM Quickstart](research/MULTI-LLM_QUICKSTART.md)
 - [OpenAI Adapter Check (03.08.2025)](research/ADAPTER_CHECK_RESULTS_20250803.md) · [Neo4j snapshot note](research/NEO4J_QUERY_NOTE.md) · [Экспорт графа](research/neo4j_query_out.json)
 - [SOMA: философия и запуск](research/README_SOMA.md)
 - [Дополнительные концепции](research/agent.md) · [Cubit](research/cubit.md) · [Miro проект](research/miro_proect.md)
