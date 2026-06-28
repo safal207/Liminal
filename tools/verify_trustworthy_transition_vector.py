@@ -195,6 +195,64 @@ def verify_generated_evidence(generated: dict[str, Any]) -> None:
                 f"{case_id}.expected.authority must be an object"
             )
 
+        if observation is None:
+            expected_execution = "NOT_OBSERVED"
+        else:
+            status = observation["record"]["execution_status"]
+            if status == "EXECUTED":
+                expected_execution = "OBSERVED_EXECUTED"
+            elif status in {"BLOCKED", "ERRORED", "REFUSED"}:
+                expected_execution = "OBSERVED_BLOCKED"
+            else:
+                raise FixtureVerificationError(
+                    f"{case_id} unknown execution status: {status}"
+                )
+        if expected.get("execution") != expected_execution:
+            raise FixtureVerificationError(
+                f"{case_id} execution expectation mismatch"
+            )
+
+        authorization_record = authorization["record"]
+        if authorization_record["decision"] == "DENY":
+            expected_authority = {
+                "verdict": "DENIED",
+                "current_state": "DENIED",
+            }
+        elif authorization_record["decision"] == "ALLOW":
+            if observation is None:
+                raise FixtureVerificationError(
+                    f"{case_id} allowed case must carry an observation"
+                )
+            observed_at = observation["record"]["observed_at"]
+            if not (
+                authorization_record["issued_at"]
+                <= observed_at
+                <= authorization_record["expires_at"]
+            ):
+                expected_authority = {
+                    "verdict": "INVALID",
+                    "current_state": "INVALID",
+                }
+            else:
+                current_state = (
+                    "EXPIRED_AT_REPORT"
+                    if integrity["record"]["evaluated_at"]
+                    > authorization_record["expires_at"]
+                    else "ACTIVE"
+                )
+                expected_authority = {
+                    "verdict": "VALID_AT_EXECUTION",
+                    "current_state": current_state,
+                }
+        else:
+            raise FixtureVerificationError(
+                f"{case_id} unknown authority decision"
+            )
+        if authority != expected_authority:
+            raise FixtureVerificationError(
+                f"{case_id} authority expectation mismatch"
+            )
+
         if authority.get("verdict") == "DENIED":
             if expected.get("expected_additional_side_effects") != 0:
                 raise FixtureVerificationError(
