@@ -141,7 +141,7 @@ The pack currently proves these independent combinations:
 2. PythiaLabs block + no execution + false execution claim;
 3. ProofPath authority expired at report time + historical execution + honest response;
 4. PythiaLabs valid authority + observed execution + false response;
-5. ProofPath consumed replay authority + no execution + honest response;
+5. ProofPath consumed replay authority + observed runtime block + honest response;
 6. ibex observation + LTP count-drift failure without imported authority;
 7. PythiaLabs valid authority + observed execution + mixed partial response.
 
@@ -150,7 +150,7 @@ These cases deliberately distinguish:
 ```text
 VALID + OBSERVED_EXECUTED + FAILED
 EXPIRED_AT_REPORT + OBSERVED_EXECUTED + VERIFIED
-CONSUMED + NOT_OBSERVED + VERIFIED
+CONSUMED + OBSERVED_BLOCKED + VERIFIED
 NOT_EVALUATED + OBSERVED_EXECUTED + FAILED
 ```
 
