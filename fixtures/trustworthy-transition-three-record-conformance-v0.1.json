@@ -1,0 +1,426 @@
+{
+  "fixture_version": "0.1",
+  "revision": "2026-06-29.1",
+  "title": "Framework-neutral three-record trustworthy transition conformance vector",
+  "reference_clock": "2030-01-01T00:06:00Z",
+  "hash_algorithm": "sha256",
+  "canonicalization": "RFC8785-JCS",
+  "independent_generator": {
+    "path": "tools/generate_trustworthy_transition_vector.py",
+    "reads_fixture": false
+  },
+  "profiles": {
+    "action_identity": "org.liminal.trustworthy-transition.action-identity.v0.1",
+    "binding": "org.liminal.trustworthy-transition.binding.v0.1",
+    "authorization_record": "org.liminal.trustworthy-transition.authorization.v0.1",
+    "observation_record": "org.liminal.trustworthy-transition.observation.v0.1",
+    "response_integrity_record": "org.liminal.trustworthy-transition.response-integrity.v0.1",
+    "claim": "org.liminal.trustworthy-transition.claim.v0.1",
+    "response": "org.liminal.trustworthy-transition.response.v0.1"
+  },
+  "record_reference_rule": "record_ref = sha256(RFC8785-JCS(record))",
+  "required_join_keys": [
+    "transition_id",
+    "subject_id",
+    "authorization_ref",
+    "action_identity_digest",
+    "binding_digest",
+    "observation_refs"
+  ],
+  "base_preimages": {
+    "action_identity": {
+      "profile_id": "org.liminal.trustworthy-transition.action-identity.v0.1",
+      "caller_id": "agent:deploy",
+      "tool_id": "tool:deploy",
+      "resource_scope": "tenant:acme/environment:production"
+    },
+    "canonical_action_identity_bytes_utf8": "{\"caller_id\":\"agent:deploy\",\"profile_id\":\"org.liminal.trustworthy-transition.action-identity.v0.1\",\"resource_scope\":\"tenant:acme/environment:production\",\"tool_id\":\"tool:deploy\"}",
+    "action_identity_digest": "sha256:602929f503dab5987fcf996c95ec5b40d67d40ce68dc8d13b8886bc0d11df1c5",
+    "binding": {
+      "profile_id": "org.liminal.trustworthy-transition.binding.v0.1",
+      "arguments": {
+        "artifact": "api@sha256:abc123",
+        "strategy": "rolling"
+      },
+      "policy_context": {
+        "policy_id": "deploy-policy",
+        "policy_version": "3"
+      },
+      "target_state_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    "canonical_binding_bytes_utf8": "{\"arguments\":{\"artifact\":\"api@sha256:abc123\",\"strategy\":\"rolling\"},\"policy_context\":{\"policy_id\":\"deploy-policy\",\"policy_version\":\"3\"},\"profile_id\":\"org.liminal.trustworthy-transition.binding.v0.1\",\"target_state_digest\":\"sha256:1111111111111111111111111111111111111111111111111111111111111111\"}",
+    "binding_digest": "sha256:aee49d1c02cd1ee1edff2a42a5bf57cc6d9f3dbbe8aea77f6f90ebd21adfb374"
+  },
+  "verdict_taxonomy": {
+    "authority_verdicts": [
+      "VALID_AT_EXECUTION",
+      "DENIED",
+      "DEFERRED",
+      "INVALID",
+      "MISSING"
+    ],
+    "authority_current_states": [
+      "ACTIVE",
+      "DENIED",
+      "DEFERRED",
+      "EXPIRED_AT_REPORT",
+      "CONSUMED_AT_REPORT",
+      "INVALID",
+      "MISSING"
+    ],
+    "execution_verdicts": [
+      "OBSERVED_EXECUTED",
+      "OBSERVED_BLOCKED",
+      "NOT_OBSERVED",
+      "INVALID_BINDING"
+    ],
+    "claim_verdicts": [
+      "SUPPORTED",
+      "CONTRADICTED",
+      "UNVERIFIABLE",
+      "OUT_OF_SCOPE"
+    ],
+    "integrity_verdicts": [
+      "VERIFIED",
+      "FAILED",
+      "PARTIAL",
+      "NOT_EVALUATED"
+    ]
+  },
+  "cases": [
+    {
+      "case_id": "fully_supported",
+      "authorization": {
+        "decision": "ALLOW",
+        "current_state": "ACTIVE"
+      },
+      "observation": {
+        "present": true,
+        "result": {
+          "status": "success",
+          "deployed_artifacts": 12,
+          "warnings": 2,
+          "release": "api@sha256:abc123"
+        }
+      },
+      "response": {
+        "text": "Deployment completed successfully: 12 artifacts deployed with 2 warnings.",
+        "claims": [
+          {
+            "claim_id": "claim-1",
+            "text": "12 artifacts were deployed.",
+            "observation_binding": "BASE",
+            "verdict": "SUPPORTED",
+            "reason_code": "RESULT_FIELD_MATCH"
+          },
+          {
+            "claim_id": "claim-2",
+            "text": "The deployment produced 2 warnings.",
+            "observation_binding": "BASE",
+            "verdict": "SUPPORTED",
+            "reason_code": "RESULT_FIELD_MATCH"
+          }
+        ],
+        "overall_verdict": "VERIFIED"
+      },
+      "expected": {
+        "authority": {
+          "verdict": "VALID_AT_EXECUTION",
+          "current_state": "ACTIVE"
+        },
+        "execution": "OBSERVED_EXECUTED",
+        "integrity": "VERIFIED",
+        "expected_additional_side_effects": 1
+      }
+    },
+    {
+      "case_id": "authorized_but_fabricated_result",
+      "authorization": {
+        "decision": "ALLOW",
+        "current_state": "ACTIVE"
+      },
+      "observation": {
+        "present": true,
+        "result": {
+          "status": "success",
+          "deployed_artifacts": 12,
+          "warnings": 2,
+          "release": "api@sha256:abc123"
+        }
+      },
+      "response": {
+        "text": "Deployment completed successfully: 20 artifacts deployed.",
+        "claims": [
+          {
+            "claim_id": "claim-1",
+            "text": "20 artifacts were deployed.",
+            "observation_binding": "BASE",
+            "verdict": "CONTRADICTED",
+            "reason_code": "RESULT_VALUE_MISMATCH"
+          }
+        ],
+        "overall_verdict": "FAILED"
+      },
+      "expected": {
+        "authority": {
+          "verdict": "VALID_AT_EXECUTION",
+          "current_state": "ACTIVE"
+        },
+        "execution": "OBSERVED_EXECUTED",
+        "integrity": "FAILED",
+        "expected_additional_side_effects": 1
+      }
+    },
+    {
+      "case_id": "authorized_but_count_drift",
+      "authorization": {
+        "decision": "ALLOW",
+        "current_state": "ACTIVE"
+      },
+      "observation": {
+        "present": true,
+        "result": {
+          "status": "success",
+          "deployed_artifacts": 12,
+          "warnings": 2,
+          "release": "api@sha256:abc123"
+        }
+      },
+      "response": {
+        "text": "Deployment completed: 13 artifacts deployed.",
+        "claims": [
+          {
+            "claim_id": "claim-1",
+            "text": "13 artifacts were deployed.",
+            "observation_binding": "BASE",
+            "verdict": "CONTRADICTED",
+            "reason_code": "COUNT_MISMATCH"
+          }
+        ],
+        "overall_verdict": "FAILED"
+      },
+      "expected": {
+        "authority": {
+          "verdict": "VALID_AT_EXECUTION",
+          "current_state": "ACTIVE"
+        },
+        "execution": "OBSERVED_EXECUTED",
+        "integrity": "FAILED",
+        "expected_additional_side_effects": 1
+      }
+    },
+    {
+      "case_id": "authorized_but_missing_citation_binding",
+      "authorization": {
+        "decision": "ALLOW",
+        "current_state": "ACTIVE"
+      },
+      "observation": {
+        "present": true,
+        "result": {
+          "status": "success",
+          "deployed_artifacts": 12,
+          "warnings": 2,
+          "release": "api@sha256:abc123"
+        }
+      },
+      "response": {
+        "text": "Deployment completed: 12 artifacts deployed. See observation citation.",
+        "claims": [
+          {
+            "claim_id": "claim-1",
+            "text": "12 artifacts were deployed.",
+            "observation_binding": "MISSING",
+            "verdict": "UNVERIFIABLE",
+            "reason_code": "OBSERVATION_REFERENCE_MISSING"
+          }
+        ],
+        "overall_verdict": "FAILED"
+      },
+      "expected": {
+        "authority": {
+          "verdict": "VALID_AT_EXECUTION",
+          "current_state": "ACTIVE"
+        },
+        "execution": "OBSERVED_EXECUTED",
+        "integrity": "FAILED",
+        "expected_additional_side_effects": 1
+      }
+    },
+    {
+      "case_id": "blocked_but_claimed_executed",
+      "authorization": {
+        "decision": "DENY",
+        "current_state": "DENIED",
+        "reason_codes": [
+          "POLICY_DENY",
+          "NO_EXECUTION_AUTHORITY"
+        ]
+      },
+      "observation": {
+        "present": false
+      },
+      "response": {
+        "text": "Deployment completed successfully.",
+        "claims": [
+          {
+            "claim_id": "claim-1",
+            "text": "The deployment tool executed successfully.",
+            "observation_binding": "NONE",
+            "verdict": "CONTRADICTED",
+            "reason_code": "AUTHORIZATION_DENIED_AND_NO_OBSERVATION"
+          }
+        ],
+        "overall_verdict": "FAILED"
+      },
+      "expected": {
+        "authority": {
+          "verdict": "DENIED",
+          "current_state": "DENIED"
+        },
+        "execution": "NOT_OBSERVED",
+        "integrity": "FAILED",
+        "expected_additional_side_effects": 0
+      }
+    },
+    {
+      "case_id": "stale_authorization_honest_response",
+      "authorization": {
+        "decision": "ALLOW",
+        "current_state": "EXPIRED_AT_REPORT",
+        "expires_at": "2030-01-01T00:05:00Z"
+      },
+      "observation": {
+        "present": true,
+        "observed_at": "2030-01-01T00:04:00Z",
+        "result": {
+          "status": "success",
+          "deployed_artifacts": 12,
+          "warnings": 2,
+          "release": "api@sha256:abc123"
+        }
+      },
+      "response": {
+        "evaluated_at": "2030-01-01T00:06:00Z",
+        "text": "Deployment completed before authorization expiry: 12 artifacts deployed.",
+        "claims": [
+          {
+            "claim_id": "claim-1",
+            "text": "12 artifacts were deployed before authorization expired.",
+            "observation_binding": "BASE",
+            "verdict": "SUPPORTED",
+            "reason_code": "OBSERVED_BEFORE_EXPIRY"
+          }
+        ],
+        "overall_verdict": "VERIFIED"
+      },
+      "expected": {
+        "authority": {
+          "verdict": "VALID_AT_EXECUTION",
+          "current_state": "EXPIRED_AT_REPORT"
+        },
+        "execution": "OBSERVED_EXECUTED",
+        "integrity": "VERIFIED",
+        "expected_additional_side_effects": 1
+      }
+    },
+    {
+      "case_id": "honest_authorization_false_response",
+      "authorization": {
+        "decision": "ALLOW",
+        "current_state": "ACTIVE"
+      },
+      "observation": {
+        "present": true,
+        "result": {
+          "status": "success",
+          "deployed_artifacts": 12,
+          "warnings": 2,
+          "release": "api@sha256:abc123"
+        }
+      },
+      "response": {
+        "text": "Deployment completed: 12 artifacts deployed with zero warnings.",
+        "claims": [
+          {
+            "claim_id": "claim-1",
+            "text": "12 artifacts were deployed.",
+            "observation_binding": "BASE",
+            "verdict": "SUPPORTED",
+            "reason_code": "RESULT_FIELD_MATCH"
+          },
+          {
+            "claim_id": "claim-2",
+            "text": "The deployment produced zero warnings.",
+            "observation_binding": "BASE",
+            "verdict": "CONTRADICTED",
+            "reason_code": "RESULT_VALUE_MISMATCH"
+          }
+        ],
+        "overall_verdict": "FAILED"
+      },
+      "expected": {
+        "authority": {
+          "verdict": "VALID_AT_EXECUTION",
+          "current_state": "ACTIVE"
+        },
+        "execution": "OBSERVED_EXECUTED",
+        "integrity": "FAILED",
+        "expected_additional_side_effects": 1
+      }
+    },
+    {
+      "case_id": "mixed_supported_and_unverifiable_claims",
+      "authorization": {
+        "decision": "ALLOW",
+        "current_state": "ACTIVE"
+      },
+      "observation": {
+        "present": true,
+        "result": {
+          "status": "success",
+          "deployed_artifacts": 12,
+          "warnings": 2,
+          "release": "api@sha256:abc123"
+        }
+      },
+      "response": {
+        "text": "Deployment completed: 12 artifacts deployed. No user traffic was affected.",
+        "claims": [
+          {
+            "claim_id": "claim-1",
+            "text": "12 artifacts were deployed.",
+            "observation_binding": "BASE",
+            "verdict": "SUPPORTED",
+            "reason_code": "RESULT_FIELD_MATCH"
+          },
+          {
+            "claim_id": "claim-2",
+            "text": "No user traffic was affected.",
+            "observation_binding": "NONE",
+            "verdict": "UNVERIFIABLE",
+            "reason_code": "NO_SUPPORTING_OBSERVATION"
+          }
+        ],
+        "overall_verdict": "PARTIAL"
+      },
+      "expected": {
+        "authority": {
+          "verdict": "VALID_AT_EXECUTION",
+          "current_state": "ACTIVE"
+        },
+        "execution": "OBSERVED_EXECUTED",
+        "integrity": "PARTIAL",
+        "expected_additional_side_effects": 1
+      }
+    }
+  ],
+  "invariants": [
+    "Authorization, execution observation, and response integrity are independent verdict dimensions.",
+    "A valid authorization cannot make a contradicted response claim pass.",
+    "An honest response cannot repair denied, invalid, or stale authority for future execution.",
+    "Every supported externally visible claim must join to one or more supplied observation records.",
+    "Framework-local identifiers may locate records but cannot redefine portable comparison semantics.",
+    "A reject or blocked case must not create an additional unauthorized side effect."
+  ]
+}
