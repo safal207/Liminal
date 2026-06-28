@@ -150,8 +150,10 @@ def claim_entry(
         observation_refs = [observation_ref] if observation_ref else []
     elif binding == "MISSING":
         observation_refs = [MISSING_OBSERVATION_REF]
-    else:
+    elif binding == "NONE":
         observation_refs = []
+    else:
+        raise ValueError(f"unknown observation_binding: {binding}")
 
     preimage = {
         "profile_id": CLAIM_PROFILE,
