@@ -233,17 +233,18 @@
       "local_outcomes": {
         "authorization_decision": "BLOCK",
         "authorization_state": "CONSUMED",
-        "execution_status": "NONE",
+        "execution_status": "BLOCKED",
         "integrity_verdict": "VERIFIED",
         "verification_level": "FULL_LIFECYCLE_JOINED"
       },
       "required_record_roles": [
         "authorization_record",
+        "observation_record",
         "response_integrity_record"
       ],
       "expected": {
         "authority": "CONSUMED",
-        "execution": "NOT_OBSERVED",
+        "execution": "OBSERVED_BLOCKED",
         "response_integrity": "VERIFIED",
         "expected_additional_side_effects": 0
       }
