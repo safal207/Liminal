@@ -1,0 +1,46 @@
+name: Trustworthy Transition Conformance
+
+on:
+  pull_request:
+    paths:
+      - "docs/interop/TRUSTWORTHY_TRANSITION_*"
+      - "fixtures/trustworthy-transition-*"
+      - "tools/*trustworthy_transition*"
+      - ".github/workflows/trustworthy-transition-conformance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docs/interop/TRUSTWORTHY_TRANSITION_*"
+      - "fixtures/trustworthy-transition-*"
+      - "tools/*trustworthy_transition*"
+      - ".github/workflows/trustworthy-transition-conformance.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify canonical three-record vector
+        run: python3 tools/verify_trustworthy_transition_vector.py
+
+      - name: Verify ecosystem compatibility pack
+        run: |
+          mkdir -p artifacts
+          python3 tools/verify_trustworthy_transition_ecosystem.py \
+            --output artifacts/trustworthy-transition-ecosystem-receipt.json
+
+      - name: Upload compatibility receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: trustworthy-transition-ecosystem-receipt
+          path: artifacts/trustworthy-transition-ecosystem-receipt.json
+          if-no-files-found: error
