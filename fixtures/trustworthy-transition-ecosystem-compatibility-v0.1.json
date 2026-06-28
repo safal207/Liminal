@@ -1,0 +1,304 @@
+{
+  "schema_version": 1,
+  "profile": "org.liminal.trustworthy-transition.ecosystem-compatibility.v0.1",
+  "canonical_profile": "org.liminal.trustworthy-transition.three-record.v0.1",
+  "implementations": [
+    {
+      "implementation_id": "proofpath.authorization.v0.1",
+      "repository": "safal207/ProofPath",
+      "pull_request": 167,
+      "head_sha": "e8bd2641752282c7eea2cfe4650246a77df2bfbc",
+      "artifact_path": "scripts/check_authorization_record_export.py",
+      "local_profile": "org.proofpath.authorization-export.v0.1",
+      "roles": ["AUTHORIZATION_PRODUCER"],
+      "canonical_records": ["authorization_record"],
+      "decision_map": {
+        "ACCEPT": "ALLOW",
+        "HOLD": "DEFER",
+        "BLOCK": "DENY",
+        "REJECT": "DENY"
+      },
+      "authority_state_map": {
+        "ACTIVE": "VALID",
+        "PENDING_APPROVAL": "PENDING",
+        "EXPIRED": "EXPIRED",
+        "EXPIRED_AT_REPORT": "EXPIRED_AT_REPORT",
+        "CONSUMED": "CONSUMED",
+        "BLOCKED": "DENIED"
+      }
+    },
+    {
+      "implementation_id": "pythialabs.authorization.v0.1",
+      "repository": "safal207/pythiaLabs",
+      "pull_request": 205,
+      "head_sha": "dbe5668164f7650ae0ce7f9fd2f2d0f14d92ea71",
+      "artifact_path": "scripts/check_pythialabs_authorization_export.py",
+      "local_profile": "org.pythialabs.authorization-export.v0.1",
+      "roles": ["AUTHORIZATION_PRODUCER"],
+      "canonical_records": ["authorization_record"],
+      "decision_map": {
+        "ALLOW": "ALLOW",
+        "BLOCK": "DENY",
+        "ESCALATE": "DEFER"
+      },
+      "authority_state_map": {
+        "ACTIVE": "VALID",
+        "BLOCKED": "DENIED",
+        "EXPIRED": "EXPIRED",
+        "REVALIDATION_REQUIRED": "REVALIDATION_REQUIRED"
+      }
+    },
+    {
+      "implementation_id": "ibex.manifest-observation.v0.1",
+      "repository": "safal207/ibex-agent-verification",
+      "pull_request": 58,
+      "head_sha": "4e73022c01c3bd0f458eab2fad0d0b351b5dfb58",
+      "artifact_path": "scripts/proofqa_response_integrity.py",
+      "local_profile": "org.ibex.response-integrity.v0.1",
+      "roles": ["OBSERVATION_BINDER", "INTEGRITY_EVIDENCE_BINDER"],
+      "canonical_records": ["observation_record", "response_integrity_record"],
+      "execution_status_map": {
+        "EXECUTED": "OBSERVED_EXECUTED",
+        "BLOCKED": "OBSERVED_BLOCKED",
+        "REFUSED": "OBSERVED_BLOCKED",
+        "ERRORED": "OBSERVED_ERRORED",
+        "NONE": "NOT_OBSERVED"
+      },
+      "integrity_verdict_map": {
+        "VERIFIED": "VERIFIED",
+        "FAILED": "FAILED",
+        "PARTIAL": "PARTIAL",
+        "NOT_EVALUATED": "NOT_EVALUATED"
+      }
+    },
+    {
+      "implementation_id": "ltp.lifecycle-integrity.v0.1",
+      "repository": "safal207/L-THREAD-Liminal-Thread-Secure-Protocol-LTP-",
+      "pull_request": 481,
+      "head_sha": "b1fcf43977a2de5cd21b84887d6dcdc1d451acd1",
+      "artifact_path": "tools/lifecycle-integrity/verify.ts",
+      "local_profile": "org.ltp.lifecycle-integrity.v0.1",
+      "roles": ["CLAIM_VERIFIER", "LIFECYCLE_JOIN_VERIFIER"],
+      "canonical_records": ["response_integrity_record"],
+      "verification_level_map": {
+        "TEXT_HEURISTIC": "TEXT_HEURISTIC",
+        "OBSERVATION_JOINED": "OBSERVATION_JOINED",
+        "FULL_LIFECYCLE_JOINED": "FULL_LIFECYCLE_JOINED"
+      },
+      "integrity_verdict_map": {
+        "VERIFIED": "VERIFIED",
+        "FAILED": "FAILED",
+        "PARTIAL": "PARTIAL",
+        "NOT_EVALUATED": "NOT_EVALUATED"
+      }
+    }
+  ],
+  "join_contract": {
+    "authorization_to_observation": [
+      "transition_id",
+      "subject_id",
+      "authorization_ref",
+      "action_identity_digest",
+      "binding_digest"
+    ],
+    "observation_to_integrity": [
+      "transition_id",
+      "subject_id",
+      "authorization_ref",
+      "observation_refs"
+    ],
+    "independent_dimensions": [
+      "authority",
+      "execution",
+      "response_integrity"
+    ],
+    "claim_verdicts": [
+      "SUPPORTED",
+      "CONTRADICTED",
+      "UNVERIFIABLE",
+      "OUT_OF_SCOPE"
+    ]
+  },
+  "cases": [
+    {
+      "case_id": "proofpath_ibex_ltp_fully_supported",
+      "participants": {
+        "authorization": "proofpath.authorization.v0.1",
+        "observation": "ibex.manifest-observation.v0.1",
+        "integrity": "ltp.lifecycle-integrity.v0.1"
+      },
+      "local_outcomes": {
+        "authorization_decision": "ACCEPT",
+        "authorization_state": "ACTIVE",
+        "execution_status": "EXECUTED",
+        "integrity_verdict": "VERIFIED",
+        "verification_level": "FULL_LIFECYCLE_JOINED"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record"
+      ],
+      "expected": {
+        "authority": "VALID",
+        "execution": "OBSERVED_EXECUTED",
+        "response_integrity": "VERIFIED",
+        "expected_additional_side_effects": 1
+      }
+    },
+    {
+      "case_id": "pythialabs_blocked_claimed_executed",
+      "participants": {
+        "authorization": "pythialabs.authorization.v0.1",
+        "observation": "ibex.manifest-observation.v0.1",
+        "integrity": "ltp.lifecycle-integrity.v0.1"
+      },
+      "local_outcomes": {
+        "authorization_decision": "BLOCK",
+        "authorization_state": "BLOCKED",
+        "execution_status": "NONE",
+        "integrity_verdict": "FAILED",
+        "verification_level": "FULL_LIFECYCLE_JOINED"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "response_integrity_record"
+      ],
+      "expected": {
+        "authority": "DENIED",
+        "execution": "NOT_OBSERVED",
+        "response_integrity": "FAILED",
+        "expected_additional_side_effects": 0
+      }
+    },
+    {
+      "case_id": "proofpath_expired_at_report_honest",
+      "participants": {
+        "authorization": "proofpath.authorization.v0.1",
+        "observation": "ibex.manifest-observation.v0.1",
+        "integrity": "ltp.lifecycle-integrity.v0.1"
+      },
+      "local_outcomes": {
+        "authorization_decision": "ACCEPT",
+        "authorization_state": "EXPIRED_AT_REPORT",
+        "execution_status": "EXECUTED",
+        "integrity_verdict": "VERIFIED",
+        "verification_level": "FULL_LIFECYCLE_JOINED"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record"
+      ],
+      "expected": {
+        "authority": "EXPIRED_AT_REPORT",
+        "execution": "OBSERVED_EXECUTED",
+        "response_integrity": "VERIFIED",
+        "expected_additional_side_effects": 0
+      }
+    },
+    {
+      "case_id": "pythialabs_authorized_but_false",
+      "participants": {
+        "authorization": "pythialabs.authorization.v0.1",
+        "observation": "ibex.manifest-observation.v0.1",
+        "integrity": "ltp.lifecycle-integrity.v0.1"
+      },
+      "local_outcomes": {
+        "authorization_decision": "ALLOW",
+        "authorization_state": "ACTIVE",
+        "execution_status": "EXECUTED",
+        "integrity_verdict": "FAILED",
+        "verification_level": "FULL_LIFECYCLE_JOINED"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record"
+      ],
+      "expected": {
+        "authority": "VALID",
+        "execution": "OBSERVED_EXECUTED",
+        "response_integrity": "FAILED",
+        "expected_additional_side_effects": 1
+      }
+    },
+    {
+      "case_id": "proofpath_consumed_replay_blocked_honestly",
+      "participants": {
+        "authorization": "proofpath.authorization.v0.1",
+        "observation": "ibex.manifest-observation.v0.1",
+        "integrity": "ltp.lifecycle-integrity.v0.1"
+      },
+      "local_outcomes": {
+        "authorization_decision": "BLOCK",
+        "authorization_state": "CONSUMED",
+        "execution_status": "BLOCKED",
+        "integrity_verdict": "VERIFIED",
+        "verification_level": "FULL_LIFECYCLE_JOINED"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record"
+      ],
+      "expected": {
+        "authority": "CONSUMED",
+        "execution": "OBSERVED_BLOCKED",
+        "response_integrity": "VERIFIED",
+        "expected_additional_side_effects": 0
+      }
+    },
+    {
+      "case_id": "ibex_ltp_count_drift_without_authority",
+      "participants": {
+        "authorization": null,
+        "observation": "ibex.manifest-observation.v0.1",
+        "integrity": "ltp.lifecycle-integrity.v0.1"
+      },
+      "local_outcomes": {
+        "authorization_decision": null,
+        "authorization_state": null,
+        "execution_status": "EXECUTED",
+        "integrity_verdict": "FAILED",
+        "verification_level": "OBSERVATION_JOINED"
+      },
+      "required_record_roles": [
+        "observation_record",
+        "response_integrity_record"
+      ],
+      "expected": {
+        "authority": "NOT_EVALUATED",
+        "execution": "OBSERVED_EXECUTED",
+        "response_integrity": "FAILED",
+        "expected_additional_side_effects": 0
+      }
+    },
+    {
+      "case_id": "pythialabs_mixed_claims_partial",
+      "participants": {
+        "authorization": "pythialabs.authorization.v0.1",
+        "observation": "ibex.manifest-observation.v0.1",
+        "integrity": "ltp.lifecycle-integrity.v0.1"
+      },
+      "local_outcomes": {
+        "authorization_decision": "ALLOW",
+        "authorization_state": "ACTIVE",
+        "execution_status": "EXECUTED",
+        "integrity_verdict": "PARTIAL",
+        "verification_level": "FULL_LIFECYCLE_JOINED"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record"
+      ],
+      "expected": {
+        "authority": "VALID",
+        "execution": "OBSERVED_EXECUTED",
+        "response_integrity": "PARTIAL",
+        "expected_additional_side_effects": 1
+      }
+    }
+  ]
+}
