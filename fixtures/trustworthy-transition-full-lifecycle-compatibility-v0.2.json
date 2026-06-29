@@ -1,0 +1,412 @@
+{
+  "schema_version": 2,
+  "profile": "org.liminal.trustworthy-transition.full-lifecycle-compatibility.v0.2",
+  "base_profile": "org.liminal.trustworthy-transition.ecosystem-compatibility.v0.1",
+  "base_fixture": "fixtures/trustworthy-transition-ecosystem-compatibility-v0.1.json",
+  "implementations": [
+    {
+      "implementation_id": "cml.causal-audit.v0.1",
+      "repository": "safal207/Causal-Memory-Layer",
+      "pull_request": 164,
+      "head_sha": "b5cae48e82e6958e8510999fe5907c50a3b3f0c9",
+      "artifact_path": "cml/three_record_audit.py",
+      "local_profile": "org.cml.three-record-causal-audit.v0.1",
+      "roles": ["CAUSAL_AUDITOR"],
+      "canonical_records": ["causal_audit_record"],
+      "consumes_records": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record"
+      ],
+      "causal_validity_map": {
+        "VALID": "VALID",
+        "INVALID": "INVALID",
+        "NOT_EVALUATED": "NOT_EVALUATED",
+        "UNKNOWN": "UNKNOWN"
+      }
+    },
+    {
+      "implementation_id": "ls.continuity-evaluator.v0.1",
+      "repository": "safal207/LS",
+      "pull_request": 770,
+      "head_sha": "0ed661304e422f84dac375d334336ab1b8f76ca1",
+      "artifact_path": "packages/ls-continuity-store/src/trustworthy-transition.ts",
+      "local_profile": "org.ls.trustworthy-transition-continuity.v0.1",
+      "roles": ["CONTINUITY_EVALUATOR"],
+      "canonical_records": ["continuity_snapshot_record"],
+      "consumes_records": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record",
+        "causal_audit_record"
+      ],
+      "continuity_posture_map": {
+        "CONTINUE_SIDE_EFFECT": "CONTINUE_SIDE_EFFECT",
+        "RETRY_SIDE_EFFECT": "RETRY_SIDE_EFFECT",
+        "REPORT_ONLY": "REPORT_ONLY",
+        "REMEDIATE_RESPONSE": "REMEDIATE_RESPONSE",
+        "REVALIDATE": "REVALIDATE",
+        "BLOCKED": "BLOCKED",
+        "ALREADY_CONSUMED": "ALREADY_CONSUMED",
+        "NOT_EVALUATED": "NOT_EVALUATED"
+      }
+    },
+    {
+      "implementation_id": "liminaldb.durable-ledger.v0.1",
+      "repository": "safal207/LiminalDB",
+      "pull_request": 89,
+      "head_sha": "47a2bf0323ab3c546013e03815d4ec0bdf59a9e0",
+      "artifact_path": "liminal-db/crates/liminal-store/src/trustworthy_transition.rs",
+      "local_profile": "org.liminaldb.trustworthy-transition-ledger.v0.1",
+      "roles": ["DURABLE_LEDGER"],
+      "canonical_records": ["durability_receipt"],
+      "consumes_records": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record",
+        "causal_audit_record",
+        "continuity_snapshot_record"
+      ],
+      "durability_status_map": {
+        "RECOVERED": "LOCAL_REPLAY_VERIFIED",
+        "EVENT_HASH_MISMATCH": "LOCAL_REPLAY_FAILED",
+        "SNAPSHOT_DIGEST_MISMATCH": "LOCAL_REPLAY_FAILED",
+        "REPLAY_PROJECTION_MISMATCH": "LOCAL_REPLAY_FAILED",
+        "NOT_EVALUATED": "NOT_EVALUATED"
+      }
+    }
+  ],
+  "join_contract": {
+    "integrity_to_causal": [
+      "transition_id",
+      "subject_id",
+      "authorization_ref",
+      "observation_refs",
+      "response_integrity_ref"
+    ],
+    "causal_to_continuity": [
+      "transition_id",
+      "subject_id",
+      "action_identity_digest",
+      "binding_digest",
+      "authorization_ref",
+      "observation_refs",
+      "response_integrity_ref",
+      "causal_audit_ref",
+      "evidence_set_digest"
+    ],
+    "continuity_to_durability": [
+      "transition_id",
+      "subject_id",
+      "authorization_ref",
+      "observation_refs",
+      "response_integrity_ref",
+      "causal_audit_ref",
+      "continuity_snapshot_ref"
+    ],
+    "canonical_records": [
+      "authorization_record",
+      "observation_record",
+      "response_integrity_record",
+      "causal_audit_record",
+      "continuity_snapshot_record",
+      "durability_receipt"
+    ],
+    "independent_dimensions": [
+      "authority",
+      "execution",
+      "response_integrity",
+      "causal_validity",
+      "continuity_posture",
+      "durability"
+    ]
+  },
+  "cases": [
+    {
+      "case_id": "full_supported_history_is_already_consumed",
+      "base_case_id": "proofpath_ibex_ltp_fully_supported",
+      "participants": {
+        "causal": "cml.causal-audit.v0.1",
+        "continuity": "ls.continuity-evaluator.v0.1",
+        "durability": "liminaldb.durable-ledger.v0.1"
+      },
+      "local_outcomes": {
+        "causal_validity": "VALID",
+        "continuity_posture": "ALREADY_CONSUMED",
+        "durability_status": "RECOVERED"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record",
+        "causal_audit_record",
+        "continuity_snapshot_record",
+        "durability_receipt"
+      ],
+      "expected": {
+        "authority": "VALID",
+        "execution": "OBSERVED_EXECUTED",
+        "response_integrity": "VERIFIED",
+        "causal_validity": "VALID",
+        "continuity_posture": "ALREADY_CONSUMED",
+        "durability": "LOCAL_REPLAY_VERIFIED",
+        "expected_resume_side_effects": 0,
+        "full_lifecycle_status": "ALREADY_CONSUMED"
+      }
+    },
+    {
+      "case_id": "false_response_routes_to_remediation",
+      "base_case_id": "pythialabs_authorized_but_false",
+      "participants": {
+        "causal": "cml.causal-audit.v0.1",
+        "continuity": "ls.continuity-evaluator.v0.1",
+        "durability": "liminaldb.durable-ledger.v0.1"
+      },
+      "local_outcomes": {
+        "causal_validity": "VALID",
+        "continuity_posture": "REMEDIATE_RESPONSE",
+        "durability_status": "RECOVERED"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record",
+        "causal_audit_record",
+        "continuity_snapshot_record",
+        "durability_receipt"
+      ],
+      "expected": {
+        "authority": "VALID",
+        "execution": "OBSERVED_EXECUTED",
+        "response_integrity": "FAILED",
+        "causal_validity": "VALID",
+        "continuity_posture": "REMEDIATE_RESPONSE",
+        "durability": "LOCAL_REPLAY_VERIFIED",
+        "expected_resume_side_effects": 0,
+        "full_lifecycle_status": "RESPONSE_REMEDIATION"
+      }
+    },
+    {
+      "case_id": "expired_historical_report_stays_report_only",
+      "base_case_id": "proofpath_expired_at_report_honest",
+      "participants": {
+        "causal": "cml.causal-audit.v0.1",
+        "continuity": "ls.continuity-evaluator.v0.1",
+        "durability": "liminaldb.durable-ledger.v0.1"
+      },
+      "local_outcomes": {
+        "causal_validity": "VALID",
+        "continuity_posture": "REPORT_ONLY",
+        "durability_status": "RECOVERED"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record",
+        "causal_audit_record",
+        "continuity_snapshot_record",
+        "durability_receipt"
+      ],
+      "expected": {
+        "authority": "EXPIRED_AT_REPORT",
+        "execution": "OBSERVED_EXECUTED",
+        "response_integrity": "VERIFIED",
+        "causal_validity": "VALID",
+        "continuity_posture": "REPORT_ONLY",
+        "durability": "LOCAL_REPLAY_VERIFIED",
+        "expected_resume_side_effects": 0,
+        "full_lifecycle_status": "HISTORICAL_REPORT_ONLY"
+      }
+    },
+    {
+      "case_id": "consumed_replay_remains_non_executable",
+      "base_case_id": "proofpath_consumed_replay_blocked_honestly",
+      "participants": {
+        "causal": "cml.causal-audit.v0.1",
+        "continuity": "ls.continuity-evaluator.v0.1",
+        "durability": "liminaldb.durable-ledger.v0.1"
+      },
+      "local_outcomes": {
+        "causal_validity": "VALID",
+        "continuity_posture": "ALREADY_CONSUMED",
+        "durability_status": "RECOVERED"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record",
+        "causal_audit_record",
+        "continuity_snapshot_record",
+        "durability_receipt"
+      ],
+      "expected": {
+        "authority": "CONSUMED",
+        "execution": "OBSERVED_BLOCKED",
+        "response_integrity": "VERIFIED",
+        "causal_validity": "VALID",
+        "continuity_posture": "ALREADY_CONSUMED",
+        "durability": "LOCAL_REPLAY_VERIFIED",
+        "expected_resume_side_effects": 0,
+        "full_lifecycle_status": "ALREADY_CONSUMED"
+      }
+    },
+    {
+      "case_id": "missing_authority_is_causally_invalid_and_blocked",
+      "base_case_id": "ibex_ltp_count_drift_without_authority",
+      "participants": {
+        "causal": "cml.causal-audit.v0.1",
+        "continuity": "ls.continuity-evaluator.v0.1",
+        "durability": "liminaldb.durable-ledger.v0.1"
+      },
+      "local_outcomes": {
+        "causal_validity": "INVALID",
+        "continuity_posture": "BLOCKED",
+        "durability_status": "RECOVERED"
+      },
+      "required_record_roles": [
+        "observation_record",
+        "response_integrity_record",
+        "causal_audit_record",
+        "continuity_snapshot_record",
+        "durability_receipt"
+      ],
+      "expected": {
+        "authority": "NOT_EVALUATED",
+        "execution": "OBSERVED_EXECUTED",
+        "response_integrity": "FAILED",
+        "causal_validity": "INVALID",
+        "continuity_posture": "BLOCKED",
+        "durability": "LOCAL_REPLAY_VERIFIED",
+        "expected_resume_side_effects": 0,
+        "full_lifecycle_status": "CAUSAL_INVALID"
+      }
+    },
+    {
+      "case_id": "denied_false_claim_chain_is_coherent_but_blocked",
+      "base_case_id": "pythialabs_blocked_claimed_executed",
+      "participants": {
+        "causal": "cml.causal-audit.v0.1",
+        "continuity": "ls.continuity-evaluator.v0.1",
+        "durability": "liminaldb.durable-ledger.v0.1"
+      },
+      "local_outcomes": {
+        "causal_validity": "VALID",
+        "continuity_posture": "BLOCKED",
+        "durability_status": "RECOVERED"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "response_integrity_record",
+        "causal_audit_record",
+        "continuity_snapshot_record",
+        "durability_receipt"
+      ],
+      "expected": {
+        "authority": "DENIED",
+        "execution": "NOT_OBSERVED",
+        "response_integrity": "FAILED",
+        "causal_validity": "VALID",
+        "continuity_posture": "BLOCKED",
+        "durability": "LOCAL_REPLAY_VERIFIED",
+        "expected_resume_side_effects": 0,
+        "full_lifecycle_status": "BLOCKED"
+      }
+    },
+    {
+      "case_id": "partial_response_requires_revalidation",
+      "base_case_id": "pythialabs_mixed_claims_partial",
+      "participants": {
+        "causal": "cml.causal-audit.v0.1",
+        "continuity": "ls.continuity-evaluator.v0.1",
+        "durability": "liminaldb.durable-ledger.v0.1"
+      },
+      "local_outcomes": {
+        "causal_validity": "VALID",
+        "continuity_posture": "REVALIDATE",
+        "durability_status": "RECOVERED"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record",
+        "causal_audit_record",
+        "continuity_snapshot_record",
+        "durability_receipt"
+      ],
+      "expected": {
+        "authority": "VALID",
+        "execution": "OBSERVED_EXECUTED",
+        "response_integrity": "PARTIAL",
+        "causal_validity": "VALID",
+        "continuity_posture": "REVALIDATE",
+        "durability": "LOCAL_REPLAY_VERIFIED",
+        "expected_resume_side_effects": 0,
+        "full_lifecycle_status": "REVALIDATION_REQUIRED"
+      }
+    },
+    {
+      "case_id": "cross_transition_causal_substitution_stays_invalid",
+      "base_case_id": "proofpath_ibex_ltp_fully_supported",
+      "participants": {
+        "causal": "cml.causal-audit.v0.1",
+        "continuity": "ls.continuity-evaluator.v0.1",
+        "durability": "liminaldb.durable-ledger.v0.1"
+      },
+      "local_outcomes": {
+        "causal_validity": "INVALID",
+        "continuity_posture": "BLOCKED",
+        "durability_status": "RECOVERED"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record",
+        "causal_audit_record",
+        "continuity_snapshot_record",
+        "durability_receipt"
+      ],
+      "expected": {
+        "authority": "VALID",
+        "execution": "OBSERVED_EXECUTED",
+        "response_integrity": "VERIFIED",
+        "causal_validity": "INVALID",
+        "continuity_posture": "BLOCKED",
+        "durability": "LOCAL_REPLAY_VERIFIED",
+        "expected_resume_side_effects": 0,
+        "full_lifecycle_status": "CAUSAL_INVALID"
+      }
+    },
+    {
+      "case_id": "semantic_event_chain_failure_is_independent",
+      "base_case_id": "proofpath_ibex_ltp_fully_supported",
+      "participants": {
+        "causal": "cml.causal-audit.v0.1",
+        "continuity": "ls.continuity-evaluator.v0.1",
+        "durability": "liminaldb.durable-ledger.v0.1"
+      },
+      "local_outcomes": {
+        "causal_validity": "VALID",
+        "continuity_posture": "ALREADY_CONSUMED",
+        "durability_status": "EVENT_HASH_MISMATCH"
+      },
+      "required_record_roles": [
+        "authorization_record",
+        "observation_record",
+        "response_integrity_record",
+        "causal_audit_record",
+        "continuity_snapshot_record",
+        "durability_receipt"
+      ],
+      "expected": {
+        "authority": "VALID",
+        "execution": "OBSERVED_EXECUTED",
+        "response_integrity": "VERIFIED",
+        "causal_validity": "VALID",
+        "continuity_posture": "ALREADY_CONSUMED",
+        "durability": "LOCAL_REPLAY_FAILED",
+        "expected_resume_side_effects": 0,
+        "full_lifecycle_status": "DURABILITY_FAILED"
+      }
+    }
+  ]
+}
