@@ -24,7 +24,7 @@ PHASE_BY_MERGED_COUNT = {
     2: "STAGE_2_MERGED",
     3: "STACK_MERGED_PENDING_FINAL",
 }
-ALLOWED_CODEX_STATES = {"PENDING", "PASSED"}
+ALLOWED_REVIEW_STATES = {"PENDING", "PASSED"}
 REQUIRED_INVALIDATION_RULES = {
     "TARGET_HEAD_CHANGED",
     "PINNED_PR_HEAD_CHANGED",
@@ -110,13 +110,32 @@ def require_string_list(value: Any, label: str) -> list[str]:
     return value
 
 
-def expected_blockers(codex_status: str, merged_count: int) -> set[str]:
+def expected_blockers(
+    coderabbit_status: str, codex_status: str, merged_count: int
+) -> set[str]:
     blockers = {"FINAL_MAIN_MANIFEST_NOT_ISSUED"}
+    if coderabbit_status != "PASSED":
+        blockers.add("CODERABBIT_REVIEW_PENDING")
     if codex_status != "PASSED":
         blockers.add("CODEX_REVIEW_PENDING")
     if merged_count != 3:
         blockers.add("STACK_NOT_MERGED")
     return blockers
+
+
+def expected_next_action(
+    coderabbit_status: str, codex_status: str, merged_count: int
+) -> str:
+    if coderabbit_status != "PASSED":
+        return "COMPLETE_CODERABBIT_REVIEW"
+    if codex_status != "PASSED":
+        return "COMPLETE_CODEX_REVIEW"
+    return {
+        0: "MERGE_PR_110_WITH_MERGE_COMMIT",
+        1: "RETARGET_PR_113_TO_MAIN_RERUN_AND_REPIN",
+        2: "RETARGET_PR_116_TO_MAIN_RERUN_AND_REPIN",
+        3: "ISSUE_FINAL_MAIN_MANIFEST",
+    }[merged_count]
 
 
 def verify_stage_runs(stage: dict[str, Any], label: str) -> list[dict[str, Any]]:
@@ -214,12 +233,22 @@ def verify_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
         raise TrainVerificationError("merge policy must preserve stack ancestry")
 
     review = require_object(manifest["review_policy"], "review_policy")
-    if set(review) != {"coderabbit_required", "codex_required", "codex_status"}:
+    if set(review) != {
+        "coderabbit_required",
+        "coderabbit_status",
+        "codex_required",
+        "codex_status",
+    }:
         raise TrainVerificationError("review policy keys invalid")
     if review["coderabbit_required"] is not True or review["codex_required"] is not True:
         raise TrainVerificationError("CodeRabbit and Codex must remain mandatory")
+    coderabbit_status = require_text(
+        review["coderabbit_status"], "review_policy.coderabbit_status"
+    )
     codex_status = require_text(review["codex_status"], "review_policy.codex_status")
-    if codex_status not in ALLOWED_CODEX_STATES:
+    if coderabbit_status not in ALLOWED_REVIEW_STATES:
+        raise TrainVerificationError("review_policy.coderabbit_status is invalid")
+    if codex_status not in ALLOWED_REVIEW_STATES:
         raise TrainVerificationError("review_policy.codex_status is invalid")
 
     boundary = require_object(manifest["claim_boundary"], "claim_boundary")
@@ -238,7 +267,7 @@ def verify_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     )
     if invalidation != REQUIRED_INVALIDATION_RULES:
         raise TrainVerificationError("invalidation rule coverage mismatch")
-    require_text(manifest["next_action"], "next_action")
+    next_action = require_text(manifest["next_action"], "next_action")
 
     raw_stages = manifest["stages"]
     if not isinstance(raw_stages, list) or len(raw_stages) != 3:
@@ -312,6 +341,8 @@ def verify_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
                 raise TrainVerificationError("first stage must not have a predecessor")
             if base_branch != "main":
                 raise TrainVerificationError("first stage base branch must be main")
+            if base_sha != initial_head:
+                raise TrainVerificationError("first stage base SHA must equal initial main")
             if ancestry_parent != initial_head:
                 raise TrainVerificationError("first stage ancestry parent must be initial main")
         else:
@@ -331,8 +362,13 @@ def verify_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
                         raise TrainVerificationError(
                             "successor of merged stage must target current main head"
                         )
-            elif base_branch != "main":
-                raise TrainVerificationError("merged successor must have been retargeted to main")
+            else:
+                if base_branch != "main":
+                    raise TrainVerificationError("merged successor must have been retargeted to main")
+                if base_sha != previous["merge_commit_sha"]:
+                    raise TrainVerificationError(
+                        "merged successor base SHA must equal predecessor merge commit"
+                    )
 
         runs = verify_stage_runs(stage, label)
         statuses = require_string_list(
@@ -374,13 +410,38 @@ def verify_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
             raise TrainVerificationError("target head must equal latest merged-stage commit")
 
     blockers = set(require_string_list(manifest["release_blockers"], "release_blockers"))
-    if blockers != expected_blockers(codex_status, merged_count):
+    if blockers != expected_blockers(coderabbit_status, codex_status, merged_count):
         raise TrainVerificationError("release blockers do not match train/review state")
+    expected_action = expected_next_action(coderabbit_status, codex_status, merged_count)
+    if next_action != expected_action:
+        raise TrainVerificationError(
+            f"next_action must be {expected_action} for the verified review/train state"
+        )
     return stages
 
 
 class GitHubClient:
     def __init__(self, token: str, api_url: str) -> None:
+        parsed = urllib.parse.urlparse(api_url)
+        allowed_hosts = {
+            host.strip().lower()
+            for host in os.environ.get(
+                "TRUSTWORTHY_TRAIN_ALLOWED_GITHUB_API_HOSTS", "api.github.com"
+            ).split(",")
+            if host.strip()
+        }
+        host = (parsed.hostname or "").lower()
+        if (
+            parsed.scheme != "https"
+            or host not in allowed_hosts
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise TrainVerificationError(
+                "GITHUB_API_URL must be HTTPS and use an explicitly allowed GitHub API host"
+            )
         self.token = token
         self.api_url = api_url.rstrip("/")
 
@@ -557,6 +618,7 @@ def build_receipt(
             for stage in stages
         },
         "merge_method": manifest["merge_policy"]["required_method"],
+        "review_policy": manifest["review_policy"],
         "release_ready": manifest["release_ready"],
         "release_blockers": manifest["release_blockers"],
         "next_action": manifest["next_action"],
