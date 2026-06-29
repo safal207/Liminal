@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "profile": "org.liminal.trustworthy-transition.release-train.v0.1",
+  "candidate_id": "trustworthy-transition-v0.3-rc1",
+  "candidate_state": "PRE_MERGE_FROZEN",
+  "release_ready": false,
+  "repository": "safal207/Liminal",
+  "target": {
+    "branch": "main",
+    "expected_head": "426bf5c41a6215b0fef1e9ca59df00a880491c14",
+    "drift_policy": "REFRESH_REQUIRED"
+  },
+  "merge_policy": {
+    "required_method": "merge_commit",
+    "forbidden_methods": ["squash", "rebase"],
+    "preserve_successor_head": true,
+    "retarget_immediate_successor_only": true,
+    "rerun_after_retarget": true,
+    "final_main_manifest_required": true
+  },
+  "review_policy": {
+    "coderabbit_required": true,
+    "codex_required": true,
+    "codex_status": "PENDING"
+  },
+  "stages": [
+    {
+      "order": 1,
+      "layer": "ecosystem-compatibility-v0.1",
+      "pull_request": 110,
+      "train_state": "OPEN_STACKED",
+      "head_branch": "feat/ecosystem-pack-v0.1",
+      "head_sha": "2ac45920526526bbe42fcbcff7d7fca80cd667eb",
+      "expected_base_branch": "main",
+      "expected_base_sha": "426bf5c41a6215b0fef1e9ca59df00a880491c14",
+      "ancestry_parent_sha": "426bf5c41a6215b0fef1e9ca59df00a880491c14",
+      "predecessor_pull_request": null,
+      "delta_commits": 6,
+      "workflow_runs": [
+        {"name": "Trustworthy Transition Conformance", "run_id": 28337987520},
+        {"name": "Python Integration (WS)", "run_id": 28337987526},
+        {"name": "Artillery WebSocket Smoke", "run_id": 28337987511},
+        {"name": "Python CI", "run_id": 28337987518}
+      ],
+      "required_commit_statuses": ["CodeRabbit"],
+      "receipt": {
+        "workflow_run_id": 28337987520,
+        "artifact_id": 7939181967,
+        "artifact_name": "trustworthy-transition-ecosystem-receipt",
+        "artifact_digest": "sha256:7a18bdd9be4e04ce6b3b24437646ee947d71425c538cb671e1cd98ae382c7384"
+      }
+    },
+    {
+      "order": 2,
+      "layer": "full-lifecycle-compatibility-v0.2",
+      "pull_request": 113,
+      "train_state": "OPEN_STACKED",
+      "head_branch": "feat/full-lifecycle-ecosystem-v0.2",
+      "head_sha": "b50ef4d90a76fbd5b5d2e835f85e348081f4110f",
+      "expected_base_branch": "feat/ecosystem-pack-v0.1",
+      "expected_base_sha": "2ac45920526526bbe42fcbcff7d7fca80cd667eb",
+      "ancestry_parent_sha": "2ac45920526526bbe42fcbcff7d7fca80cd667eb",
+      "predecessor_pull_request": 110,
+      "delta_commits": 5,
+      "workflow_runs": [
+        {"name": "Trustworthy Transition Conformance", "run_id": 28348477486},
+        {"name": "Python Integration (WS)", "run_id": 28348477490}
+      ],
+      "required_commit_statuses": ["CodeRabbit"],
+      "receipt": {
+        "workflow_run_id": 28348477486,
+        "artifact_id": 7942564321,
+        "artifact_name": "trustworthy-transition-conformance-receipts",
+        "artifact_digest": "sha256:b6af0ea449cb0426dc94cac9e25f1a4e2a9d76ae257109316a41886779c20583"
+      }
+    },
+    {
+      "order": 3,
+      "layer": "durability-assurance-compatibility-v0.3",
+      "pull_request": 116,
+      "train_state": "OPEN_STACKED",
+      "head_branch": "feat/durability-assurance-v0.3",
+      "head_sha": "c2864dd9f57e962064f24b6cc6368f647ebaaea4",
+      "expected_base_branch": "feat/full-lifecycle-ecosystem-v0.2",
+      "expected_base_sha": "b50ef4d90a76fbd5b5d2e835f85e348081f4110f",
+      "ancestry_parent_sha": "b50ef4d90a76fbd5b5d2e835f85e348081f4110f",
+      "predecessor_pull_request": 113,
+      "delta_commits": 7,
+      "workflow_runs": [
+        {"name": "Trustworthy Transition Conformance", "run_id": 28357797284},
+        {"name": "Python Integration (WS)", "run_id": 28357797345}
+      ],
+      "required_commit_statuses": ["CodeRabbit"],
+      "receipt": {
+        "workflow_run_id": 28357797284,
+        "artifact_id": 7946021026,
+        "artifact_name": "trustworthy-transition-conformance-receipts",
+        "artifact_digest": "sha256:eacf4140fa5b5fc143afebf275460dc49c9f6fd1149aab3fa2b4a616d6ff79ab"
+      }
+    }
+  ],
+  "next_action": "COMPLETE_CODEX_REVIEW_THEN_MERGE_PR_110_WITH_MERGE_COMMIT",
+  "release_blockers": [
+    "CODEX_REVIEW_PENDING",
+    "STACK_NOT_MERGED",
+    "FINAL_MAIN_MANIFEST_NOT_ISSUED"
+  ],
+  "invalidation_rules": [
+    "TARGET_HEAD_CHANGED",
+    "PINNED_PR_HEAD_CHANGED",
+    "PINNED_PR_BASE_CHANGED",
+    "ANCESTRY_CHANGED",
+    "WORKFLOW_RUN_CHANGED_OR_FAILED",
+    "RECEIPT_ARTIFACT_CHANGED_OR_EXPIRED",
+    "REQUIRED_COMMIT_STATUS_NOT_SUCCESSFUL",
+    "SUCCESSOR_HEAD_CHANGED_AFTER_RETARGET",
+    "NON_MERGE_COMMIT_STRATEGY_USED"
+  ],
+  "claim_boundary": {
+    "pre_merge_candidate_only": true,
+    "semantic_conformance_replaced": false,
+    "code_review_replaced": false,
+    "branch_protection_replaced": false,
+    "human_merge_decision_replaced": false
+  }
+}
