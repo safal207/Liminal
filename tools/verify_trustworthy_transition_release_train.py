@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify the trustworthy-transition release train and pinned GitHub state."""
+"""Verify the trustworthy-transition release train and its pinned GitHub state."""
 
 from __future__ import annotations
 
@@ -18,12 +18,13 @@ PROFILE = "org.liminal.trustworthy-transition.release-train.v0.1"
 RECEIPT_SCHEMA = "org.liminal.trustworthy-transition.release-train-receipt.v0.1"
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
-ALLOWED_TRAIN_STATES = {"OPEN_STACKED", "MERGED"}
-REQUIRED_BLOCKERS = {
-    "CODEX_REVIEW_PENDING",
-    "STACK_NOT_MERGED",
-    "FINAL_MAIN_MANIFEST_NOT_ISSUED",
+PHASE_BY_MERGED_COUNT = {
+    0: "PRE_MERGE_FROZEN",
+    1: "STAGE_1_MERGED",
+    2: "STAGE_2_MERGED",
+    3: "STACK_MERGED_PENDING_FINAL",
 }
+ALLOWED_CODEX_STATES = {"PENDING", "PASSED"}
 REQUIRED_INVALIDATION_RULES = {
     "TARGET_HEAD_CHANGED",
     "PINNED_PR_HEAD_CHANGED",
@@ -38,7 +39,7 @@ REQUIRED_INVALIDATION_RULES = {
 
 
 class TrainVerificationError(ValueError):
-    """Raised when the release train or its live pins are inconsistent."""
+    """Raised when the manifest or live release-train state is inconsistent."""
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -109,6 +110,60 @@ def require_string_list(value: Any, label: str) -> list[str]:
     return value
 
 
+def expected_blockers(codex_status: str, merged_count: int) -> set[str]:
+    blockers = {"FINAL_MAIN_MANIFEST_NOT_ISSUED"}
+    if codex_status != "PASSED":
+        blockers.add("CODEX_REVIEW_PENDING")
+    if merged_count != 3:
+        blockers.add("STACK_NOT_MERGED")
+    return blockers
+
+
+def verify_stage_runs(stage: dict[str, Any], label: str) -> list[dict[str, Any]]:
+    runs = stage.get("workflow_runs")
+    if not isinstance(runs, list) or not runs:
+        raise TrainVerificationError(f"{label}.workflow_runs must be non-empty")
+    seen_ids: set[int] = set()
+    seen_names: set[str] = set()
+    normalized: list[dict[str, Any]] = []
+    for index, raw in enumerate(runs):
+        run = require_object(raw, f"{label}.workflow_runs[{index}]")
+        if set(run) != {"name", "run_id"}:
+            raise TrainVerificationError(f"{label}.workflow_runs[{index}] keys invalid")
+        name = require_text(run["name"], f"{label}.workflow_runs[{index}].name")
+        run_id = require_positive_int(
+            run["run_id"], f"{label}.workflow_runs[{index}].run_id"
+        )
+        if name in seen_names or run_id in seen_ids:
+            raise TrainVerificationError(f"{label} workflow run pins must be unique")
+        seen_names.add(name)
+        seen_ids.add(run_id)
+        normalized.append({"name": name, "run_id": run_id})
+    return normalized
+
+
+def verify_receipt(
+    stage: dict[str, Any], runs: list[dict[str, Any]], label: str
+) -> dict[str, Any]:
+    receipt = require_object(stage.get("receipt"), f"{label}.receipt")
+    if set(receipt) != {
+        "workflow_run_id",
+        "artifact_id",
+        "artifact_name",
+        "artifact_digest",
+    }:
+        raise TrainVerificationError(f"{label}.receipt keys invalid")
+    run_id = require_positive_int(
+        receipt["workflow_run_id"], f"{label}.receipt.workflow_run_id"
+    )
+    if run_id not in {run["run_id"] for run in runs}:
+        raise TrainVerificationError(f"{label} receipt run is not pinned in workflow_runs")
+    require_positive_int(receipt["artifact_id"], f"{label}.receipt.artifact_id")
+    require_text(receipt["artifact_name"], f"{label}.receipt.artifact_name")
+    require_digest(receipt["artifact_digest"], f"{label}.receipt.artifact_digest")
+    return receipt
+
+
 def verify_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     required_root = {
         "schema_version",
@@ -131,57 +186,46 @@ def verify_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
             f"manifest keys invalid: missing={sorted(required_root - set(manifest))}, "
             f"unknown={sorted(set(manifest) - required_root)}"
         )
-    if manifest["schema_version"] != 1 or manifest["profile"] != PROFILE:
+    if manifest.get("schema_version") != 1 or manifest.get("profile") != PROFILE:
         raise TrainVerificationError("manifest schema/profile mismatch")
     require_text(manifest["candidate_id"], "candidate_id")
-    if manifest["candidate_state"] != "PRE_MERGE_FROZEN":
-        raise TrainVerificationError("candidate_state must be PRE_MERGE_FROZEN")
     if require_bool(manifest["release_ready"], "release_ready"):
-        raise TrainVerificationError("pre-merge candidate must not claim release readiness")
-    repository = require_text(manifest["repository"], "repository")
-    if repository != "safal207/Liminal":
+        raise TrainVerificationError("release candidate must not claim final release readiness")
+    if require_text(manifest["repository"], "repository") != "safal207/Liminal":
         raise TrainVerificationError("repository pin mismatch")
 
     target = require_object(manifest["target"], "target")
-    if set(target) != {"branch", "expected_head", "drift_policy"}:
+    if set(target) != {"branch", "initial_head", "expected_head", "drift_policy"}:
         raise TrainVerificationError("target keys invalid")
     if target["branch"] != "main" or target["drift_policy"] != "REFRESH_REQUIRED":
         raise TrainVerificationError("target branch/drift policy mismatch")
-    target_head = require_sha(target["expected_head"], "target.expected_head")
+    initial_head = require_sha(target["initial_head"], "target.initial_head")
+    expected_target_head = require_sha(target["expected_head"], "target.expected_head")
 
     policy = require_object(manifest["merge_policy"], "merge_policy")
-    expected_policy = {
+    if policy != {
         "required_method": "merge_commit",
         "forbidden_methods": ["squash", "rebase"],
         "preserve_successor_head": True,
         "retarget_immediate_successor_only": True,
         "rerun_after_retarget": True,
         "final_main_manifest_required": True,
-    }
-    if policy != expected_policy:
-        raise TrainVerificationError("merge policy must preserve stacked ancestry")
+    }:
+        raise TrainVerificationError("merge policy must preserve stack ancestry")
 
     review = require_object(manifest["review_policy"], "review_policy")
-    if review != {
-        "coderabbit_required": True,
-        "codex_required": True,
-        "codex_status": "PENDING",
-    }:
-        raise TrainVerificationError("review policy must keep mandatory Codex pending")
-
-    blockers = set(require_string_list(manifest["release_blockers"], "release_blockers"))
-    if blockers != REQUIRED_BLOCKERS:
-        raise TrainVerificationError("release blockers mismatch")
-    invalidation = set(
-        require_string_list(manifest["invalidation_rules"], "invalidation_rules")
-    )
-    if invalidation != REQUIRED_INVALIDATION_RULES:
-        raise TrainVerificationError("invalidation rule coverage mismatch")
-    require_text(manifest["next_action"], "next_action")
+    if set(review) != {"coderabbit_required", "codex_required", "codex_status"}:
+        raise TrainVerificationError("review policy keys invalid")
+    if review["coderabbit_required"] is not True or review["codex_required"] is not True:
+        raise TrainVerificationError("CodeRabbit and Codex must remain mandatory")
+    codex_status = require_text(review["codex_status"], "review_policy.codex_status")
+    if codex_status not in ALLOWED_CODEX_STATES:
+        raise TrainVerificationError("review_policy.codex_status is invalid")
 
     boundary = require_object(manifest["claim_boundary"], "claim_boundary")
     if boundary != {
-        "pre_merge_candidate_only": True,
+        "release_candidate_only": True,
+        "final_main_manifest": False,
         "semantic_conformance_replaced": False,
         "code_review_replaced": False,
         "branch_protection_replaced": False,
@@ -189,18 +233,25 @@ def verify_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
     }:
         raise TrainVerificationError("claim boundary mismatch")
 
-    stages = manifest["stages"]
-    if not isinstance(stages, list) or len(stages) != 3:
+    invalidation = set(
+        require_string_list(manifest["invalidation_rules"], "invalidation_rules")
+    )
+    if invalidation != REQUIRED_INVALIDATION_RULES:
+        raise TrainVerificationError("invalidation rule coverage mismatch")
+    require_text(manifest["next_action"], "next_action")
+
+    raw_stages = manifest["stages"]
+    if not isinstance(raw_stages, list) or len(raw_stages) != 3:
         raise TrainVerificationError("stages must contain exactly three entries")
 
-    normalized: list[dict[str, Any]] = []
+    stages: list[dict[str, Any]] = []
     seen_prs: set[int] = set()
     seen_heads: set[str] = set()
-    merged_prefix = True
-    for index, raw in enumerate(stages):
+    open_seen = False
+    for index, raw in enumerate(raw_stages):
         label = f"stages[{index}]"
         stage = require_object(raw, label)
-        required_stage = {
+        required = {
             "order",
             "layer",
             "pull_request",
@@ -216,32 +267,29 @@ def verify_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
             "required_commit_statuses",
             "receipt",
         }
-        optional_stage = {"merge_commit_sha"}
-        missing = required_stage - set(stage)
-        unknown = set(stage) - required_stage - optional_stage
-        if missing or unknown:
-            raise TrainVerificationError(
-                f"{label} keys invalid: missing={sorted(missing)}, unknown={sorted(unknown)}"
-            )
+        optional = {"merge_commit_sha"}
+        if required - set(stage) or set(stage) - required - optional:
+            raise TrainVerificationError(f"{label} keys invalid")
         order = require_positive_int(stage["order"], f"{label}.order")
         if order != index + 1:
             raise TrainVerificationError("stage order must be contiguous")
         require_text(stage["layer"], f"{label}.layer")
         pr_number = require_positive_int(stage["pull_request"], f"{label}.pull_request")
         if pr_number in seen_prs:
-            raise TrainVerificationError("pull request pins must be unique")
+            raise TrainVerificationError("stage PR numbers must be unique")
         seen_prs.add(pr_number)
-        train_state = require_text(stage["train_state"], f"{label}.train_state")
-        if train_state not in ALLOWED_TRAIN_STATES:
+
+        state = require_text(stage["train_state"], f"{label}.train_state")
+        if state not in {"OPEN_STACKED", "MERGED"}:
             raise TrainVerificationError(f"{label}.train_state is invalid")
-        if train_state == "MERGED":
-            if not merged_prefix:
+        if state == "OPEN_STACKED":
+            open_seen = True
+            if "merge_commit_sha" in stage:
+                raise TrainVerificationError("open stage must not pin merge_commit_sha")
+        else:
+            if open_seen:
                 raise TrainVerificationError("merged stages must form a prefix")
             require_sha(stage.get("merge_commit_sha"), f"{label}.merge_commit_sha")
-        else:
-            merged_prefix = False
-            if "merge_commit_sha" in stage:
-                raise TrainVerificationError("open stage must not pin a merge commit")
 
         head_branch = require_text(stage["head_branch"], f"{label}.head_branch")
         head_sha = require_sha(stage["head_sha"], f"{label}.head_sha")
@@ -259,75 +307,42 @@ def verify_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
             stage["delta_commits"], f"{label}.delta_commits"
         )
 
-        predecessor = stage["predecessor_pull_request"]
         if index == 0:
-            if predecessor is not None:
+            if stage["predecessor_pull_request"] is not None:
                 raise TrainVerificationError("first stage must not have a predecessor")
-            if base_branch != target["branch"] or base_sha != target_head:
-                raise TrainVerificationError("first stage must be based on frozen target head")
-            if ancestry_parent != target_head:
-                raise TrainVerificationError("first ancestry parent must equal target head")
+            if base_branch != "main":
+                raise TrainVerificationError("first stage base branch must be main")
+            if ancestry_parent != initial_head:
+                raise TrainVerificationError("first stage ancestry parent must be initial main")
         else:
-            previous = normalized[index - 1]
-            if predecessor != previous["pull_request"]:
+            previous = stages[index - 1]
+            if stage["predecessor_pull_request"] != previous["pull_request"]:
                 raise TrainVerificationError("successor predecessor PR mismatch")
             if ancestry_parent != previous["head_sha"]:
-                raise TrainVerificationError("successor ancestry must point to predecessor head")
-            if previous["train_state"] == "OPEN_STACKED":
-                if base_branch != previous["head_branch"] or base_sha != previous["head_sha"]:
-                    raise TrainVerificationError(
-                        "open stacked successor must target predecessor branch and head"
-                    )
-            else:
-                if base_branch != target["branch"] or base_sha != target_head:
-                    raise TrainVerificationError(
-                        "successor of merged stage must be retargeted to current target head"
-                    )
+                raise TrainVerificationError("successor ancestry parent mismatch")
+            if state == "OPEN_STACKED":
+                if previous["train_state"] == "OPEN_STACKED":
+                    if base_branch != previous["head_branch"] or base_sha != previous["head_sha"]:
+                        raise TrainVerificationError(
+                            "open successor must target its open predecessor branch and head"
+                        )
+                else:
+                    if base_branch != "main" or base_sha != expected_target_head:
+                        raise TrainVerificationError(
+                            "successor of merged stage must target current main head"
+                        )
+            elif base_branch != "main":
+                raise TrainVerificationError("merged successor must have been retargeted to main")
 
-        runs = stage["workflow_runs"]
-        if not isinstance(runs, list) or not runs:
-            raise TrainVerificationError(f"{label}.workflow_runs must be non-empty")
-        run_ids: set[int] = set()
-        run_names: set[str] = set()
-        normalized_runs: list[dict[str, Any]] = []
-        for run_index, run_raw in enumerate(runs):
-            run = require_object(run_raw, f"{label}.workflow_runs[{run_index}]")
-            if set(run) != {"name", "run_id"}:
-                raise TrainVerificationError("workflow run keys invalid")
-            name = require_text(run["name"], f"{label}.workflow_runs[{run_index}].name")
-            run_id = require_positive_int(
-                run["run_id"], f"{label}.workflow_runs[{run_index}].run_id"
-            )
-            if name in run_names or run_id in run_ids:
-                raise TrainVerificationError("workflow run names and IDs must be unique per stage")
-            run_names.add(name)
-            run_ids.add(run_id)
-            normalized_runs.append({"name": name, "run_id": run_id})
-
+        runs = verify_stage_runs(stage, label)
         statuses = require_string_list(
             stage["required_commit_statuses"], f"{label}.required_commit_statuses"
         )
         if statuses != ["CodeRabbit"]:
-            raise TrainVerificationError("every stage must require CodeRabbit success")
+            raise TrainVerificationError("each stage must require CodeRabbit success")
+        receipt = verify_receipt(stage, runs, label)
 
-        receipt = require_object(stage["receipt"], f"{label}.receipt")
-        if set(receipt) != {
-            "workflow_run_id",
-            "artifact_id",
-            "artifact_name",
-            "artifact_digest",
-        }:
-            raise TrainVerificationError("receipt keys invalid")
-        receipt_run = require_positive_int(
-            receipt["workflow_run_id"], f"{label}.receipt.workflow_run_id"
-        )
-        if receipt_run not in run_ids:
-            raise TrainVerificationError("receipt workflow run must be pinned in workflow_runs")
-        require_positive_int(receipt["artifact_id"], f"{label}.receipt.artifact_id")
-        require_text(receipt["artifact_name"], f"{label}.receipt.artifact_name")
-        require_digest(receipt["artifact_digest"], f"{label}.receipt.artifact_digest")
-
-        normalized.append(
+        stages.append(
             {
                 **stage,
                 "head_branch": head_branch,
@@ -336,15 +351,32 @@ def verify_manifest(manifest: dict[str, Any]) -> list[dict[str, Any]]:
                 "expected_base_sha": base_sha,
                 "ancestry_parent_sha": ancestry_parent,
                 "delta_commits": delta_commits,
-                "workflow_runs": normalized_runs,
+                "workflow_runs": runs,
+                "receipt": receipt,
             }
         )
 
-    if [stage["pull_request"] for stage in normalized] != [110, 113, 116]:
+    if [stage["pull_request"] for stage in stages] != [110, 113, 116]:
         raise TrainVerificationError("canonical train must pin PRs 110, 113, and 116")
-    if any(stage["train_state"] != "OPEN_STACKED" for stage in normalized):
-        raise TrainVerificationError("PRE_MERGE_FROZEN candidate must have all stages open")
-    return normalized
+
+    merged_count = sum(stage["train_state"] == "MERGED" for stage in stages)
+    expected_phase = PHASE_BY_MERGED_COUNT[merged_count]
+    if manifest["candidate_state"] != expected_phase:
+        raise TrainVerificationError(
+            f"candidate_state must be {expected_phase} for {merged_count} merged stages"
+        )
+    if merged_count == 0:
+        if expected_target_head != initial_head:
+            raise TrainVerificationError("pre-merge target head must equal initial head")
+    else:
+        last_merged = stages[merged_count - 1]
+        if expected_target_head != last_merged["merge_commit_sha"]:
+            raise TrainVerificationError("target head must equal latest merged-stage commit")
+
+    blockers = set(require_string_list(manifest["release_blockers"], "release_blockers"))
+    if blockers != expected_blockers(codex_status, merged_count):
+        raise TrainVerificationError("release blockers do not match train/review state")
+    return stages
 
 
 class GitHubClient:
@@ -353,9 +385,8 @@ class GitHubClient:
         self.api_url = api_url.rstrip("/")
 
     def get(self, path: str) -> Any:
-        url = f"{self.api_url}/{path.lstrip('/')}"
         request = urllib.request.Request(
-            url,
+            f"{self.api_url}/{path.lstrip('/')}",
             headers={
                 "Accept": "application/vnd.github+json",
                 "Authorization": f"Bearer {self.token}",
@@ -375,10 +406,15 @@ class GitHubClient:
             raise TrainVerificationError(f"GitHub API request failed for {path}: {error}") from error
 
 
+def latest_status(statuses: list[dict[str, Any]], context: str) -> dict[str, Any] | None:
+    matching = [status for status in statuses if status.get("context") == context]
+    if not matching:
+        return None
+    return max(matching, key=lambda status: status.get("updated_at") or "")
+
+
 def verify_live(
-    manifest: dict[str, Any],
-    stages: list[dict[str, Any]],
-    client: GitHubClient,
+    manifest: dict[str, Any], stages: list[dict[str, Any]], client: GitHubClient
 ) -> dict[str, Any]:
     repository = manifest["repository"]
     encoded_repo = "/".join(urllib.parse.quote(part, safe="") for part in repository.split("/"))
@@ -386,40 +422,43 @@ def verify_live(
     branch = client.get(
         f"repos/{encoded_repo}/branches/{urllib.parse.quote(target['branch'], safe='')}"
     )
-    actual_target_head = branch.get("commit", {}).get("sha")
-    if actual_target_head != target["expected_head"]:
+    target_head = branch.get("commit", {}).get("sha")
+    if target_head != target["expected_head"]:
         raise TrainVerificationError(
-            f"target head drifted: {actual_target_head} != {target['expected_head']}"
+            f"target head drifted: {target_head} != {target['expected_head']}"
         )
 
     live_stages: list[dict[str, Any]] = []
     for stage in stages:
         pr_number = stage["pull_request"]
         pr = client.get(f"repos/{encoded_repo}/pulls/{pr_number}")
-        if stage["train_state"] == "OPEN_STACKED":
-            if pr.get("state") != "open" or pr.get("merged") is True:
-                raise TrainVerificationError(f"PR #{pr_number} is no longer open and unmerged")
-        else:
-            if pr.get("state") != "closed" or pr.get("merged") is not True:
-                raise TrainVerificationError(f"PR #{pr_number} is not merged as pinned")
-            merge_sha = stage["merge_commit_sha"]
-            if pr.get("merge_commit_sha") != merge_sha:
-                raise TrainVerificationError(f"PR #{pr_number} merge commit changed")
-            merge_commit = client.get(f"repos/{encoded_repo}/commits/{merge_sha}")
-            parents = [parent.get("sha") for parent in merge_commit.get("parents", [])]
-            if len(parents) < 2 or stage["head_sha"] not in parents:
-                raise TrainVerificationError(
-                    f"PR #{pr_number} was not preserved as a merge-commit parent"
-                )
-
         if pr.get("head", {}).get("ref") != stage["head_branch"]:
             raise TrainVerificationError(f"PR #{pr_number} head branch drifted")
         if pr.get("head", {}).get("sha") != stage["head_sha"]:
             raise TrainVerificationError(f"PR #{pr_number} head SHA drifted")
         if pr.get("base", {}).get("ref") != stage["expected_base_branch"]:
             raise TrainVerificationError(f"PR #{pr_number} base branch drifted")
-        if pr.get("base", {}).get("sha") != stage["expected_base_sha"]:
-            raise TrainVerificationError(f"PR #{pr_number} base SHA drifted")
+
+        if stage["train_state"] == "OPEN_STACKED":
+            if pr.get("state") != "open" or pr.get("merged") is True:
+                raise TrainVerificationError(f"PR #{pr_number} is not open and unmerged")
+            if pr.get("base", {}).get("sha") != stage["expected_base_sha"]:
+                raise TrainVerificationError(f"PR #{pr_number} base SHA drifted")
+        else:
+            if pr.get("state") != "closed" or pr.get("merged") is not True:
+                raise TrainVerificationError(f"PR #{pr_number} is not merged")
+            merge_sha = stage["merge_commit_sha"]
+            if pr.get("merge_commit_sha") != merge_sha:
+                raise TrainVerificationError(f"PR #{pr_number} merge commit drifted")
+            merge_commit = client.get(f"repos/{encoded_repo}/commits/{merge_sha}")
+            parents = [parent.get("sha") for parent in merge_commit.get("parents", [])]
+            if len(parents) != 2 or set(parents) != {
+                stage["expected_base_sha"],
+                stage["head_sha"],
+            }:
+                raise TrainVerificationError(
+                    f"PR #{pr_number} was not merged with the pinned two-parent merge commit"
+                )
 
         compare = client.get(
             f"repos/{encoded_repo}/compare/{stage['ancestry_parent_sha']}...{stage['head_sha']}"
@@ -431,70 +470,49 @@ def verify_live(
         if compare.get("merge_base_commit", {}).get("sha") != stage["ancestry_parent_sha"]:
             raise TrainVerificationError(f"PR #{pr_number} merge base changed")
 
-        live_runs: list[dict[str, Any]] = []
+        normalized_runs: list[dict[str, Any]] = []
         for run_pin in stage["workflow_runs"]:
             run = client.get(f"repos/{encoded_repo}/actions/runs/{run_pin['run_id']}")
             if run.get("name") != run_pin["name"]:
-                raise TrainVerificationError(
-                    f"workflow run {run_pin['run_id']} name changed"
-                )
+                raise TrainVerificationError(f"workflow run {run_pin['run_id']} name changed")
             if run.get("head_sha") != stage["head_sha"]:
-                raise TrainVerificationError(
-                    f"workflow run {run_pin['run_id']} is not bound to pinned head"
-                )
+                raise TrainVerificationError(f"workflow run {run_pin['run_id']} head changed")
             if run.get("event") != "pull_request":
-                raise TrainVerificationError(
-                    f"workflow run {run_pin['run_id']} is not a pull-request run"
-                )
+                raise TrainVerificationError(f"workflow run {run_pin['run_id']} event changed")
             if run.get("status") != "completed" or run.get("conclusion") != "success":
-                raise TrainVerificationError(
-                    f"workflow run {run_pin['run_id']} is not completed successfully"
-                )
-            live_runs.append(
-                {
-                    "name": run_pin["name"],
-                    "run_id": run_pin["run_id"],
-                    "conclusion": "success",
-                }
+                raise TrainVerificationError(f"workflow run {run_pin['run_id']} is not green")
+            normalized_runs.append(
+                {"name": run_pin["name"], "run_id": run_pin["run_id"], "conclusion": "success"}
             )
 
-        receipt_pin = stage["receipt"]
-        artifact = client.get(
-            f"repos/{encoded_repo}/actions/artifacts/{receipt_pin['artifact_id']}"
-        )
-        if artifact.get("name") != receipt_pin["artifact_name"]:
+        receipt = stage["receipt"]
+        artifact = client.get(f"repos/{encoded_repo}/actions/artifacts/{receipt['artifact_id']}")
+        if artifact.get("name") != receipt["artifact_name"]:
             raise TrainVerificationError(f"PR #{pr_number} artifact name changed")
-        if artifact.get("digest") != receipt_pin["artifact_digest"]:
+        if artifact.get("digest") != receipt["artifact_digest"]:
             raise TrainVerificationError(f"PR #{pr_number} artifact digest changed")
         if artifact.get("expired") is not False:
-            raise TrainVerificationError(f"PR #{pr_number} artifact is expired")
+            raise TrainVerificationError(f"PR #{pr_number} artifact expired")
         artifact_run = artifact.get("workflow_run") or {}
-        if artifact_run.get("id") != receipt_pin["workflow_run_id"]:
+        if artifact_run.get("id") != receipt["workflow_run_id"]:
             raise TrainVerificationError(f"PR #{pr_number} artifact run changed")
         if artifact_run.get("head_sha") != stage["head_sha"]:
             raise TrainVerificationError(f"PR #{pr_number} artifact head binding changed")
 
         combined = client.get(f"repos/{encoded_repo}/commits/{stage['head_sha']}/status")
-        statuses = combined.get("statuses") or []
         normalized_statuses: list[dict[str, str]] = []
-        for required_context in stage["required_commit_statuses"]:
-            matches = [item for item in statuses if item.get("context") == required_context]
-            if not matches:
+        for context in stage["required_commit_statuses"]:
+            status = latest_status(combined.get("statuses") or [], context)
+            if status is None or status.get("state") != "success":
                 raise TrainVerificationError(
-                    f"PR #{pr_number} missing required status {required_context}"
+                    f"PR #{pr_number} required status {context} is not successful"
                 )
-            latest = max(matches, key=lambda item: item.get("updated_at") or "")
-            if latest.get("state") != "success":
-                raise TrainVerificationError(
-                    f"PR #{pr_number} status {required_context} is not successful"
-                )
-            normalized_statuses.append(
-                {"context": required_context, "state": "success"}
-            )
+            normalized_statuses.append({"context": context, "state": "success"})
 
         live_stages.append(
             {
                 "pull_request": pr_number,
+                "train_state": stage["train_state"],
                 "state": pr.get("state"),
                 "draft": bool(pr.get("draft")),
                 "head_sha": stage["head_sha"],
@@ -502,44 +520,38 @@ def verify_live(
                 "base_sha": stage["expected_base_sha"],
                 "ancestry_parent_sha": stage["ancestry_parent_sha"],
                 "delta_commits": stage["delta_commits"],
-                "workflow_runs": live_runs,
+                "workflow_runs": normalized_runs,
                 "statuses": normalized_statuses,
                 "artifact": {
-                    "artifact_id": receipt_pin["artifact_id"],
-                    "name": receipt_pin["artifact_name"],
-                    "digest": receipt_pin["artifact_digest"],
+                    "artifact_id": receipt["artifact_id"],
+                    "name": receipt["artifact_name"],
+                    "digest": receipt["artifact_digest"],
                 },
             }
         )
 
     live_state = {
-        "target": {"branch": target["branch"], "head_sha": actual_target_head},
+        "target": {"branch": target["branch"], "head_sha": target_head},
         "stages": live_stages,
     }
-    return {
-        "live_state": live_state,
-        "live_state_digest": digest_json(live_state),
-    }
+    return {"live_state": live_state, "live_state_digest": digest_json(live_state)}
 
 
 def build_receipt(
-    manifest: dict[str, Any],
-    stages: list[dict[str, Any]],
-    live_result: dict[str, Any] | None,
+    manifest: dict[str, Any], stages: list[dict[str, Any]], live: dict[str, Any] | None
 ) -> dict[str, Any]:
     receipt: dict[str, Any] = {
         "schema": RECEIPT_SCHEMA,
         "profile": PROFILE,
         "verdict": "PASS",
-        "mode": "LIVE" if live_result is not None else "OFFLINE",
+        "mode": "LIVE" if live else "OFFLINE",
         "candidate_id": manifest["candidate_id"],
         "candidate_state": manifest["candidate_state"],
         "manifest_digest": digest_json(manifest),
-        "target_head": manifest["target"]["expected_head"],
-        "stage_count": len(stages),
-        "stage_heads": {
-            str(stage["pull_request"]): stage["head_sha"] for stage in stages
-        },
+        "initial_target_head": manifest["target"]["initial_head"],
+        "current_target_head": manifest["target"]["expected_head"],
+        "merged_stage_count": sum(stage["train_state"] == "MERGED" for stage in stages),
+        "stage_heads": {str(stage["pull_request"]): stage["head_sha"] for stage in stages},
         "receipt_artifacts": {
             str(stage["pull_request"]): stage["receipt"]["artifact_digest"]
             for stage in stages
@@ -550,8 +562,8 @@ def build_receipt(
         "next_action": manifest["next_action"],
         "claim_boundary": manifest["claim_boundary"],
     }
-    if live_result is not None:
-        receipt.update(live_result)
+    if live:
+        receipt.update(live)
     return receipt
 
 
@@ -577,14 +589,18 @@ def main() -> None:
         configured_repository = os.environ.get("GITHUB_REPOSITORY")
         if configured_repository and configured_repository != manifest["repository"]:
             raise TrainVerificationError("GITHUB_REPOSITORY does not match manifest")
-        client = GitHubClient(
-            token=token,
-            api_url=os.environ.get("GITHUB_API_URL", "https://api.github.com"),
+        live_result = verify_live(
+            manifest,
+            stages,
+            GitHubClient(token, os.environ.get("GITHUB_API_URL", "https://api.github.com")),
         )
-        live_result = verify_live(manifest, stages, client)
 
-    receipt = build_receipt(manifest, stages, live_result)
-    rendered = json.dumps(receipt, ensure_ascii=False, indent=2, sort_keys=True) + "\n"
+    rendered = json.dumps(
+        build_receipt(manifest, stages, live_result),
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered, encoding="utf-8")
