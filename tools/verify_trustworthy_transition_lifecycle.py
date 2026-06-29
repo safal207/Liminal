@@ -40,6 +40,29 @@ DOWNSTREAM_DIMENSIONS = {
     "continuity_posture",
     "durability",
 }
+
+AUTHORITY_VALUES = {
+    "VALID",
+    "DENIED",
+    "PENDING",
+    "EXPIRED",
+    "EXPIRED_AT_REPORT",
+    "CONSUMED",
+    "REVALIDATION_REQUIRED",
+    "NOT_EVALUATED",
+}
+EXECUTION_VALUES = {
+    "OBSERVED_EXECUTED",
+    "OBSERVED_BLOCKED",
+    "OBSERVED_ERRORED",
+    "NOT_OBSERVED",
+}
+RESPONSE_INTEGRITY_VALUES = {
+    "VERIFIED",
+    "FAILED",
+    "PARTIAL",
+    "NOT_EVALUATED",
+}
 CAUSAL_VALUES = {"VALID", "INVALID", "NOT_EVALUATED", "UNKNOWN"}
 CONTINUITY_VALUES = {
     "CONTINUE_SIDE_EFFECT",
@@ -128,8 +151,7 @@ def canonical_json(value: Any) -> str:
 
 
 def digest_json(value: Any) -> str:
-    payload = canonical_json(value).encode("utf-8")
-    return "sha256:" + hashlib.sha256(payload).hexdigest()
+    return "sha256:" + hashlib.sha256(canonical_json(value).encode("utf-8")).hexdigest()
 
 
 def require_text(value: Any, *, label: str) -> str:
@@ -157,18 +179,28 @@ def require_string_list(value: Any, *, label: str) -> list[str]:
 def require_map(value: Any, *, label: str) -> dict[str, str]:
     if not isinstance(value, dict) or not value:
         raise LifecycleVerificationError(f"{label} must be a non-empty object")
-    for key, mapped in value.items():
-        if not isinstance(key, str) or not key or not isinstance(mapped, str) or not mapped:
-            raise LifecycleVerificationError(
-                f"{label} must map non-empty strings to non-empty strings"
-            )
+    if any(
+        not isinstance(key, str)
+        or not key
+        or not isinstance(mapped, str)
+        or not mapped
+        for key, mapped in value.items()
+    ):
+        raise LifecycleVerificationError(
+            f"{label} must map non-empty strings to non-empty strings"
+        )
     return value
 
 
 def verify_artifact_path(value: Any, *, label: str) -> str:
     path = require_text(value, label=label)
     parsed = PurePosixPath(path)
-    if parsed.is_absolute() or "." in parsed.parts or ".." in parsed.parts:
+    if (
+        parsed.is_absolute()
+        or ".." in parsed.parts
+        or path in {"", "."}
+        or parsed.as_posix() != path
+    ):
         raise LifecycleVerificationError(
             f"{label} must be a normalized relative repository path"
         )
@@ -242,8 +274,10 @@ def verify_implementation(value: Any, *, index: int) -> tuple[str, dict[str, Any
         mapping = require_map(
             value.get("causal_validity_map"), label=f"{label}.causal_validity_map"
         )
-        if not set(mapping.values()) <= CAUSAL_VALUES:
-            raise LifecycleVerificationError(f"{label} has unknown causal values")
+        if set(mapping.values()) != CAUSAL_VALUES:
+            raise LifecycleVerificationError(
+                f"{label} must expose all canonical causal validity values"
+            )
     elif CONTINUITY_ROLE in roles:
         expected_records = {"continuity_snapshot_record"}
         expected_consumes = {
@@ -267,8 +301,6 @@ def verify_implementation(value: Any, *, index: int) -> tuple[str, dict[str, Any
             value.get("durability_status_map"),
             label=f"{label}.durability_status_map",
         )
-        if not set(mapping.values()) <= DURABILITY_VALUES:
-            raise LifecycleVerificationError(f"{label} has unknown durability values")
         if set(mapping.values()) != DURABILITY_VALUES:
             raise LifecycleVerificationError(
                 f"{label} must expose verified, failed, and not-evaluated durability"
@@ -313,6 +345,14 @@ def verify_base_fixture(value: dict[str, Any]) -> dict[str, dict[str, Any]]:
             raise LifecycleVerificationError(
                 f"{case_id} must expose all base independent dimensions"
             )
+        if expected["authority"] not in AUTHORITY_VALUES:
+            raise LifecycleVerificationError(f"{case_id} has invalid authority value")
+        if expected["execution"] not in EXECUTION_VALUES:
+            raise LifecycleVerificationError(f"{case_id} has invalid execution value")
+        if expected["response_integrity"] not in RESPONSE_INTEGRITY_VALUES:
+            raise LifecycleVerificationError(
+                f"{case_id} has invalid response-integrity value"
+            )
         required_roles = set(
             require_string_list(
                 case.get("required_record_roles"),
@@ -353,12 +393,12 @@ def derive_full_lifecycle_status(
 ) -> str:
     if durability == "LOCAL_REPLAY_FAILED":
         return "DURABILITY_FAILED"
-    if durability == "NOT_EVALUATED":
-        return "DURABILITY_NOT_EVALUATED"
     if causal_validity == "INVALID":
         return "CAUSAL_INVALID"
     if causal_validity in {"NOT_EVALUATED", "UNKNOWN"}:
         return "CAUSAL_NOT_EVALUATED"
+    if durability == "NOT_EVALUATED":
+        return "DURABILITY_NOT_EVALUATED"
     return {
         "CONTINUE_SIDE_EFFECT": "EXECUTABLE_CONTINUATION",
         "RETRY_SIDE_EFFECT": "EXECUTABLE_CONTINUATION",
@@ -375,7 +415,6 @@ def expected_resume_side_effects(
     *,
     authority: str,
     execution: str,
-    response_integrity: str,
     causal_validity: str,
     continuity_posture: str,
     durability: str,
@@ -385,15 +424,9 @@ def expected_resume_side_effects(
     if authority != "VALID":
         return 0
     if continuity_posture == "CONTINUE_SIDE_EFFECT":
-        return int(
-            execution == "NOT_OBSERVED"
-            and response_integrity in {"VERIFIED", "NOT_EVALUATED"}
-        )
+        return int(execution == "NOT_OBSERVED")
     if continuity_posture == "RETRY_SIDE_EFFECT":
-        return int(
-            execution == "OBSERVED_ERRORED"
-            and response_integrity in {"VERIFIED", "NOT_EVALUATED"}
-        )
+        return int(execution == "OBSERVED_ERRORED")
     return 0
 
 
@@ -562,7 +595,13 @@ def verify_case(
             f"{case_id} partial response must require revalidation"
         )
 
-    resume_effects = expected_resume_side_effects(**dimensions)
+    resume_effects = expected_resume_side_effects(
+        authority=dimensions["authority"],
+        execution=dimensions["execution"],
+        causal_validity=dimensions["causal_validity"],
+        continuity_posture=dimensions["continuity_posture"],
+        durability=dimensions["durability"],
+    )
     if expected["expected_resume_side_effects"] != resume_effects:
         raise LifecycleVerificationError(
             f"{case_id} expected_resume_side_effects mismatch"
@@ -601,8 +640,7 @@ def verify_pack(
         raise LifecycleVerificationError("full-lifecycle profile mismatch")
     if fixture.get("base_profile") != BASE_PROFILE:
         raise LifecycleVerificationError("base_profile mismatch")
-    declared_base = fixture.get("base_fixture")
-    if declared_base != base_fixture_path.as_posix():
+    if fixture.get("base_fixture") != base_fixture_path.as_posix():
         raise LifecycleVerificationError(
             "base_fixture path must match the verifier input path"
         )
@@ -641,6 +679,7 @@ def verify_pack(
     cases_raw = fixture.get("cases")
     if not isinstance(cases_raw, list) or not cases_raw:
         raise LifecycleVerificationError("full-lifecycle fixture must contain cases")
+
     case_receipts: list[dict[str, Any]] = []
     seen_case_ids: set[str] = set()
     for index, case_raw in enumerate(cases_raw):
