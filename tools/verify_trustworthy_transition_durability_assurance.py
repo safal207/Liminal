@@ -24,6 +24,7 @@ CHECKPOINT_VALUES = {
     "INVALID",
 }
 PROCESS_VALUES = {"NOT_EVALUATED", "PARTIAL", "VERIFIED", "FAILED"}
+METADATA_STATES = {"AVAILABLE", "UNAVAILABLE"}
 REQUIRED_PLATFORMS = {"ubuntu", "macos", "windows"}
 LIFECYCLE_KEYS = {
     "authority",
@@ -182,6 +183,8 @@ def verify_contract(value: Any) -> None:
         raise AssuranceVerificationError("checkpoint assurance vocabulary mismatch")
     if set(value.get("process_crash_values", [])) != PROCESS_VALUES:
         raise AssuranceVerificationError("process-crash vocabulary mismatch")
+    if set(value.get("metadata_states", [])) != METADATA_STATES:
+        raise AssuranceVerificationError("assurance metadata vocabulary mismatch")
     if set(value.get("required_platforms", [])) != REQUIRED_PLATFORMS:
         raise AssuranceVerificationError("required platform set mismatch")
     if set(value.get("platform_receipt_statuses", [])) != {"PASSED", "FAILED"}:
@@ -250,7 +253,7 @@ def verify_case(
     index: int,
     base_cases: dict[str, dict[str, Any]],
     artifact_map: dict[str, str],
-) -> tuple[str, str, str]:
+) -> tuple[str, str, str, str]:
     if not isinstance(case, dict):
         raise AssuranceVerificationError(f"cases[{index}] must be an object")
     if set(case) != {"case_id", "base_case_id", "local_outcomes", "expected"}:
@@ -263,6 +266,7 @@ def verify_case(
     local = case["local_outcomes"]
     expected = case["expected"]
     if not isinstance(local, dict) or set(local) != {
+        "assurance_metadata_state",
         "checkpoint_status",
         "checkpoint_error_code",
         "platform_receipts",
@@ -279,20 +283,49 @@ def verify_case(
     }:
         raise AssuranceVerificationError(f"{case_id}.expected keys are invalid")
 
-    checkpoint = require_text(local["checkpoint_status"], f"{case_id}.checkpoint_status")
-    if checkpoint not in CHECKPOINT_VALUES:
-        raise AssuranceVerificationError(f"{case_id} has invalid checkpoint status")
-    error_code = local["checkpoint_error_code"]
-    if checkpoint == "INVALID":
-        error_code = require_text(error_code, f"{case_id}.checkpoint_error_code")
-        if error_code not in ALLOWED_CHECKPOINT_ERRORS:
-            raise AssuranceVerificationError(f"{case_id} has unsupported checkpoint error code")
-    elif error_code is not None:
-        raise AssuranceVerificationError(f"{case_id} non-invalid checkpoint must not carry an error")
-
-    process_status, passed_platforms = derive_platform_status(
-        local["platform_receipts"], artifact_map, case_id
+    metadata_state = require_text(
+        local["assurance_metadata_state"], f"{case_id}.assurance_metadata_state"
     )
+    if metadata_state not in METADATA_STATES:
+        raise AssuranceVerificationError(f"{case_id} has invalid assurance metadata state")
+
+    if metadata_state == "UNAVAILABLE":
+        if local["checkpoint_status"] is not None:
+            raise AssuranceVerificationError(
+                f"{case_id} unavailable metadata must not synthesize checkpoint status"
+            )
+        if local["checkpoint_error_code"] is not None:
+            raise AssuranceVerificationError(
+                f"{case_id} unavailable metadata must not synthesize checkpoint errors"
+            )
+        if local["platform_receipts"] is not None:
+            raise AssuranceVerificationError(
+                f"{case_id} unavailable metadata must not synthesize platform receipts"
+            )
+        checkpoint = "NOT_EVALUATED"
+        process_status = "NOT_EVALUATED"
+        passed_platforms: list[str] = []
+    else:
+        checkpoint = require_text(
+            local["checkpoint_status"], f"{case_id}.checkpoint_status"
+        )
+        if checkpoint not in CHECKPOINT_VALUES:
+            raise AssuranceVerificationError(f"{case_id} has invalid checkpoint status")
+        error_code = local["checkpoint_error_code"]
+        if checkpoint == "INVALID":
+            error_code = require_text(error_code, f"{case_id}.checkpoint_error_code")
+            if error_code not in ALLOWED_CHECKPOINT_ERRORS:
+                raise AssuranceVerificationError(
+                    f"{case_id} has unsupported checkpoint error code"
+                )
+        elif error_code is not None:
+            raise AssuranceVerificationError(
+                f"{case_id} non-invalid checkpoint must not carry an error"
+            )
+        process_status, passed_platforms = derive_platform_status(
+            local["platform_receipts"], artifact_map, case_id
+        )
+
     if expected["checkpoint_assurance"] != checkpoint:
         raise AssuranceVerificationError(f"{case_id} checkpoint normalization mismatch")
     if expected["process_crash_evidence"] != process_status:
@@ -305,7 +338,13 @@ def verify_case(
         raise AssuranceVerificationError(f"{case_id} external anti-rollback claim mismatch")
     if expected["power_loss_verified"] is not False:
         raise AssuranceVerificationError(f"{case_id} must not claim power-loss verification")
-    require_text(expected["assurance_status"], f"{case_id}.assurance_status")
+    assurance_status = require_text(
+        expected["assurance_status"], f"{case_id}.assurance_status"
+    )
+    if metadata_state == "UNAVAILABLE" and assurance_status != "ASSURANCE_UNAVAILABLE":
+        raise AssuranceVerificationError(
+            f"{case_id} unavailable metadata must remain explicit in the normalized result"
+        )
 
     lifecycle = expected["lifecycle"]
     if not isinstance(lifecycle, dict) or set(lifecycle) != LIFECYCLE_KEYS:
@@ -317,12 +356,11 @@ def verify_case(
             f"{case_id} storage assurance mutated an independent lifecycle verdict"
         )
 
-    if checkpoint == "LOCAL_SIGNATURE_ONLY" and external:
-        raise AssuranceVerificationError(f"{case_id} local signature cannot imply external anchor")
-    if error_code == "EXTERNAL_ANCHOR_ROLLBACK" and expected["assurance_status"] != "ROLLBACK_REJECTED":
+    error_code = local["checkpoint_error_code"]
+    if error_code == "EXTERNAL_ANCHOR_ROLLBACK" and assurance_status != "ROLLBACK_REJECTED":
         raise AssuranceVerificationError(f"{case_id} rollback must be explicitly rejected")
 
-    return case_id, checkpoint, process_status
+    return case_id, checkpoint, process_status, metadata_state
 
 
 def verify_fixture(fixture: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]:
@@ -344,8 +382,9 @@ def verify_fixture(fixture: dict[str, Any], base: dict[str, Any]) -> dict[str, A
     seen: set[str] = set()
     checkpoint_counts: Counter[str] = Counter()
     process_counts: Counter[str] = Counter()
+    metadata_counts: Counter[str] = Counter()
     for index, case in enumerate(cases):
-        case_id, checkpoint, process = verify_case(
+        case_id, checkpoint, process, metadata_state = verify_case(
             case, index, base_cases, artifact_map
         )
         if case_id in seen:
@@ -353,6 +392,7 @@ def verify_fixture(fixture: dict[str, Any], base: dict[str, Any]) -> dict[str, A
         seen.add(case_id)
         checkpoint_counts[checkpoint] += 1
         process_counts[process] += 1
+        metadata_counts[metadata_state] += 1
 
     if seen != REQUIRED_CASES:
         raise AssuranceVerificationError(
@@ -363,6 +403,8 @@ def verify_fixture(fixture: dict[str, Any], base: dict[str, Any]) -> dict[str, A
         raise AssuranceVerificationError("fixture must cover every checkpoint assurance value")
     if set(process_counts) != PROCESS_VALUES:
         raise AssuranceVerificationError("fixture must cover every process-crash evidence value")
+    if set(metadata_counts) != METADATA_STATES:
+        raise AssuranceVerificationError("fixture must cover available and unavailable metadata")
 
     return {
         "schema": RECEIPT_SCHEMA,
@@ -374,6 +416,7 @@ def verify_fixture(fixture: dict[str, Any], base: dict[str, Any]) -> dict[str, A
         "implementation_heads": heads,
         "checkpoint_distribution": dict(sorted(checkpoint_counts.items())),
         "process_crash_distribution": dict(sorted(process_counts.items())),
+        "metadata_distribution": dict(sorted(metadata_counts.items())),
         "verified_platforms": sorted(REQUIRED_PLATFORMS),
         "independent_dimensions": fixture["assurance_contract"]["independent_dimensions"],
         "claim_boundary": fixture["assurance_contract"]["claim_boundary"],
