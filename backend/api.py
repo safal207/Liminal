@@ -71,7 +71,7 @@ except ImportError as e:
 
 settings = get_settings()
 
-print("DEBUG: Before ml_features import")
+logger.debug("Before ml_features import")
 try:
     from backend.ml_features import (
         extract_traffic_features,
@@ -85,9 +85,9 @@ try:
     )
 
     ML_ENABLED = settings.integrations.ml_enabled
-    print(f"DEBUG: Successfully imported ml_features. ML_ENABLED={ML_ENABLED}")
+    logger.debug("Successfully imported ml_features. ML_ENABLED=%s", ML_ENABLED)
 except ImportError as e:
-    print(f"ERROR: Failed to import ml_features: {e}")
+    logger.error("Failed to import ml_features: %s", e)
     ML_ENABLED = False
 
     def extract_user_patterns():
@@ -354,7 +354,13 @@ async def websocket_timeline(websocket: WebSocket, token: str = None):
                 }
             )
 
-            auth_data = await websocket.receive_text()
+            try:
+                auth_data = await asyncio.wait_for(
+                    websocket.receive_text(), timeout=30.0
+                )
+            except asyncio.TimeoutError:
+                await connection_manager.reject_connection(websocket, "Auth timeout")
+                return
             try:
                 auth_message = json.loads(auth_data)
             except (TypeError, json.JSONDecodeError):

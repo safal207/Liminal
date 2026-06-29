@@ -248,6 +248,7 @@ class RetryPolicy:
         exponential_base: float = 2.0,
         jitter: bool = True,
         retryable_exceptions: tuple = (Exception,),
+        non_retryable_exceptions: tuple = (),
     ):
         """
         Initialize retry policy.
@@ -259,6 +260,8 @@ class RetryPolicy:
             exponential_base: Base for exponential backoff
             jitter: Add random jitter to delays
             retryable_exceptions: Exception types that trigger retries
+            non_retryable_exceptions: Subset of retryable exceptions to fail fast on
+                (e.g. AuthenticationError — permanent, no point retrying)
         """
         self.max_attempts = max_attempts
         self.base_delay = base_delay
@@ -266,6 +269,7 @@ class RetryPolicy:
         self.exponential_base = exponential_base
         self.jitter = jitter
         self.retryable_exceptions = retryable_exceptions
+        self.non_retryable_exceptions = non_retryable_exceptions
 
     def calculate_delay(self, attempt: int) -> float:
         """Calculate delay for given attempt number."""
@@ -306,6 +310,12 @@ async def with_retry(func: Callable, retry_policy: RetryPolicy, *args, **kwargs)
                 return func(*args, **kwargs)
 
         except retry_policy.retryable_exceptions as e:
+            # Fast-fail on permanent errors even if they are in retryable_exceptions
+            if retry_policy.non_retryable_exceptions and isinstance(
+                e, retry_policy.non_retryable_exceptions
+            ):
+                raise
+
             last_exception = e
 
             if attempt == retry_policy.max_attempts - 1:
