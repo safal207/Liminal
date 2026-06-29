@@ -21,6 +21,7 @@
   },
   "review_policy": {
     "coderabbit_required": true,
+    "coderabbit_status": "PASSED",
     "codex_required": true,
     "codex_status": "PENDING"
   },
@@ -100,7 +101,7 @@
       }
     }
   ],
-  "next_action": "COMPLETE_CODEX_REVIEW_THEN_MERGE_PR_110_WITH_MERGE_COMMIT",
+  "next_action": "COMPLETE_CODEX_REVIEW",
   "release_blockers": [
     "CODEX_REVIEW_PENDING",
     "STACK_NOT_MERGED",
