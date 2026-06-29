@@ -1,0 +1,48 @@
+name: Trustworthy Transition Release Train
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    paths:
+      - "releases/trustworthy-transition-*"
+      - "tools/verify_trustworthy_transition_release_train.py"
+      - "docs/interop/TRUSTWORTHY_TRANSITION_RELEASE_TRAIN_*"
+      - ".github/workflows/trustworthy-transition-release-train.yml"
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: read
+  statuses: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify release manifest offline
+        run: |
+          mkdir -p artifacts
+          python3 tools/verify_trustworthy_transition_release_train.py \
+            --output artifacts/trustworthy-transition-release-train-offline.json
+
+      - name: Verify pinned GitHub state live
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          python3 tools/verify_trustworthy_transition_release_train.py \
+            --live \
+            --output artifacts/trustworthy-transition-release-train-live.json
+
+      - name: Upload release-train receipts
+        uses: actions/upload-artifact@v4
+        with:
+          name: trustworthy-transition-release-train-receipts
+          path: artifacts/trustworthy-transition-release-train-*.json
+          if-no-files-found: error
