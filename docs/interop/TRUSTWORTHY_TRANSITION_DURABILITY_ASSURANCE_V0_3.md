@@ -151,6 +151,30 @@ Derivation:
 A failed Windows receipt cannot be reported as partial success merely because
 Linux and macOS passed.
 
+## Assurance metadata availability
+
+The fixture distinguishes two source states:
+
+```text
+AVAILABLE
+UNAVAILABLE
+```
+
+`AVAILABLE` means the checkpoint and platform metadata was supplied, even when a
+specific verifier returned `NOT_EVALUATED`.
+
+`UNAVAILABLE` means no assurance metadata was supplied at all. In that state:
+
+```text
+checkpoint_status = null
+checkpoint_error_code = null
+platform_receipts = null
+```
+
+The verifier derives both assurance dimensions as `NOT_EVALUATED` without
+inventing empty receipts, synthetic errors, or a checkpoint result. The
+normalized `assurance_status` must remain `ASSURANCE_UNAVAILABLE`.
+
 ## Independent verdict preservation
 
 For every v0.3 case, the following values must exactly equal the referenced v0.2
@@ -172,7 +196,8 @@ Therefore:
 - three-platform crash evidence cannot repair a false response;
 - invalid storage evidence cannot silently turn a valid historical transition
   into an authorization failure;
-- unavailable assurance metadata cannot erase the original lifecycle result.
+- unavailable assurance metadata cannot erase the original lifecycle result or
+  its aggregate `full_lifecycle_status`.
 
 ## Required fixture cases
 
@@ -180,14 +205,14 @@ The fixture covers:
 
 1. external anchor plus all three platform receipts;
 2. local signature without external anti-rollback;
-3. durable replay with no checkpoint evaluation;
+3. durable replay with available metadata but no checkpoint evaluation;
 4. invalid signature with otherwise valid lifecycle;
 5. explicit external-anchor rollback rejection;
 6. partial platform coverage;
 7. failed Windows evidence with Linux/macOS success;
 8. strong storage assurance attached to denied authority;
 9. strong storage assurance attached to a false response;
-10. unavailable assurance metadata preserving all lifecycle verdicts.
+10. explicitly unavailable assurance metadata preserving every lifecycle verdict.
 
 ## Verification
 
@@ -201,12 +226,12 @@ python3 tools/verify_trustworthy_transition_durability_assurance.py \
 The verifier checks:
 
 - exact implementation heads and artifact paths;
-- canonical assurance vocabularies;
+- canonical assurance and metadata-availability vocabularies;
 - exact platform artifact digests;
 - checkpoint error codes;
 - deterministic platform-status derivation;
 - all required cases;
-- full preservation of the six v0.2 dimensions;
+- full preservation of the six v0.2 dimensions and `full_lifecycle_status`;
 - conservative claim boundaries.
 
 ## Claim boundary
@@ -224,6 +249,10 @@ This profile does not:
 - simulate sudden power loss;
 - verify controller-cache loss;
 - verify hostile or distributed filesystems.
+
+Platform receipts describe the pinned implementation build and runner matrix;
+they are not evidence that one specific transition was executed on every listed
+platform.
 
 It normalizes evidence already produced by the pinned implementations and
 prevents stronger storage evidence from being misrepresented as stronger
