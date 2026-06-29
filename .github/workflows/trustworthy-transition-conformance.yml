@@ -32,15 +32,20 @@ jobs:
       - name: Verify canonical three-record vector
         run: python3 tools/verify_trustworthy_transition_vector.py
 
-      - name: Verify ecosystem compatibility pack
+      - name: Verify ecosystem compatibility pack v0.1
         run: |
           mkdir -p artifacts
           python3 tools/verify_trustworthy_transition_ecosystem.py \
             --output artifacts/trustworthy-transition-ecosystem-receipt.json
 
-      - name: Upload compatibility receipt
+      - name: Verify full-lifecycle compatibility pack v0.2
+        run: |
+          python3 tools/verify_trustworthy_transition_lifecycle.py \
+            --output artifacts/trustworthy-transition-full-lifecycle-receipt.json
+
+      - name: Upload conformance receipts
         uses: actions/upload-artifact@v4
         with:
-          name: trustworthy-transition-ecosystem-receipt
-          path: artifacts/trustworthy-transition-ecosystem-receipt.json
+          name: trustworthy-transition-conformance-receipts
+          path: artifacts/*.json
           if-no-files-found: error
