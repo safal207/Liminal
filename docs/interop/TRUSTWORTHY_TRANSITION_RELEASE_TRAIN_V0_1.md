@@ -106,6 +106,12 @@ Every stage pins:
 `expected_base_sha` may change after retargeting the immediate successor to the
 new `main` head.
 
+Offline validation also binds base SHAs:
+
+- stage 1 base SHA must equal `target.initial_head`;
+- a merged successor's base SHA must equal its predecessor's merge commit;
+- an open successor of a merged stage must target the current `main` head.
+
 ## Live verification
 
 Run offline schema and invariant checks:
@@ -119,6 +125,7 @@ Run live GitHub verification:
 
 ```bash
 GITHUB_TOKEN=... \
+TRUSTWORTHY_TRAIN_ALLOWED_GITHUB_API_HOSTS=api.github.com \
 python3 tools/verify_trustworthy_transition_release_train.py \
   --live \
   --output artifacts/release-train-live-receipt.json
@@ -138,11 +145,16 @@ The live mode checks:
 
 The normalized live state is hashed into `live_state_digest`.
 
+Before attaching `GITHUB_TOKEN`, the client requires HTTPS and an allowlisted API
+host. The default allowlist contains only `api.github.com`. GitHub Enterprise
+installations must explicitly supply their API hostname through
+`TRUSTWORTHY_TRAIN_ALLOWED_GITHUB_API_HOSTS`.
+
 ## Merge procedure
 
 ### Before merging #110
 
-- complete mandatory Codex review;
+- complete mandatory CodeRabbit and Codex review;
 - keep all three stage heads unchanged;
 - run offline and live release-train verification;
 - merge #110 using **Create a merge commit** only.
@@ -161,10 +173,34 @@ The normalized live state is hashed into `live_state_digest`.
 
 Repeat the same sequence for #113 and then #116.
 
+## Review state and next action
+
+The manifest records both review gates:
+
+```text
+coderabbit_status = PENDING | PASSED
+codex_status      = PENDING | PASSED
+```
+
+`next_action` is derived from those review states and the merged-stage count:
+
+```text
+COMPLETE_CODERABBIT_REVIEW
+COMPLETE_CODEX_REVIEW
+MERGE_PR_110_WITH_MERGE_COMMIT
+RETARGET_PR_113_TO_MAIN_RERUN_AND_REPIN
+RETARGET_PR_116_TO_MAIN_RERUN_AND_REPIN
+ISSUE_FINAL_MAIN_MANIFEST
+```
+
+A stale human-readable instruction therefore fails validation instead of being
+silently accepted.
+
 ## Blocker derivation
 
-The verifier derives blockers from train state:
+The verifier derives blockers from train and review state:
 
+- `CODERABBIT_REVIEW_PENDING` while CodeRabbit is not `PASSED`;
 - `CODEX_REVIEW_PENDING` while Codex is not `PASSED`;
 - `STACK_NOT_MERGED` until all three stages are merged;
 - `FINAL_MAIN_MANIFEST_NOT_ISSUED` for every release candidate.
@@ -200,7 +236,9 @@ on its ancestry.
 ## Security and trust boundary
 
 The workflow uses read-only permissions for contents, pull requests, actions,
-and commit statuses. It does not merge PRs or modify branches.
+and commit statuses. Checkout credential persistence is disabled. The token is
+injected only into the live step after API URL validation. The workflow does not
+merge PRs or modify branches.
 
 The release-train verifier does not replace:
 
