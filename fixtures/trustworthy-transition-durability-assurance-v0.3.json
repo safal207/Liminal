@@ -1,0 +1,271 @@
+{
+  "schema_version": 3,
+  "profile": "org.liminal.trustworthy-transition.durability-assurance-compatibility.v0.3",
+  "base_profile": "org.liminal.trustworthy-transition.full-lifecycle-compatibility.v0.2",
+  "base_fixture": "fixtures/trustworthy-transition-full-lifecycle-compatibility-v0.2.json",
+  "implementations": {
+    "lifecycle_profile": {
+      "repository": "safal207/Liminal",
+      "pull_request": 113,
+      "head_sha": "b50ef4d90a76fbd5b5d2e835f85e348081f4110f",
+      "artifact_path": "tools/verify_trustworthy_transition_lifecycle.py",
+      "role": "BASE_LIFECYCLE_PROFILE"
+    },
+    "checkpoint_verifier": {
+      "repository": "safal207/LiminalDB",
+      "pull_request": 92,
+      "head_sha": "2cac499c3b73c19d566ac763bf32816f4a4bcadc",
+      "artifact_path": "liminal-db/crates/liminal-store/src/checkpoint.rs",
+      "role": "CHECKPOINT_ASSURANCE_VERIFIER",
+      "local_profile": "org.liminaldb.signed-checkpoint.v0.1"
+    },
+    "platform_evidence": {
+      "repository": "safal207/LiminalDB",
+      "pull_request": 93,
+      "head_sha": "0cd06391837588817ad5ac55d19f47794ba157e6",
+      "artifact_path": "tools/run_transition_durability_matrix.py",
+      "role": "PROCESS_CRASH_EVIDENCE_PRODUCER",
+      "local_profile": "org.liminaldb.transition-durability-evidence.v0.1",
+      "artifacts": {
+        "ubuntu": "sha256:82ef417497a969b75f3ad3c1fc49e2935daf0bbfdc8a2885be6cc2d00593a13e",
+        "macos": "sha256:9bc362e85307eae6b461c7ba03cb3a7ba86f60da4f2b995a2f7af4f48a9fac12",
+        "windows": "sha256:faf308dc19fd26390da1f66d3171c58c9df6be72809a8f390a058bd5eaabb589"
+      }
+    }
+  },
+  "assurance_contract": {
+    "checkpoint_values": ["NOT_EVALUATED", "LOCAL_SIGNATURE_ONLY", "EXTERNAL_ANCHOR_VERIFIED", "INVALID"],
+    "process_crash_values": ["NOT_EVALUATED", "PARTIAL", "VERIFIED", "FAILED"],
+    "metadata_states": ["AVAILABLE", "UNAVAILABLE"],
+    "required_platforms": ["ubuntu", "macos", "windows"],
+    "platform_receipt_statuses": ["PASSED", "FAILED"],
+    "independent_dimensions": [
+      "authority",
+      "execution",
+      "response_integrity",
+      "causal_validity",
+      "continuity_posture",
+      "durability",
+      "checkpoint_assurance",
+      "process_crash_evidence"
+    ],
+    "claim_boundary": {
+      "process_crash_only": true,
+      "power_loss_verified": false,
+      "controller_cache_loss_verified": false,
+      "network_filesystem_verified": false,
+      "external_anchor_provider_trusted_by_profile": false
+    }
+  },
+  "cases": [
+    {
+      "case_id": "external_anchor_and_three_platform_evidence",
+      "base_case_id": "full_supported_history_is_already_consumed",
+      "local_outcomes": {
+        "assurance_metadata_state": "AVAILABLE",
+        "checkpoint_status": "EXTERNAL_ANCHOR_VERIFIED",
+        "checkpoint_error_code": null,
+        "platform_receipts": [
+          {"platform": "ubuntu", "status": "PASSED", "artifact_digest": "sha256:82ef417497a969b75f3ad3c1fc49e2935daf0bbfdc8a2885be6cc2d00593a13e"},
+          {"platform": "macos", "status": "PASSED", "artifact_digest": "sha256:9bc362e85307eae6b461c7ba03cb3a7ba86f60da4f2b995a2f7af4f48a9fac12"},
+          {"platform": "windows", "status": "PASSED", "artifact_digest": "sha256:faf308dc19fd26390da1f66d3171c58c9df6be72809a8f390a058bd5eaabb589"}
+        ]
+      },
+      "expected": {
+        "checkpoint_assurance": "EXTERNAL_ANCHOR_VERIFIED",
+        "process_crash_evidence": "VERIFIED",
+        "verified_platforms": ["macos", "ubuntu", "windows"],
+        "external_anti_rollback": true,
+        "power_loss_verified": false,
+        "assurance_status": "STRONGEST_AVAILABLE",
+        "lifecycle": {"authority": "VALID", "execution": "OBSERVED_EXECUTED", "response_integrity": "VERIFIED", "causal_validity": "VALID", "continuity_posture": "ALREADY_CONSUMED", "durability": "LOCAL_REPLAY_VERIFIED", "full_lifecycle_status": "ALREADY_CONSUMED"}
+      }
+    },
+    {
+      "case_id": "local_signature_is_not_external_anchor",
+      "base_case_id": "full_supported_history_is_already_consumed",
+      "local_outcomes": {
+        "assurance_metadata_state": "AVAILABLE",
+        "checkpoint_status": "LOCAL_SIGNATURE_ONLY",
+        "checkpoint_error_code": null,
+        "platform_receipts": []
+      },
+      "expected": {
+        "checkpoint_assurance": "LOCAL_SIGNATURE_ONLY",
+        "process_crash_evidence": "NOT_EVALUATED",
+        "verified_platforms": [],
+        "external_anti_rollback": false,
+        "power_loss_verified": false,
+        "assurance_status": "LOCAL_SIGNATURE_ONLY",
+        "lifecycle": {"authority": "VALID", "execution": "OBSERVED_EXECUTED", "response_integrity": "VERIFIED", "causal_validity": "VALID", "continuity_posture": "ALREADY_CONSUMED", "durability": "LOCAL_REPLAY_VERIFIED", "full_lifecycle_status": "ALREADY_CONSUMED"}
+      }
+    },
+    {
+      "case_id": "durable_replay_without_checkpoint_evaluation",
+      "base_case_id": "full_supported_history_is_already_consumed",
+      "local_outcomes": {
+        "assurance_metadata_state": "AVAILABLE",
+        "checkpoint_status": "NOT_EVALUATED",
+        "checkpoint_error_code": null,
+        "platform_receipts": []
+      },
+      "expected": {
+        "checkpoint_assurance": "NOT_EVALUATED",
+        "process_crash_evidence": "NOT_EVALUATED",
+        "verified_platforms": [],
+        "external_anti_rollback": false,
+        "power_loss_verified": false,
+        "assurance_status": "LOCAL_REPLAY_ONLY",
+        "lifecycle": {"authority": "VALID", "execution": "OBSERVED_EXECUTED", "response_integrity": "VERIFIED", "causal_validity": "VALID", "continuity_posture": "ALREADY_CONSUMED", "durability": "LOCAL_REPLAY_VERIFIED", "full_lifecycle_status": "ALREADY_CONSUMED"}
+      }
+    },
+    {
+      "case_id": "invalid_checkpoint_preserves_valid_lifecycle",
+      "base_case_id": "full_supported_history_is_already_consumed",
+      "local_outcomes": {
+        "assurance_metadata_state": "AVAILABLE",
+        "checkpoint_status": "INVALID",
+        "checkpoint_error_code": "SIGNATURE_VERIFICATION_FAILED",
+        "platform_receipts": []
+      },
+      "expected": {
+        "checkpoint_assurance": "INVALID",
+        "process_crash_evidence": "NOT_EVALUATED",
+        "verified_platforms": [],
+        "external_anti_rollback": false,
+        "power_loss_verified": false,
+        "assurance_status": "CHECKPOINT_INVALID",
+        "lifecycle": {"authority": "VALID", "execution": "OBSERVED_EXECUTED", "response_integrity": "VERIFIED", "causal_validity": "VALID", "continuity_posture": "ALREADY_CONSUMED", "durability": "LOCAL_REPLAY_VERIFIED", "full_lifecycle_status": "ALREADY_CONSUMED"}
+      }
+    },
+    {
+      "case_id": "external_anchor_rollback_is_rejected",
+      "base_case_id": "full_supported_history_is_already_consumed",
+      "local_outcomes": {
+        "assurance_metadata_state": "AVAILABLE",
+        "checkpoint_status": "INVALID",
+        "checkpoint_error_code": "EXTERNAL_ANCHOR_ROLLBACK",
+        "platform_receipts": []
+      },
+      "expected": {
+        "checkpoint_assurance": "INVALID",
+        "process_crash_evidence": "NOT_EVALUATED",
+        "verified_platforms": [],
+        "external_anti_rollback": false,
+        "power_loss_verified": false,
+        "assurance_status": "ROLLBACK_REJECTED",
+        "lifecycle": {"authority": "VALID", "execution": "OBSERVED_EXECUTED", "response_integrity": "VERIFIED", "causal_validity": "VALID", "continuity_posture": "ALREADY_CONSUMED", "durability": "LOCAL_REPLAY_VERIFIED", "full_lifecycle_status": "ALREADY_CONSUMED"}
+      }
+    },
+    {
+      "case_id": "partial_platform_evidence",
+      "base_case_id": "full_supported_history_is_already_consumed",
+      "local_outcomes": {
+        "assurance_metadata_state": "AVAILABLE",
+        "checkpoint_status": "EXTERNAL_ANCHOR_VERIFIED",
+        "checkpoint_error_code": null,
+        "platform_receipts": [
+          {"platform": "ubuntu", "status": "PASSED", "artifact_digest": "sha256:82ef417497a969b75f3ad3c1fc49e2935daf0bbfdc8a2885be6cc2d00593a13e"},
+          {"platform": "macos", "status": "PASSED", "artifact_digest": "sha256:9bc362e85307eae6b461c7ba03cb3a7ba86f60da4f2b995a2f7af4f48a9fac12"}
+        ]
+      },
+      "expected": {
+        "checkpoint_assurance": "EXTERNAL_ANCHOR_VERIFIED",
+        "process_crash_evidence": "PARTIAL",
+        "verified_platforms": ["macos", "ubuntu"],
+        "external_anti_rollback": true,
+        "power_loss_verified": false,
+        "assurance_status": "PARTIAL_PLATFORM_EVIDENCE",
+        "lifecycle": {"authority": "VALID", "execution": "OBSERVED_EXECUTED", "response_integrity": "VERIFIED", "causal_validity": "VALID", "continuity_posture": "ALREADY_CONSUMED", "durability": "LOCAL_REPLAY_VERIFIED", "full_lifecycle_status": "ALREADY_CONSUMED"}
+      }
+    },
+    {
+      "case_id": "windows_evidence_failure_is_not_partial_success",
+      "base_case_id": "full_supported_history_is_already_consumed",
+      "local_outcomes": {
+        "assurance_metadata_state": "AVAILABLE",
+        "checkpoint_status": "EXTERNAL_ANCHOR_VERIFIED",
+        "checkpoint_error_code": null,
+        "platform_receipts": [
+          {"platform": "ubuntu", "status": "PASSED", "artifact_digest": "sha256:82ef417497a969b75f3ad3c1fc49e2935daf0bbfdc8a2885be6cc2d00593a13e"},
+          {"platform": "macos", "status": "PASSED", "artifact_digest": "sha256:9bc362e85307eae6b461c7ba03cb3a7ba86f60da4f2b995a2f7af4f48a9fac12"},
+          {"platform": "windows", "status": "FAILED", "artifact_digest": "sha256:faf308dc19fd26390da1f66d3171c58c9df6be72809a8f390a058bd5eaabb589"}
+        ]
+      },
+      "expected": {
+        "checkpoint_assurance": "EXTERNAL_ANCHOR_VERIFIED",
+        "process_crash_evidence": "FAILED",
+        "verified_platforms": ["macos", "ubuntu"],
+        "external_anti_rollback": true,
+        "power_loss_verified": false,
+        "assurance_status": "PLATFORM_EVIDENCE_FAILED",
+        "lifecycle": {"authority": "VALID", "execution": "OBSERVED_EXECUTED", "response_integrity": "VERIFIED", "causal_validity": "VALID", "continuity_posture": "ALREADY_CONSUMED", "durability": "LOCAL_REPLAY_VERIFIED", "full_lifecycle_status": "ALREADY_CONSUMED"}
+      }
+    },
+    {
+      "case_id": "strong_storage_assurance_does_not_upgrade_denied_authority",
+      "base_case_id": "denied_false_claim_chain_is_coherent_but_blocked",
+      "local_outcomes": {
+        "assurance_metadata_state": "AVAILABLE",
+        "checkpoint_status": "EXTERNAL_ANCHOR_VERIFIED",
+        "checkpoint_error_code": null,
+        "platform_receipts": [
+          {"platform": "ubuntu", "status": "PASSED", "artifact_digest": "sha256:82ef417497a969b75f3ad3c1fc49e2935daf0bbfdc8a2885be6cc2d00593a13e"},
+          {"platform": "macos", "status": "PASSED", "artifact_digest": "sha256:9bc362e85307eae6b461c7ba03cb3a7ba86f60da4f2b995a2f7af4f48a9fac12"},
+          {"platform": "windows", "status": "PASSED", "artifact_digest": "sha256:faf308dc19fd26390da1f66d3171c58c9df6be72809a8f390a058bd5eaabb589"}
+        ]
+      },
+      "expected": {
+        "checkpoint_assurance": "EXTERNAL_ANCHOR_VERIFIED",
+        "process_crash_evidence": "VERIFIED",
+        "verified_platforms": ["macos", "ubuntu", "windows"],
+        "external_anti_rollback": true,
+        "power_loss_verified": false,
+        "assurance_status": "STRONG_STORAGE_BLOCKED_LIFECYCLE",
+        "lifecycle": {"authority": "DENIED", "execution": "NOT_OBSERVED", "response_integrity": "FAILED", "causal_validity": "VALID", "continuity_posture": "BLOCKED", "durability": "LOCAL_REPLAY_VERIFIED", "full_lifecycle_status": "BLOCKED"}
+      }
+    },
+    {
+      "case_id": "strong_storage_assurance_does_not_repair_false_response",
+      "base_case_id": "false_response_routes_to_remediation",
+      "local_outcomes": {
+        "assurance_metadata_state": "AVAILABLE",
+        "checkpoint_status": "EXTERNAL_ANCHOR_VERIFIED",
+        "checkpoint_error_code": null,
+        "platform_receipts": [
+          {"platform": "ubuntu", "status": "PASSED", "artifact_digest": "sha256:82ef417497a969b75f3ad3c1fc49e2935daf0bbfdc8a2885be6cc2d00593a13e"},
+          {"platform": "macos", "status": "PASSED", "artifact_digest": "sha256:9bc362e85307eae6b461c7ba03cb3a7ba86f60da4f2b995a2f7af4f48a9fac12"},
+          {"platform": "windows", "status": "PASSED", "artifact_digest": "sha256:faf308dc19fd26390da1f66d3171c58c9df6be72809a8f390a058bd5eaabb589"}
+        ]
+      },
+      "expected": {
+        "checkpoint_assurance": "EXTERNAL_ANCHOR_VERIFIED",
+        "process_crash_evidence": "VERIFIED",
+        "verified_platforms": ["macos", "ubuntu", "windows"],
+        "external_anti_rollback": true,
+        "power_loss_verified": false,
+        "assurance_status": "STRONG_STORAGE_RESPONSE_REMEDIATION",
+        "lifecycle": {"authority": "VALID", "execution": "OBSERVED_EXECUTED", "response_integrity": "FAILED", "causal_validity": "VALID", "continuity_posture": "REMEDIATE_RESPONSE", "durability": "LOCAL_REPLAY_VERIFIED", "full_lifecycle_status": "RESPONSE_REMEDIATION"}
+      }
+    },
+    {
+      "case_id": "storage_assurance_unavailable_preserves_lifecycle",
+      "base_case_id": "full_supported_history_is_already_consumed",
+      "local_outcomes": {
+        "assurance_metadata_state": "UNAVAILABLE",
+        "checkpoint_status": null,
+        "checkpoint_error_code": null,
+        "platform_receipts": null
+      },
+      "expected": {
+        "checkpoint_assurance": "NOT_EVALUATED",
+        "process_crash_evidence": "NOT_EVALUATED",
+        "verified_platforms": [],
+        "external_anti_rollback": false,
+        "power_loss_verified": false,
+        "assurance_status": "ASSURANCE_UNAVAILABLE",
+        "lifecycle": {"authority": "VALID", "execution": "OBSERVED_EXECUTED", "response_integrity": "VERIFIED", "causal_validity": "VALID", "continuity_posture": "ALREADY_CONSUMED", "durability": "LOCAL_REPLAY_VERIFIED", "full_lifecycle_status": "ALREADY_CONSUMED"}
+      }
+    }
+  ]
+}

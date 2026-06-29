@@ -43,6 +43,11 @@ jobs:
           python3 tools/verify_trustworthy_transition_lifecycle.py \
             --output artifacts/trustworthy-transition-full-lifecycle-receipt.json
 
+      - name: Verify durability assurance compatibility pack v0.3
+        run: |
+          python3 tools/verify_trustworthy_transition_durability_assurance.py \
+            --output artifacts/trustworthy-transition-durability-assurance-receipt.json
+
       - name: Upload conformance receipts
         uses: actions/upload-artifact@v4
         with:
