@@ -21,6 +21,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-python@v5
         with:
@@ -35,6 +37,7 @@ jobs:
       - name: Verify pinned GitHub state live
         env:
           GITHUB_TOKEN: ${{ github.token }}
+          TRUSTWORTHY_TRAIN_ALLOWED_GITHUB_API_HOSTS: api.github.com
         run: |
           python3 tools/verify_trustworthy_transition_release_train.py \
             --live \
