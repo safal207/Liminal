@@ -7,6 +7,7 @@
   "repository": "safal207/Liminal",
   "target": {
     "branch": "main",
+    "initial_head": "426bf5c41a6215b0fef1e9ca59df00a880491c14",
     "expected_head": "426bf5c41a6215b0fef1e9ca59df00a880491c14",
     "drift_policy": "REFRESH_REQUIRED"
   },
@@ -117,7 +118,8 @@
     "NON_MERGE_COMMIT_STRATEGY_USED"
   ],
   "claim_boundary": {
-    "pre_merge_candidate_only": true,
+    "release_candidate_only": true,
+    "final_main_manifest": false,
     "semantic_conformance_replaced": false,
     "code_review_replaced": false,
     "branch_protection_replaced": false,
