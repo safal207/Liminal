@@ -6,7 +6,10 @@ import os
 from functools import lru_cache
 from typing import Any, Sequence
 
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
+
+load_dotenv(override=False)
 
 DEFAULT_SECRET = "resonance-liminal-secret-key-change-in-production"
 DEFAULT_ALGORITHM = "HS256"
