@@ -64,7 +64,7 @@ services:
     restart: unless-stopped
 
   redis:
-    image: ${REDIS_IMAGE:?Set REDIS_IMAGE to an immutable image digest}
+    image: redis@${REDIS_IMAGE_DIGEST:?Set REDIS_IMAGE_DIGEST to sha256 digest}
     expose:
       - "6379"
     environment:
@@ -87,7 +87,7 @@ services:
       retries: 5
 
   neo4j:
-    image: ${NEO4J_IMAGE:?Set NEO4J_IMAGE to an immutable image digest}
+    image: neo4j@${NEO4J_IMAGE_DIGEST:?Set NEO4J_IMAGE_DIGEST to sha256 digest}
     expose:
       - "7474"
       - "7687"
@@ -114,7 +114,7 @@ services:
       retries: 10
 
   prometheus:
-    image: ${PROMETHEUS_IMAGE:?Set PROMETHEUS_IMAGE to an immutable image digest}
+    image: prom/prometheus@${PROMETHEUS_IMAGE_DIGEST:?Set PROMETHEUS_IMAGE_DIGEST to sha256 digest}
     expose:
       - "9090"
     volumes:
@@ -128,7 +128,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: ${GRAFANA_IMAGE:?Set GRAFANA_IMAGE to an immutable image digest}
+    image: grafana/grafana@${GRAFANA_IMAGE_DIGEST:?Set GRAFANA_IMAGE_DIGEST to sha256 digest}
     expose:
       - "3000"
     volumes:
@@ -145,7 +145,7 @@ services:
     restart: unless-stopped
 
   nginx:
-    image: ${NGINX_IMAGE:?Set NGINX_IMAGE to an immutable image digest}
+    image: nginx@${NGINX_IMAGE_DIGEST:?Set NGINX_IMAGE_DIGEST to sha256 digest}
     ports:
       - "80:80"
       - "443:443"
@@ -162,7 +162,7 @@ services:
     restart: unless-stopped
 
   elasticsearch:
-    image: ${ELASTICSEARCH_IMAGE:?Set ELASTICSEARCH_IMAGE to an immutable image digest}
+    image: docker.elastic.co/elasticsearch/elasticsearch@${ELASTICSEARCH_IMAGE_DIGEST:?Set ELASTICSEARCH_IMAGE_DIGEST to sha256 digest}
     expose:
       - "9200"
     environment:
@@ -177,7 +177,7 @@ services:
     restart: unless-stopped
 
   logstash:
-    image: ${LOGSTASH_IMAGE:?Set LOGSTASH_IMAGE to an immutable image digest}
+    image: docker.elastic.co/logstash/logstash@${LOGSTASH_IMAGE_DIGEST:?Set LOGSTASH_IMAGE_DIGEST to sha256 digest}
     volumes:
       - ./monitoring/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
     environment:
@@ -189,7 +189,7 @@ services:
     restart: unless-stopped
 
   kibana:
-    image: ${KIBANA_IMAGE:?Set KIBANA_IMAGE to an immutable image digest}
+    image: docker.elastic.co/kibana/kibana@${KIBANA_IMAGE_DIGEST:?Set KIBANA_IMAGE_DIGEST to sha256 digest}
     expose:
       - "5601"
     environment:
