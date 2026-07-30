@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 from datetime import UTC, datetime, timedelta
 
 import jwt
@@ -11,7 +12,6 @@ from fastapi import HTTPException
 import backend.app.routes.debug as debug_routes
 import backend.auth.jwt_utils as jwt_utils
 import backend.config as legacy_config
-import backend.core.settings as core_settings
 from backend.app.services.websocket import (
     LocalTokenBucket,
     WebSocketMessageError,
@@ -25,6 +25,8 @@ from backend.core.settings import (
     JWTSettings,
     Settings,
 )
+
+core_settings = importlib.import_module("backend.core.settings")
 
 STRONG_SECRET = "release-gate-test-secret-0123456789abcdef"
 
