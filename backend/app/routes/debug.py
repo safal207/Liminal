@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
@@ -16,7 +17,9 @@ from ..dependencies import (
 )
 
 
-def require_debug_access(payload: dict = Depends(token_verifier)) -> dict:
+def require_debug_access(
+    payload: Annotated[dict, Depends(token_verifier)],
+) -> dict:
     """Require access auth and explicit production opt-in for diagnostics."""
     settings = get_settings()
     enabled_in_production = os.getenv("ENABLE_DEBUG_ROUTES", "false").lower() == "true"
@@ -32,15 +35,19 @@ router = APIRouter(
 
 
 @router.get("/debug/subscribers/count")
-async def get_subscribers_count(service=Depends(get_memory_service)):
+async def get_subscribers_count(
+    service: Annotated[Any, Depends(get_memory_service)],
+):
     return {"count": service.subscriber_count()}
 
 
 @router.get("/debug/connections/stats")
-async def get_connection_stats(service=Depends(get_connection_manager_service)):
+async def get_connection_stats(
+    service: Annotated[Any, Depends(get_connection_manager_service)],
+):
     return service.get_connection_stats()
 
 
 @router.get("/ml_metrics")
-async def get_ml_metrics(service=Depends(get_ml_service)):
+async def get_ml_metrics(service: Annotated[Any, Depends(get_ml_service)]):
     return service.collect_metrics()
