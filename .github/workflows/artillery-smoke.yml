@@ -27,15 +27,14 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            constraints.txt
+          cache-dependency-path: requirements-core.txt
 
-      - name: Install deterministic Python dependencies
+      - name: Install core Python dependencies
         run: |
-          python -m pip install --upgrade pip wheel setuptools
-          python -m pip install -r requirements.txt -c constraints.txt
+          python -m pip install --upgrade pip wheel "setuptools>=83.0.0"
+          python -m pip install -r requirements-core.txt
           python -m pip check
+          python -m pip freeze --all
 
       - name: Set up Node 20
         uses: actions/setup-node@v4
