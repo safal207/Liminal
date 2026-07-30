@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Any, Dict, Optional
 
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError
 
 from backend.core.settings import DEFAULT_SECRET, Settings, get_settings
 
@@ -102,7 +103,7 @@ class JWTManager:
         if token_type not in VALID_TOKEN_TYPES:
             raise ValueError(f"Unsupported token_type: {token_type}")
 
-        expire = datetime.utcnow() + (
+        expire = datetime.now(UTC) + (
             expires_delta
             if expires_delta is not None
             else timedelta(minutes=self.access_token_expire_minutes)
@@ -130,18 +131,15 @@ class JWTManager:
                 self._strip_bearer_prefix(token),
                 self.secret_key,
                 algorithms=[self.algorithm],
+                options={"require": ["exp", "sub", "token_type"]},
             )
-        except JWTError as exc:
+        except InvalidTokenError as exc:
             logger.warning("JWT validation failed: %s", exc)
-            return None
-
-        if not payload.get("sub"):
-            logger.warning("JWT token has no subject")
             return None
 
         token_type = payload.get("token_type")
         if token_type not in VALID_TOKEN_TYPES:
-            logger.warning("JWT token has missing or unsupported token_type")
+            logger.warning("JWT token has unsupported token_type")
             return None
         if expected_type is not None and token_type != expected_type:
             logger.warning(
