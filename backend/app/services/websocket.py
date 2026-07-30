@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Set, Tuple
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from backend.redis_client import RedisClient
 from backend.websocket.connection_manager import ConnectionManager
+from backend.websocket.redis_client import RedisClient
 
 if TYPE_CHECKING:  # pragma: no cover
     from .auth import AuthService
@@ -151,7 +151,7 @@ class ConnectionManagerService:
 
         redis_client = None
         if os.getenv("USE_REDIS_CLIENT", "false").lower() == "true":
-            redis_client = RedisClient()
+            redis_client = RedisClient(url=os.getenv("REDIS_URL"))
 
         return ConnectionManager(
             redis_client=redis_client,
