@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 from functools import lru_cache
 from typing import Any, Sequence
 
@@ -11,11 +12,12 @@ from pydantic import BaseModel, Field
 
 load_dotenv(override=False)
 
-DEFAULT_SECRET = "resonance-liminal-secret-key-change-in-production"
+DEFAULT_SECRET = ""
 DEFAULT_ALGORITHM = "HS256"
 DEFAULT_EXPIRE_MINUTES = 30
 DEFAULT_MEMORY_TIMELINE_INITIAL_LIMIT = 100
 DEFAULT_MEMORY_TIMELINE_MAX_ITEMS = 1000
+_EPHEMERAL_DEV_SECRET = secrets.token_urlsafe(48)
 
 
 def _first_env(names: Sequence[str], default: str = "") -> str:
@@ -43,10 +45,20 @@ def _env_int(names: Sequence[str], default: int) -> int:
         return default
 
 
+def _jwt_secret() -> str:
+    configured = _first_env(("JWT__SECRET_KEY", "JWT_SECRET_KEY")).strip()
+    if configured:
+        return configured
+    environment = _first_env(("ENV",), "development").strip().lower()
+    if environment == "production":
+        return DEFAULT_SECRET
+    return _EPHEMERAL_DEV_SECRET
+
+
 class JWTSettings(BaseModel):
     """JWT generation and validation settings."""
 
-    secret_key: str = DEFAULT_SECRET
+    secret_key: str = Field(default_factory=_jwt_secret)
     algorithm: str = DEFAULT_ALGORITHM
     access_token_expire_minutes: int = DEFAULT_EXPIRE_MINUTES
 
@@ -76,7 +88,7 @@ class IntegrationSettings(BaseModel):
     redis_url: str = "redis://localhost:6379/0"
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_user: str = "neo4j"
-    neo4j_password: str = "password"
+    neo4j_password: str = ""
     ml_enabled: bool = False
 
 
@@ -95,9 +107,7 @@ class Settings(BaseModel):
         values.setdefault(
             "jwt",
             JWTSettings(
-                secret_key=_first_env(
-                    ("JWT__SECRET_KEY", "JWT_SECRET_KEY"), DEFAULT_SECRET
-                ),
+                secret_key=_jwt_secret(),
                 algorithm=_first_env(
                     ("JWT__ALGORITHM", "JWT_ALGORITHM"), DEFAULT_ALGORITHM
                 ),
@@ -147,8 +157,7 @@ class Settings(BaseModel):
                     ("INTEGRATIONS__NEO4J_USER", "NEO4J_USER"), "neo4j"
                 ),
                 neo4j_password=_first_env(
-                    ("INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD"),
-                    "password",
+                    ("INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD")
                 ),
                 ml_enabled=_env_bool(
                     ("INTEGRATIONS__ML_ENABLED", "ML_ENABLED"), False
@@ -159,21 +168,19 @@ class Settings(BaseModel):
             "billing",
             BillingSettings(
                 stripe_secret_key=_first_env(
-                    ("BILLING__STRIPE_SECRET_KEY", "STRIPE_SECRET_KEY"), ""
+                    ("BILLING__STRIPE_SECRET_KEY", "STRIPE_SECRET_KEY")
                 ),
                 stripe_webhook_secret=_first_env(
                     (
                         "BILLING__STRIPE_WEBHOOK_SECRET",
                         "STRIPE_WEBHOOK_SECRET",
-                    ),
-                    "",
+                    )
                 ),
                 stripe_price_pro_monthly=_first_env(
                     (
                         "BILLING__STRIPE_PRICE_PRO_MONTHLY",
                         "STRIPE_PRICE_PRO_MONTHLY",
-                    ),
-                    "",
+                    )
                 ),
                 stripe_success_url=_first_env(
                     ("BILLING__STRIPE_SUCCESS_URL", "STRIPE_SUCCESS_URL"),
@@ -184,7 +191,7 @@ class Settings(BaseModel):
                     "http://127.0.0.1:8000/",
                 ),
                 store_path=_first_env(
-                    ("BILLING__STORE_PATH", "BILLING_STORE_PATH"), ""
+                    ("BILLING__STORE_PATH", "BILLING_STORE_PATH")
                 ),
             ),
         )
