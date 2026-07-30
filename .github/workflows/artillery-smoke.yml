@@ -2,31 +2,45 @@ name: Artillery WebSocket Smoke
 
 on:
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      ENV: test
+      JWT_SECRET_KEY: artillery-ci-secret-0123456789abcdef
+      LIMINAL_TEST_USER_PASS: testpass
+      USE_REDIS: "false"
+      ML_ENABLED: "false"
+
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            constraints.txt
 
-      - name: Install Python dependencies
+      - name: Install deterministic Python dependencies
         run: |
           python -m pip install --upgrade pip wheel setuptools
-          pip install -r requirements.txt
-          pip install -e ./tools/flake8_shim || true
+          python -m pip install -r requirements.txt -c constraints.txt
+          python -m pip check
 
       - name: Set up Node 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install Artillery
         run: npm i -g artillery@2
@@ -34,13 +48,15 @@ jobs:
       - name: Start backend (uvicorn)
         run: |
           export PYTHONPATH="${PWD}:${PYTHONPATH}"
-          uvicorn backend.main:app --host 127.0.0.1 --port 8000 &
+          uvicorn backend.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
           echo $! > uvicorn.pid
-          bash scripts/check-health.sh --url http://127.0.0.1:8000 --retries 60 --delay 1 --fail-on-not-ready
+          if ! bash scripts/check-health.sh --url http://127.0.0.1:8000 --retries 60 --delay 1 --fail-on-not-ready; then
+            cat uvicorn.log || true
+            exit 1
+          fi
 
       - name: Run Artillery smoke test
-        run: |
-          artillery run tests/load/ws-burst.yml --output artillery-results.json
+        run: artillery run tests/load/ws-burst.yml --output artillery-results.json
 
       - name: Upload results artifact
         if: always()
@@ -53,3 +69,4 @@ jobs:
         if: always()
         run: |
           if [ -f uvicorn.pid ]; then kill $(cat uvicorn.pid) || true; fi
+          if [ -f uvicorn.log ]; then cat uvicorn.log || true; fi
