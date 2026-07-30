@@ -120,7 +120,8 @@ jobs:
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
             -x backend/tests
-          pip-audit --strict --skip-editable
+          python -m pip uninstall -y flake8-shim
+          pip-audit --strict
 
       - name: Release-gate negative tests with coverage
         env:
