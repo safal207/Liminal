@@ -18,7 +18,7 @@ redis==6.4.0
 neo4j==5.28.4
 
 prometheus-client==0.18.0
-stripe==31.0.0
+stripe==15.4.0
 
 dependency-injector==4.48.1
 structlog==25.4.0
