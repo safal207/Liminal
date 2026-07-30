@@ -22,7 +22,7 @@ class Settings(BaseModel):
 
     environment: str = "development"
     debug: bool = False
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"
     port: int = 8000
 
     neo4j_uri: str = "bolt://localhost:7687"
@@ -49,7 +49,7 @@ class Settings(BaseModel):
             "debug": debug in {"1", "true", "yes", "on"}
             if debug
             else environment == "development",
-            "host": os.getenv("HOST", "0.0.0.0"),
+            "host": os.getenv("HOST", "127.0.0.1"),
             "port": int(os.getenv("PORT", "8000")),
             "neo4j_uri": core.integrations.neo4j_uri,
             "neo4j_user": core.integrations.neo4j_user,
