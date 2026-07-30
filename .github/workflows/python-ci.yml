@@ -53,6 +53,7 @@ jobs:
             backend/app/services/auth.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
+            backend/personality/__init__.py \
             backend/tests/test_release_gate_hardening.py \
             tests/test_websocket_integration.py \
             tests/unit/test_api.py \
@@ -80,6 +81,7 @@ jobs:
             backend/app/services/auth.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
+            backend/personality/__init__.py \
             backend/tests/test_release_gate_hardening.py \
             tests/test_websocket_integration.py \
             tests/unit/test_api.py \
@@ -94,6 +96,7 @@ jobs:
             backend/app/services/auth.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
+            backend/personality/__init__.py \
             backend/tests/test_release_gate_hardening.py \
             tests/test_websocket_integration.py \
             tests/unit/test_api.py \
@@ -108,6 +111,7 @@ jobs:
             backend/app/services/auth.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
+            backend/personality/__init__.py \
             backend/tests/test_release_gate_hardening.py \
             tests/test_websocket_integration.py \
             tests/unit/test_api.py \
@@ -124,7 +128,8 @@ jobs:
             backend/app/main.py \
             backend/app/services/auth.py \
             backend/app/services/websocket.py \
-            backend/app/routes/debug.py
+            backend/app/routes/debug.py \
+            backend/personality/__init__.py
 
       - name: Static security analysis
         run: |
@@ -136,6 +141,7 @@ jobs:
             backend/app/services/auth.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
+            backend/personality/__init__.py \
             -x backend/tests
           pip-audit --strict -r requirements-core.txt
 
