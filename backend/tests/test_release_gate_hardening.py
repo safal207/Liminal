@@ -26,7 +26,6 @@ from backend.core.settings import (
     Settings,
 )
 
-
 STRONG_SECRET = "release-gate-test-secret-0123456789abcdef"
 
 
@@ -151,9 +150,7 @@ def test_password_hashing_failure_does_not_downgrade(
 
 
 def test_websocket_rejects_oversized_message() -> None:
-    oversized = '{"type":"broadcast","channel":"x","content":"' + (
-        "a" * 20000
-    ) + '"}'
+    oversized = '{"type":"broadcast","channel":"x","content":"' + ("a" * 20000) + '"}'
 
     with pytest.raises(WebSocketMessageError) as exc_info:
         parse_client_message(oversized)
