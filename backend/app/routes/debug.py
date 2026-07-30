@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends
+import os
+
+from fastapi import APIRouter, Depends, HTTPException, status
 
 from backend.auth.dependencies import token_verifier
+from backend.config import get_settings
 
 from ..dependencies import (
     get_connection_manager_service,
@@ -12,9 +15,19 @@ from ..dependencies import (
     get_ml_service,
 )
 
+
+def require_debug_access(payload: dict = Depends(token_verifier)) -> dict:
+    """Require access auth and explicit production opt-in for diagnostics."""
+    settings = get_settings()
+    enabled_in_production = os.getenv("ENABLE_DEBUG_ROUTES", "false").lower() == "true"
+    if settings.environment == "production" and not enabled_in_production:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    return payload
+
+
 router = APIRouter(
     tags=["debug"],
-    dependencies=[Depends(token_verifier)],
+    dependencies=[Depends(require_debug_access)],
 )
 
 
