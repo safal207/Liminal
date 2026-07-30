@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from functools import lru_cache
-from typing import Any, Optional, Sequence
+from typing import Any, Sequence
 
 from pydantic import BaseModel, Field
 
@@ -15,7 +15,7 @@ DEFAULT_MEMORY_TIMELINE_INITIAL_LIMIT = 100
 DEFAULT_MEMORY_TIMELINE_MAX_ITEMS = 1000
 
 
-def _first_env(names: Sequence[str], default: Optional[str] = None) -> Optional[str]:
+def _first_env(names: Sequence[str], default: str = "") -> str:
     for name in names:
         value = os.getenv(name)
         if value is not None:
@@ -25,14 +25,14 @@ def _first_env(names: Sequence[str], default: Optional[str] = None) -> Optional[
 
 def _env_bool(names: Sequence[str], default: bool = False) -> bool:
     raw = _first_env(names)
-    if raw is None:
+    if not raw:
         return default
     return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _env_int(names: Sequence[str], default: int) -> int:
     raw = _first_env(names)
-    if raw is None:
+    if not raw:
         return default
     try:
         return int(raw)
