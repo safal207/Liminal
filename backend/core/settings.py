@@ -142,9 +142,7 @@ class Settings(BaseModel):
         values.setdefault(
             "integrations",
             IntegrationSettings(
-                use_redis=_env_bool(
-                    ("INTEGRATIONS__USE_REDIS", "USE_REDIS"), False
-                ),
+                use_redis=_env_bool(("INTEGRATIONS__USE_REDIS", "USE_REDIS"), False),
                 redis_url=_first_env(
                     ("INTEGRATIONS__REDIS_URL", "REDIS_URL"),
                     "redis://localhost:6379/0",
@@ -159,9 +157,7 @@ class Settings(BaseModel):
                 neo4j_password=_first_env(
                     ("INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD")
                 ),
-                ml_enabled=_env_bool(
-                    ("INTEGRATIONS__ML_ENABLED", "ML_ENABLED"), False
-                ),
+                ml_enabled=_env_bool(("INTEGRATIONS__ML_ENABLED", "ML_ENABLED"), False),
             ),
         )
         values.setdefault(
@@ -190,9 +186,7 @@ class Settings(BaseModel):
                     ("BILLING__STRIPE_CANCEL_URL", "STRIPE_CANCEL_URL"),
                     "http://127.0.0.1:8000/",
                 ),
-                store_path=_first_env(
-                    ("BILLING__STORE_PATH", "BILLING_STORE_PATH")
-                ),
+                store_path=_first_env(("BILLING__STORE_PATH", "BILLING_STORE_PATH")),
             ),
         )
         super().__init__(**values)
