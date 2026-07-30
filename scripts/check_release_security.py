@@ -9,6 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV_EXAMPLE = ROOT / ".env.example"
+CORE_REQUIREMENTS = ROOT / "requirements-core.txt"
+PRODUCTION_DOCKERFILE = ROOT / "backend/Dockerfile"
 PRODUCTION_COMPOSE = ROOT / "backend/production/docker-compose.production.yml"
 
 REQUIRED_ENV_KEYS = {
@@ -24,6 +26,7 @@ REQUIRED_ENV_KEYS = {
     "WS_RATE_LIMIT_PER_SECOND",
     "WS_RATE_LIMIT_BURST",
     "WS_MAX_MESSAGE_BYTES",
+    "PYTHON_IMAGE",
     "REDIS_IMAGE_DIGEST",
     "NEO4J_IMAGE_DIGEST",
     "PROMETHEUS_IMAGE_DIGEST",
@@ -32,6 +35,25 @@ REQUIRED_ENV_KEYS = {
     "ELASTICSEARCH_IMAGE_DIGEST",
     "LOGSTASH_IMAGE_DIGEST",
     "KIBANA_IMAGE_DIGEST",
+    "NEURAL_ANALYTICS_IMAGE_REPOSITORY",
+    "NEURAL_ANALYTICS_IMAGE_DIGEST",
+    "WEBSOCKET_GATEWAY_IMAGE_REPOSITORY",
+    "WEBSOCKET_GATEWAY_IMAGE_DIGEST",
+}
+
+BANNED_CORE_PACKAGES = {
+    "aiohttp",
+    "flask",
+    "nltk",
+    "numpy",
+    "pandas",
+    "prefect",
+    "python-jose",
+    "scikit-learn",
+    "selenium",
+    "torch",
+    "transformers",
+    "webdriver-manager",
 }
 
 BANNED_COMPOSE_PATTERNS = {
@@ -44,9 +66,15 @@ BANNED_COMPOSE_PATTERNS = {
     r"\"7687:7687\"": "public Neo4j Bolt port",
     r"\"3000:3000\"": "public Grafana port",
     r"\"9090:9090\"": "public Prometheus port",
+    r"production/Dockerfile\.rgl-core": "missing legacy core Dockerfile",
+    r"production/Dockerfile\.analytics": "missing legacy analytics Dockerfile",
+    r"production/Dockerfile\.websocket": "missing legacy WebSocket Dockerfile",
 }
 
 REQUIRED_COMPOSE_SNIPPETS = {
+    "context: ../..",
+    "dockerfile: backend/Dockerfile",
+    "PYTHON_IMAGE: ${PYTHON_IMAGE:?",
     "JWT_SECRET_KEY: ${JWT_SECRET_KEY:?",
     "NEO4J_PASSWORD: ${NEO4J_PASSWORD:?",
     "GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?",
@@ -63,6 +91,8 @@ REQUIRED_COMPOSE_SNIPPETS = {
     "elasticsearch@${ELASTICSEARCH_IMAGE_DIGEST:?",
     "logstash@${LOGSTASH_IMAGE_DIGEST:?",
     "kibana@${KIBANA_IMAGE_DIGEST:?",
+    "@${NEURAL_ANALYTICS_IMAGE_DIGEST:?",
+    "@${WEBSOCKET_GATEWAY_IMAGE_DIGEST:?",
 }
 
 
@@ -74,6 +104,17 @@ def parse_env_keys(path: Path) -> set[str]:
             continue
         keys.add(line.split("=", 1)[0].strip())
     return keys
+
+
+def parse_requirement_names(path: Path) -> set[str]:
+    names: set[str] = set()
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or line.startswith("-"):
+            continue
+        name = re.split(r"[<>=!~\[]", line, maxsplit=1)[0].strip().lower()
+        names.add(name)
+    return names
 
 
 def main() -> int:
@@ -88,6 +129,29 @@ def main() -> int:
         missing = REQUIRED_ENV_KEYS - parse_env_keys(ENV_EXAMPLE)
         if missing:
             errors.append(f".env.example is missing runtime keys: {sorted(missing)}")
+
+    if not CORE_REQUIREMENTS.exists():
+        errors.append("requirements-core.txt is missing")
+    else:
+        core_packages = parse_requirement_names(CORE_REQUIREMENTS)
+        forbidden = BANNED_CORE_PACKAGES & core_packages
+        if forbidden:
+            errors.append(f"core requirements include optional packages: {sorted(forbidden)}")
+        if "pyjwt" not in core_packages:
+            errors.append("core requirements must use PyJWT")
+
+    if not PRODUCTION_DOCKERFILE.exists():
+        errors.append("production API Dockerfile is missing")
+    else:
+        dockerfile = PRODUCTION_DOCKERFILE.read_text(encoding="utf-8")
+        if "-r requirements-core.txt" not in dockerfile:
+            errors.append("production Dockerfile must install requirements-core.txt")
+        if "requirements.txt" in dockerfile.replace("requirements-core.txt", ""):
+            errors.append("production Dockerfile must not install aggregate requirements.txt")
+        if "test-requirements" in dockerfile or "requirements-dev" in dockerfile:
+            errors.append("production Dockerfile must not install test/dev dependencies")
+        if "ARG PYTHON_IMAGE" not in dockerfile or "FROM ${PYTHON_IMAGE}" not in dockerfile:
+            errors.append("production Dockerfile must require an external immutable base image")
 
     if not PRODUCTION_COMPOSE.exists():
         errors.append("production compose file is missing")
