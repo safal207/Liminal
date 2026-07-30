@@ -1,30 +1,35 @@
 config:
   target: "http://127.0.0.1:8000"
   phases:
-    - duration: 10  # короткий smoke-тест
+    - duration: 10
       arrivalRate: 3
   engines:
     ws: {}
 
 scenarios:
-  - name: WS burst connect & ping
+  - name: Authenticated WS connect and subscribe
     flow:
       - get:
           url: "/ready"
           expect:
             - statusCode: 200
       - post:
-          url: "/token"
+          url: "/auth/login"
           json:
-            sub: "artillery-ci"
+            username: "testuser"
+            password: "testpass"
+          expect:
+            - statusCode: 200
           capture:
-            json: "$.token"
+            json: "$.access_token"
             as: token
       - ws:
-          connect: "ws://127.0.0.1:8000/ws?token={{ token }}"
+          connect: "ws://127.0.0.1:8000/ws/timeline?token={{ token }}"
       - think: 1
       - ws:
-          send: '{ "type": "ping", "data": "ci" }'
+          send: '{"type":"subscribe","channel":"timeline"}'
       - think: 1
+      - ws:
+          send: '{"type":"unsubscribe","channel":"timeline"}'
       - ws:
           close: true
