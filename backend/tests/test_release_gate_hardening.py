@@ -8,6 +8,7 @@ import pytest
 from fastapi import HTTPException
 from jose import jwt
 
+import backend.app.routes.debug as debug_routes
 import backend.auth.jwt_utils as jwt_utils
 import backend.config as legacy_config
 import backend.core.settings as core_settings
@@ -62,6 +63,19 @@ def test_compat_config_uses_same_authoritative_jwt_secret(
     assert legacy_config.get_settings().jwt_secret_key == central.jwt.secret_key
 
     legacy_config.get_settings.cache_clear()
+
+
+def test_production_debug_routes_are_disabled_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = type("Settings", (), {"environment": "production"})()
+    monkeypatch.setattr(debug_routes, "get_settings", lambda: settings)
+    monkeypatch.delenv("ENABLE_DEBUG_ROUTES", raising=False)
+
+    with pytest.raises(HTTPException) as exc_info:
+        debug_routes.require_debug_access({"sub": "user-1"})
+
+    assert exc_info.value.status_code == 404
 
 
 def test_access_token_has_explicit_purpose() -> None:
