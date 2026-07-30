@@ -50,6 +50,7 @@ jobs:
             backend/auth/dependencies.py \
             backend/core/settings.py \
             backend/config.py \
+            backend/app/services/auth.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
             backend/tests/test_release_gate_hardening.py \
@@ -65,6 +66,7 @@ jobs:
             backend/auth/dependencies.py \
             backend/core/settings.py \
             backend/config.py \
+            backend/app/services/auth.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
             backend/tests/test_release_gate_hardening.py \
@@ -74,6 +76,7 @@ jobs:
             backend/auth/dependencies.py \
             backend/core/settings.py \
             backend/config.py \
+            backend/app/services/auth.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
             backend/tests/test_release_gate_hardening.py \
@@ -83,6 +86,7 @@ jobs:
             backend/auth/dependencies.py \
             backend/core/settings.py \
             backend/config.py \
+            backend/app/services/auth.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
             backend/tests/test_release_gate_hardening.py \
@@ -95,6 +99,7 @@ jobs:
             backend/auth/dependencies.py \
             backend/core/settings.py \
             backend/config.py \
+            backend/app/services/auth.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py
 
@@ -104,6 +109,7 @@ jobs:
             backend/auth \
             backend/core/settings.py \
             backend/config.py \
+            backend/app/services/auth.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
             -x backend/tests
