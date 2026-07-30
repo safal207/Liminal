@@ -34,13 +34,13 @@ logger = logging.getLogger(__name__)
 
 try:
     from backend.burnout_guard.api import router as burnout_router
-except (ImportError, ModuleNotFoundError) as exc:  # pragma: no cover - optional research stack
+except ImportError as exc:  # pragma: no cover - optional research stack
     logger.info("Burnout analytics routes disabled: %s", exc)
     burnout_router = None
 
 try:
     from backend.personality.router import router as personality_router
-except (ImportError, ModuleNotFoundError) as exc:  # pragma: no cover - optional GraphQL stack
+except ImportError as exc:  # pragma: no cover - optional GraphQL stack
     logger.info("Personality routes disabled: %s", exc)
     personality_router = None
 
