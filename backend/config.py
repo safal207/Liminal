@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Simplified configuration management for LIMINAL local testing.
-"""
+"""Compatibility configuration facade backed by the central settings model."""
+
+from __future__ import annotations
 
 import os
 from functools import lru_cache
@@ -11,109 +11,91 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from backend.core.settings import DEFAULT_SECRET, get_settings as get_core_settings
+
+MIN_PRODUCTION_SECRET_LENGTH = 32
+DEFAULT_NEO4J_PASSWORD = "password"
+
 
 class Settings(BaseModel):
-    """Application settings - secure by default."""
+    """Application settings with one authoritative security source."""
 
-    # Environment
     environment: str = "development"
-    debug: bool = False  # Default to False for security
-
-    # Server
+    debug: bool = False
     host: str = "0.0.0.0"
     port: int = 8000
 
-    # Database
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_user: str = "neo4j"
-    neo4j_password: str = "NewStrongPass123!"  # Override via NEO4J_PASSWORD env var
+    neo4j_password: str = DEFAULT_NEO4J_PASSWORD
 
-    # Redis (optional)
-    redis_url: str = "redis://localhost:6379"
+    redis_url: str = "redis://localhost:6379/0"
     use_redis: bool = False
 
-    # JWT
-    jwt_secret_key: str = (
-        "test-jwt-secret-key-for-local-development-only"  # Override via JWT_SECRET_KEY env var
-    )
+    jwt_secret_key: str = DEFAULT_SECRET
     jwt_algorithm: str = "HS256"
 
-    # ML
-    ml_enabled: bool = True
+    ml_enabled: bool = False
     openai_api_key: Optional[str] = None
-
-    # Monitoring
     metrics_enabled: bool = True
 
     def __init__(self, **kwargs):
-        # Get environment
-        environment = os.getenv("ENV", "development")
+        core = get_core_settings()
+        environment = os.getenv("ENV", "development").strip().lower()
+        debug = os.getenv("DEBUG", "").strip().lower()
 
-        # Load from environment variables with fallbacks
-        env_values = {
+        values = {
             "environment": environment,
-            "debug": environment == "development",  # Auto-disable debug in production
-            "neo4j_uri": os.getenv("NEO4J_URI", "bolt://localhost:7687"),
-            "neo4j_user": os.getenv("NEO4J_USER", "neo4j"),
-            "neo4j_password": os.getenv("NEO4J_PASSWORD", "NewStrongPass123!"),
-            "redis_url": os.getenv("REDIS_URL", "redis://localhost:6379"),
-            "use_redis": os.getenv("USE_REDIS", "false").lower() == "true",
-            "jwt_secret_key": os.getenv(
-                "JWT_SECRET_KEY", "test-jwt-secret-key-for-local-development-only"
-            ),
-            "ml_enabled": os.getenv("ML_ENABLED", "true").lower() == "true",
+            "debug": debug in {"1", "true", "yes", "on"}
+            if debug
+            else environment == "development",
+            "host": os.getenv("HOST", "0.0.0.0"),
+            "port": int(os.getenv("PORT", "8000")),
+            "neo4j_uri": core.integrations.neo4j_uri,
+            "neo4j_user": core.integrations.neo4j_user,
+            "neo4j_password": core.integrations.neo4j_password,
+            "redis_url": core.integrations.redis_url,
+            "use_redis": core.integrations.use_redis,
+            "jwt_secret_key": core.jwt.secret_key,
+            "jwt_algorithm": core.jwt.algorithm,
+            "ml_enabled": core.integrations.ml_enabled,
             "openai_api_key": os.getenv("OPENAI_API_KEY"),
             "metrics_enabled": os.getenv("PROMETHEUS_ENABLED", "true").lower()
             == "true",
         }
+        values.update(kwargs)
+        self._validate_production(values)
+        super().__init__(**values)
 
-        if environment == "production":
-            if (
-                env_values["jwt_secret_key"]
-                == "test-jwt-secret-key-for-local-development-only"
-            ):
-                raise RuntimeError(
-                    "JWT_SECRET_KEY must be set to a strong random secret in production. "
-                    "Set the JWT_SECRET_KEY environment variable."
-                )
-            if env_values["neo4j_password"] == "NewStrongPass123!":
-                raise RuntimeError(
-                    "NEO4J_PASSWORD must be changed from the default value in production. "
-                    "Set the NEO4J_PASSWORD environment variable."
-                )
-        elif environment not in ("development", "test"):
-            import warnings
+    @staticmethod
+    def _validate_production(values: dict) -> None:
+        if values["environment"] != "production":
+            return
 
-            if (
-                env_values["jwt_secret_key"]
-                == "test-jwt-secret-key-for-local-development-only"
-            ):
-                warnings.warn(
-                    "Using default JWT_SECRET_KEY. Set JWT_SECRET_KEY before going to production.",
-                    UserWarning,
-                    stacklevel=2,
-                )
-            if env_values["neo4j_password"] == "NewStrongPass123!":
-                warnings.warn(
-                    "Using default NEO4J_PASSWORD. Set NEO4J_PASSWORD before going to production.",
-                    UserWarning,
-                    stacklevel=2,
-                )
+        secret = str(values["jwt_secret_key"]).strip()
+        if (
+            not secret
+            or secret == DEFAULT_SECRET
+            or len(secret) < MIN_PRODUCTION_SECRET_LENGTH
+        ):
+            raise RuntimeError(
+                "JWT_SECRET_KEY must be a non-default secret of at least 32 characters "
+                "when ENV=production"
+            )
 
-        # Override with environment values
-        kwargs.update({k: v for k, v in env_values.items() if v is not None})
-        super().__init__(**kwargs)
+        neo4j_password = str(values["neo4j_password"]).strip()
+        if not neo4j_password or neo4j_password == DEFAULT_NEO4J_PASSWORD:
+            raise RuntimeError(
+                "NEO4J_PASSWORD must be set to a non-default value when ENV=production"
+            )
 
 
 @lru_cache()
 def get_settings() -> Settings:
-    """Get cached application settings."""
     return Settings()
 
 
-# Compatibility functions for existing code
 def get_database_settings():
-    """Get database settings for compatibility."""
     settings = get_settings()
     return type(
         "DatabaseSettings",
@@ -129,7 +111,6 @@ def get_database_settings():
 
 
 def get_security_settings():
-    """Get security settings for compatibility."""
     settings = get_settings()
     return type(
         "SecuritySettings",
@@ -142,7 +123,6 @@ def get_security_settings():
 
 
 def get_ml_settings():
-    """Get ML settings for compatibility."""
     settings = get_settings()
     return type(
         "MLSettings",
@@ -155,35 +135,35 @@ def get_ml_settings():
 
 
 def get_websocket_settings():
-    """Get WebSocket settings for compatibility."""
+    settings = get_settings()
     return type(
         "WebSocketSettings",
         (),
         {
-            "max_connections": 1000,
-            "max_queue_size": 10000,
-            "redis_enabled": get_settings().use_redis,
-            "redis_url": get_settings().redis_url,
-            "redis_max_connections": 100,
+            "max_connections": int(os.getenv("WS_MAX_CONNECTIONS", "100")),
+            "max_queue_size": int(os.getenv("WS_MAX_QUEUE_SIZE", "10000")),
+            "redis_enabled": settings.use_redis,
+            "redis_url": settings.redis_url,
+            "redis_max_connections": int(
+                os.getenv("REDIS_MAX_CONNECTIONS", "100")
+            ),
         },
     )()
 
 
 def get_monitoring_settings():
-    """Get monitoring settings for compatibility."""
     settings = get_settings()
     return type(
         "MonitoringSettings",
         (),
         {
             "metrics_enabled": settings.metrics_enabled,
-            "prometheus_port": 9090,
+            "prometheus_port": int(os.getenv("PROMETHEUS_PORT", "9090")),
         },
     )()
 
 
 def get_app_settings():
-    """Get application settings for compatibility."""
     settings = get_settings()
     return type(
         "AppSettings",
