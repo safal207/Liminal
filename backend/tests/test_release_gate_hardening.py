@@ -19,7 +19,12 @@ from backend.app.services.websocket import (
 )
 from backend.auth.dependencies import TokenVerifier
 from backend.auth.jwt_utils import JWTManager
-from backend.core.settings import DEFAULT_SECRET, JWTSettings, Settings
+from backend.core.settings import (
+    DEFAULT_SECRET,
+    IntegrationSettings,
+    JWTSettings,
+    Settings,
+)
 
 
 STRONG_SECRET = "release-gate-test-secret-0123456789abcdef"
@@ -55,7 +60,10 @@ def test_flat_environment_names_load_into_central_settings(
 def test_compat_config_uses_same_authoritative_jwt_secret(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    central = Settings(jwt=JWTSettings(secret_key=STRONG_SECRET))
+    central = Settings(
+        jwt=JWTSettings(secret_key=STRONG_SECRET),
+        integrations=IntegrationSettings(neo4j_password="non-default-password"),
+    )
     monkeypatch.setattr(legacy_config, "get_core_settings", lambda: central)
     monkeypatch.setenv("ENV", "production")
     legacy_config.get_settings.cache_clear()
