@@ -30,9 +30,12 @@ class TestAPIUnit:
 
     def test_websocket_connection_unit(self):
         """Test WebSocket connection establishment (unit level)"""
-        # WebSocket connections require async test frameworks; here we just
-        # ensure the route is registered on the application.
-        routes = {route.path for route in app.routes}
+        # Starlette may include internal router nodes without a public path.
+        routes = {
+            path
+            for route in app.routes
+            if (path := getattr(route, "path", None)) is not None
+        }
         assert "/ws/timeline" in routes
 
     def test_emotion_analysis_unit(self):
