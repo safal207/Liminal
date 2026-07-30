@@ -41,7 +41,7 @@ class WebSocketMessageError(ValueError):
     """Stable public validation error for client-originated messages."""
 
     def __init__(self, code: str, message: str) -> None:
-        super().__init__(message)
+        super().__init__(code, message)
         self.code = code
         self.public_message = message
 
@@ -269,7 +269,9 @@ class TimelineWebSocketService:
                         websocket, user_id
                     )
 
-                self._ml_service.register_auth_event(user_id or "unknown", authenticated)
+                self._ml_service.register_auth_event(
+                    user_id or "unknown", authenticated
+                )
                 if not authenticated:
                     await manager.reject_connection(websocket, "Invalid access token")
                     return
