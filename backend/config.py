@@ -11,7 +11,8 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from backend.core.settings import DEFAULT_SECRET, get_settings as get_core_settings
+from backend.core.settings import DEFAULT_SECRET
+from backend.core.settings import get_settings as get_core_settings
 
 MIN_PRODUCTION_SECRET_LENGTH = 32
 DEFAULT_NEO4J_PASSWORD = ""
@@ -46,9 +47,11 @@ class Settings(BaseModel):
 
         values = {
             "environment": environment,
-            "debug": debug in {"1", "true", "yes", "on"}
-            if debug
-            else environment == "development",
+            "debug": (
+                debug in {"1", "true", "yes", "on"}
+                if debug
+                else environment == "development"
+            ),
             "host": os.getenv("HOST", "127.0.0.1"),
             "port": int(os.getenv("PORT", "8000")),
             "neo4j_uri": core.integrations.neo4j_uri,
@@ -144,9 +147,7 @@ def get_websocket_settings():
             "max_queue_size": int(os.getenv("WS_MAX_QUEUE_SIZE", "10000")),
             "redis_enabled": settings.use_redis,
             "redis_url": settings.redis_url,
-            "redis_max_connections": int(
-                os.getenv("REDIS_MAX_CONNECTIONS", "100")
-            ),
+            "redis_max_connections": int(os.getenv("REDIS_MAX_CONNECTIONS", "100")),
         },
     )()
 
