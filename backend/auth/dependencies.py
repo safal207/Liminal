@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Annotated, Any, Dict, Optional
 
 from fastapi import Depends, HTTPException, WebSocket, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -43,7 +43,9 @@ class TokenVerifier:
 
     async def __call__(
         self,
-        credentials: HTTPAuthorizationCredentials = Depends(_bearer_scheme),
+        credentials: Annotated[
+            Optional[HTTPAuthorizationCredentials], Depends(_bearer_scheme)
+        ],
     ) -> Dict[str, Any]:
         token = credentials.credentials if credentials else None
         return self._validate(token)
