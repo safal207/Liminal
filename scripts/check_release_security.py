@@ -15,11 +15,23 @@ REQUIRED_ENV_KEYS = {
     "ENV",
     "JWT_SECRET_KEY",
     "NEO4J_PASSWORD",
+    "REDIS_PASSWORD",
+    "GRAFANA_ADMIN_PASSWORD",
+    "ELASTIC_PASSWORD",
+    "KIBANA_SYSTEM_PASSWORD",
     "WS_MAX_CONNECTIONS",
     "WS_MAX_CONNECTIONS_PER_IP",
     "WS_RATE_LIMIT_PER_SECOND",
     "WS_RATE_LIMIT_BURST",
     "WS_MAX_MESSAGE_BYTES",
+    "REDIS_IMAGE_DIGEST",
+    "NEO4J_IMAGE_DIGEST",
+    "PROMETHEUS_IMAGE_DIGEST",
+    "GRAFANA_IMAGE_DIGEST",
+    "NGINX_IMAGE_DIGEST",
+    "ELASTICSEARCH_IMAGE_DIGEST",
+    "LOGSTASH_IMAGE_DIGEST",
+    "KIBANA_IMAGE_DIGEST",
 }
 
 BANNED_COMPOSE_PATTERNS = {
@@ -38,9 +50,19 @@ REQUIRED_COMPOSE_SNIPPETS = {
     "JWT_SECRET_KEY: ${JWT_SECRET_KEY:?",
     "NEO4J_PASSWORD: ${NEO4J_PASSWORD:?",
     "GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?",
+    "ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?",
+    "ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?",
     "xpack.security.enabled: \"true\"",
     "internal: true",
     "http://localhost:8000/ready",
+    "redis@${REDIS_IMAGE_DIGEST:?",
+    "neo4j@${NEO4J_IMAGE_DIGEST:?",
+    "prom/prometheus@${PROMETHEUS_IMAGE_DIGEST:?",
+    "grafana/grafana@${GRAFANA_IMAGE_DIGEST:?",
+    "nginx@${NGINX_IMAGE_DIGEST:?",
+    "elasticsearch@${ELASTICSEARCH_IMAGE_DIGEST:?",
+    "logstash@${LOGSTASH_IMAGE_DIGEST:?",
+    "kibana@${KIBANA_IMAGE_DIGEST:?",
 }
 
 
@@ -77,6 +99,13 @@ def main() -> int:
         for snippet in REQUIRED_COMPOSE_SNIPPETS:
             if snippet not in compose:
                 errors.append(f"production compose missing guard: {snippet}")
+
+        for line in compose.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("image:") and (
+                "@${" not in stripped or "_IMAGE_DIGEST" not in stripped
+            ):
+                errors.append(f"mutable production image reference: {stripped}")
 
     if errors:
         print("Release security checks failed:", file=sys.stderr)
