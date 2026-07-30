@@ -48,6 +48,7 @@ jobs:
           pre-commit run --show-diff-on-failure --files \
             backend/auth/jwt_utils.py \
             backend/auth/dependencies.py \
+            backend/core/settings.py \
             backend/config.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
@@ -62,6 +63,7 @@ jobs:
           black --check \
             backend/auth/jwt_utils.py \
             backend/auth/dependencies.py \
+            backend/core/settings.py \
             backend/config.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
@@ -70,6 +72,7 @@ jobs:
           isort --check-only --profile black \
             backend/auth/jwt_utils.py \
             backend/auth/dependencies.py \
+            backend/core/settings.py \
             backend/config.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
@@ -78,6 +81,7 @@ jobs:
           flake8 \
             backend/auth/jwt_utils.py \
             backend/auth/dependencies.py \
+            backend/core/settings.py \
             backend/config.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
@@ -89,6 +93,7 @@ jobs:
           mypy --ignore-missing-imports \
             backend/auth/jwt_utils.py \
             backend/auth/dependencies.py \
+            backend/core/settings.py \
             backend/config.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py
@@ -97,6 +102,7 @@ jobs:
         run: |
           bandit -q -r \
             backend/auth \
+            backend/core/settings.py \
             backend/config.py \
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
@@ -112,6 +118,7 @@ jobs:
           python -m pytest -q backend/tests/test_release_gate_hardening.py \
             --cov=backend.auth.jwt_utils \
             --cov=backend.auth.dependencies \
+            --cov=backend.core.settings \
             --cov=backend.config \
             --cov-report=term-missing \
             --cov-fail-under=60
