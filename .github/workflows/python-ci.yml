@@ -56,6 +56,7 @@ jobs:
             backend/tests/test_release_gate_hardening.py \
             tests/test_websocket_integration.py \
             tests/unit/test_api.py \
+            conftest.py \
             scripts/check_release_security.py \
             requirements-core.txt \
             requirements-research.txt \
@@ -82,6 +83,7 @@ jobs:
             backend/tests/test_release_gate_hardening.py \
             tests/test_websocket_integration.py \
             tests/unit/test_api.py \
+            conftest.py \
             scripts/check_release_security.py
           isort --check-only --profile black \
             backend/auth/jwt_utils.py \
@@ -95,6 +97,7 @@ jobs:
             backend/tests/test_release_gate_hardening.py \
             tests/test_websocket_integration.py \
             tests/unit/test_api.py \
+            conftest.py \
             scripts/check_release_security.py
           flake8 \
             backend/auth/jwt_utils.py \
@@ -108,6 +111,7 @@ jobs:
             backend/tests/test_release_gate_hardening.py \
             tests/test_websocket_integration.py \
             tests/unit/test_api.py \
+            conftest.py \
             scripts/check_release_security.py
 
       - name: Type-check release-critical files
