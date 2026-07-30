@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
+import jwt
 import pytest
 from fastapi import HTTPException
-from jose import jwt
 
 import backend.app.routes.debug as debug_routes
 import backend.auth.jwt_utils as jwt_utils
@@ -121,7 +121,7 @@ def test_token_without_purpose_is_rejected() -> None:
     token = jwt.encode(
         {
             "sub": "user-1",
-            "exp": datetime.utcnow() + timedelta(minutes=5),
+            "exp": datetime.now(UTC) + timedelta(minutes=5),
         },
         manager.secret_key,
         algorithm=manager.algorithm,
