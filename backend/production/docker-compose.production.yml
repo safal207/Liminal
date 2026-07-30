@@ -1,8 +1,10 @@
 services:
   rgl-core:
     build:
-      context: ..
-      dockerfile: production/Dockerfile.rgl-core
+      context: ../..
+      dockerfile: backend/Dockerfile
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:?Set PYTHON_IMAGE to an immutable python image reference}
     expose:
       - "8000"
     environment:
@@ -31,9 +33,8 @@ services:
       start_period: 30s
 
   neural-analytics:
-    build:
-      context: ..
-      dockerfile: production/Dockerfile.analytics
+    profiles: ["research"]
+    image: ${NEURAL_ANALYTICS_IMAGE_REPOSITORY:?Set repository}@${NEURAL_ANALYTICS_IMAGE_DIGEST:?Set sha256 digest}
     expose:
       - "8001"
     environment:
@@ -47,9 +48,8 @@ services:
     restart: unless-stopped
 
   websocket-gateway:
-    build:
-      context: ..
-      dockerfile: production/Dockerfile.websocket
+    profiles: ["gateway"]
+    image: ${WEBSOCKET_GATEWAY_IMAGE_REPOSITORY:?Set repository}@${WEBSOCKET_GATEWAY_IMAGE_DIGEST:?Set sha256 digest}
     expose:
       - "8002"
     environment:
@@ -114,6 +114,7 @@ services:
       retries: 10
 
   prometheus:
+    profiles: ["observability"]
     image: prom/prometheus@${PROMETHEUS_IMAGE_DIGEST:?Set PROMETHEUS_IMAGE_DIGEST to sha256 digest}
     expose:
       - "9090"
@@ -128,6 +129,7 @@ services:
     restart: unless-stopped
 
   grafana:
+    profiles: ["observability"]
     image: grafana/grafana@${GRAFANA_IMAGE_DIGEST:?Set GRAFANA_IMAGE_DIGEST to sha256 digest}
     expose:
       - "3000"
@@ -154,14 +156,13 @@ services:
       - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
       - rgl-core
-      - neural-analytics
-      - websocket-gateway
     networks:
       - edge
       - internal
     restart: unless-stopped
 
   elasticsearch:
+    profiles: ["observability"]
     image: docker.elastic.co/elasticsearch/elasticsearch@${ELASTICSEARCH_IMAGE_DIGEST:?Set ELASTICSEARCH_IMAGE_DIGEST to sha256 digest}
     expose:
       - "9200"
@@ -177,6 +178,7 @@ services:
     restart: unless-stopped
 
   logstash:
+    profiles: ["observability"]
     image: docker.elastic.co/logstash/logstash@${LOGSTASH_IMAGE_DIGEST:?Set LOGSTASH_IMAGE_DIGEST to sha256 digest}
     volumes:
       - ./monitoring/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
@@ -189,6 +191,7 @@ services:
     restart: unless-stopped
 
   kibana:
+    profiles: ["observability"]
     image: docker.elastic.co/kibana/kibana@${KIBANA_IMAGE_DIGEST:?Set KIBANA_IMAGE_DIGEST to sha256 digest}
     expose:
       - "5601"
