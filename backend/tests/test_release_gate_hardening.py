@@ -10,6 +10,7 @@ from jose import jwt
 
 import backend.auth.jwt_utils as jwt_utils
 import backend.config as legacy_config
+import backend.core.settings as core_settings
 from backend.app.services.websocket import (
     LocalTokenBucket,
     WebSocketMessageError,
@@ -31,6 +32,23 @@ def test_production_rejects_default_jwt_secret(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setenv("ENV", "production")
     with pytest.raises(RuntimeError, match="JWT_SECRET_KEY"):
         make_manager(DEFAULT_SECRET)
+
+
+def test_flat_environment_names_load_into_central_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("JWT_SECRET_KEY", STRONG_SECRET)
+    monkeypatch.setenv("NEO4J_PASSWORD", "non-default-password")
+    monkeypatch.setenv("USE_REDIS", "true")
+    core_settings.get_settings.cache_clear()
+
+    loaded = core_settings.get_settings()
+
+    assert loaded.jwt.secret_key == STRONG_SECRET
+    assert loaded.integrations.neo4j_password == "non-default-password"
+    assert loaded.integrations.use_redis is True
+
+    core_settings.get_settings.cache_clear()
 
 
 def test_compat_config_uses_same_authoritative_jwt_secret(
