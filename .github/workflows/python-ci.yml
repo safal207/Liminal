@@ -54,12 +54,16 @@ jobs:
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
             backend/tests/test_release_gate_hardening.py \
+            tests/test_websocket_integration.py \
             scripts/check_release_security.py \
+            tests/load/ws-burst.yml \
             .env.example \
             backend/production/docker-compose.production.yml \
-            .github/workflows/python-ci.yml
+            .github/workflows/python-ci.yml \
+            .github/workflows/python-integration.yml \
+            .github/workflows/artillery-smoke.yml
 
-      - name: Format and lint release-critical files
+      - name: Format and lint release-critical Python files
         run: |
           black --check \
             backend/auth/jwt_utils.py \
@@ -70,6 +74,7 @@ jobs:
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
             backend/tests/test_release_gate_hardening.py \
+            tests/test_websocket_integration.py \
             scripts/check_release_security.py
           isort --check-only --profile black \
             backend/auth/jwt_utils.py \
@@ -80,6 +85,7 @@ jobs:
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
             backend/tests/test_release_gate_hardening.py \
+            tests/test_websocket_integration.py \
             scripts/check_release_security.py
           flake8 \
             backend/auth/jwt_utils.py \
@@ -90,6 +96,7 @@ jobs:
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
             backend/tests/test_release_gate_hardening.py \
+            tests/test_websocket_integration.py \
             scripts/check_release_security.py
 
       - name: Type-check release-critical files
@@ -101,11 +108,12 @@ jobs:
             backend/config.py \
             backend/app/services/auth.py \
             backend/app/services/websocket.py \
-            backend/app/routes/debug.py
+            backend/app/routes/debug.py \
+            tests/test_websocket_integration.py
 
       - name: Static security analysis
         run: |
-          bandit -q -r \
+          bandit -q -r -ll \
             backend/auth \
             backend/core/settings.py \
             backend/config.py \
@@ -113,7 +121,7 @@ jobs:
             backend/app/services/websocket.py \
             backend/app/routes/debug.py \
             -x backend/tests
-          pip-audit --strict
+          pip-audit --strict --skip-editable
 
       - name: Release-gate negative tests with coverage
         env:
