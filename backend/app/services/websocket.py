@@ -7,6 +7,7 @@ import logging
 import os
 import re
 import time
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Dict, Optional, Set, Tuple
 
 from fastapi import WebSocket, WebSocketDisconnect
@@ -308,8 +309,8 @@ class TimelineWebSocketService:
                     manager.mark_pong(websocket)
                     continue
 
-                channel = message.get("channel")
                 if message_type == "subscribe":
+                    channel = message["channel"]
                     await manager.subscribe(user_id, channel, websocket)
                     if channel == "timeline":
                         await timeline.subscribe(websocket)
@@ -318,6 +319,7 @@ class TimelineWebSocketService:
                         {"type": "subscribed", "channel": channel}
                     )
                 elif message_type == "unsubscribe":
+                    channel = message["channel"]
                     await manager.unsubscribe(user_id, channel)
                     if channel == "timeline":
                         await timeline.unsubscribe(websocket)
@@ -326,12 +328,14 @@ class TimelineWebSocketService:
                     )
                 elif message_type == "broadcast":
                     await manager.broadcast(
-                        channel,
+                        message["channel"],
                         {
                             "type": "message",
                             "content": message["content"],
                             "sender": user_id,
-                            "timestamp": time.time(),
+                            "timestamp": datetime.now(UTC)
+                            .isoformat()
+                            .replace("+00:00", "Z"),
                         },
                         sender_id=user_id,
                     )
@@ -340,18 +344,21 @@ class TimelineWebSocketService:
             pass
         except Exception:
             logger.exception("Unexpected WebSocket handler failure")
-            if not authenticated:
-                await manager.reject_connection(websocket, "Internal server error")
-            else:
-                try:
+            try:
+                if not authenticated:
+                    await manager.reject_connection(websocket, "Internal server error")
+                else:
                     await websocket.close(code=1011, reason="Internal server error")
-                except Exception:
-                    pass
+            except Exception:
+                logger.debug("WebSocket already closed during error handling")
         finally:
             if local_rate_key:
                 self._local_limiter.clear(local_rate_key)
-            if authenticated and user_id:
-                await timeline.unsubscribe(websocket)
-                await manager.disconnect(websocket, user_id)
-            elif websocket in manager.pending_connections:
-                await manager.reject_connection(websocket, "Connection closed")
+            try:
+                if authenticated and user_id:
+                    await timeline.unsubscribe(websocket)
+                    await manager.disconnect(websocket, user_id)
+                elif websocket in manager.pending_connections:
+                    await manager.reject_connection(websocket, "Connection closed")
+            except Exception:
+                logger.exception("WebSocket cleanup failed")
