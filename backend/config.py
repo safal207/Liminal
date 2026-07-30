@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from backend.core.settings import DEFAULT_SECRET, get_settings as get_core_settings
 
 MIN_PRODUCTION_SECRET_LENGTH = 32
-DEFAULT_NEO4J_PASSWORD = "password"
+DEFAULT_NEO4J_PASSWORD = ""
 
 
 class Settings(BaseModel):
