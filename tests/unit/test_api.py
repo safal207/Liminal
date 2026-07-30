@@ -29,14 +29,9 @@ class TestAPIUnit:
         assert json_data["status"] == "ok"
 
     def test_websocket_connection_unit(self):
-        """Test WebSocket connection establishment (unit level)"""
-        # Starlette may include internal router nodes without a public path.
-        routes = {
-            path
-            for route in app.routes
-            if (path := getattr(route, "path", None)) is not None
-        }
-        assert "/ws/timeline" in routes
+        """Test the public WebSocket route contract."""
+        websocket_path = app.url_path_for("websocket_timeline")
+        assert str(websocket_path) == "/ws/timeline"
 
     def test_emotion_analysis_unit(self):
         """Placeholder unit test for emotion analysis logic"""
