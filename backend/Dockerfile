@@ -1,71 +1,47 @@
-# Production Dockerfile for LIMINAL Backend
-FROM python:3.11-slim as builder
+# syntax=docker/dockerfile:1.7
 
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
+# Supply an immutable reference such as:
+# python:3.11-slim@sha256:<digest>
+ARG PYTHON_IMAGE
+
+FROM ${PYTHON_IMAGE} AS builder
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PYTHONDONTWRITEBYTECODE=1
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    git \
-    && rm -rf /var/lib/apt/lists/*
+WORKDIR /build
 
-# Create app user
-RUN useradd --create-home --shell /bin/bash app
+COPY requirements-core.txt ./requirements-core.txt
 
-# Set work directory
-WORKDIR /app
+RUN python -m pip install --upgrade pip wheel setuptools && \
+    python -m pip install --prefix=/install --prefer-binary \
+      -r requirements-core.txt && \
+    python -m pip check
 
-# Copy requirements first for better caching
-COPY requirements.txt test-requirements.txt ./
-
-# Install Python dependencies
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt && \
-    pip install -r test-requirements.txt
-
-# Production stage
-FROM python:3.11-slim as production
+FROM ${PYTHON_IMAGE} AS production
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PYTHONPATH=/app
 
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    useradd --create-home --shell /usr/sbin/nologin app
 
-# Create app user
-RUN useradd --create-home --shell /bin/bash app
+COPY --from=builder /install /usr/local
 
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-
-# Set work directory
 WORKDIR /app
+COPY --chown=app:app backend ./backend
 
-# Copy application code
-COPY --chown=app:app . .
+RUN mkdir -p /app/logs /app/data && chown -R app:app /app
 
-# Create necessary directories
-RUN mkdir -p /app/logs /app/data /app/models && \
-    chown -R app:app /app
-
-# Switch to app user
 USER app
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8000/ready || exit 1
 
-# Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
