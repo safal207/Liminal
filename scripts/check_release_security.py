@@ -52,7 +52,7 @@ REQUIRED_COMPOSE_SNIPPETS = {
     "GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?",
     "ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?",
     "ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?",
-    "xpack.security.enabled: \"true\"",
+    'xpack.security.enabled: "true"',
     "internal: true",
     "http://localhost:8000/ready",
     "redis@${REDIS_IMAGE_DIGEST:?",
