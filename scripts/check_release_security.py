@@ -136,7 +136,9 @@ def main() -> int:
         core_packages = parse_requirement_names(CORE_REQUIREMENTS)
         forbidden = BANNED_CORE_PACKAGES & core_packages
         if forbidden:
-            errors.append(f"core requirements include optional packages: {sorted(forbidden)}")
+            errors.append(
+                f"core requirements include optional packages: {sorted(forbidden)}"
+            )
         if "pyjwt" not in core_packages:
             errors.append("core requirements must use PyJWT")
 
@@ -147,11 +149,20 @@ def main() -> int:
         if "-r requirements-core.txt" not in dockerfile:
             errors.append("production Dockerfile must install requirements-core.txt")
         if "requirements.txt" in dockerfile.replace("requirements-core.txt", ""):
-            errors.append("production Dockerfile must not install aggregate requirements.txt")
+            errors.append(
+                "production Dockerfile must not install aggregate requirements.txt"
+            )
         if "test-requirements" in dockerfile or "requirements-dev" in dockerfile:
-            errors.append("production Dockerfile must not install test/dev dependencies")
-        if "ARG PYTHON_IMAGE" not in dockerfile or "FROM ${PYTHON_IMAGE}" not in dockerfile:
-            errors.append("production Dockerfile must require an external immutable base image")
+            errors.append(
+                "production Dockerfile must not install test/dev dependencies"
+            )
+        if (
+            "ARG PYTHON_IMAGE" not in dockerfile
+            or "FROM ${PYTHON_IMAGE}" not in dockerfile
+        ):
+            errors.append(
+                "production Dockerfile must require an external immutable base image"
+            )
 
     if not PRODUCTION_COMPOSE.exists():
         errors.append("production compose file is missing")
