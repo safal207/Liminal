@@ -9,7 +9,8 @@ recovery task to a real provider:
 
 The model must infer the continuation anchor from evidence in the supplied
 context. The JSON schema constrains only output shape; it does not reveal the
-expected goal or parent-step values.
+expected goal or parent-step values. A per-pair probe nonce can be included to
+reduce provider-side cache reuse; the same nonce is supplied to both arms.
 """
 
 from __future__ import annotations
@@ -205,8 +206,13 @@ def focus_field_context() -> str:
     )
 
 
-def recovery_prompt(mode: str) -> str:
-    """Build the same recovery task over two different context geometries."""
+def recovery_prompt(mode: str, *, probe_nonce: str | None = None) -> str:
+    """Build the same recovery task over two different context geometries.
+
+    ``probe_nonce`` is intentionally irrelevant to recovery semantics. The live
+    paired runner gives both arms the same unique nonce for each trial so an
+    upstream cache cannot turn repeated trials into local cache-hit timing.
+    """
 
     if mode == "sequential":
         context = sequential_context()
@@ -217,6 +223,11 @@ def recovery_prompt(mode: str) -> str:
     else:
         raise ValueError("unsupported_recovery_ab_mode")
 
+    nonce_line = (
+        f"Probe nonce (ignore for recovery semantics): {probe_nonce}\n"
+        if probe_nonce
+        else ""
+    )
     return (
         "An agent was interrupted after checkpoint-12. Recover the latest continuation "
         "anchor that is VERIFIED, is not superseded/speculative/interrupted, and preserves "
@@ -224,7 +235,8 @@ def recovery_prompt(mode: str) -> str:
         "For a ranked focus field, rank is retrieval evidence but does not override the "
         "verification/lifecycle facts. Return exactly one JSON object with keys goal_id, "
         "parent_step_id, status, evidence. Set status to verified and set evidence to the "
-        "checkpoint_id you selected.\n\n"
+        "checkpoint_id you selected.\n"
+        f"{nonce_line}\n"
         f"{label}:\n{context}"
     )
 
