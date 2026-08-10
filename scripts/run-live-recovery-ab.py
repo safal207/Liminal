@@ -21,6 +21,7 @@ from liminal.live_recovery_ab import (
     EXPECTED_GOAL_ID,
     EXPECTED_PARENT_STEP_ID,
     focus_field_context,
+    parse_recovery_payload,
     recovery_prompt,
     recovery_response_format,
     sequential_context,
@@ -132,6 +133,7 @@ async def _run_one(
         model, raw_content
     )
     verification = verify_recovery_response(normalized_content)
+    structured_output = parse_recovery_payload(normalized_content)
 
     return {
         "trial": trial,
@@ -146,6 +148,9 @@ async def _run_one(
             "status_match": verification.status_match,
             "evidence_match": verification.evidence_match,
         },
+        # This is only the four-field synthetic structured output. Provider
+        # reasoning / <think> text is never persisted.
+        "structured_output": structured_output,
         "prompt_chars": len(prompt),
         "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
         "raw_response_sha256": hashlib.sha256(raw_content.encode("utf-8")).hexdigest(),
@@ -192,7 +197,7 @@ async def _run(args: argparse.Namespace) -> int:
 
     aggregate = summarize_records(records)
     artifact = {
-        "schema_version": "liminal.live-recovery-ab.v0.1",
+        "schema_version": "liminal.live-recovery-ab.v0.2",
         "benchmark_id": benchmark_id,
         "provider": "gonka",
         "model": args.model,
@@ -203,8 +208,11 @@ async def _run(args: argparse.Namespace) -> int:
             "sequential_checkpoint_count": 12,
             "focus_field_candidate_count": 3,
             "field_candidates_source": "configured:deterministic_subset_of_same_fixture_history",
+            "field_candidate_ranking": "derived:verification_plus_lifecycle_evidence",
             "response_schema_leaks_expected_anchor": False,
-            "raw_model_content_persisted": False,
+            "raw_model_reasoning_persisted": False,
+            "structured_synthetic_output_persisted": True,
+            "max_output_tokens": args.max_output_tokens,
         },
         "expected_anchor": {
             "checkpoint_id": EXPECTED_CHECKPOINT_ID,
@@ -226,8 +234,10 @@ async def _run(args: argparse.Namespace) -> int:
         "interpretation_limits": [
             "Provider token usage and wall-clock latency are measured live.",
             "The recovery fixture and three focus-field candidates are configured benchmark inputs.",
+            "Focus-field ranking is deterministic benchmark preprocessing, not a production retrieval measurement.",
             "Three paired trials are exploratory evidence, not a statistically powered performance study.",
             "Latency can vary with provider/network conditions; token differences are the cleaner primary measure.",
+            "Cost comparison is qualified only when every trial in both modes verifies successfully.",
         ],
     }
 
@@ -259,7 +269,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="MiniMaxAI/MiniMax-M2.7")
     parser.add_argument("--context-window-tokens", type=int, default=180000)
-    parser.add_argument("--max-output-tokens", type=int, default=512)
+    parser.add_argument("--max-output-tokens", type=int, default=640)
     parser.add_argument("--inter-call-delay-seconds", type=float, default=0.25)
     parser.add_argument(
         "--output", default="artifacts/live-recovery-ab.json"
