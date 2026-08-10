@@ -47,7 +47,7 @@ jobs:
           python scripts/run-live-recovery-ab.py \
             --model "MiniMaxAI/MiniMax-M2.7" \
             --context-window-tokens "180000" \
-            --max-output-tokens "512" \
+            --max-output-tokens "1024" \
             --inter-call-delay-seconds "0.25" \
             --output artifacts/live-recovery-ab.json
 
