@@ -8,9 +8,10 @@ recovery task to a real provider:
   exact same history and ranked by generic verification/lifecycle evidence.
 
 The model must infer the continuation anchor from evidence in the supplied
-context. The JSON schema constrains only output shape; it does not reveal the
-expected goal or parent-step values. A per-pair probe nonce can be included to
-reduce provider-side cache reuse; the same nonce is supplied to both arms.
+context. The JSON schema constrains output shape and generic identifier syntax;
+it does not reveal the expected goal, parent-step, or checkpoint values. A
+per-pair probe nonce can be included to reduce provider-side cache reuse; the
+same nonce is supplied to both arms.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ EXPECTED_CHECKPOINT_ID = "checkpoint-09"
 EXPECTED_GOAL_ID = "invoice-reconciliation-v3"
 EXPECTED_PARENT_STEP_ID = "ledger-apply-07"
 EXPECTED_STATUS = "verified"
+IDENTIFIER_PATTERN = "^[a-z0-9-]+$"
 
 
 @dataclass(frozen=True)
@@ -235,15 +237,22 @@ def recovery_prompt(mode: str, *, probe_nonce: str | None = None) -> str:
         "For a ranked focus field, rank is retrieval evidence but does not override the "
         "verification/lifecycle facts. Return exactly one JSON object with keys goal_id, "
         "parent_step_id, status, evidence. Set status to verified and set evidence to the "
-        "checkpoint_id you selected.\n"
+        "checkpoint_id you selected. Identifier values must be copied exactly from the "
+        "supplied context; do not add spaces, punctuation, or abbreviations.\n"
         f"{nonce_line}\n"
         f"{label}:\n{context}"
     )
 
 
 def recovery_response_format() -> dict:
-    """Constrain shape without leaking the expected recovery anchor."""
+    """Constrain shape/syntax without leaking the expected recovery anchor."""
 
+    identifier = {
+        "type": "string",
+        "pattern": IDENTIFIER_PATTERN,
+        "minLength": 1,
+        "maxLength": 96,
+    }
     return {
         "type": "json_schema",
         "json_schema": {
@@ -254,10 +263,10 @@ def recovery_response_format() -> dict:
                 "additionalProperties": False,
                 "required": ["goal_id", "parent_step_id", "status", "evidence"],
                 "properties": {
-                    "goal_id": {"type": "string"},
-                    "parent_step_id": {"type": "string"},
+                    "goal_id": dict(identifier),
+                    "parent_step_id": dict(identifier),
                     "status": {"type": "string", "enum": [EXPECTED_STATUS]},
-                    "evidence": {"type": "string"},
+                    "evidence": dict(identifier),
                 },
             },
         },
