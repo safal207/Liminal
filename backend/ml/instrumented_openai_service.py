@@ -38,6 +38,7 @@ class InstrumentedOpenAIService(OpenAIService):
         self._receipts: list[InstrumentationReceipt] = []
         self._logical_attempts: defaultdict[str, int] = defaultdict(int)
         self._last_finish_reason: str | None = None
+        self.response_format: dict | None = None
 
     @property
     def receipts(self) -> tuple[InstrumentationReceipt, ...]:
@@ -67,6 +68,9 @@ class InstrumentedOpenAIService(OpenAIService):
         self._logical_attempts[logical_action_id] += 1
         attempt = self._logical_attempts[logical_action_id]
 
+        response_format = getattr(self, "response_format", None) or {
+            "type": "json_object"
+        }
         request = LLMRequest(
             model=self.model,
             messages=[
@@ -75,6 +79,7 @@ class InstrumentedOpenAIService(OpenAIService):
             ],
             max_tokens=self.max_tokens,
             temperature=self.temperature,
+            response_format=response_format,
         )
 
         result = await call_with_receipts(
