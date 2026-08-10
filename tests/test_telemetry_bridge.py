@@ -1,9 +1,11 @@
 from liminal.flow_regulator import FlowState, regulate_flow
+from liminal.recovery_evidence import FieldReliabilityEvidence
 from liminal.recovery_policy import RecoveryMode, choose_recovery_mode
 from liminal.telemetry_bridge import (
     RuntimeTelemetry,
     to_flow_signals,
     to_recovery_signals,
+    with_field_reliability,
 )
 
 
@@ -93,6 +95,23 @@ def test_field_reliability_metrics_reach_recovery_router() -> None:
     assert signals.field_observation_count == 3
 
     decision = choose_recovery_mode(signals)
+    assert decision.mode is RecoveryMode.SEQUENTIAL
+    assert decision.reason == "field_observed_verification_rate_too_low"
+
+
+def test_aggregated_evidence_enriches_runtime_telemetry() -> None:
+    evidence = FieldReliabilityEvidence(
+        recovery_class="deep-ledger-recovery",
+        observation_count=3,
+        verification_success_rate=1 / 3,
+        completion_pressure=1 / 3,
+    )
+
+    telemetry = with_field_reliability(_healthy(), evidence)
+    decision = choose_recovery_mode(to_recovery_signals(telemetry))
+
+    assert telemetry.field_observation_count == 3
+    assert telemetry.field_verification_success_rate == 1 / 3
     assert decision.mode is RecoveryMode.SEQUENTIAL
     assert decision.reason == "field_observed_verification_rate_too_low"
 
