@@ -95,8 +95,9 @@ async def _run_one(
     trial: int,
     position: int,
     mode: str,
+    probe_nonce: str,
 ) -> dict:
-    prompt = recovery_prompt(mode)
+    prompt = recovery_prompt(mode, probe_nonce=probe_nonce)
     request = LLMRequest(
         model=model,
         messages=[
@@ -108,7 +109,9 @@ async def _run_one(
         response_format=recovery_response_format(),
     )
 
-    # Cache is deliberately cleared before every arm so provider usage is real.
+    # Cache is deliberately cleared before every arm. A unique shared pair nonce
+    # also changes the upstream request so a broker-side response cache cannot
+    # collapse later trials into near-zero-latency repeats.
     llm_client.response_cache.clear()
     trace_id = f"{benchmark_id}:trial-{trial}:{mode}"
     started = time.perf_counter()
@@ -139,6 +142,7 @@ async def _run_one(
         "trial": trial,
         "position_in_pair": position,
         "mode": mode,
+        "probe_nonce_sha256": hashlib.sha256(probe_nonce.encode("utf-8")).hexdigest(),
         "verification_passed": verification.passed,
         "verification": {
             "valid_json": verification.valid_json,
@@ -181,6 +185,11 @@ async def _run(args: argparse.Namespace) -> int:
 
     records: list[dict] = []
     for trial, order in enumerate(pair_orders, start=1):
+        # Same nonce inside a pair = equal nuisance input; unique across pairs =
+        # a different upstream request for cache resistance.
+        probe_nonce = hashlib.sha256(
+            f"{benchmark_id}:pair:{trial}".encode("utf-8")
+        ).hexdigest()[:16]
         for position, mode in enumerate(order, start=1):
             records.append(
                 await _run_one(
@@ -191,19 +200,21 @@ async def _run(args: argparse.Namespace) -> int:
                     trial=trial,
                     position=position,
                     mode=mode,
+                    probe_nonce=probe_nonce,
                 )
             )
             await asyncio.sleep(args.inter_call_delay_seconds)
 
     aggregate = summarize_records(records)
     artifact = {
-        "schema_version": "liminal.live-recovery-ab.v0.2",
+        "schema_version": "liminal.live-recovery-ab.v0.3",
         "benchmark_id": benchmark_id,
         "provider": "gonka",
         "model": args.model,
         "design": {
             "paired_trials": 3,
             "pair_orders": [list(order) for order in pair_orders],
+            "pair_nonce": "unique_per_pair_and_shared_between_arms",
             "same_recovery_rule": True,
             "sequential_checkpoint_count": 12,
             "focus_field_candidate_count": 3,
@@ -220,8 +231,8 @@ async def _run(args: argparse.Namespace) -> int:
             "parent_step_id": EXPECTED_PARENT_STEP_ID,
         },
         "context": {
-            "sequential_chars": len(sequential_context()),
-            "focus_field_chars": len(focus_field_context()),
+            "sequential_chars_without_nonce": len(sequential_context()),
+            "focus_field_chars_without_nonce": len(focus_field_context()),
             "sequential_sha256": hashlib.sha256(
                 sequential_context().encode("utf-8")
             ).hexdigest(),
@@ -235,6 +246,7 @@ async def _run(args: argparse.Namespace) -> int:
             "Provider token usage and wall-clock latency are measured live.",
             "The recovery fixture and three focus-field candidates are configured benchmark inputs.",
             "Focus-field ranking is deterministic benchmark preprocessing, not a production retrieval measurement.",
+            "Unique shared pair nonces reduce reuse of identical broker-side cached responses.",
             "Three paired trials are exploratory evidence, not a statistically powered performance study.",
             "Latency can vary with provider/network conditions; token differences are the cleaner primary measure.",
             "Cost comparison is qualified only when every trial in both modes verifies successfully.",
@@ -269,11 +281,9 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="MiniMaxAI/MiniMax-M2.7")
     parser.add_argument("--context-window-tokens", type=int, default=180000)
-    parser.add_argument("--max-output-tokens", type=int, default=640)
+    parser.add_argument("--max-output-tokens", type=int, default=1536)
     parser.add_argument("--inter-call-delay-seconds", type=float, default=0.25)
-    parser.add_argument(
-        "--output", default="artifacts/live-recovery-ab.json"
-    )
+    parser.add_argument("--output", default="artifacts/live-recovery-ab.json")
     args = parser.parse_args()
 
     if args.context_window_tokens <= 0:
