@@ -28,12 +28,15 @@ from liminal.live_recovery_ab import (
     summarize_records,
     verify_recovery_response,
 )
+from liminal.recovery_evidence import RecoveryEvidenceWindow
+from liminal.recovery_policy import RecoveryMode
 
 
 SYSTEM_MESSAGE = (
     "You are a deterministic recovery verifier. Select only an evidence-backed "
     "continuation anchor from the supplied context and follow the JSON schema exactly."
 )
+RECOVERY_CLASS = "live-ab:deep-ledger-recovery"
 
 
 def _gonka_settings() -> tuple[str, str]:
@@ -184,6 +187,7 @@ async def _run(args: argparse.Namespace) -> int:
     )
 
     records: list[dict] = []
+    evidence_window = RecoveryEvidenceWindow(max_attempts_per_class=20)
     for trial, order in enumerate(pair_orders, start=1):
         # Same nonce inside a pair = equal nuisance input; unique across pairs =
         # a different upstream request for cache resistance.
@@ -191,23 +195,29 @@ async def _run(args: argparse.Namespace) -> int:
             f"{benchmark_id}:pair:{trial}".encode("utf-8")
         ).hexdigest()[:16]
         for position, mode in enumerate(order, start=1):
-            records.append(
-                await _run_one(
-                    model=args.model,
-                    context_window_tokens=args.context_window_tokens,
-                    max_output_tokens=args.max_output_tokens,
-                    benchmark_id=benchmark_id,
-                    trial=trial,
-                    position=position,
-                    mode=mode,
-                    probe_nonce=probe_nonce,
-                )
+            record = await _run_one(
+                model=args.model,
+                context_window_tokens=args.context_window_tokens,
+                max_output_tokens=args.max_output_tokens,
+                benchmark_id=benchmark_id,
+                trial=trial,
+                position=position,
+                mode=mode,
+                probe_nonce=probe_nonce,
+            )
+            records.append(record)
+            evidence_window.record_outcome(
+                recovery_class=RECOVERY_CLASS,
+                mode=RecoveryMode(mode),
+                verification_passed=bool(record["verification_passed"]),
+                finish_reason=record["finish_reason"],
             )
             await asyncio.sleep(args.inter_call_delay_seconds)
 
     aggregate = summarize_records(records)
+    field_evidence = evidence_window.summarize_field(recovery_class=RECOVERY_CLASS)
     artifact = {
-        "schema_version": "liminal.live-recovery-ab.v0.3",
+        "schema_version": "liminal.live-recovery-ab.v0.4",
         "benchmark_id": benchmark_id,
         "provider": "gonka",
         "model": args.model,
@@ -224,6 +234,7 @@ async def _run(args: argparse.Namespace) -> int:
             "raw_model_reasoning_persisted": False,
             "structured_synthetic_output_persisted": True,
             "max_output_tokens": args.max_output_tokens,
+            "evidence_window_changes_ab_arm_schedule": False,
         },
         "expected_anchor": {
             "checkpoint_id": EXPECTED_CHECKPOINT_ID,
@@ -242,6 +253,16 @@ async def _run(args: argparse.Namespace) -> int:
         },
         "records": records,
         "aggregate": aggregate,
+        "recovery_evidence_window": {
+            "recovery_class": field_evidence.recovery_class,
+            "retained_attempts": len(
+                evidence_window.attempts(recovery_class=RECOVERY_CLASS)
+            ),
+            "field_observation_count": field_evidence.observation_count,
+            "field_verification_success_rate": field_evidence.verification_success_rate,
+            "field_completion_pressure": field_evidence.completion_pressure,
+            "source": "observed_live_provider_outcomes",
+        },
         "interpretation_limits": [
             "Provider token usage and wall-clock latency are measured live.",
             "The recovery fixture and three focus-field candidates are configured benchmark inputs.",
@@ -250,6 +271,7 @@ async def _run(args: argparse.Namespace) -> int:
             "Three paired trials are exploratory evidence, not a statistically powered performance study.",
             "Latency can vary with provider/network conditions; token differences are the cleaner primary measure.",
             "Cost comparison is qualified only when every trial in both modes verifies successfully.",
+            "The evidence window passively records live A/B outcomes and does not adapt the fixed benchmark arm schedule.",
         ],
     }
 
@@ -266,6 +288,11 @@ async def _run(args: argparse.Namespace) -> int:
                 "sequential": aggregate["sequential"],
                 "focus_field": aggregate["focus_field"],
                 "comparison": aggregate["comparison"],
+                "field_evidence": {
+                    "observation_count": field_evidence.observation_count,
+                    "verification_success_rate": field_evidence.verification_success_rate,
+                    "completion_pressure": field_evidence.completion_pressure,
+                },
             },
             sort_keys=True,
         )
