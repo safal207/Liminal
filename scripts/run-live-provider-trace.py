@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run one fail-closed live OpenAI provider trace and write a JSON artifact."""
+"""Run one fail-closed live provider trace and write a JSON artifact."""
 
 from __future__ import annotations
 
@@ -26,11 +26,13 @@ from liminal.live_provider_trace import (
 )
 
 
-def _build_service(*, trace_id: str, model: str, context_window_tokens: int) -> InstrumentedOpenAIService:
+def _build_service(
+    *, trace_id: str, model: str, context_window_tokens: int
+) -> InstrumentedOpenAIService:
     """Construct only the already-tested receipt boundary, avoiding legacy async __init__."""
 
     service = InstrumentedOpenAIService.__new__(InstrumentedOpenAIService)
-    service.client = object()  # _call_openai delegates to the initialized global wrapper.
+    service.client = object()  # _call_openai delegates to the configured global wrapper.
     service.model = model
     service.max_tokens = 160
     service.temperature = 0.0
@@ -47,10 +49,37 @@ def _build_service(*, trace_id: str, model: str, context_window_tokens: int) -> 
     return service
 
 
-async def _run(args: argparse.Namespace) -> int:
-    api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    if not api_key:
-        raise RuntimeError("OPENAI_API_KEY is required; committed .env files are not used")
+def _provider_settings(provider: str) -> tuple[str, str | None]:
+    """Resolve provider credentials without ever reading committed dotenv files."""
+
+    if provider == "openai":
+        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY is required")
+        return api_key, None
+
+    if provider == "gonka":
+        api_key = (
+            os.getenv("GONKA_BROKER_API_KEY", "").strip()
+            or os.getenv("GONKA_API_KEY", "").strip()
+        )
+        base_url = (
+            os.getenv("GONKA_BROKER_URL", "").strip()
+            or os.getenv("GONKA_BASE_URL", "").strip()
+        )
+        if not api_key:
+            raise RuntimeError("GONKA_BROKER_API_KEY (or GONKA_API_KEY) is required")
+        if not base_url:
+            raise RuntimeError("GONKA_BROKER_URL (or GONKA_BASE_URL) is required")
+        return api_key, base_url.rstrip("/")
+
+    raise RuntimeError(f"unsupported live provider: {provider}")
+
+
+async def _configure_live_provider(provider: str) -> None:
+    """Attach a real OpenAI-compatible client to the existing receipt boundary."""
+
+    api_key, base_url = _provider_settings(provider)
 
     llm_client.mock_only = False
     llm_client.fallback_to_local = False
@@ -59,12 +88,26 @@ async def _run(args: argparse.Namespace) -> int:
     llm_client.response_cache.clear()
     llm_client.api_key = api_key
 
-    initialized = await llm_client.initialize()
-    if not initialized or llm_client.openai_client is None:
-        raise RuntimeError("real OpenAI client initialization failed")
+    if provider == "openai":
+        initialized = await llm_client.initialize()
+        if not initialized or llm_client.openai_client is None:
+            raise RuntimeError("real OpenAI client initialization failed")
+        return
+
+    # Gonka community brokers expose an OpenAI-compatible API. Construct the
+    # official SDK client with the broker base URL, then reuse llm_client.call()
+    # and the exact same receipt/control path as the OpenAI provider.
+    from openai import AsyncOpenAI
+
+    llm_client.openai_client = AsyncOpenAI(api_key=api_key, base_url=base_url)
+
+
+async def _run(args: argparse.Namespace) -> int:
+    await _configure_live_provider(args.provider)
 
     trace_id = args.trace_id or (
-        "live-openai-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        f"live-{args.provider}-"
+        + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     )
     service = _build_service(
         trace_id=trace_id,
@@ -119,16 +162,21 @@ async def _run(args: argparse.Namespace) -> int:
         receipts=receipts,
         decision=decision,
     )
+    artifact_json = to_jsonable(artifact)
+    # The shared artifact schema predates provider selection. Override only the
+    # provider label; all evidence and control decisions remain unchanged.
+    artifact_json["provider"] = args.provider
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(
-        json.dumps(to_jsonable(artifact), indent=2, sort_keys=True) + "\n",
+        json.dumps(artifact_json, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
 
     summary = {
         "trace_id": trace_id,
+        "provider": args.provider,
         "model": args.model,
         "probe_mode": args.probe_mode,
         "verification_passed": verification.passed,
@@ -148,6 +196,11 @@ async def _run(args: argparse.Namespace) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--provider",
+        choices=("openai", "gonka"),
+        default=os.getenv("LIVE_PROVIDER", "openai"),
+    )
     parser.add_argument("--model", required=True)
     parser.add_argument("--context-window-tokens", required=True, type=int)
     parser.add_argument("--latency-budget-seconds", type=float, default=10.0)
