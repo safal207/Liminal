@@ -2,6 +2,7 @@ from liminal.live_recovery_ab import (
     EXPECTED_CHECKPOINT_ID,
     EXPECTED_GOAL_ID,
     EXPECTED_PARENT_STEP_ID,
+    focus_field_candidates,
     focus_field_context,
     recovery_prompt,
     recovery_response_format,
@@ -20,6 +21,15 @@ def test_focus_field_is_bounded_subset_of_sequential_history():
     assert EXPECTED_CHECKPOINT_ID in sequential
     assert EXPECTED_CHECKPOINT_ID in field
     assert len(field) < len(sequential)
+
+
+def test_focus_field_ranks_verified_active_candidate_first():
+    candidates = focus_field_candidates()
+
+    assert candidates[0].checkpoint_id == EXPECTED_CHECKPOINT_ID
+    assert candidates[0].verification == "verified"
+    assert candidates[0].lifecycle == "active"
+    assert "field_rank=1" in focus_field_context().splitlines()[0]
 
 
 def test_response_schema_does_not_leak_expected_anchor_values():
@@ -106,7 +116,33 @@ def test_summary_uses_real_recorded_usage_and_median_latency():
 
     assert summary["sequential"]["prompt_tokens_total"] == 600
     assert summary["focus_field"]["prompt_tokens_total"] == 300
+    assert summary["comparison"]["qualified_for_success_cost_comparison"] is True
     assert summary["comparison"]["prompt_token_savings_pct"] == 50.0
     assert summary["comparison"]["total_token_savings_pct"] == 37.5
     assert summary["sequential"]["median_latency_seconds"] == 5.0
     assert summary["focus_field"]["median_latency_seconds"] == 2.5
+
+
+def test_failed_arm_disqualifies_success_cost_comparison():
+    records = [
+        {
+            "mode": "sequential",
+            "verification_passed": True,
+            "prompt_tokens": 100,
+            "completion_tokens": 50,
+            "total_tokens": 150,
+            "latency_seconds": 1.0,
+        },
+        {
+            "mode": "focus_field",
+            "verification_passed": False,
+            "prompt_tokens": 50,
+            "completion_tokens": 50,
+            "total_tokens": 100,
+            "latency_seconds": 1.0,
+        },
+    ]
+
+    summary = summarize_records(records)
+
+    assert summary["comparison"]["qualified_for_success_cost_comparison"] is False
