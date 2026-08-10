@@ -1,0 +1,61 @@
+name: Live Gonka Recovery A-B Once
+
+on:
+  push:
+    branches:
+      - agent/recovery-routing-v0-1
+    paths:
+      - .github/workflows/live-gonka-recovery-ab-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  live-gonka-recovery-ab:
+    runs-on: ubuntu-latest
+    environment: live-provider-trace
+    env:
+      GONKA_BROKER_API_KEY: ${{ secrets.GONKA_BROKER_API_KEY }}
+      GONKA_BROKER_URL: ${{ secrets.GONKA_BROKER_URL }}
+      OPENAI_MOCK_ONLY: "false"
+      OPENAI_FALLBACK_TO_LOCAL: "false"
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Require Gonka broker configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${GONKA_BROKER_API_KEY:-}" || { echo "GONKA_BROKER_API_KEY GitHub Secret is required."; exit 1; }
+          test -n "${GONKA_BROKER_URL:-}" || { echo "GONKA_BROKER_URL GitHub Secret is required."; exit 1; }
+
+      - name: Install minimal live A-B dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "openai>=1.30,<3" "httpx>=0.24" "structlog>=23.1"
+
+      - name: Run three paired live recovery trials
+        run: |
+          python scripts/run-live-recovery-ab.py \
+            --model "MiniMaxAI/MiniMax-M2.7" \
+            --context-window-tokens "180000" \
+            --max-output-tokens "512" \
+            --inter-call-delay-seconds "0.25" \
+            --output artifacts/live-recovery-ab.json
+
+      - name: Upload A-B evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-gonka-recovery-ab-once
+          path: artifacts/live-recovery-ab.json
+          if-no-files-found: warn
+          retention-days: 14
