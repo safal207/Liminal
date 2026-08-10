@@ -58,6 +58,37 @@ Only then can estimated field savings qualify a deep recovery for `FOCUS_FIELD`.
 
 The fallback is sequential rather than an automatic defer because a poor observed field path does not by itself prove that deterministic replay is unsafe. Existing verification requirements still apply after recovery.
 
+## Runtime evidence path
+
+v0.2 now has an explicit in-memory runtime path rather than requiring callers to inject aggregate numbers manually:
+
+```text
+completed recovery attempt
+    |
+    | explicit mode + verification result + provider finish_reason
+    v
+RecoveryEvidenceWindow
+    |
+    | bounded and scoped by recovery_class
+    v
+FieldReliabilityEvidence
+    |
+    v
+RuntimeTelemetry
+    |
+    v
+RecoverySignals
+    |
+    v
+Recovery Router
+```
+
+`RecoveryEvidenceWindow` retains only the newest configured number of attempts per recovery class. It has no global singleton and no durable persistence, so one process cannot silently teach unrelated processes or task geometries.
+
+`EvidenceAwareRecoveryRuntime` is the small orchestration facade that records completed attempts and enriches the next comparable routing decision with the corresponding class-scoped evidence.
+
+The live Gonka A/B runner also records its real provider outcomes into this same evidence-window primitive. In the benchmark this collection is passive: it does not alter the fixed A/B arm schedule, so adaptive routing cannot contaminate the comparison.
+
 ## Live A/B implication
 
 The live experiments now support a narrower claim than the original synthetic benchmark:
