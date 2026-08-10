@@ -77,11 +77,61 @@ def test_missing_verified_candidate_defers_when_required() -> None:
     assert decision.reason == "verified_anchor_required"
 
 
+def test_field_reliability_metrics_reach_recovery_router() -> None:
+    telemetry = RuntimeTelemetry(
+        **{
+            **_healthy().__dict__,
+            "field_verification_success_rate": 1 / 3,
+            "field_completion_pressure": 1 / 3,
+            "field_observation_count": 3,
+        }
+    )
+
+    signals = to_recovery_signals(telemetry)
+    assert signals.field_verification_success_rate == 1 / 3
+    assert signals.field_completion_pressure == 1 / 3
+    assert signals.field_observation_count == 3
+
+    decision = choose_recovery_mode(signals)
+    assert decision.mode is RecoveryMode.SEQUENTIAL
+    assert decision.reason == "field_observed_verification_rate_too_low"
+
+
+def test_under_sampled_field_reliability_is_not_treated_as_health_signal() -> None:
+    telemetry = RuntimeTelemetry(
+        **{
+            **_healthy().__dict__,
+            "field_verification_success_rate": 0.0,
+            "field_completion_pressure": 1.0,
+            "field_observation_count": 2,
+        }
+    )
+
+    decision = choose_recovery_mode(to_recovery_signals(telemetry))
+    assert decision.mode is RecoveryMode.FOCUS_FIELD
+
+
 def test_bridge_rejects_invalid_unit_metric() -> None:
     telemetry = RuntimeTelemetry(**{**_healthy().__dict__, "retry_rate": 1.2})
     try:
         to_flow_signals(telemetry)
     except ValueError as exc:
         assert str(exc) == "retry_rate_must_be_between_0_and_1"
+    else:
+        raise AssertionError("expected ValueError")
+
+
+def test_bridge_rejects_invalid_optional_field_metric() -> None:
+    telemetry = RuntimeTelemetry(
+        **{
+            **_healthy().__dict__,
+            "field_completion_pressure": 1.2,
+            "field_observation_count": 3,
+        }
+    )
+    try:
+        to_recovery_signals(telemetry)
+    except ValueError as exc:
+        assert str(exc) == "field_completion_pressure_must_be_between_0_and_1"
     else:
         raise AssertionError("expected ValueError")
