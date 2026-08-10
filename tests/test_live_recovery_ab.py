@@ -49,6 +49,17 @@ def test_both_modes_pose_same_recovery_rule():
     assert shared_rule in field
 
 
+def test_pair_nonce_is_shared_but_does_not_change_context_fixture():
+    nonce = "trial-abc123"
+    sequential = recovery_prompt("sequential", probe_nonce=nonce)
+    field = recovery_prompt("focus_field", probe_nonce=nonce)
+
+    assert f"Probe nonce (ignore for recovery semantics): {nonce}" in sequential
+    assert f"Probe nonce (ignore for recovery semantics): {nonce}" in field
+    assert sequential_context() not in field
+    assert focus_field_context() not in sequential_context()
+
+
 def test_exact_recovery_response_verifies():
     content = (
         '{"goal_id":"invoice-reconciliation-v3",'
