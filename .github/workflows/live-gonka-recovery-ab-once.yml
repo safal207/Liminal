@@ -42,12 +42,12 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "openai>=1.30,<3" "httpx>=0.24" "structlog>=23.1"
 
-      - name: Run three paired live recovery trials
+      - name: Run three paired ranked recovery trials
         run: |
           python scripts/run-live-recovery-ab.py \
             --model "MiniMaxAI/MiniMax-M2.7" \
             --context-window-tokens "180000" \
-            --max-output-tokens "1024" \
+            --max-output-tokens "640" \
             --inter-call-delay-seconds "0.25" \
             --output artifacts/live-recovery-ab.json
 
