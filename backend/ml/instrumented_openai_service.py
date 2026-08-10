@@ -37,10 +37,17 @@ class InstrumentedOpenAIService(OpenAIService):
         self._receipt_sequence = 0
         self._receipts: list[InstrumentationReceipt] = []
         self._logical_attempts: defaultdict[str, int] = defaultdict(int)
+        self._last_finish_reason: str | None = None
 
     @property
     def receipts(self) -> tuple[InstrumentationReceipt, ...]:
         return tuple(self._receipts)
+
+    @property
+    def last_finish_reason(self) -> str | None:
+        """Return provider finish metadata without retaining response content."""
+
+        return getattr(self, "_last_finish_reason", None)
 
     def drain_receipts(self) -> tuple[InstrumentationReceipt, ...]:
         receipts = tuple(self._receipts)
@@ -79,6 +86,7 @@ class InstrumentedOpenAIService(OpenAIService):
             retry_index=max(0, attempt - 1),
             retry_reason_code="repeat_logical_action" if attempt > 1 else None,
         )
+        self._last_finish_reason = result.response.finish_reason
         self._receipts.extend(result.receipts)
         return result.response.content
 
