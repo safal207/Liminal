@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import os
 import sys
@@ -81,6 +82,33 @@ def _provider_settings(provider: str) -> tuple[str, str | None]:
     raise RuntimeError(f"unsupported live provider: {provider}")
 
 
+def _normalize_provider_content(
+    provider: str, model: str, content: str
+) -> tuple[str, str | None]:
+    """Remove only documented provider wrappers before contract verification.
+
+    Gonka's MiniMax-M2.7 reasoning parser emits a leading ``<think>...</think>``
+    block in ``message.content``. The raw response remains hash-addressed in the
+    artifact; this function only exposes a deterministic normalized view for the
+    exact JSON verifier. Unknown wrappers are never guessed or stripped.
+    """
+
+    if provider != "gonka" or "minimax-m2.7" not in model.lower():
+        return content, None
+
+    candidate = content.lstrip()
+    if not candidate.startswith("<think>"):
+        return content, None
+
+    closing_tag = "</think>"
+    close_index = candidate.find(closing_tag)
+    if close_index < 0:
+        return content, "gonka:minimax_think_wrapper_unclosed"
+
+    normalized = candidate[close_index + len(closing_tag) :].lstrip()
+    return normalized, "gonka:minimax_think_wrapper_stripped"
+
+
 async def _configure_live_provider(provider: str) -> None:
     """Attach a real OpenAI-compatible client to the existing receipt boundary."""
 
@@ -122,8 +150,14 @@ async def _run(args: argparse.Namespace) -> int:
     )
 
     started = time.perf_counter()
-    response_content = await service._call_openai(live_probe_prompt())
+    raw_response_content = await service._call_openai(live_probe_prompt())
     latency_seconds = time.perf_counter() - started
+
+    normalized_content, normalization_strategy = _normalize_provider_content(
+        args.provider, args.model, raw_response_content
+    )
+    raw_strict_verification = verify_live_probe_response(raw_response_content)
+    verification = verify_live_probe_response(normalized_content)
 
     provider_receipts = service.drain_receipts()
     token_receipts = [
@@ -136,7 +170,6 @@ async def _run(args: argparse.Namespace) -> int:
     if token_receipt.kind is not ReceiptKind.TOKEN_USAGE:
         raise RuntimeError("provider token receipt kind mismatch")
 
-    verification = verify_live_probe_response(response_content)
     evidence_receipts = verification_receipts(
         trace_id=trace_id,
         step_id=token_receipt.step_id,
@@ -162,18 +195,31 @@ async def _run(args: argparse.Namespace) -> int:
         model=args.model,
         probe_mode=args.probe_mode,
         latency_seconds=latency_seconds,
-        response_content=response_content,
+        response_content=raw_response_content,
         provider_usage=usage,
         verification=verification,
         receipts=receipts,
         decision=decision,
     )
     artifact_json = to_jsonable(artifact)
-    # The shared artifact schema predates provider selection. Keep provider
-    # metadata explicit without retaining raw provider response content.
+    # Keep raw and normalized evidence distinct. No provider response content is
+    # persisted; only hashes and deterministic verification metadata are stored.
     artifact_json["provider"] = args.provider
     artifact_json["provider_finish_reason"] = service.last_finish_reason
     artifact_json["requested_max_output_tokens"] = args.max_output_tokens
+    artifact_json["raw_strict_verification"] = to_jsonable(raw_strict_verification)
+    artifact_json["normalization"] = {
+        "applied": normalization_strategy == "gonka:minimax_think_wrapper_stripped",
+        "strategy": normalization_strategy,
+        "normalized_response_sha256": hashlib.sha256(
+            normalized_content.encode("utf-8")
+        ).hexdigest(),
+    }
+    artifact_json["observation_sources"]["provider_normalization"] = (
+        "documented:gonka_minimax_m2_append_think"
+        if normalization_strategy
+        else "none"
+    )
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -187,6 +233,8 @@ async def _run(args: argparse.Namespace) -> int:
         "provider": args.provider,
         "model": args.model,
         "probe_mode": args.probe_mode,
+        "raw_strict_verification_passed": raw_strict_verification.passed,
+        "normalization_strategy": normalization_strategy,
         "verification_passed": verification.passed,
         "latency_seconds": round(latency_seconds, 6),
         "total_tokens": usage["total_tokens"],
