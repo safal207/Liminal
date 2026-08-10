@@ -105,3 +105,87 @@ def test_custom_break_even_threshold_can_make_policy_more_conservative() -> None
 
     assert decision.mode is RecoveryMode.SEQUENTIAL
     assert decision.estimated_savings_ratio == 0.6
+
+
+def test_low_observed_field_verification_rate_falls_back_to_sequential() -> None:
+    decision = choose_recovery_mode(
+        RecoverySignals(
+            replay_steps=12,
+            candidate_count=3,
+            best_anchor_score=0.82,
+            uncertainty=0.10,
+            field_verification_success_rate=1 / 3,
+            field_completion_pressure=1 / 3,
+            field_observation_count=3,
+        )
+    )
+
+    assert decision.mode is RecoveryMode.SEQUENTIAL
+    assert decision.reason == "field_observed_verification_rate_too_low"
+
+
+def test_high_observed_completion_pressure_falls_back_to_sequential() -> None:
+    decision = choose_recovery_mode(
+        RecoverySignals(
+            replay_steps=12,
+            candidate_count=3,
+            best_anchor_score=0.82,
+            uncertainty=0.10,
+            field_verification_success_rate=0.90,
+            field_completion_pressure=2 / 3,
+            field_observation_count=3,
+        )
+    )
+
+    assert decision.mode is RecoveryMode.SEQUENTIAL
+    assert decision.reason == "field_completion_pressure_too_high"
+
+
+def test_under_sampled_field_reliability_does_not_override_v01_route() -> None:
+    decision = choose_recovery_mode(
+        RecoverySignals(
+            replay_steps=12,
+            candidate_count=3,
+            best_anchor_score=0.82,
+            uncertainty=0.10,
+            field_verification_success_rate=0.0,
+            field_completion_pressure=1.0,
+            field_observation_count=2,
+        )
+    )
+
+    assert decision.mode is RecoveryMode.FOCUS_FIELD
+    assert decision.reason == "deep_recovery_with_credible_economic_reanchor"
+
+
+def test_sufficient_healthy_field_evidence_keeps_focus_field_route() -> None:
+    decision = choose_recovery_mode(
+        RecoverySignals(
+            replay_steps=12,
+            candidate_count=3,
+            best_anchor_score=0.82,
+            uncertainty=0.10,
+            field_verification_success_rate=0.90,
+            field_completion_pressure=0.10,
+            field_observation_count=10,
+        )
+    )
+
+    assert decision.mode is RecoveryMode.FOCUS_FIELD
+
+
+def test_invalid_field_observation_metric_is_rejected() -> None:
+    try:
+        choose_recovery_mode(
+            RecoverySignals(
+                replay_steps=12,
+                candidate_count=3,
+                best_anchor_score=0.82,
+                field_verification_success_rate=1.2,
+                field_observation_count=3,
+            )
+        )
+    except ValueError as exc:
+        assert str(exc) == "field_verification_success_rate_must_be_between_0_and_1"
+    else:
+        raise AssertionError("expected ValueError")
