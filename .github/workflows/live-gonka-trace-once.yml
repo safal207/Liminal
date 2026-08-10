@@ -49,12 +49,12 @@ jobs:
           python -m pip install "openai>=1.30,<3" "httpx>=0.24" "structlog>=23.1"
 
       - name: Run Gonka nominal live provider trace
-        # Retry after backend.ml was made lazy so this probe stays lightweight.
         run: |
           python scripts/run-live-provider-trace.py \
             --provider gonka \
             --model "MiniMaxAI/MiniMax-M2.7" \
             --context-window-tokens "180000" \
+            --max-output-tokens "1024" \
             --probe-mode nominal \
             --latency-budget-seconds "20" \
             --output artifacts/live-provider-trace.json
