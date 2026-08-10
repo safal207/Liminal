@@ -5,7 +5,7 @@ recovery task to a real provider:
 
 * ``sequential`` receives the full 12-checkpoint history;
 * ``focus_field`` receives a bounded 3-candidate recovery field drawn from that
-  exact same history.
+  exact same history and ranked by generic verification/lifecycle evidence.
 
 The model must infer the continuation anchor from evidence in the supplied
 context. The JSON schema constrains only output shape; it does not reveal the
@@ -165,6 +165,8 @@ CHECKPOINTS: tuple[RecoveryCheckpoint, ...] = (
     ),
 )
 
+# This candidate set is a configured benchmark input. Ranking below is generic and
+# does not reference EXPECTED_* values.
 FOCUS_FIELD_IDS = ("checkpoint-03", EXPECTED_CHECKPOINT_ID, "checkpoint-11")
 
 
@@ -176,9 +178,31 @@ def sequential_context() -> str:
     return _render_context(CHECKPOINTS)
 
 
-def focus_field_context() -> str:
+def _field_rank_key(checkpoint: RecoveryCheckpoint) -> tuple[int, int, str]:
+    """Rank by generic evidence quality, never by expected answer constants."""
+
+    verification_rank = 1 if checkpoint.verification == "verified" else 0
+    lifecycle_rank = {
+        "active": 4,
+        "candidate": 3,
+        "superseded": 2,
+        "speculative": 1,
+        "interrupted": 0,
+    }.get(checkpoint.lifecycle, 0)
+    return verification_rank, lifecycle_rank, checkpoint.checkpoint_id
+
+
+def focus_field_candidates() -> tuple[RecoveryCheckpoint, ...]:
     wanted = set(FOCUS_FIELD_IDS)
-    return _render_context(item for item in CHECKPOINTS if item.checkpoint_id in wanted)
+    candidates = [item for item in CHECKPOINTS if item.checkpoint_id in wanted]
+    return tuple(sorted(candidates, key=_field_rank_key, reverse=True))
+
+
+def focus_field_context() -> str:
+    return "\n".join(
+        f"field_rank={rank} | {item.render()}"
+        for rank, item in enumerate(focus_field_candidates(), start=1)
+    )
 
 
 def recovery_prompt(mode: str) -> str:
@@ -189,7 +213,7 @@ def recovery_prompt(mode: str) -> str:
         label = "FULL SEQUENTIAL CHECKPOINT HISTORY"
     elif mode == "focus_field":
         context = focus_field_context()
-        label = "BOUNDED FOCUS-FIELD CANDIDATES"
+        label = "BOUNDED RANKED FOCUS-FIELD CANDIDATES"
     else:
         raise ValueError("unsupported_recovery_ab_mode")
 
@@ -197,8 +221,10 @@ def recovery_prompt(mode: str) -> str:
         "An agent was interrupted after checkpoint-12. Recover the latest continuation "
         "anchor that is VERIFIED, is not superseded/speculative/interrupted, and preserves "
         "the active goal plus causal parent step. Do not choose an unverified later guess. "
-        "Return exactly one JSON object with keys goal_id, parent_step_id, status, evidence. "
-        "Set status to verified and set evidence to the checkpoint_id you selected.\n\n"
+        "For a ranked focus field, rank is retrieval evidence but does not override the "
+        "verification/lifecycle facts. Return exactly one JSON object with keys goal_id, "
+        "parent_step_id, status, evidence. Set status to verified and set evidence to the "
+        "checkpoint_id you selected.\n\n"
         f"{label}:\n{context}"
     )
 
@@ -226,15 +252,26 @@ def recovery_response_format() -> dict:
     }
 
 
-def verify_recovery_response(content: str) -> RecoveryVerification:
-    expected_keys = {"goal_id", "parent_step_id", "status", "evidence"}
+def parse_recovery_payload(content: str) -> dict[str, str] | None:
+    """Return only the structured synthetic output, never provider reasoning text."""
+
     try:
         payload = json.loads(content)
     except (json.JSONDecodeError, TypeError):
-        return RecoveryVerification(False, False, False, False, False, False)
-
+        return None
     if not isinstance(payload, dict):
-        return RecoveryVerification(True, False, False, False, False, False)
+        return None
+    allowed = {"goal_id", "parent_step_id", "status", "evidence"}
+    if not set(payload).issubset(allowed):
+        return None
+    return {str(key): str(value) for key, value in payload.items()}
+
+
+def verify_recovery_response(content: str) -> RecoveryVerification:
+    expected_keys = {"goal_id", "parent_step_id", "status", "evidence"}
+    payload = parse_recovery_payload(content)
+    if payload is None:
+        return RecoveryVerification(False, False, False, False, False, False)
 
     return RecoveryVerification(
         valid_json=True,
@@ -282,10 +319,16 @@ def summarize_records(records: list[dict]) -> dict:
             return None
         return round((baseline - candidate) / baseline * 100.0, 3)
 
+    qualified = (
+        sequential["verified_trials"] == sequential["trials"]
+        and focus_field["verified_trials"] == focus_field["trials"]
+    )
+
     return {
         "sequential": sequential,
         "focus_field": focus_field,
         "comparison": {
+            "qualified_for_success_cost_comparison": qualified,
             "prompt_token_savings_pct": savings_pct(
                 sequential["prompt_tokens_total"], focus_field["prompt_tokens_total"]
             ),
