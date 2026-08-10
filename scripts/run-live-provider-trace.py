@@ -18,6 +18,9 @@ from backend.ml.instrumented_openai_service import InstrumentedOpenAIService
 from backend.ml.openai_wrapper import llm_client
 from liminal.instrumentation_receipts import ReceiptKind, TokenUsageReceipt
 from liminal.live_provider_trace import (
+    LIVE_PROBE_EXPECTED_STATUS,
+    LIVE_PROBE_GOAL_ID,
+    LIVE_PROBE_PARENT_STEP_ID,
     evaluate_live_provider_trace,
     live_probe_prompt,
     make_live_provider_artifact,
@@ -25,6 +28,41 @@ from liminal.live_provider_trace import (
     verification_receipts,
     verify_live_probe_response,
 )
+
+
+def _live_probe_response_format() -> dict:
+    """Return a strict OpenAI-compatible JSON schema for the probe contract."""
+
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "liminal_live_provider_trace",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["goal_id", "parent_step_id", "status", "evidence"],
+                "properties": {
+                    "goal_id": {
+                        "type": "string",
+                        "enum": [LIVE_PROBE_GOAL_ID],
+                    },
+                    "parent_step_id": {
+                        "type": "string",
+                        "enum": [LIVE_PROBE_PARENT_STEP_ID],
+                    },
+                    "status": {
+                        "type": "string",
+                        "enum": [LIVE_PROBE_EXPECTED_STATUS],
+                    },
+                    "evidence": {
+                        "type": "string",
+                        "enum": ["provider-response"],
+                    },
+                },
+            },
+        },
+    }
 
 
 def _build_service(
@@ -44,6 +82,7 @@ def _build_service(
     service.system_context = (
         "You are a deterministic runtime trace probe. Follow the JSON contract exactly."
     )
+    service.response_format = _live_probe_response_format()
     service.response_cache = {}
     service.cache_ttl = 0
     service.trace_id = trace_id
@@ -207,6 +246,7 @@ async def _run(args: argparse.Namespace) -> int:
     artifact_json["provider"] = args.provider
     artifact_json["provider_finish_reason"] = service.last_finish_reason
     artifact_json["requested_max_output_tokens"] = args.max_output_tokens
+    artifact_json["response_format"] = "json_schema"
     artifact_json["raw_strict_verification"] = to_jsonable(raw_strict_verification)
     artifact_json["normalization"] = {
         "applied": normalization_strategy == "gonka:minimax_think_wrapper_stripped",
@@ -219,6 +259,9 @@ async def _run(args: argparse.Namespace) -> int:
         "documented:gonka_minimax_m2_append_think"
         if normalization_strategy
         else "none"
+    )
+    artifact_json["observation_sources"]["response_constraint"] = (
+        "configured:openai_compatible_json_schema"
     )
 
     output = Path(args.output)
