@@ -8,9 +8,10 @@ human emotions or hidden cognitive states.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from liminal.flow_regulator import FlowSignals
+from liminal.recovery_evidence import FieldReliabilityEvidence
 from liminal.recovery_policy import RecoverySignals
 
 
@@ -85,6 +86,20 @@ def _validate_unit_fields(telemetry: RuntimeTelemetry) -> None:
         raise ValueError("measured_field_cost_must_be_non_negative")
     if telemetry.field_observation_count < 0:
         raise ValueError("field_observation_count_must_be_non_negative")
+
+
+def with_field_reliability(
+    telemetry: RuntimeTelemetry,
+    evidence: FieldReliabilityEvidence,
+) -> RuntimeTelemetry:
+    """Return telemetry enriched with explicitly aggregated field evidence."""
+
+    return replace(
+        telemetry,
+        field_verification_success_rate=evidence.verification_success_rate,
+        field_completion_pressure=evidence.completion_pressure,
+        field_observation_count=evidence.observation_count,
+    )
 
 
 def to_flow_signals(telemetry: RuntimeTelemetry) -> FlowSignals:
