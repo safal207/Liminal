@@ -27,14 +27,18 @@ from liminal.live_provider_trace import (
 
 
 def _build_service(
-    *, trace_id: str, model: str, context_window_tokens: int
+    *,
+    trace_id: str,
+    model: str,
+    context_window_tokens: int,
+    max_output_tokens: int,
 ) -> InstrumentedOpenAIService:
     """Construct only the already-tested receipt boundary, avoiding legacy async __init__."""
 
     service = InstrumentedOpenAIService.__new__(InstrumentedOpenAIService)
     service.client = object()  # _call_openai delegates to the configured global wrapper.
     service.model = model
-    service.max_tokens = 160
+    service.max_tokens = max_output_tokens
     service.temperature = 0.0
     service.system_context = (
         "You are a deterministic runtime trace probe. Follow the JSON contract exactly."
@@ -46,6 +50,7 @@ def _build_service(
     service._receipt_sequence = 0
     service._receipts = []
     service._logical_attempts = defaultdict(int)
+    service._last_finish_reason = None
     return service
 
 
@@ -113,6 +118,7 @@ async def _run(args: argparse.Namespace) -> int:
         trace_id=trace_id,
         model=args.model,
         context_window_tokens=args.context_window_tokens,
+        max_output_tokens=args.max_output_tokens,
     )
 
     started = time.perf_counter()
@@ -163,9 +169,11 @@ async def _run(args: argparse.Namespace) -> int:
         decision=decision,
     )
     artifact_json = to_jsonable(artifact)
-    # The shared artifact schema predates provider selection. Override only the
-    # provider label; all evidence and control decisions remain unchanged.
+    # The shared artifact schema predates provider selection. Keep provider
+    # metadata explicit without retaining raw provider response content.
     artifact_json["provider"] = args.provider
+    artifact_json["provider_finish_reason"] = service.last_finish_reason
+    artifact_json["requested_max_output_tokens"] = args.max_output_tokens
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -182,6 +190,8 @@ async def _run(args: argparse.Namespace) -> int:
         "verification_passed": verification.passed,
         "latency_seconds": round(latency_seconds, 6),
         "total_tokens": usage["total_tokens"],
+        "finish_reason": service.last_finish_reason,
+        "requested_max_output_tokens": args.max_output_tokens,
         "flow_state": decision.flow.state.value,
         "recovery_mode": decision.recovery.mode.value if decision.recovery else None,
         "artifact": str(output),
@@ -203,6 +213,7 @@ def main() -> int:
     )
     parser.add_argument("--model", required=True)
     parser.add_argument("--context-window-tokens", required=True, type=int)
+    parser.add_argument("--max-output-tokens", type=int, default=1024)
     parser.add_argument("--latency-budget-seconds", type=float, default=10.0)
     parser.add_argument(
         "--probe-mode",
@@ -218,6 +229,8 @@ def main() -> int:
 
     if args.context_window_tokens <= 0:
         parser.error("--context-window-tokens must be positive")
+    if args.max_output_tokens <= 0:
+        parser.error("--max-output-tokens must be positive")
     if args.latency_budget_seconds <= 0:
         parser.error("--latency-budget-seconds must be positive")
 
