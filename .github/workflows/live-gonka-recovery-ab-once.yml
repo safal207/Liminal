@@ -42,7 +42,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "openai>=1.30,<3" "httpx>=0.24" "structlog>=23.1"
 
-      - name: Run three cache-resistant paired recovery trials
+      - name: Run cache-resistant paired recovery trials with generic ID syntax
         run: |
           python scripts/run-live-recovery-ab.py \
             --model "MiniMaxAI/MiniMax-M2.7" \
