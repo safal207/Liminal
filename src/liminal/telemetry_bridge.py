@@ -42,6 +42,9 @@ class RuntimeTelemetry:
     verified_candidate_available: bool = True
     require_verified: bool = False
     measured_field_cost: int | None = None
+    field_verification_success_rate: float | None = None
+    field_completion_pressure: float | None = None
+    field_observation_count: int = 0
 
 
 def _validate_unit_fields(telemetry: RuntimeTelemetry) -> None:
@@ -66,12 +69,22 @@ def _validate_unit_fields(telemetry: RuntimeTelemetry) -> None:
         value = getattr(telemetry, field)
         if not 0.0 <= value <= 1.0:
             raise ValueError(f"{field}_must_be_between_0_and_1")
+    optional_unit_fields = (
+        "field_verification_success_rate",
+        "field_completion_pressure",
+    )
+    for field in optional_unit_fields:
+        value = getattr(telemetry, field)
+        if value is not None and not 0.0 <= value <= 1.0:
+            raise ValueError(f"{field}_must_be_between_0_and_1")
     if telemetry.replay_steps_estimate < 0:
         raise ValueError("replay_steps_estimate_must_be_non_negative")
     if telemetry.field_candidate_count < 0:
         raise ValueError("field_candidate_count_must_be_non_negative")
     if telemetry.measured_field_cost is not None and telemetry.measured_field_cost < 0:
         raise ValueError("measured_field_cost_must_be_non_negative")
+    if telemetry.field_observation_count < 0:
+        raise ValueError("field_observation_count_must_be_non_negative")
 
 
 def to_flow_signals(telemetry: RuntimeTelemetry) -> FlowSignals:
@@ -121,4 +134,7 @@ def to_recovery_signals(telemetry: RuntimeTelemetry) -> RecoverySignals:
         verified_candidate_available=telemetry.verified_candidate_available,
         require_verified=telemetry.require_verified,
         field_scan_cost=telemetry.measured_field_cost,
+        field_verification_success_rate=telemetry.field_verification_success_rate,
+        field_completion_pressure=telemetry.field_completion_pressure,
+        field_observation_count=telemetry.field_observation_count,
     )
