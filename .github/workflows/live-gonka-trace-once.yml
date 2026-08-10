@@ -49,6 +49,8 @@ jobs:
           python -m pip install "openai>=1.30,<3" "httpx>=0.24" "structlog>=23.1"
 
       - name: Run Gonka nominal live provider trace
+        # MiniMax-M2.7 may prepend a documented <think> block in content.
+        # The runner records raw evidence and verifies a deterministic normalized view.
         run: |
           python scripts/run-live-provider-trace.py \
             --provider gonka \
