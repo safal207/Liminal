@@ -2,6 +2,7 @@ from liminal.live_recovery_ab import (
     EXPECTED_CHECKPOINT_ID,
     EXPECTED_GOAL_ID,
     EXPECTED_PARENT_STEP_ID,
+    IDENTIFIER_PATTERN,
     focus_field_candidates,
     focus_field_context,
     recovery_prompt,
@@ -33,11 +34,16 @@ def test_focus_field_ranks_verified_active_candidate_first():
 
 
 def test_response_schema_does_not_leak_expected_anchor_values():
-    schema_text = str(recovery_response_format())
+    schema = recovery_response_format()
+    schema_text = str(schema)
 
     assert EXPECTED_GOAL_ID not in schema_text
     assert EXPECTED_PARENT_STEP_ID not in schema_text
     assert EXPECTED_CHECKPOINT_ID not in schema_text
+    properties = schema["json_schema"]["schema"]["properties"]
+    assert properties["goal_id"]["pattern"] == IDENTIFIER_PATTERN
+    assert properties["parent_step_id"]["pattern"] == IDENTIFIER_PATTERN
+    assert properties["evidence"]["pattern"] == IDENTIFIER_PATTERN
 
 
 def test_both_modes_pose_same_recovery_rule():
