@@ -1,10 +1,18 @@
-name: Live OpenAI Provider Trace
+name: Live Provider Trace
 
 on:
   workflow_dispatch:
     inputs:
+      provider:
+        description: "Provider to probe"
+        required: true
+        default: gonka
+        type: choice
+        options:
+          - gonka
+          - openai
       model:
-        description: "OpenAI model ID to probe"
+        description: "Provider model ID to probe"
         required: true
         type: string
       context_window_tokens:
@@ -34,6 +42,8 @@ jobs:
     environment: live-provider-trace
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GONKA_BROKER_API_KEY: ${{ secrets.GONKA_BROKER_API_KEY }}
+      GONKA_BROKER_URL: ${{ secrets.GONKA_BROKER_URL }}
       OPENAI_MOCK_ONLY: "false"
       OPENAI_FALLBACK_TO_LOCAL: "false"
       PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
@@ -47,14 +57,34 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Require live provider secret
+      - name: Require selected provider configuration
         shell: bash
+        env:
+          LIVE_PROVIDER: ${{ inputs.provider }}
         run: |
           set -euo pipefail
-          if [ -z "${OPENAI_API_KEY:-}" ]; then
-            echo "OPENAI_API_KEY GitHub Secret is required; repository .env files are never used."
-            exit 1
-          fi
+          case "$LIVE_PROVIDER" in
+            openai)
+              if [ -z "${OPENAI_API_KEY:-}" ]; then
+                echo "OPENAI_API_KEY GitHub Secret is required."
+                exit 1
+              fi
+              ;;
+            gonka)
+              if [ -z "${GONKA_BROKER_API_KEY:-}" ]; then
+                echo "GONKA_BROKER_API_KEY GitHub Secret is required."
+                exit 1
+              fi
+              if [ -z "${GONKA_BROKER_URL:-}" ]; then
+                echo "GONKA_BROKER_URL GitHub Secret is required."
+                exit 1
+              fi
+              ;;
+            *)
+              echo "Unsupported provider: $LIVE_PROVIDER"
+              exit 1
+              ;;
+          esac
 
       - name: Install minimal live-trace dependencies
         run: |
@@ -64,6 +94,7 @@ jobs:
       - name: Run live provider trace
         run: |
           python scripts/run-live-provider-trace.py \
+            --provider "${{ inputs.provider }}" \
             --model "${{ inputs.model }}" \
             --context-window-tokens "${{ inputs.context_window_tokens }}" \
             --probe-mode "${{ inputs.probe_mode }}" \
@@ -74,7 +105,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: live-provider-trace
+          name: live-provider-trace-${{ inputs.provider }}
           path: artifacts/live-provider-trace.json
           if-no-files-found: warn
           retention-days: 14
