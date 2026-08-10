@@ -57,3 +57,39 @@ def test_gonka_provider_settings_fail_closed_without_url(monkeypatch):
 
     with pytest.raises(RuntimeError, match="GONKA_BROKER_URL"):
         module._provider_settings("gonka")
+
+
+def test_minimax_documented_think_wrapper_is_stripped_deterministically():
+    module = _load_runner_module()
+    content = '<think>private reasoning</think>\n{"status":"verified"}'
+
+    normalized, strategy = module._normalize_provider_content(
+        "gonka", "MiniMaxAI/MiniMax-M2.7", content
+    )
+
+    assert normalized == '{"status":"verified"}'
+    assert strategy == "gonka:minimax_think_wrapper_stripped"
+
+
+def test_unclosed_minimax_think_wrapper_fails_closed_without_guessing():
+    module = _load_runner_module()
+    content = '<think>unfinished reasoning {"status":"verified"}'
+
+    normalized, strategy = module._normalize_provider_content(
+        "gonka", "MiniMaxAI/MiniMax-M2.7", content
+    )
+
+    assert normalized == content
+    assert strategy == "gonka:minimax_think_wrapper_unclosed"
+
+
+def test_other_provider_content_is_never_rewritten():
+    module = _load_runner_module()
+    content = '<think>reasoning</think>\n{"status":"verified"}'
+
+    normalized, strategy = module._normalize_provider_content(
+        "openai", "gpt-test", content
+    )
+
+    assert normalized == content
+    assert strategy is None
