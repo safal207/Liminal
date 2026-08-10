@@ -4,6 +4,10 @@ The policy decides *how* a suspended or interrupted workflow should recover:
 sequential replay, field-mediated re-anchoring, or deferral when confidence is
 insufficient. It is deterministic and model-agnostic so it can sit above CML,
 ContinuationToken, or another memory/retrieval implementation.
+
+v0.2 adds optional observed reliability signals for Focus–Field recovery. They
+are intentionally ignored until a minimum evidence count is available, so the
+router does not overfit to one or two stochastic provider responses.
 """
 
 from __future__ import annotations
@@ -29,6 +33,9 @@ class RecoverySignals:
     verified_candidate_available: bool = True
     require_verified: bool = False
     field_scan_cost: int | None = None
+    field_verification_success_rate: float | None = None
+    field_completion_pressure: float | None = None
+    field_observation_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -40,6 +47,9 @@ class RecoveryPolicy:
     max_field_uncertainty: float = 0.45
     min_field_savings_ratio: float = 0.25
     max_field_candidates: int = 32
+    min_field_observations: int = 3
+    min_field_verification_success_rate: float = 0.67
+    max_field_completion_pressure: float = 0.50
 
 
 @dataclass(frozen=True)
@@ -63,15 +73,32 @@ def _validate(signals: RecoverySignals, policy: RecoveryPolicy) -> None:
         raise ValueError("candidate_count_must_be_non_negative")
     if signals.field_scan_cost is not None and signals.field_scan_cost < 0:
         raise ValueError("field_scan_cost_must_be_non_negative")
+    if signals.field_observation_count < 0:
+        raise ValueError("field_observation_count_must_be_non_negative")
     _validate_unit_interval("best_anchor_score", signals.best_anchor_score)
     _validate_unit_interval("uncertainty", signals.uncertainty)
+    if signals.field_verification_success_rate is not None:
+        _validate_unit_interval(
+            "field_verification_success_rate", signals.field_verification_success_rate
+        )
+    if signals.field_completion_pressure is not None:
+        _validate_unit_interval("field_completion_pressure", signals.field_completion_pressure)
     if policy.max_sequential_steps < 0:
         raise ValueError("max_sequential_steps_must_be_non_negative")
     if policy.max_field_candidates <= 0:
         raise ValueError("max_field_candidates_must_be_positive")
+    if policy.min_field_observations < 0:
+        raise ValueError("min_field_observations_must_be_non_negative")
     _validate_unit_interval("min_field_anchor_score", policy.min_field_anchor_score)
     _validate_unit_interval("max_field_uncertainty", policy.max_field_uncertainty)
     _validate_unit_interval("min_field_savings_ratio", policy.min_field_savings_ratio)
+    _validate_unit_interval(
+        "min_field_verification_success_rate",
+        policy.min_field_verification_success_rate,
+    )
+    _validate_unit_interval(
+        "max_field_completion_pressure", policy.max_field_completion_pressure
+    )
 
 
 def _field_cost(signals: RecoverySignals) -> int:
@@ -87,6 +114,12 @@ def _savings_ratio(replay_steps: int, field_cost: int) -> float:
     return max(0.0, min(1.0, (replay_steps - field_cost) / replay_steps))
 
 
+def _has_field_reliability_evidence(
+    signals: RecoverySignals, policy: RecoveryPolicy
+) -> bool:
+    return signals.field_observation_count >= policy.min_field_observations
+
+
 def choose_recovery_mode(
     signals: RecoverySignals,
     policy: RecoveryPolicy | None = None,
@@ -97,7 +130,12 @@ def choose_recovery_mode(
     1. preserve verification requirements;
     2. prefer simple sequential recovery for shallow interruptions;
     3. refuse field re-entry when confidence is too low;
-    4. use Focus–Field only when it is both credible and economically useful.
+    4. use observed field reliability only when enough samples exist;
+    5. use Focus–Field only when it is both credible and economically useful.
+
+    ``field_verification_success_rate`` and ``field_completion_pressure`` are
+    optional evidence from prior comparable field attempts. Missing or
+    under-sampled evidence is not treated as healthy or unhealthy.
     """
 
     policy = policy or RecoveryPolicy()
@@ -158,6 +196,32 @@ def choose_recovery_mode(
             estimated_field_cost=field_cost,
             estimated_savings_ratio=savings,
         )
+
+    if _has_field_reliability_evidence(signals, policy):
+        if (
+            signals.field_verification_success_rate is not None
+            and signals.field_verification_success_rate
+            < policy.min_field_verification_success_rate
+        ):
+            return RecoveryDecision(
+                mode=RecoveryMode.SEQUENTIAL,
+                reason="field_observed_verification_rate_too_low",
+                replay_steps=signals.replay_steps,
+                estimated_field_cost=field_cost,
+                estimated_savings_ratio=round(savings, 6),
+            )
+
+        if (
+            signals.field_completion_pressure is not None
+            and signals.field_completion_pressure > policy.max_field_completion_pressure
+        ):
+            return RecoveryDecision(
+                mode=RecoveryMode.SEQUENTIAL,
+                reason="field_completion_pressure_too_high",
+                replay_steps=signals.replay_steps,
+                estimated_field_cost=field_cost,
+                estimated_savings_ratio=round(savings, 6),
+            )
 
     if savings < policy.min_field_savings_ratio:
         return RecoveryDecision(
