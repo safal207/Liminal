@@ -8,6 +8,7 @@ example anomaly analysis, incident response, and ML explanation) flow through
 
 from __future__ import annotations
 
+import hashlib
 from collections import defaultdict
 from typing import Iterable
 
@@ -54,7 +55,8 @@ class InstrumentedOpenAIService(OpenAIService):
 
         self._receipt_sequence += 1
         step_id = f"llm-{self._receipt_sequence}"
-        logical_action_id = f"analysis:{hash(prompt)}"
+        prompt_digest = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+        logical_action_id = f"analysis:{prompt_digest}"
         self._logical_attempts[logical_action_id] += 1
         attempt = self._logical_attempts[logical_action_id]
 
