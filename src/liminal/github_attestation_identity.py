@@ -6,9 +6,10 @@ verification. Its input must be JSON emitted by a successful
 fail-closed authorization layer over that verified material.
 
 The policy pins the repository (including immutable repository id), signer
-workflow, source ref, GitHub deployment environment, runner environment, and
-OIDC issuer. This keeps cryptographic validity separate from authorization:
-a valid attestation from another workflow/environment is still unauthorized.
+workflow, source ref, optional immutable signer ref/digest, GitHub deployment
+environment, runner environment, and OIDC issuer. This keeps cryptographic
+validity separate from authorization: a valid attestation from another
+workflow/environment/builder version is still unauthorized.
 """
 
 from __future__ import annotations
@@ -24,6 +25,10 @@ from cryptography.x509.oid import ObjectIdentifier
 DEPLOYMENT_ENVIRONMENT_OID = ObjectIdentifier("1.3.6.1.4.1.57264.1.23")
 GITHUB_ACTIONS_OIDC_ISSUER = "https://token.actions.githubusercontent.com"
 GITHUB_HOSTED_RUNNER = "github-hosted"
+
+
+def _is_commit_digest(value: str) -> bool:
+    return len(value) in (40, 64) and all(character in "0123456789abcdef" for character in value)
 
 
 @dataclass(frozen=True)
@@ -46,6 +51,8 @@ class GitHubAttestationIdentityPolicy:
     signer_workflow_path: str
     source_ref: str
     deployment_environment: str
+    signer_ref: str | None = None
+    signer_digest: str | None = None
     runner_environment: str = GITHUB_HOSTED_RUNNER
     oidc_issuer: str = GITHUB_ACTIONS_OIDC_ISSUER
 
@@ -67,14 +74,25 @@ class GitHubAttestationIdentityPolicy:
             raise ValueError("github_attestation_policy_signer_workflow_path_invalid")
         if not self.source_ref.startswith("refs/"):
             raise ValueError("github_attestation_policy_source_ref_invalid")
+        if self.signer_ref is not None:
+            if not self.signer_ref:
+                raise ValueError("github_attestation_policy_signer_ref_required")
+            if not self.signer_ref.startswith("refs/") and not _is_commit_digest(self.signer_ref):
+                raise ValueError("github_attestation_policy_signer_ref_invalid")
+        if self.signer_digest is not None and not _is_commit_digest(self.signer_digest):
+            raise ValueError("github_attestation_policy_signer_digest_invalid")
 
     @property
     def repository_uri(self) -> str:
         return f"https://github.com/{self.repository}"
 
     @property
+    def effective_signer_ref(self) -> str:
+        return self.source_ref if self.signer_ref is None else self.signer_ref
+
+    @property
     def signer_uri(self) -> str:
-        return f"{self.repository_uri}/{self.signer_workflow_path}@{self.source_ref}"
+        return f"{self.repository_uri}/{self.signer_workflow_path}@{self.effective_signer_ref}"
 
 
 @dataclass(frozen=True)
@@ -202,6 +220,10 @@ def authorize_verified_github_attestation(
         (claims.repository_id == policy.repository_id, "source_repository_id_not_authorized"),
         (claims.source_ref == policy.source_ref, "source_ref_not_authorized"),
         (claims.signer_uri == policy.signer_uri, "signer_workflow_not_authorized"),
+        (
+            policy.signer_digest is None or claims.signer_digest == policy.signer_digest,
+            "signer_digest_not_authorized",
+        ),
         (
             claims.subject_alternative_name == policy.signer_uri,
             "signer_subject_alternative_name_not_authorized",
