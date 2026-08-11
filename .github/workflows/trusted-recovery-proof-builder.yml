@@ -1,4 +1,4 @@
-name: Trusted Recovery Proof Builder v0.2
+name: Trusted Recovery Proof Builder v0.3
 
 on:
   workflow_call:
@@ -16,6 +16,8 @@ jobs:
       PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
       GONKA_BROKER_API_KEY: ${{ secrets.GONKA_BROKER_API_KEY }}
       GONKA_BROKER_URL: ${{ secrets.GONKA_BROKER_URL }}
+      LIMINAL_BUILDER_REPOSITORY: ${{ job.workflow_repository }}
+      LIMINAL_BUILDER_WORKFLOW_SHA: ${{ job.workflow_sha }}
 
     steps:
       - name: Checkout trusted builder source
@@ -29,8 +31,8 @@ jobs:
         run: |
           set -euo pipefail
           actual_sha="$(git rev-parse HEAD)"
-          test "${actual_sha}" = "${{ job.workflow_sha }}" || {
-            echo "builder checkout mismatch: ${actual_sha} != ${{ job.workflow_sha }}"
+          test "${actual_sha}" = "${LIMINAL_BUILDER_WORKFLOW_SHA}" || {
+            echo "builder checkout mismatch: ${actual_sha} != ${LIMINAL_BUILDER_WORKFLOW_SHA}"
             exit 1
           }
 
@@ -56,6 +58,29 @@ jobs:
             --only-binary=:all: \
             -r requirements/trusted-recovery-proof.lock
           python -m pip check
+
+      - name: Emit verified builder environment receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${ImageOS:-}" || { echo 'ImageOS is required'; exit 1; }
+          test -n "${ImageVersion:-}" || { echo 'ImageVersion is required'; exit 1; }
+          python scripts/write-builder-environment-receipt.py \
+            --repository-root "${GITHUB_WORKSPACE}" \
+            --output artifacts/live-recovery-decision-proof/builder-environment.json \
+            --builder-repository "${LIMINAL_BUILDER_REPOSITORY}" \
+            --builder-workflow-path ".github/workflows/trusted-recovery-proof-builder.yml" \
+            --builder-workflow-sha "${LIMINAL_BUILDER_WORKFLOW_SHA}" \
+            --dependency-lock-path "requirements/trusted-recovery-proof.lock" \
+            --proof-script-path "scripts/run-live-recovery-decision-proof.py" \
+            --runner-os "${RUNNER_OS}" \
+            --runner-arch "${RUNNER_ARCH}" \
+            --runner-image-os "${ImageOS}" \
+            --runner-image-version "${ImageVersion}" \
+            --action "actions/checkout=11d5960a326750d5838078e36cf38b85af677262" \
+            --action "actions/setup-python=a26af69be951a213d495a4c3e4e4022e16d87065" \
+            --action "actions/attest=1e69f48acb82d1966a394da916b4c1698aa569d6" \
+            --action "actions/upload-artifact=ea165f8d65b6e75b540449e92b4886f43607fa02"
 
       - name: Run trusted live Gonka recovery decision proof
         run: |
