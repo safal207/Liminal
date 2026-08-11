@@ -27,6 +27,11 @@ from liminal.live_recovery_ab import (
 from liminal.recovery_decision_receipt import verify_decision_receipt
 from liminal.recovery_evidence_ledger import RecoveryEvidenceLedger
 from liminal.recovery_policy import RecoveryMode
+from liminal.recovery_proof_bundle import (
+    PROOF_BUNDLE_SCHEMA_VERSION,
+    build_recovery_proof_bundle,
+    verify_recovery_proof_bundle,
+)
 from liminal.recovery_runtime import EvidenceAwareRecoveryRuntime
 from liminal.telemetry_bridge import RuntimeTelemetry
 
@@ -210,6 +215,7 @@ async def _run(args: argparse.Namespace) -> int:
     evidence = runtime.field_evidence(recovery_class=RECOVERY_CLASS)
     summary = {
         "schema_version": "liminal.live-recovery-decision-proof.v0.1",
+        "proof_bundle_schema_version": PROOF_BUNDLE_SCHEMA_VERSION,
         "provider": "gonka",
         "model": args.model,
         "recovery_class": RECOVERY_CLASS,
@@ -233,7 +239,22 @@ async def _run(args: argparse.Namespace) -> int:
     (out / "summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
-    print(json.dumps(summary, sort_keys=True))
+
+    bundle = build_recovery_proof_bundle(out)
+    if not verify_recovery_proof_bundle(bundle.path):
+        raise RuntimeError("recovery proof bundle self-verification failed")
+
+    result = {
+        **summary,
+        "proof_bundle": {
+            "name": bundle.path.name,
+            "sha256": bundle.sha256,
+            "manifest_sha256": bundle.manifest_sha256,
+            "member_count": bundle.member_count,
+            "self_verified": True,
+        },
+    }
+    print(json.dumps(result, sort_keys=True))
     return 0
 
 
