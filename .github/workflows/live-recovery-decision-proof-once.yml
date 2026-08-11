@@ -38,6 +38,7 @@ jobs:
 
       - name: Run live Gonka recovery decision proof
         run: |
+          # Retry after consuming the RecoveryDecisionWithReceipt result object.
           python scripts/run-live-recovery-decision-proof.py \
             --model MiniMaxAI/MiniMax-M2.7 \
             --max-output-tokens 1536 \
