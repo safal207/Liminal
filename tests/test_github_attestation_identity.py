@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -20,6 +21,7 @@ REPOSITORY_ID = "1005410203"
 WORKFLOW = ".github/workflows/live-recovery-decision-proof.yml"
 REF = "refs/heads/agent/recovery-routing-v0-1"
 ENVIRONMENT = "live-provider-trace"
+SIGNER_DIGEST = "a" * 40
 SIGNER_URI = f"https://github.com/{REPOSITORY}/{WORKFLOW}@{REF}"
 
 
@@ -57,6 +59,7 @@ def _payload(
     repository_id: str = REPOSITORY_ID,
     source_ref: str = REF,
     signer_uri: str = SIGNER_URI,
+    signer_digest: str = SIGNER_DIGEST,
     runner_environment: str = "github-hosted",
     issuer: str = "https://token.actions.githubusercontent.com",
     environment: str | None = ENVIRONMENT,
@@ -77,7 +80,7 @@ def _payload(
                         "sourceRepositoryIdentifier": repository_id,
                         "sourceRepositoryRef": source_ref,
                         "buildSignerURI": signer_uri,
-                        "buildSignerDigest": "a" * 40,
+                        "buildSignerDigest": signer_digest,
                         "runnerEnvironment": runner_environment,
                         "issuer": issuer,
                         "subjectAlternativeName": signer_uri,
@@ -88,13 +91,19 @@ def _payload(
     ]
 
 
-def _policy() -> GitHubAttestationIdentityPolicy:
+def _policy(
+    *,
+    signer_ref: str | None = None,
+    signer_digest: str | None = None,
+) -> GitHubAttestationIdentityPolicy:
     return GitHubAttestationIdentityPolicy(
         repository=REPOSITORY,
         repository_id=REPOSITORY_ID,
         signer_workflow_path=WORKFLOW,
         source_ref=REF,
         deployment_environment=ENVIRONMENT,
+        signer_ref=signer_ref,
+        signer_digest=signer_digest,
     )
 
 
@@ -104,6 +113,40 @@ def test_authorizes_exact_verified_identity() -> None:
     assert result.reason == "github_attestation_identity_authorized"
     assert result.claims is not None
     assert result.claims.deployment_environment == ENVIRONMENT
+
+
+def test_authorizes_exact_immutable_signer_ref_and_digest() -> None:
+    signer_uri = f"https://github.com/{REPOSITORY}/{WORKFLOW}@{SIGNER_DIGEST}"
+    result = authorize_verified_github_attestation(
+        _payload(signer_uri=signer_uri, signer_digest=SIGNER_DIGEST),
+        policy=_policy(signer_ref=SIGNER_DIGEST, signer_digest=SIGNER_DIGEST),
+    )
+    assert result.authorized is True
+    assert result.reason == "github_attestation_identity_authorized"
+
+
+def test_rejects_signer_digest_mismatch() -> None:
+    signer_uri = f"https://github.com/{REPOSITORY}/{WORKFLOW}@{SIGNER_DIGEST}"
+    result = authorize_verified_github_attestation(
+        _payload(signer_uri=signer_uri, signer_digest="b" * 40),
+        policy=_policy(signer_ref=SIGNER_DIGEST, signer_digest=SIGNER_DIGEST),
+    )
+    assert result.authorized is False
+    assert result.reason == "signer_digest_not_authorized"
+
+
+def test_rejects_signer_ref_mismatch() -> None:
+    result = authorize_verified_github_attestation(
+        _payload(),
+        policy=_policy(signer_ref=SIGNER_DIGEST, signer_digest=SIGNER_DIGEST),
+    )
+    assert result.authorized is False
+    assert result.reason == "signer_workflow_not_authorized"
+
+
+def test_invalid_signer_digest_policy_fails_closed() -> None:
+    with pytest.raises(ValueError, match="github_attestation_policy_signer_digest_invalid"):
+        _policy(signer_digest="mutable-main")
 
 
 def test_rejects_different_repository() -> None:
