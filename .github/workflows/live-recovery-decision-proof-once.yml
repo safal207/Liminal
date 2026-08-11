@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 env:
-  PYTHONPATH: .
+  PYTHONPATH: .:src
 
 jobs:
   live-recovery-decision-proof:
