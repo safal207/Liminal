@@ -60,7 +60,20 @@ def test_trusted_builder_uses_pinned_platform_python_and_hash_mode() -> None:
     assert "python -m pip check" in workflow
 
 
-def test_wrapper_pins_v0_2_builder_and_hash_locked_verifier() -> None:
+def test_builder_candidate_emits_environment_receipt_before_provider_call() -> None:
+    workflow = BUILDER_WORKFLOW.read_text(encoding="utf-8")
+    assert "Trusted Recovery Proof Builder v0.3" in workflow
+    assert "LIMINAL_BUILDER_REPOSITORY: ${{ job.workflow_repository }}" in workflow
+    assert "LIMINAL_BUILDER_WORKFLOW_SHA: ${{ job.workflow_sha }}" in workflow
+    assert "write-builder-environment-receipt.py" in workflow
+    assert "builder-environment.json" in workflow
+    assert "actions/attest=1e69f48acb82d1966a394da916b4c1698aa569d6" in workflow
+    assert workflow.index("Emit verified builder environment receipt") < workflow.index(
+        "Run trusted live Gonka recovery decision proof"
+    )
+
+
+def test_wrapper_still_pins_v0_2_builder_until_explicit_rotation() -> None:
     workflow = WRAPPER_WORKFLOW.read_text(encoding="utf-8")
     assert f"trusted-recovery-proof-builder.yml@{TRUSTED_BUILDER_SHA}" in workflow
     assert f"--signer-digest {TRUSTED_BUILDER_SHA}" in workflow
