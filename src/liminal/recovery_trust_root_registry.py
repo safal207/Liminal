@@ -46,7 +46,7 @@ def _exact_keys(value: Mapping[str, Any], expected: set[str]) -> bool:
     return set(value) == expected
 
 
-def validate_manifest(payload: object, previous_manifest: object | None = None) -> bool:
+def _validate_manifest_body(payload: object) -> bool:
     if not isinstance(payload, dict) or not _exact_keys(
         payload,
         {
@@ -67,21 +67,6 @@ def validate_manifest(payload: object, previous_manifest: object | None = None) 
         return False
     if payload.get("repository") != "safal207/Liminal":
         return False
-
-    previous_digest = payload.get("previous_manifest_sha256")
-    if generation == 0:
-        if previous_digest is not None or previous_manifest is not None:
-            return False
-    else:
-        if not isinstance(previous_digest, str) or _SHA256_RE.fullmatch(previous_digest) is None:
-            return False
-        if not isinstance(previous_manifest, dict) or not validate_manifest(previous_manifest):
-            return False
-        previous_generation = previous_manifest.get("generation")
-        if previous_generation != generation - 1:
-            return False
-        if sha256_hex(canonical_json_bytes(previous_manifest)) != previous_digest:
-            return False
 
     roots = payload.get("roots")
     if not isinstance(roots, dict) or not _exact_keys(roots, {"builder", "verifier"}):
@@ -129,6 +114,25 @@ def validate_manifest(payload: object, previous_manifest: object | None = None) 
     )
 
 
+def validate_manifest(payload: object, previous_manifest: object | None = None) -> bool:
+    if not _validate_manifest_body(payload):
+        return False
+    assert isinstance(payload, dict)
+
+    generation = payload["generation"]
+    previous_digest = payload.get("previous_manifest_sha256")
+    if generation == 0:
+        return previous_digest is None and previous_manifest is None
+
+    if not isinstance(previous_digest, str) or _SHA256_RE.fullmatch(previous_digest) is None:
+        return False
+    if not isinstance(previous_manifest, dict) or not _validate_manifest_body(previous_manifest):
+        return False
+    if previous_manifest.get("generation") != generation - 1:
+        return False
+    return sha256_hex(canonical_json_bytes(previous_manifest)) == previous_digest
+
+
 def validate_registry(payload: object, manifests: Mapping[str, object]) -> bool:
     if not isinstance(payload, dict) or not _exact_keys(
         payload, {"schema_version", "active_generation", "active_manifest_sha256", "history"}
@@ -172,3 +176,61 @@ def validate_registry(payload: object, manifests: Mapping[str, object]) -> bool:
         previous_digest = digest
 
     return history[-1]["manifest_sha256"] == active_digest
+
+
+def validate_registry_rotation(
+    previous_registry: object,
+    current_registry: object,
+    manifests: Mapping[str, object],
+) -> bool:
+    """Accept exactly one append-only generation and reject root/policy rollback."""
+
+    if not validate_registry(previous_registry, manifests) or not validate_registry(
+        current_registry, manifests
+    ):
+        return False
+    assert isinstance(previous_registry, dict)
+    assert isinstance(current_registry, dict)
+
+    previous_generation = previous_registry["active_generation"]
+    current_generation = current_registry["active_generation"]
+    if current_generation != previous_generation + 1:
+        return False
+
+    previous_history = previous_registry["history"]
+    current_history = current_registry["history"]
+    if current_history[:-1] != previous_history:
+        return False
+
+    previous_entry = previous_history[-1]
+    current_entry = current_history[-1]
+    previous_manifest = manifests.get(previous_entry["manifest_path"])
+    current_manifest = manifests.get(current_entry["manifest_path"])
+    if not isinstance(previous_manifest, dict) or not isinstance(current_manifest, dict):
+        return False
+    if current_manifest.get("previous_manifest_sha256") != previous_registry["active_manifest_sha256"]:
+        return False
+
+    for root_name in ("builder", "verifier"):
+        previous_root = previous_manifest["roots"][root_name]["workflow_sha"]
+        current_root = current_manifest["roots"][root_name]["workflow_sha"]
+        historical_roots = {
+            manifests[entry["manifest_path"]]["roots"][root_name]["workflow_sha"]
+            for entry in previous_history[:-1]
+            if isinstance(manifests.get(entry["manifest_path"]), dict)
+        }
+        if current_root != previous_root and current_root in historical_roots:
+            return False
+
+    for material_name in ("builder_environment_policy", "verifier_dependency_lock"):
+        previous_material = previous_manifest["policy_material"][material_name]["sha256"]
+        current_material = current_manifest["policy_material"][material_name]["sha256"]
+        historical_material = {
+            manifests[entry["manifest_path"]]["policy_material"][material_name]["sha256"]
+            for entry in previous_history[:-1]
+            if isinstance(manifests.get(entry["manifest_path"]), dict)
+        }
+        if current_material != previous_material and current_material in historical_material:
+            return False
+
+    return True
