@@ -1,0 +1,84 @@
+name: Trusted Recovery Trust Root Registry Once
+
+on:
+  push:
+    branches:
+      - agent/recovery-routing-v0-1
+    paths:
+      - '.github/workflows/trusted-recovery-trust-root-registry-once.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  call-trusted-registry:
+    uses: ./.github/workflows/trusted-recovery-trust-root-registry.yml
+
+  verify-registry-externally:
+    needs: call-trusted-registry
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      attestations: read
+
+    steps:
+      - name: Download trust root registry evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-trust-root-registry
+          path: trust-root-evidence
+
+      - name: Verify canonical registry bytes match receipt digest
+        run: |
+          set -euo pipefail
+          canonical="trust-root-evidence/artifacts/trust-root/recovery-trust-root-registry.canonical.json"
+          receipt="trust-root-evidence/artifacts/trust-root/recovery-trust-root-registry-verification.json"
+          actual="$(sha256sum "${canonical}" | awk '{print $1}')"
+          expected="$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["registry"]["sha256"])' "${receipt}")"
+          test "${actual}" = "${expected}" || {
+            echo "canonical registry digest mismatch: ${actual} != ${expected}"
+            exit 1
+          }
+          echo "canonical_registry_sha256=${actual}"
+
+      - name: Verify immutable registry attestor on canonical registry
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            trust-root-evidence/artifacts/trust-root/recovery-trust-root-registry.canonical.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-root-registry-attestor.yml \
+            --signer-digest 73ae4e387815f936aa41f0a6cbdd3d654c30b9b4 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > trust-root-evidence/registry-attestation-verification.json
+
+      - name: Verify immutable registry attestor on verification receipt
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            trust-root-evidence/artifacts/trust-root/recovery-trust-root-registry-verification.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-root-registry-attestor.yml \
+            --signer-digest 73ae4e387815f936aa41f0a6cbdd3d654c30b9b4 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > trust-root-evidence/receipt-attestation-verification.json
+
+      - name: Upload external registry verification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trusted-recovery-trust-root-registry-external-verification
+          path: |
+            trust-root-evidence/registry-attestation-verification.json
+            trust-root-evidence/receipt-attestation-verification.json
+          if-no-files-found: error
+          retention-days: 30
