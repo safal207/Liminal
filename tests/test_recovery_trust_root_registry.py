@@ -5,10 +5,12 @@ import json
 from pathlib import Path
 
 from liminal.recovery_trust_root_registry import (
+    REGISTRY_SCHEMA_VERSION,
     canonical_json_bytes,
     sha256_hex,
     validate_manifest,
     validate_registry,
+    validate_registry_rotation,
 )
 
 
@@ -24,6 +26,23 @@ def _load(path: Path) -> dict[str, object]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert isinstance(payload, dict)
     return payload
+
+
+def _entry(generation: int, path: str, manifest: dict[str, object]) -> dict[str, object]:
+    return {
+        "generation": generation,
+        "manifest_path": path,
+        "manifest_sha256": sha256_hex(canonical_json_bytes(manifest)),
+    }
+
+
+def _registry(history: list[dict[str, object]]) -> dict[str, object]:
+    return {
+        "schema_version": REGISTRY_SCHEMA_VERSION,
+        "active_generation": len(history) - 1,
+        "active_manifest_sha256": history[-1]["manifest_sha256"],
+        "history": history,
+    }
 
 
 def test_genesis_manifest_and_registry_are_canonical_and_valid() -> None:
@@ -65,6 +84,69 @@ def test_rotation_requires_exact_previous_manifest_digest() -> None:
 
     current["previous_manifest_sha256"] = "0" * 64
     assert not validate_manifest(current, previous)
+
+
+def test_manifest_chain_supports_generation_two_and_beyond() -> None:
+    generation_0 = _load(MANIFEST_FILE)
+    generation_1 = copy.deepcopy(generation_0)
+    generation_1["generation"] = 1
+    generation_1["previous_manifest_sha256"] = sha256_hex(canonical_json_bytes(generation_0))
+    generation_1["roots"]["builder"]["workflow_sha"] = "1" * 40
+
+    generation_2 = copy.deepcopy(generation_1)
+    generation_2["generation"] = 2
+    generation_2["previous_manifest_sha256"] = sha256_hex(canonical_json_bytes(generation_1))
+    generation_2["roots"]["builder"]["workflow_sha"] = "2" * 40
+
+    paths = [MANIFEST_PATH, "policies/manifest-v0.2.json", "policies/manifest-v0.3.json"]
+    manifests = dict(zip(paths, [generation_0, generation_1, generation_2], strict=True))
+    history = [_entry(index, path, manifests[path]) for index, path in enumerate(paths)]
+
+    assert validate_registry(_registry(history), manifests)
+
+
+def test_registry_rotation_is_append_only_and_rejects_root_downgrade() -> None:
+    generation_0 = _load(MANIFEST_FILE)
+    path_1 = "policies/manifest-v0.2.json"
+    path_2 = "policies/manifest-v0.3.json"
+
+    generation_1 = copy.deepcopy(generation_0)
+    generation_1["generation"] = 1
+    generation_1["previous_manifest_sha256"] = sha256_hex(canonical_json_bytes(generation_0))
+    generation_1["roots"]["builder"]["workflow_sha"] = "1" * 40
+
+    generation_2 = copy.deepcopy(generation_1)
+    generation_2["generation"] = 2
+    generation_2["previous_manifest_sha256"] = sha256_hex(canonical_json_bytes(generation_1))
+    generation_2["roots"]["builder"]["workflow_sha"] = "2" * 40
+
+    manifests = {
+        MANIFEST_PATH: generation_0,
+        path_1: generation_1,
+        path_2: generation_2,
+    }
+    history_0 = [_entry(0, MANIFEST_PATH, generation_0)]
+    history_1 = [*history_0, _entry(1, path_1, generation_1)]
+    history_2 = [*history_1, _entry(2, path_2, generation_2)]
+
+    registry_0 = _registry(history_0)
+    registry_1 = _registry(history_1)
+    registry_2 = _registry(history_2)
+
+    assert validate_registry_rotation(registry_0, registry_1, manifests)
+    assert validate_registry_rotation(registry_1, registry_2, manifests)
+
+    downgraded = copy.deepcopy(generation_2)
+    downgraded["roots"]["builder"]["workflow_sha"] = generation_0["roots"]["builder"][
+        "workflow_sha"
+    ]
+    downgraded["previous_manifest_sha256"] = sha256_hex(canonical_json_bytes(generation_1))
+    manifests[path_2] = downgraded
+    downgraded_history = [*history_1, _entry(2, path_2, downgraded)]
+    downgraded_registry = _registry(downgraded_history)
+
+    assert validate_registry(downgraded_registry, manifests)
+    assert not validate_registry_rotation(registry_1, downgraded_registry, manifests)
 
 
 def test_registry_rejects_active_digest_or_history_tamper() -> None:
