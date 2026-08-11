@@ -17,6 +17,7 @@ from liminal.recovery_proof_bundle import (
 def _write_members(root: Path) -> None:
     root.mkdir(parents=True, exist_ok=True)
     payloads = {
+        "builder-environment.json": b'{"builder":"ok"}\n',
         "decision-receipt.json": b'{"receipt":"ok"}\n',
         "public-key.json": b'{"key":"public"}\n',
         "recovery-evidence.jsonl": b'{"attempt":1}\n{"attempt":2}\n',
@@ -56,8 +57,8 @@ def test_bundle_verifier_rejects_tampered_member(tmp_path: Path) -> None:
     ) as target:
         for name in source.namelist():
             payload = source.read(name)
-            if name == "decision-receipt.json":
-                payload = b'{"receipt":"tampered"}\n'
+            if name == "builder-environment.json":
+                payload = b'{"builder":"tampered"}\n'
             target.writestr(name, payload)
 
     assert not verify_recovery_proof_bundle(tampered)
@@ -66,9 +67,11 @@ def test_bundle_verifier_rejects_tampered_member(tmp_path: Path) -> None:
 def test_bundle_requires_every_evidence_member(tmp_path: Path) -> None:
     root = tmp_path / "proof"
     _write_members(root)
-    (root / "summary.json").unlink()
+    (root / "builder-environment.json").unlink()
 
-    with pytest.raises(FileNotFoundError, match="recovery_proof_member_missing:summary.json"):
+    with pytest.raises(
+        FileNotFoundError, match="recovery_proof_member_missing:builder-environment.json"
+    ):
         build_recovery_proof_bundle(root)
 
 
