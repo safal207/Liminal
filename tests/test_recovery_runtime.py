@@ -1,3 +1,7 @@
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+from liminal.recovery_decision_receipt import verify_decision_receipt
+from liminal.recovery_evidence_ledger import RecoveryEvidenceLedger
 from liminal.recovery_policy import RecoveryMode
 from liminal.recovery_runtime import EvidenceAwareRecoveryRuntime
 from liminal.telemetry_bridge import RuntimeTelemetry
@@ -112,3 +116,48 @@ def test_runtime_routes_away_from_high_observed_completion_pressure() -> None:
     assert evidence.completion_pressure == 2 / 3
     assert decision.mode is RecoveryMode.SEQUENTIAL
     assert decision.reason == "field_completion_pressure_too_high"
+
+
+def test_runtime_emits_receipt_bound_to_durable_evidence(tmp_path) -> None:
+    ledger = RecoveryEvidenceLedger(tmp_path / "recovery.jsonl")
+    runtime = EvidenceAwareRecoveryRuntime(evidence_ledger=ledger)
+    for finish_reason in ("stop", "length", "stop"):
+        runtime.record_attempt(
+            recovery_class="deep-ledger-recovery",
+            mode=RecoveryMode.FOCUS_FIELD,
+            verification_passed=False,
+            finish_reason=finish_reason,
+        )
+
+    private_key = Ed25519PrivateKey.generate()
+    result = runtime.decide_with_receipt(
+        _deep_recovery(),
+        recovery_class="deep-ledger-recovery",
+        private_key=private_key,
+        key_id="liminal-test-key-1",
+    )
+
+    assert result.decision.mode is RecoveryMode.SEQUENTIAL
+    assert verify_decision_receipt(
+        result.receipt,
+        public_key=private_key.public_key(),
+        expected_key_id="liminal-test-key-1",
+        ledger=ledger,
+    )
+
+
+def test_runtime_refuses_receipt_without_durable_ledger() -> None:
+    runtime = EvidenceAwareRecoveryRuntime()
+    private_key = Ed25519PrivateKey.generate()
+
+    try:
+        runtime.decide_with_receipt(
+            _deep_recovery(),
+            recovery_class="deep-ledger-recovery",
+            private_key=private_key,
+            key_id="liminal-test-key-1",
+        )
+    except ValueError as exc:
+        assert str(exc) == "recovery_decision_receipt_requires_durable_ledger"
+    else:
+        raise AssertionError("expected durable ledger requirement")
