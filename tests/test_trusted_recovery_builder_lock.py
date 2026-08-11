@@ -9,7 +9,7 @@ BUILDER_LOCK = ROOT / "requirements" / "trusted-recovery-proof.lock"
 VERIFIER_LOCK = ROOT / "requirements" / "trusted-attestation-verifier.lock"
 BUILDER_WORKFLOW = ROOT / ".github" / "workflows" / "trusted-recovery-proof-builder.yml"
 WRAPPER_WORKFLOW = ROOT / ".github" / "workflows" / "trusted-recovery-decision-proof.yml"
-TRUSTED_BUILDER_SHA = "e61e57c02b09e1ad55414c17e440164d8abaa679"
+TRUSTED_BUILDER_SHA = "ef9a0707301166a6be0561c7ddff308e661b7812"
 SHA256_RE = re.compile(r"^--hash=sha256:([0-9a-f]{64})$")
 
 
@@ -60,7 +60,7 @@ def test_trusted_builder_uses_pinned_platform_python_and_hash_mode() -> None:
     assert "python -m pip check" in workflow
 
 
-def test_builder_candidate_emits_environment_receipt_before_provider_call() -> None:
+def test_trusted_builder_emits_environment_receipt_before_provider_call() -> None:
     workflow = BUILDER_WORKFLOW.read_text(encoding="utf-8")
     assert "Trusted Recovery Proof Builder v0.3" in workflow
     assert "LIMINAL_BUILDER_REPOSITORY: ${{ job.workflow_repository }}" in workflow
@@ -73,7 +73,7 @@ def test_builder_candidate_emits_environment_receipt_before_provider_call() -> N
     )
 
 
-def test_wrapper_still_pins_v0_2_builder_until_explicit_rotation() -> None:
+def test_wrapper_pins_v0_3_builder_and_hash_locked_verifier() -> None:
     workflow = WRAPPER_WORKFLOW.read_text(encoding="utf-8")
     assert f"trusted-recovery-proof-builder.yml@{TRUSTED_BUILDER_SHA}" in workflow
     assert f"--signer-digest {TRUSTED_BUILDER_SHA}" in workflow
