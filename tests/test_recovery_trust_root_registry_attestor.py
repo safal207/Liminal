@@ -5,6 +5,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ATTESTOR = ROOT / ".github" / "workflows" / "trusted-recovery-trust-root-registry-attestor.yml"
+WRAPPER = ROOT / ".github" / "workflows" / "trusted-recovery-trust-root-registry.yml"
+TRUSTED_ATTESTOR_SHA = "73ae4e387815f936aa41f0a6cbdd3d654c30b9b4"
 
 
 def test_registry_attestor_is_self_pinned_and_checks_historical_material() -> None:
@@ -37,3 +39,15 @@ def test_registry_attestor_attests_canonical_registry_and_verification_receipt()
     assert "actions/checkout@11d5960a326750d5838078e36cf38b85af677262" in workflow
     assert "actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065" in workflow
     assert "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02" in workflow
+
+
+def test_permanent_registry_wrapper_pins_immutable_attestor() -> None:
+    workflow = WRAPPER.read_text(encoding="utf-8")
+
+    assert "Trusted Recovery Trust Root Registry" in workflow
+    assert (
+        "trusted-recovery-trust-root-registry-attestor.yml@" + TRUSTED_ATTESTOR_SHA
+        in workflow
+    )
+    assert "id-token: write" in workflow
+    assert "attestations: write" in workflow
