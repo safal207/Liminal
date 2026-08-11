@@ -5,15 +5,18 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-LOCK = ROOT / "requirements" / "trusted-recovery-proof.lock"
-WORKFLOW = ROOT / ".github" / "workflows" / "trusted-recovery-proof-builder.yml"
+BUILDER_LOCK = ROOT / "requirements" / "trusted-recovery-proof.lock"
+VERIFIER_LOCK = ROOT / "requirements" / "trusted-attestation-verifier.lock"
+BUILDER_WORKFLOW = ROOT / ".github" / "workflows" / "trusted-recovery-proof-builder.yml"
+WRAPPER_WORKFLOW = ROOT / ".github" / "workflows" / "trusted-recovery-decision-proof.yml"
+TRUSTED_BUILDER_SHA = "e61e57c02b09e1ad55414c17e440164d8abaa679"
 SHA256_RE = re.compile(r"^--hash=sha256:([0-9a-f]{64})$")
 
 
-def _locked_requirements() -> dict[str, tuple[str, str]]:
+def _locked_requirements(path: Path) -> dict[str, tuple[str, str]]:
     lines = [
         line.strip()
-        for line in LOCK.read_text(encoding="utf-8").splitlines()
+        for line in path.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     ]
     assert len(lines) % 2 == 0
@@ -33,7 +36,7 @@ def _locked_requirements() -> dict[str, tuple[str, str]]:
 
 
 def test_trusted_builder_dependency_closure_is_fully_hash_locked() -> None:
-    locked = _locked_requirements()
+    locked = _locked_requirements(BUILDER_LOCK)
     assert len(locked) == 20
     assert locked["openai"][0] == "2.53.0"
     assert locked["httpx"][0] == "0.28.1"
@@ -41,11 +44,28 @@ def test_trusted_builder_dependency_closure_is_fully_hash_locked() -> None:
     assert locked["cryptography"][0] == "50.0.0"
 
 
+def test_trusted_verifier_dependency_closure_is_fully_hash_locked() -> None:
+    locked = _locked_requirements(VERIFIER_LOCK)
+    assert set(locked) == {"cffi", "cryptography", "pycparser"}
+    assert locked["cryptography"][0] == "50.0.0"
+
+
 def test_trusted_builder_uses_pinned_platform_python_and_hash_mode() -> None:
-    workflow = WORKFLOW.read_text(encoding="utf-8")
+    workflow = BUILDER_WORKFLOW.read_text(encoding="utf-8")
     assert "runs-on: ubuntu-24.04" in workflow
     assert 'python-version: "3.11.15"' in workflow
     assert "--require-hashes" in workflow
     assert "--only-binary=:all:" in workflow
     assert "-r requirements/trusted-recovery-proof.lock" in workflow
     assert "python -m pip check" in workflow
+
+
+def test_wrapper_pins_v0_2_builder_and_hash_locked_verifier() -> None:
+    workflow = WRAPPER_WORKFLOW.read_text(encoding="utf-8")
+    assert f"trusted-recovery-proof-builder.yml@{TRUSTED_BUILDER_SHA}" in workflow
+    assert f"--signer-digest {TRUSTED_BUILDER_SHA}" in workflow
+    assert f"--signer-ref {TRUSTED_BUILDER_SHA}" in workflow
+    assert "runs-on: ubuntu-24.04" in workflow
+    assert 'python-version: "3.11.15"' in workflow
+    assert "--require-hashes" in workflow
+    assert "-r requirements/trusted-attestation-verifier.lock" in workflow
