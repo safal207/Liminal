@@ -1,0 +1,13 @@
+name: Trusted Recovery Trust Root Registry
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  attest-trust-root-registry:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-root-registry-attestor.yml@73ae4e387815f936aa41f0a6cbdd3d654c30b9b4
