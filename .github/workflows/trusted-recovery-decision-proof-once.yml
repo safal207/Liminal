@@ -1,0 +1,18 @@
+name: Trusted Recovery Decision Proof Once
+
+on:
+  push:
+    branches:
+      - agent/recovery-routing-v0-1
+    paths:
+      - '.github/workflows/trusted-recovery-decision-proof-once.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  call-trusted-proof:
+    uses: ./.github/workflows/trusted-recovery-decision-proof.yml
+    secrets: inherit
