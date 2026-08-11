@@ -17,6 +17,10 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from backend.ml.openai_wrapper import LLMRequest, llm_client
 from backend.ml.receipt_instrumented_client import call_with_receipts
+from liminal.builder_environment_receipt import (
+    BUILDER_ENVIRONMENT_SCHEMA_VERSION,
+    verify_builder_environment_receipt,
+)
 from liminal.instrumentation_receipts import TokenUsageReceipt
 from liminal.live_recovery_ab import (
     parse_recovery_payload,
@@ -148,9 +152,22 @@ async def _run_attempt(*, model: str, max_output_tokens: int, trace_id: str, non
 
 
 async def _run(args: argparse.Namespace) -> int:
-    await _configure_gonka()
     out = Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
+    builder_repository = os.getenv("LIMINAL_BUILDER_REPOSITORY", "").strip()
+    builder_workflow_sha = os.getenv("LIMINAL_BUILDER_WORKFLOW_SHA", "").strip()
+    if not builder_repository or not builder_workflow_sha:
+        raise RuntimeError("trusted builder identity environment is required")
+    builder_environment_path = out / "builder-environment.json"
+    if not verify_builder_environment_receipt(
+        builder_environment_path,
+        repository_root=Path.cwd(),
+        expected_builder_repository=builder_repository,
+        expected_builder_workflow_sha=builder_workflow_sha,
+    ):
+        raise RuntimeError("builder environment receipt verification failed")
+
+    await _configure_gonka()
     ledger = RecoveryEvidenceLedger(out / "recovery-evidence.jsonl")
     runtime = EvidenceAwareRecoveryRuntime(evidence_ledger=ledger)
 
@@ -209,13 +226,16 @@ async def _run(args: argparse.Namespace) -> int:
             },
             indent=2,
             sort_keys=True,
-        ) + "\n",
+        )
+        + "\n",
         encoding="utf-8",
     )
     evidence = runtime.field_evidence(recovery_class=RECOVERY_CLASS)
     summary = {
-        "schema_version": "liminal.live-recovery-decision-proof.v0.1",
+        "schema_version": "liminal.live-recovery-decision-proof.v0.2",
         "proof_bundle_schema_version": PROOF_BUNDLE_SCHEMA_VERSION,
+        "builder_environment_schema_version": BUILDER_ENVIRONMENT_SCHEMA_VERSION,
+        "builder_environment_verified": True,
         "provider": "gonka",
         "model": args.model,
         "recovery_class": RECOVERY_CLASS,
