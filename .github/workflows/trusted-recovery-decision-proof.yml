@@ -74,6 +74,16 @@ jobs:
             --source-ref "${{ github.ref }}" \
             --output artifacts/live-recovery-decision-proof/github-attestation-authorization-pinned-builder.json
 
+      - name: Authorize embedded builder environment
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python scripts/check-builder-environment-authorization.py \
+            --bundle artifacts/live-recovery-decision-proof/recovery-proof-bundle.zip \
+            --policy policies/trusted-recovery-proof-builder-v0.3.json \
+            --output artifacts/live-recovery-decision-proof/builder-environment-authorization.json
+
       - name: Upload immutable-builder verification
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -82,5 +92,6 @@ jobs:
           path: |
             artifacts/live-recovery-decision-proof/github-attestation-verification-pinned-builder.json
             artifacts/live-recovery-decision-proof/github-attestation-authorization-pinned-builder.json
+            artifacts/live-recovery-decision-proof/builder-environment-authorization.json
           if-no-files-found: warn
           retention-days: 30
