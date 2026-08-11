@@ -1,0 +1,130 @@
+name: Trusted Recovery Proof Verifier v0.1
+
+on:
+  workflow_call:
+    inputs:
+      source_ref:
+        required: true
+        type: string
+
+jobs:
+  verify-and-attest:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout trusted verifier source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ job.workflow_sha }}
+
+      - name: Verify immutable verifier checkout
+        env:
+          LIMINAL_VERIFIER_REPOSITORY: ${{ job.workflow_repository }}
+          LIMINAL_VERIFIER_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "${actual_sha}" = "${LIMINAL_VERIFIER_WORKFLOW_SHA}" || {
+            echo "verifier checkout mismatch: ${actual_sha} != ${LIMINAL_VERIFIER_WORKFLOW_SHA}"
+            exit 1
+          }
+
+      - name: Download trusted proof artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-decision-proof
+          path: artifacts/live-recovery-decision-proof
+
+      - name: Verify immutable builder with GitHub CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            artifacts/live-recovery-decision-proof/recovery-proof-bundle.zip \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-proof-builder.yml \
+            --signer-digest 02beb48b9c8a61d67c585573aac6c5781c000e89 \
+            --source-ref "${{ inputs.source_ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > artifacts/live-recovery-decision-proof/github-attestation-verification-pinned-builder.json
+
+      - name: Set up exact Python for Liminal authorization
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Install hash-locked verifier dependency closure
+        run: |
+          set -euo pipefail
+          python -m pip install \
+            --disable-pip-version-check \
+            --require-hashes \
+            --only-binary=:all: \
+            -r requirements/trusted-attestation-verifier.lock
+          python -m pip check
+
+      - name: Authorize immutable builder identity
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python scripts/check-github-attestation-identity.py \
+            --verification-json artifacts/live-recovery-decision-proof/github-attestation-verification-pinned-builder.json \
+            --repository safal207/Liminal \
+            --repository-id 1005410203 \
+            --signer-workflow .github/workflows/trusted-recovery-proof-builder.yml \
+            --signer-ref 02beb48b9c8a61d67c585573aac6c5781c000e89 \
+            --signer-digest 02beb48b9c8a61d67c585573aac6c5781c000e89 \
+            --environment live-provider-trace \
+            --source-ref "${{ inputs.source_ref }}" \
+            --output artifacts/live-recovery-decision-proof/github-attestation-authorization-pinned-builder.json
+
+      - name: Authorize embedded builder environment
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python scripts/check-builder-environment-authorization.py \
+            --bundle artifacts/live-recovery-decision-proof/recovery-proof-bundle.zip \
+            --policy policies/trusted-recovery-proof-builder-v0.3.json \
+            --output artifacts/live-recovery-decision-proof/builder-environment-authorization.json
+
+      - name: Emit recovery trust authorization receipt
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          LIMINAL_VERIFIER_REPOSITORY: ${{ job.workflow_repository }}
+          LIMINAL_VERIFIER_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          python scripts/write-recovery-trust-authorization.py \
+            --proof-bundle artifacts/live-recovery-decision-proof/recovery-proof-bundle.zip \
+            --identity-authorization artifacts/live-recovery-decision-proof/github-attestation-authorization-pinned-builder.json \
+            --environment-authorization artifacts/live-recovery-decision-proof/builder-environment-authorization.json \
+            --verifier-repository "${LIMINAL_VERIFIER_REPOSITORY}" \
+            --verifier-workflow-path .github/workflows/trusted-recovery-proof-verifier.yml \
+            --verifier-workflow-sha "${LIMINAL_VERIFIER_WORKFLOW_SHA}" \
+            --output artifacts/live-recovery-decision-proof/recovery-trust-authorization.json
+
+      - name: Attest recovery trust authorization receipt
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/live-recovery-decision-proof/recovery-trust-authorization.json
+
+      - name: Upload immutable verifier authorization
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trusted-recovery-decision-proof-authorization
+          path: |
+            artifacts/live-recovery-decision-proof/github-attestation-verification-pinned-builder.json
+            artifacts/live-recovery-decision-proof/github-attestation-authorization-pinned-builder.json
+            artifacts/live-recovery-decision-proof/builder-environment-authorization.json
+            artifacts/live-recovery-decision-proof/recovery-trust-authorization.json
+          if-no-files-found: warn
+          retention-days: 30
