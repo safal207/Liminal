@@ -169,12 +169,14 @@ async def _run(args: argparse.Namespace) -> int:
 
     private_key = Ed25519PrivateKey.generate()
     key_id = f"ci-ephemeral:{args.run_id}"
-    decision, receipt = runtime.decide_with_receipt(
+    decision_with_receipt = runtime.decide_with_receipt(
         _telemetry(),
         recovery_class=RECOVERY_CLASS,
         private_key=private_key,
         key_id=key_id,
     )
+    decision = decision_with_receipt.decision
+    receipt = decision_with_receipt.receipt
     public_key = private_key.public_key()
     verified = verify_decision_receipt(
         receipt,
