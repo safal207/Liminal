@@ -10,7 +10,7 @@ jobs:
       contents: read
       id-token: write
       attestations: write
-    uses: safal207/Liminal/.github/workflows/trusted-recovery-proof-builder.yml@e61e57c02b09e1ad55414c17e440164d8abaa679
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-proof-builder.yml@ef9a0707301166a6be0561c7ddff308e661b7812
     secrets: inherit
 
   verify-pinned-builder:
@@ -41,7 +41,7 @@ jobs:
             artifacts/live-recovery-decision-proof/recovery-proof-bundle.zip \
             --repo safal207/Liminal \
             --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-proof-builder.yml \
-            --signer-digest e61e57c02b09e1ad55414c17e440164d8abaa679 \
+            --signer-digest ef9a0707301166a6be0561c7ddff308e661b7812 \
             --source-ref "${{ github.ref }}" \
             --deny-self-hosted-runners \
             --format json \
@@ -68,8 +68,8 @@ jobs:
             --repository safal207/Liminal \
             --repository-id 1005410203 \
             --signer-workflow .github/workflows/trusted-recovery-proof-builder.yml \
-            --signer-ref e61e57c02b09e1ad55414c17e440164d8abaa679 \
-            --signer-digest e61e57c02b09e1ad55414c17e440164d8abaa679 \
+            --signer-ref ef9a0707301166a6be0561c7ddff308e661b7812 \
+            --signer-digest ef9a0707301166a6be0561c7ddff308e661b7812 \
             --environment live-provider-trace \
             --source-ref "${{ github.ref }}" \
             --output artifacts/live-recovery-decision-proof/github-attestation-authorization-pinned-builder.json
