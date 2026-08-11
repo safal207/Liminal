@@ -19,6 +19,8 @@ def main() -> int:
     parser.add_argument("--repository", required=True)
     parser.add_argument("--repository-id", required=True)
     parser.add_argument("--signer-workflow", required=True)
+    parser.add_argument("--signer-ref")
+    parser.add_argument("--signer-digest")
     parser.add_argument("--environment", required=True)
     parser.add_argument("--source-ref", required=True)
     parser.add_argument("--output", required=True)
@@ -31,12 +33,25 @@ def main() -> int:
         signer_workflow_path=args.signer_workflow,
         source_ref=args.source_ref,
         deployment_environment=args.environment,
+        signer_ref=args.signer_ref,
+        signer_digest=args.signer_digest,
     )
     result = authorize_verified_github_attestation(payload, policy=policy)
     output = {
-        "schema_version": "liminal.github-attestation-identity-authorization.v0.1",
+        "schema_version": "liminal.github-attestation-identity-authorization.v0.2",
         "authorized": result.authorized,
         "reason": result.reason,
+        "policy": {
+            "repository": policy.repository,
+            "repository_id": policy.repository_id,
+            "signer_workflow_path": policy.signer_workflow_path,
+            "source_ref": policy.source_ref,
+            "signer_ref": policy.signer_ref,
+            "signer_digest": policy.signer_digest,
+            "deployment_environment": policy.deployment_environment,
+            "runner_environment": policy.runner_environment,
+            "oidc_issuer": policy.oidc_issuer,
+        },
         "claims": None if result.claims is None else {
             "repository_uri": result.claims.repository_uri,
             "repository_id": result.claims.repository_id,
