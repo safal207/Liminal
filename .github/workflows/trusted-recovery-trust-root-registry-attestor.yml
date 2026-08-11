@@ -45,12 +45,13 @@ jobs:
           python scripts/check-recovery-trust-root-registry.py \
             --registry policies/recovery-trust-root-registry-v0.1.json \
             --repository-root "${GITHUB_WORKSPACE}" \
+            --canonical-registry-output artifacts/trust-root/recovery-trust-root-registry.canonical.json \
             --output artifacts/trust-root/recovery-trust-root-registry-verification.json
 
       - name: Attest canonical trust root registry
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
-          subject-path: policies/recovery-trust-root-registry-v0.1.json
+          subject-path: artifacts/trust-root/recovery-trust-root-registry.canonical.json
 
       - name: Attest trust root registry verification receipt
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
@@ -64,6 +65,7 @@ jobs:
           path: |
             policies/recovery-trust-root-registry-v0.1.json
             policies/recovery-trust-root-manifest-v0.1.json
+            artifacts/trust-root/recovery-trust-root-registry.canonical.json
             artifacts/trust-root/recovery-trust-root-registry-verification.json
           if-no-files-found: error
           retention-days: 30
