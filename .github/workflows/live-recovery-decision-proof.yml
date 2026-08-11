@@ -74,7 +74,7 @@ jobs:
         with:
           subject-path: artifacts/live-recovery-decision-proof/recovery-proof-bundle.zip
 
-      - name: Verify GitHub attestation signer, repository, and source ref
+      - name: Verify GitHub attestation cryptography and signer identity
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -86,6 +86,17 @@ jobs:
             --deny-self-hosted-runners \
             --format json \
             > artifacts/live-recovery-decision-proof/github-attestation-verification.json
+
+      - name: Authorize GitHub attestation environment and pinned claims
+        run: |
+          python scripts/check-github-attestation-identity.py \
+            --verification-json artifacts/live-recovery-decision-proof/github-attestation-verification.json \
+            --repository safal207/Liminal \
+            --repository-id 1005410203 \
+            --signer-workflow .github/workflows/live-recovery-decision-proof.yml \
+            --environment live-provider-trace \
+            --source-ref "${{ github.ref }}" \
+            --output artifacts/live-recovery-decision-proof/github-attestation-authorization.json
 
       - name: Upload proof artifact
         if: always()
