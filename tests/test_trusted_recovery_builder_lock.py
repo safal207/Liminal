@@ -9,7 +9,7 @@ BUILDER_LOCK = ROOT / "requirements" / "trusted-recovery-proof.lock"
 VERIFIER_LOCK = ROOT / "requirements" / "trusted-attestation-verifier.lock"
 BUILDER_WORKFLOW = ROOT / ".github" / "workflows" / "trusted-recovery-proof-builder.yml"
 WRAPPER_WORKFLOW = ROOT / ".github" / "workflows" / "trusted-recovery-decision-proof.yml"
-TRUSTED_BUILDER_SHA = "ef9a0707301166a6be0561c7ddff308e661b7812"
+TRUSTED_BUILDER_SHA = "02beb48b9c8a61d67c585573aac6c5781c000e89"
 SHA256_RE = re.compile(r"^--hash=sha256:([0-9a-f]{64})$")
 
 
