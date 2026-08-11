@@ -17,14 +17,19 @@ def test_registry_attestor_is_self_pinned_and_checks_historical_material() -> No
     assert 'python-version: "3.11.15"' in workflow
     assert "check-recovery-trust-root-registry.py" in workflow
     assert "policies/recovery-trust-root-registry-v0.1.json" in workflow
+    assert "recovery-trust-root-registry.canonical.json" in workflow
     assert "recovery-trust-root-registry-verification.json" in workflow
 
 
-def test_registry_attestor_attests_registry_and_verification_receipt() -> None:
+def test_registry_attestor_attests_canonical_registry_and_verification_receipt() -> None:
     workflow = ATTESTOR.read_text(encoding="utf-8")
 
     assert workflow.count("actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6") == 2
-    assert "subject-path: policies/recovery-trust-root-registry-v0.1.json" in workflow
+    assert (
+        "subject-path: artifacts/trust-root/recovery-trust-root-registry.canonical.json"
+        in workflow
+    )
+    assert "subject-path: policies/recovery-trust-root-registry-v0.1.json" not in workflow
     assert (
         "subject-path: artifacts/trust-root/recovery-trust-root-registry-verification.json"
         in workflow
