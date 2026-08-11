@@ -13,6 +13,18 @@ on:
         required: true
         default: "1536"
         type: string
+  workflow_call:
+    inputs:
+      model:
+        description: "Gonka model ID"
+        required: false
+        default: "MiniMaxAI/MiniMax-M2.7"
+        type: string
+      max_output_tokens:
+        description: "Maximum output tokens per recovery attempt"
+        required: false
+        default: "1536"
+        type: string
 
 permissions:
   contents: read
@@ -61,6 +73,19 @@ jobs:
         uses: actions/attest@v4
         with:
           subject-path: artifacts/live-recovery-decision-proof/recovery-proof-bundle.zip
+
+      - name: Verify GitHub attestation signer, repository, and source ref
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh attestation verify \
+            artifacts/live-recovery-decision-proof/recovery-proof-bundle.zip \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/live-recovery-decision-proof.yml \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > artifacts/live-recovery-decision-proof/github-attestation-verification.json
 
       - name: Upload proof artifact
         if: always()
