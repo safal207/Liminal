@@ -229,6 +229,15 @@ def _receipt_from_dict(value: object) -> BuilderEnvironmentReceipt:
     )
 
 
+def parse_builder_environment_receipt(raw: bytes) -> BuilderEnvironmentReceipt:
+    """Parse canonical receipt bytes and reject non-canonical JSON."""
+
+    receipt = _receipt_from_dict(json.loads(raw))
+    if raw != receipt.canonical_bytes():
+        raise ValueError("builder_environment_receipt_not_canonical")
+    return receipt
+
+
 def verify_builder_environment_receipt(
     path: str | Path,
     *,
@@ -237,10 +246,7 @@ def verify_builder_environment_receipt(
     expected_builder_workflow_sha: str | None = None,
 ) -> bool:
     try:
-        raw = Path(path).read_bytes()
-        receipt = _receipt_from_dict(json.loads(raw))
-        if raw != receipt.canonical_bytes():
-            return False
+        receipt = parse_builder_environment_receipt(Path(path).read_bytes())
         if expected_builder_repository is not None and receipt.builder_repository != expected_builder_repository:
             return False
         if expected_builder_workflow_sha is not None:
