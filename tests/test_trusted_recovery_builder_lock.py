@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 BUILDER_LOCK = ROOT / "requirements" / "trusted-recovery-proof.lock"
 VERIFIER_LOCK = ROOT / "requirements" / "trusted-attestation-verifier.lock"
 BUILDER_WORKFLOW = ROOT / ".github" / "workflows" / "trusted-recovery-proof-builder.yml"
+VERIFIER_WORKFLOW = ROOT / ".github" / "workflows" / "trusted-recovery-proof-verifier.yml"
 WRAPPER_WORKFLOW = ROOT / ".github" / "workflows" / "trusted-recovery-decision-proof.yml"
 ENVIRONMENT_POLICY = ROOT / "policies" / "trusted-recovery-proof-builder-v0.3.json"
 TRUSTED_BUILDER_SHA = "02beb48b9c8a61d67c585573aac6c5781c000e89"
@@ -75,6 +76,25 @@ def test_trusted_builder_emits_environment_receipt_before_provider_call() -> Non
     assert "actions/attest=1e69f48acb82d1966a394da916b4c1698aa569d6" in workflow
     assert workflow.index("Emit verified builder environment receipt") < workflow.index(
         "Run trusted live Gonka recovery decision proof"
+    )
+
+
+def test_candidate_verifier_is_self_pinned_and_attests_authorization_receipt() -> None:
+    workflow = VERIFIER_WORKFLOW.read_text(encoding="utf-8")
+    assert "Trusted Recovery Proof Verifier v0.1" in workflow
+    assert "ref: ${{ job.workflow_sha }}" in workflow
+    assert "LIMINAL_VERIFIER_REPOSITORY: ${{ job.workflow_repository }}" in workflow
+    assert "LIMINAL_VERIFIER_WORKFLOW_SHA: ${{ job.workflow_sha }}" in workflow
+    assert f"--signer-digest {TRUSTED_BUILDER_SHA}" in workflow
+    assert f"--signer-ref {TRUSTED_BUILDER_SHA}" in workflow
+    assert "--require-hashes" in workflow
+    assert "-r requirements/trusted-attestation-verifier.lock" in workflow
+    assert "check-builder-environment-authorization.py" in workflow
+    assert "write-recovery-trust-authorization.py" in workflow
+    assert "recovery-trust-authorization.json" in workflow
+    assert "actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6" in workflow
+    assert workflow.index("Emit recovery trust authorization receipt") < workflow.index(
+        "Attest recovery trust authorization receipt"
     )
 
 
