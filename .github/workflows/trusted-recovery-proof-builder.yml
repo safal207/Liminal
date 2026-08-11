@@ -16,8 +16,6 @@ jobs:
       PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
       GONKA_BROKER_API_KEY: ${{ secrets.GONKA_BROKER_API_KEY }}
       GONKA_BROKER_URL: ${{ secrets.GONKA_BROKER_URL }}
-      LIMINAL_BUILDER_REPOSITORY: ${{ job.workflow_repository }}
-      LIMINAL_BUILDER_WORKFLOW_SHA: ${{ job.workflow_sha }}
 
     steps:
       - name: Checkout trusted builder source
@@ -28,6 +26,9 @@ jobs:
 
       - name: Verify immutable builder checkout
         shell: bash
+        env:
+          LIMINAL_BUILDER_REPOSITORY: ${{ job.workflow_repository }}
+          LIMINAL_BUILDER_WORKFLOW_SHA: ${{ job.workflow_sha }}
         run: |
           set -euo pipefail
           actual_sha="$(git rev-parse HEAD)"
@@ -61,6 +62,9 @@ jobs:
 
       - name: Emit verified builder environment receipt
         shell: bash
+        env:
+          LIMINAL_BUILDER_REPOSITORY: ${{ job.workflow_repository }}
+          LIMINAL_BUILDER_WORKFLOW_SHA: ${{ job.workflow_sha }}
         run: |
           set -euo pipefail
           test -n "${ImageOS:-}" || { echo 'ImageOS is required'; exit 1; }
@@ -83,6 +87,9 @@ jobs:
             --action "actions/upload-artifact=ea165f8d65b6e75b540449e92b4886f43607fa02"
 
       - name: Run trusted live Gonka recovery decision proof
+        env:
+          LIMINAL_BUILDER_REPOSITORY: ${{ job.workflow_repository }}
+          LIMINAL_BUILDER_WORKFLOW_SHA: ${{ job.workflow_sha }}
         run: |
           python scripts/run-live-recovery-decision-proof.py \
             --model "MiniMaxAI/MiniMax-M2.7" \
