@@ -16,3 +16,5 @@ jobs:
   call-trusted-proof:
     uses: ./.github/workflows/trusted-recovery-decision-proof.yml
     secrets: inherit
+
+# one-shot trigger: v0.3 retry after job-context fix
