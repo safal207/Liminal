@@ -17,10 +17,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-PROOF_BUNDLE_SCHEMA_VERSION = "liminal.recovery-proof-bundle.v0.1"
+PROOF_BUNDLE_SCHEMA_VERSION = "liminal.recovery-proof-bundle.v0.2"
 PROOF_MANIFEST_NAME = "proof-manifest.json"
 PROOF_BUNDLE_NAME = "recovery-proof-bundle.zip"
 PROOF_MEMBERS = (
+    "builder-environment.json",
     "decision-receipt.json",
     "public-key.json",
     "recovery-evidence.jsonl",
