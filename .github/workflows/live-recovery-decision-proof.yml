@@ -1,0 +1,72 @@
+name: Live Recovery Decision Proof
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Gonka model ID"
+        required: true
+        default: "MiniMaxAI/MiniMax-M2.7"
+        type: string
+      max_output_tokens:
+        description: "Maximum output tokens per recovery attempt"
+        required: true
+        default: "1536"
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  live-recovery-decision-proof:
+    runs-on: ubuntu-latest
+    environment: live-provider-trace
+    env:
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+      GONKA_BROKER_API_KEY: ${{ secrets.GONKA_BROKER_API_KEY }}
+      GONKA_BROKER_URL: ${{ secrets.GONKA_BROKER_URL }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Require Gonka broker configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${GONKA_BROKER_API_KEY:-}" || { echo 'GONKA_BROKER_API_KEY is required'; exit 1; }
+          test -n "${GONKA_BROKER_URL:-}" || { echo 'GONKA_BROKER_URL is required'; exit 1; }
+
+      - name: Install minimal live proof dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "openai>=1.30,<3" "httpx>=0.24" "structlog>=23.1" "cryptography>=42"
+
+      - name: Run live Gonka recovery decision proof
+        run: |
+          python scripts/run-live-recovery-decision-proof.py \
+            --model "${{ inputs.model }}" \
+            --max-output-tokens "${{ inputs.max_output_tokens }}" \
+            --run-id "${{ github.run_id }}-${{ github.run_attempt }}" \
+            --output-dir artifacts/live-recovery-decision-proof
+
+      - name: Generate GitHub OIDC artifact attestation
+        uses: actions/attest@v4
+        with:
+          subject-path: artifacts/live-recovery-decision-proof/recovery-proof-bundle.zip
+
+      - name: Upload proof artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-recovery-decision-proof
+          path: artifacts/live-recovery-decision-proof
+          if-no-files-found: warn
+          retention-days: 30
