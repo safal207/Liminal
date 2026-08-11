@@ -1,0 +1,21 @@
+name: Live Recovery Decision Proof Caller Once
+
+on:
+  push:
+    branches:
+      - agent/recovery-routing-v0-1
+    paths:
+      - '.github/workflows/live-recovery-decision-proof-caller-once.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  call-permanent-proof:
+    uses: ./.github/workflows/live-recovery-decision-proof.yml
+    with:
+      model: "MiniMaxAI/MiniMax-M2.7"
+      max_output_tokens: "1536"
+    secrets: inherit
