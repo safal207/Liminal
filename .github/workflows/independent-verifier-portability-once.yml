@@ -14,7 +14,7 @@ jobs:
       contents: read
       id-token: write
       attestations: write
-    uses: safal207/Liminal/.github/workflows/independent-verifier-portability.yml@dfb0e23152f763e74fe25c11288bcabf36104e24
+    uses: safal207/Liminal/.github/workflows/independent-verifier-portability.yml@fa20161f4e0c77f4caa97e2e0febfe0cea240d82
 
   verify-independent-proof-externally:
     needs: run-immutable-proof
@@ -304,7 +304,7 @@ jobs:
                 "proof-evidence/artifacts/independent-verifier-portability/receipts/${subject}-receipt-${implementation}.json" \
                 --repo safal207/Liminal \
                 --signer-workflow safal207/Liminal/.github/workflows/independent-verifier-portability.yml \
-                --signer-digest dfb0e23152f763e74fe25c11288bcabf36104e24 \
+                --signer-digest fa20161f4e0c77f4caa97e2e0febfe0cea240d82 \
                 --source-ref "${{ github.ref }}" \
                 --deny-self-hosted-runners \
                 --format json \
@@ -322,7 +322,7 @@ jobs:
               "proof-evidence/artifacts/independent-verifier-portability/bundles/evidence-bundle-v0.2-${implementation}.json" \
               --repo safal207/Liminal \
               --signer-workflow safal207/Liminal/.github/workflows/independent-verifier-portability.yml \
-              --signer-digest dfb0e23152f763e74fe25c11288bcabf36104e24 \
+              --signer-digest fa20161f4e0c77f4caa97e2e0febfe0cea240d82 \
               --source-ref "${{ github.ref }}" \
               --deny-self-hosted-runners \
               --format json \
@@ -338,7 +338,7 @@ jobs:
             proof-evidence/artifacts/independent-verifier-portability/independent-verifier-portability-result.json \
             --repo safal207/Liminal \
             --signer-workflow safal207/Liminal/.github/workflows/independent-verifier-portability.yml \
-            --signer-digest dfb0e23152f763e74fe25c11288bcabf36104e24 \
+            --signer-digest fa20161f4e0c77f4caa97e2e0febfe0cea240d82 \
             --source-ref "${{ github.ref }}" \
             --deny-self-hosted-runners \
             --format json \
