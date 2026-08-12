@@ -81,28 +81,6 @@ The contract fails closed when either topology has:
 - a signer contract mismatch;
 - the same physical path when a distinct-topology proof is required.
 
-## Example
-
-```text
-Topology A
-flat/checkpoint-generation-1.json
-
-Topology B
-deep/transport/layers/opaque-blob.dat
-
-             same bytes
-                 ↓
-          same manifest digest
-                 ↓
-      same logical_id + generation
-                 ↓
-          same Evidence Bundle
-                 ↓
-            same decision
-```
-
-The filename may change because the manifest-backed evidence resolver selects by stable logical identity and SHA-256, not basename.
-
 ## Why this matters
 
 A transport, archive extractor, CI provider, or packaging step may legitimately reshape physical storage. Trust should not silently inherit those packaging choices.
