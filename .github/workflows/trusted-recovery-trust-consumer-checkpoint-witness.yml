@@ -57,7 +57,7 @@ jobs:
         run: |
           set -euo pipefail
           gh attestation verify \
-            checkpoint-evidence/checkpoint-generation-1.json \
+            checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json \
             --repo safal207/Liminal \
             --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
             --signer-digest d0688725bd76fdf7221e84ca7c5bfb51e363ff72 \
@@ -74,7 +74,7 @@ jobs:
           python scripts/run-recovery-trust-consumer-checkpoint-witness-drill.py \
             --witness policies/recovery-trust-consumer-checkpoint-witness-v0.1.json \
             --baseline-checkpoint policies/recovery-trust-consumer-checkpoint-v0.2.json \
-            --candidate-checkpoint checkpoint-evidence/checkpoint-generation-1.json \
+            --candidate-checkpoint checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json \
             --checkpoint-verification-json checkpoint-evidence/checkpoint-attestation-verification.json \
             --output-dir artifacts/trust-consumer-checkpoint-witness
 
@@ -124,7 +124,7 @@ jobs:
           name: trusted-recovery-trust-consumer-checkpoint-witness
           path: |
             artifacts/trust-consumer-checkpoint-witness
-            checkpoint-evidence/checkpoint-generation-1.json
+            checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json
             checkpoint-evidence/checkpoint-attestation-verification.json
           if-no-files-found: error
           retention-days: 30
