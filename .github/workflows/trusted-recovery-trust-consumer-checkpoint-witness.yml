@@ -51,13 +51,78 @@ jobs:
           name: trusted-recovery-trust-consumer-checkpoint-attested
           path: checkpoint-evidence
 
+      - name: Resolve checkpoint evidence locator
+        id: resolve-checkpoint
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          from liminal.evidence_resolution import (
+              ResolutionDisposition,
+              ResolutionNode,
+              ResolutionReason,
+              resolve_evidence,
+          )
+          from liminal.github_actions_evidence_locator import (
+              GitHubActionsEvidenceSpec,
+              discover_github_actions_evidence_locators,
+          )
+
+          root = Path("checkpoint-evidence")
+          artifact_paths = sorted(
+              path.as_posix()
+              for path in root.rglob("*")
+              if path.is_file()
+          )
+          logical_id = "trust-consumer-checkpoint:generation-1"
+          expected = "checkpoint-evidence/checkpoint-generation-1.json"
+          allowed = (
+              "checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested/",
+          )
+          locators = discover_github_actions_evidence_locators(
+              GitHubActionsEvidenceSpec(
+                  logical_id=logical_id,
+                  expected_path=expected,
+                  filename="checkpoint-generation-1.json",
+                  allowed_prefixes=allowed,
+                  verification_available=True,
+              ),
+              artifact_paths,
+          )
+          resolution = resolve_evidence(
+              ResolutionNode(
+                  logical_id=logical_id,
+                  expected_path=expected,
+                  allowed_prefixes=allowed,
+                  require_verification=True,
+              ),
+              locators,
+          )
+          assert resolution.disposition is ResolutionDisposition.RESOLVED, resolution.reason
+          assert resolution.reason in {
+              ResolutionReason.EXPECTED_LOCATOR_RESOLVED.value,
+              ResolutionReason.REANCHOR_RESOLVED.value,
+          }
+          assert resolution.resolved_path is not None
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"path={resolution.resolved_path}\n")
+              output.write(f"reason={resolution.reason}\n")
+          print(f"checkpoint_resolution={resolution.reason}")
+          print(f"checkpoint_path={resolution.resolved_path}")
+          PY
+
       - name: Verify checkpoint signer with GitHub CLI
         env:
           GH_TOKEN: ${{ github.token }}
+          CHECKPOINT_PATH: ${{ steps.resolve-checkpoint.outputs.path }}
         run: |
           set -euo pipefail
           gh attestation verify \
-            checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json \
+            "${CHECKPOINT_PATH}" \
             --repo safal207/Liminal \
             --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
             --signer-digest d0688725bd76fdf7221e84ca7c5bfb51e363ff72 \
@@ -69,12 +134,13 @@ jobs:
       - name: Recover witness and reject stale checkpoint
         env:
           PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          CHECKPOINT_PATH: ${{ steps.resolve-checkpoint.outputs.path }}
         run: |
           set -euo pipefail
           python scripts/run-recovery-trust-consumer-checkpoint-witness-drill.py \
             --witness policies/recovery-trust-consumer-checkpoint-witness-v0.1.json \
             --baseline-checkpoint policies/recovery-trust-consumer-checkpoint-v0.2.json \
-            --candidate-checkpoint checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json \
+            --candidate-checkpoint "${CHECKPOINT_PATH}" \
             --checkpoint-verification-json checkpoint-evidence/checkpoint-attestation-verification.json \
             --output-dir artifacts/trust-consumer-checkpoint-witness
 
@@ -124,7 +190,7 @@ jobs:
           name: trusted-recovery-trust-consumer-checkpoint-witness
           path: |
             artifacts/trust-consumer-checkpoint-witness
-            checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json
+            ${{ steps.resolve-checkpoint.outputs.path }}
             checkpoint-evidence/checkpoint-attestation-verification.json
           if-no-files-found: error
           retention-days: 30
