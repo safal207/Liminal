@@ -1,0 +1,99 @@
+name: Trusted Recovery Trust Consumer Checkpoint Witness Once
+
+on:
+  push:
+    branches:
+      - agent/recovery-routing-v0-1
+    paths:
+      - '.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness-once.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  run-immutable-witness:
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness.yml@8de10a528d803877c0186fcb497d2ce3a92ee785
+
+  verify-witness-externally:
+    needs: run-immutable-witness
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      attestations: read
+
+    steps:
+      - name: Download checkpoint witness evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-witness
+          path: witness-evidence
+
+      - name: Recompute witness chain and stale verdicts
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          def canonical(value):
+              return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+          w0 = json.loads(Path("witness-evidence/witness-generation-0.json").read_text())
+          w1 = json.loads(Path("witness-evidence/witness-generation-1.json").read_text())
+          result = json.loads(Path("witness-evidence/checkpoint-witness-drill-result.json").read_text())
+          w0_sha = hashlib.sha256(canonical(w0)).hexdigest()
+          w1_sha = hashlib.sha256(canonical(w1)).hexdigest()
+          assert w1["previous_witness_sha256"] == w0_sha
+          assert result["advance"]["witness_sha256"] == w1_sha
+          assert result["advance"]["reason"] == "checkpoint_witness_advanced"
+          assert result["recovered_consumer"]["local_generation_1_checkpoint_available"] is False
+          assert result["recovered_consumer"]["verified_witness_available"] is True
+          assert result["stale_checkpoint_replay"]["authorized"] is False
+          assert result["stale_checkpoint_replay"]["reason"] == "stale_checkpoint"
+          print(f"witness_generation_0_sha256={w0_sha}")
+          print(f"witness_generation_1_sha256={w1_sha}")
+          print("old_checkpoint_replay=REJECT:stale_checkpoint")
+          PY
+
+      - name: Verify immutable witness signer on generation-1 witness
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            witness-evidence/witness-generation-1.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness.yml \
+            --signer-digest 8de10a528d803877c0186fcb497d2ce3a92ee785 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > witness-evidence/witness-attestation-verification.json
+
+      - name: Verify immutable witness signer on recovery result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            witness-evidence/checkpoint-witness-drill-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness.yml \
+            --signer-digest 8de10a528d803877c0186fcb497d2ce3a92ee785 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > witness-evidence/result-attestation-verification.json
+
+      - name: Upload external witness verification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-witness-external-verification
+          path: |
+            witness-evidence/witness-attestation-verification.json
+            witness-evidence/result-attestation-verification.json
+          if-no-files-found: error
+          retention-days: 30
