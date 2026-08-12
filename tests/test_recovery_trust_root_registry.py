@@ -7,6 +7,7 @@ from pathlib import Path
 from liminal.recovery_trust_root_registry import (
     REGISTRY_SCHEMA_VERSION,
     canonical_json_bytes,
+    evaluate_registry_rotation,
     sha256_hex,
     validate_manifest,
     validate_registry,
@@ -133,6 +134,9 @@ def test_registry_rotation_is_append_only_and_rejects_root_downgrade() -> None:
     registry_1 = _registry(history_1)
     registry_2 = _registry(history_2)
 
+    decision_0_to_1 = evaluate_registry_rotation(registry_0, registry_1, manifests)
+    assert decision_0_to_1.authorized
+    assert decision_0_to_1.reason == "registry_rotation_authorized"
     assert validate_registry_rotation(registry_0, registry_1, manifests)
     assert validate_registry_rotation(registry_1, registry_2, manifests)
 
@@ -146,7 +150,44 @@ def test_registry_rotation_is_append_only_and_rejects_root_downgrade() -> None:
     downgraded_registry = _registry(downgraded_history)
 
     assert validate_registry(downgraded_registry, manifests)
+    downgrade_decision = evaluate_registry_rotation(registry_1, downgraded_registry, manifests)
+    assert not downgrade_decision.authorized
+    assert downgrade_decision.reason == "builder_root_downgrade"
     assert not validate_registry_rotation(registry_1, downgraded_registry, manifests)
+
+
+def test_registry_rotation_reports_verifier_root_downgrade() -> None:
+    generation_0 = _load(MANIFEST_FILE)
+    path_1 = "policies/manifest-verifier-v0.2.json"
+    path_2 = "policies/manifest-verifier-v0.3.json"
+
+    generation_1 = copy.deepcopy(generation_0)
+    generation_1["generation"] = 1
+    generation_1["previous_manifest_sha256"] = sha256_hex(canonical_json_bytes(generation_0))
+    generation_1["roots"]["verifier"]["workflow_sha"] = "1" * 40
+
+    generation_2 = copy.deepcopy(generation_1)
+    generation_2["generation"] = 2
+    generation_2["previous_manifest_sha256"] = sha256_hex(canonical_json_bytes(generation_1))
+    generation_2["roots"]["verifier"]["workflow_sha"] = generation_0["roots"]["verifier"][
+        "workflow_sha"
+    ]
+
+    manifests = {
+        MANIFEST_PATH: generation_0,
+        path_1: generation_1,
+        path_2: generation_2,
+    }
+    history_0 = [_entry(0, MANIFEST_PATH, generation_0)]
+    history_1 = [*history_0, _entry(1, path_1, generation_1)]
+    history_2 = [*history_1, _entry(2, path_2, generation_2)]
+    registry_1 = _registry(history_1)
+    registry_2 = _registry(history_2)
+
+    assert validate_registry(registry_2, manifests)
+    decision = evaluate_registry_rotation(registry_1, registry_2, manifests)
+    assert not decision.authorized
+    assert decision.reason == "verifier_root_downgrade"
 
 
 def test_registry_rejects_active_digest_or_history_tamper() -> None:
