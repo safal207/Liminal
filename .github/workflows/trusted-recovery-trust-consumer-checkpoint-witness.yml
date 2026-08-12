@@ -152,7 +152,8 @@ jobs:
               "trusted-recovery-trust-consumer-checkpoint-attested.yml"
           )
           manifest_path = Path(os.environ["MANIFEST_PATH"])
-          manifest = parse_manifest_bytes(manifest_path.read_bytes())
+          manifest_bytes = manifest_path.read_bytes()
+          manifest = parse_manifest_bytes(manifest_bytes)
 
           producer_root = Path(
               "checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested"
@@ -209,7 +210,8 @@ jobs:
               "generation": 1,
               "manifest_path": manifest_path.as_posix(),
               "manifest_reason": manifest_resolution.reason,
-              "manifest_sha256": entry.sha256,
+              "manifest_document_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+              "evidence_sha256": entry.sha256,
               "resolved_path": resolution.resolved_path,
               "resolution_reason": resolution.reason,
               "expected_signer": signer_workflow,
@@ -245,24 +247,99 @@ jobs:
             --format json \
             > checkpoint-evidence/checkpoint-attestation-verification.json
 
+      - name: Build verified evidence bundle
+        id: evidence-bundle
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          MANIFEST_PATH: ${{ steps.resolve-manifest.outputs.path }}
+          CHECKPOINT_PATH: ${{ steps.resolve-checkpoint.outputs.path }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+
+          from liminal.evidence_bundle import (
+              build_verified_evidence_bundle,
+              canonical_evidence_bundle_bytes,
+              evidence_bundle_sha256,
+          )
+          from liminal.evidence_manifest import parse_manifest_bytes
+
+          producer_sha = "f31b56a5e21a668bcb98791b05542652760dcc27"
+          signer_workflow = (
+              "safal207/Liminal/.github/workflows/"
+              "trusted-recovery-trust-consumer-checkpoint-attested.yml"
+          )
+          manifest_path = Path(os.environ["MANIFEST_PATH"])
+          checkpoint_path = Path(os.environ["CHECKPOINT_PATH"])
+          manifest_bytes = manifest_path.read_bytes()
+          checkpoint_bytes = checkpoint_path.read_bytes()
+          manifest_verification = Path(
+              "checkpoint-evidence/manifest-attestation-verification.json"
+          ).read_bytes()
+          checkpoint_verification = Path(
+              "checkpoint-evidence/checkpoint-attestation-verification.json"
+          ).read_bytes()
+          manifest = parse_manifest_bytes(manifest_bytes)
+          bundle = build_verified_evidence_bundle(
+              manifest,
+              logical_id="trust-consumer-checkpoint:generation-1",
+              generation=1,
+              manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),
+              manifest_verification_json_sha256=hashlib.sha256(
+                  manifest_verification
+              ).hexdigest(),
+              manifest_signer_workflow=signer_workflow,
+              manifest_signer_digest=producer_sha,
+              evidence_sha256=hashlib.sha256(checkpoint_bytes).hexdigest(),
+              evidence_verification_json_sha256=hashlib.sha256(
+                  checkpoint_verification
+              ).hexdigest(),
+              evidence_signer_workflow=signer_workflow,
+              evidence_signer_digest=producer_sha,
+              manifest_verification_succeeded=True,
+              evidence_verification_succeeded=True,
+          )
+          raw = canonical_evidence_bundle_bytes(bundle)
+          path = Path(
+              "artifacts/trust-consumer-checkpoint-witness/evidence-bundle-v0.1.json"
+          )
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_bytes(raw)
+          digest = evidence_bundle_sha256(bundle)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"path={path.as_posix()}\n")
+              output.write(f"sha256={digest}\n")
+          print(f"evidence_bundle_sha256={digest}")
+          print(f"manifest_sha256={bundle.manifest.sha256}")
+          print(f"checkpoint_sha256={bundle.evidence.sha256}")
+          PY
+
       - name: Recover witness and reject stale checkpoint
         env:
           PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
           CHECKPOINT_PATH: ${{ steps.resolve-checkpoint.outputs.path }}
+          EVIDENCE_BUNDLE_PATH: ${{ steps.evidence-bundle.outputs.path }}
         run: |
           set -euo pipefail
           python scripts/run-recovery-trust-consumer-checkpoint-witness-drill.py \
-            --witness policies/recovery-trust-consumer-checkpoint-witness-v0.1.json \
+            --witness policies/recovery-trust-consumer-checkpoint-witness-v0.2.json \
             --baseline-checkpoint policies/recovery-trust-consumer-checkpoint-v0.2.json \
             --candidate-checkpoint "${CHECKPOINT_PATH}" \
             --checkpoint-verification-json checkpoint-evidence/checkpoint-attestation-verification.json \
+            --evidence-bundle-json "${EVIDENCE_BUNDLE_PATH}" \
             --output-dir artifacts/trust-consumer-checkpoint-witness
 
-      - name: Assert witness recovery verdicts
+      - name: Assert witness recovery verdicts and bundle links
+        env:
+          EVIDENCE_BUNDLE_SHA256: ${{ steps.evidence-bundle.outputs.sha256 }}
         run: |
           set -euo pipefail
           python - <<'PY'
           import json
+          import os
           from pathlib import Path
 
           result = json.loads(
@@ -275,18 +352,36 @@ jobs:
           assert result["permanent_checkpoint_mutated"] is False
           assert result["permanent_witness_mutated"] is False
           assert result["checkpoint_attestation"]["cryptographically_verified"] is True
+          assert result["evidence_bundle"]["bundle_sha256"] == os.environ[
+              "EVIDENCE_BUNDLE_SHA256"
+          ]
+          assert result["evidence_bundle"]["evidence_sha256"] == result[
+              "checkpoint_attestation"
+          ]["subject_sha256"]
+          assert result["evidence_bundle"]["evidence_signer_digest"] == (
+              "f31b56a5e21a668bcb98791b05542652760dcc27"
+          )
           assert result["advance"]["authorized"] is True
           assert result["advance"]["reason"] == "checkpoint_witness_advanced"
           assert result["advance"]["observed_generation"] == 1
+          assert result["advance"]["checkpoint_sha256"] == result[
+              "evidence_bundle"
+          ]["evidence_sha256"]
           assert result["recovered_consumer"]["local_generation_1_checkpoint_available"] is False
           assert result["recovered_consumer"]["verified_witness_available"] is True
           assert result["recovered_consumer"]["current_checkpoint_authorized"] is True
           assert result["stale_checkpoint_replay"]["authorized"] is False
           assert result["stale_checkpoint_replay"]["reason"] == "stale_checkpoint"
+          print("evidence_bundle_link=VERIFIED")
           print("checkpoint_witness_advance=AUTHORIZED")
           print("lost_local_checkpoint=recovered_from_witness")
           print("old_checkpoint_replay=REJECT:stale_checkpoint")
           PY
+
+      - name: Attest verified evidence bundle
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-consumer-checkpoint-witness/evidence-bundle-v0.1.json
 
       - name: Attest recovered generation-1 witness
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
