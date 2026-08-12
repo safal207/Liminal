@@ -106,82 +106,64 @@ jobs:
             --format json \
             > verifier-gh/checkpoint.json
 
-      - name: Retrieve Sigstore bundles without GitHub CLI verification output
+      - name: Download Sigstore bundles without reusing GitHub verifier output
         env:
-          API_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
           MANIFEST_PATH: ${{ steps.source.outputs.manifest }}
           CHECKPOINT_PATH: ${{ steps.source.outputs.checkpoint }}
         run: |
           set -euo pipefail
-          python - <<'PY'
-          import hashlib
+          mkdir -p cosign-input
+
+          download_subject() {
+            local subject_name="$1"
+            local subject_path="$2"
+            local absolute_path
+            absolute_path="$(realpath "${subject_path}")"
+            local download_dir="cosign-download/${subject_name}"
+            local output_dir="cosign-input/${subject_name}"
+            mkdir -p "${download_dir}" "${output_dir}"
+            (
+              cd "${download_dir}"
+              gh attestation download \
+                "${absolute_path}" \
+                --repo safal207/Liminal \
+                --predicate-type "https://slsa.dev/provenance/v1" \
+                --limit 100
+            )
+            local jsonl
+            jsonl="$(find "${download_dir}" -maxdepth 1 -type f -name '*.jsonl' -print -quit)"
+            test -n "${jsonl}" || {
+              echo "no downloaded attestation JSONL for ${subject_name}"
+              exit 1
+            }
+            cp "${jsonl}" "${output_dir}/downloaded-bundles.jsonl"
+            python - "${jsonl}" "${output_dir}" <<'PY'
           import json
-          import os
-          import urllib.request
+          import sys
           from pathlib import Path
 
-          token = os.environ["API_TOKEN"]
-          headers = {
-              "Accept": "application/vnd.github+json",
-              "Authorization": f"Bearer {token}",
-              "X-GitHub-Api-Version": "2026-03-10",
-              "User-Agent": "liminal-independent-verifier-portability-v0.1",
-          }
-
-          def fetch_json(url: str) -> object:
-              request = urllib.request.Request(url, headers=headers)
-              with urllib.request.urlopen(request, timeout=30) as response:
-                  return json.loads(response.read().decode("utf-8"))
-
-          subjects = {
-              "manifest": Path(os.environ["MANIFEST_PATH"]),
-              "checkpoint": Path(os.environ["CHECKPOINT_PATH"]),
-          }
-          root = Path("cosign-input")
-          for name, path in subjects.items():
-              digest = hashlib.sha256(path.read_bytes()).hexdigest()
-              url = (
-                  "https://api.github.com/repos/safal207/Liminal/attestations/"
-                  f"sha256:{digest}?predicate_type=provenance&per_page=100"
-              )
-              payload = fetch_json(url)
-              if not isinstance(payload, dict):
-                  raise RuntimeError("attestation_api_response_must_be_object")
-              entries = payload.get("attestations")
-              if not isinstance(entries, list):
-                  raise RuntimeError("attestation_api_entries_must_be_array")
-
-              subject_dir = root / name
-              subject_dir.mkdir(parents=True, exist_ok=True)
-              (subject_dir / "api-response.json").write_text(
-                  json.dumps(payload, indent=2, sort_keys=True) + "\n"
-              )
-              written = 0
-              for index, entry in enumerate(entries):
-                  if not isinstance(entry, dict):
-                      continue
-                  if entry.get("repository_id") != 1005410203:
-                      continue
-                  bundle = entry.get("bundle")
-                  if bundle is None:
-                      bundle_url = entry.get("bundle_url")
-                      if not isinstance(bundle_url, str) or not bundle_url:
-                          continue
-                      request = urllib.request.Request(
-                          bundle_url,
-                          headers={"User-Agent": headers["User-Agent"]},
-                      )
-                      with urllib.request.urlopen(request, timeout=30) as response:
-                          bundle = json.loads(response.read().decode("utf-8"))
-                  if not isinstance(bundle, dict):
-                      continue
-                  candidate = subject_dir / f"candidate-{index:03d}.sigstore.json"
-                  candidate.write_text(json.dumps(bundle, sort_keys=True) + "\n")
-                  written += 1
-              if written == 0:
-                  raise RuntimeError(f"no_sigstore_bundles_for_{name}")
-              print(f"{name}_sigstore_bundle_candidates={written}")
+          source = Path(sys.argv[1])
+          target = Path(sys.argv[2])
+          lines = [line for line in source.read_text().splitlines() if line.strip()]
+          if not lines:
+              raise SystemExit("downloaded_attestation_jsonl_empty")
+          written = 0
+          for index, line in enumerate(lines):
+              bundle = json.loads(line)
+              if not isinstance(bundle, dict):
+                  continue
+              path = target / f"candidate-{index:03d}.sigstore.json"
+              path.write_text(json.dumps(bundle, sort_keys=True) + "\n")
+              written += 1
+          if written == 0:
+              raise SystemExit("no_sigstore_bundles_materialized")
+          print(f"sigstore_bundle_candidates={written}")
           PY
+          }
+
+          download_subject manifest "${MANIFEST_PATH}"
+          download_subject checkpoint "${CHECKPOINT_PATH}"
 
       - name: Independently verify subjects with Cosign and certificate policy
         env:
