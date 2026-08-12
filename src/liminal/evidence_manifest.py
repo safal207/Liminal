@@ -185,6 +185,90 @@ def canonical_manifest_bytes(manifest: EvidenceManifest) -> bytes:
     return (json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n").encode()
 
 
+def _require_mapping(value: object, *, field: str) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise ValueError(f"{field}_must_be_object")
+    return value
+
+
+def _require_string(value: object, *, field: str) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f"{field}_must_be_string")
+    return value
+
+
+def _require_optional_string(value: object, *, field: str) -> str | None:
+    if value is None:
+        return None
+    return _require_string(value, field=field)
+
+
+def parse_manifest_bytes(data: bytes) -> EvidenceManifest:
+    """Parse and strictly validate one v0.1 manifest document."""
+
+    try:
+        payload = json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError("invalid_evidence_manifest_json") from exc
+
+    document = _require_mapping(payload, field="manifest")
+    schema = _require_string(document.get("schema"), field="manifest_schema")
+    raw_entries = document.get("entries")
+    if not isinstance(raw_entries, list):
+        raise ValueError("manifest_entries_must_be_array")
+
+    entries: list[EvidenceManifestEntry] = []
+    for raw_entry in raw_entries:
+        item = _require_mapping(raw_entry, field="manifest_entry")
+        raw_verification = _require_mapping(
+            item.get("verification"), field="manifest_verification"
+        )
+        required = raw_verification.get("required")
+        if not isinstance(required, bool):
+            raise ValueError("manifest_verification_required_must_be_boolean")
+        generation = item.get("generation")
+        if not isinstance(generation, int) or isinstance(generation, bool):
+            raise ValueError("manifest_generation_must_be_integer")
+
+        entries.append(
+            EvidenceManifestEntry(
+                logical_id=_require_string(
+                    item.get("logical_id"), field="manifest_logical_id"
+                ),
+                producer=_require_string(
+                    item.get("producer"), field="manifest_producer"
+                ),
+                evidence_type=_require_string(
+                    item.get("evidence_type"), field="manifest_evidence_type"
+                ),
+                relative_locator=_require_string(
+                    item.get("relative_locator"), field="manifest_relative_locator"
+                ),
+                sha256=_require_string(item.get("sha256"), field="manifest_sha256"),
+                generation=generation,
+                verification=VerificationExpectation(
+                    required=required,
+                    verifier=_require_string(
+                        raw_verification.get("verifier"),
+                        field="manifest_verification_verifier",
+                    ),
+                    expected_signer=_require_optional_string(
+                        raw_verification.get("expected_signer"),
+                        field="manifest_verification_expected_signer",
+                    ),
+                    expected_signer_digest=_require_optional_string(
+                        raw_verification.get("expected_signer_digest"),
+                        field="manifest_verification_expected_signer_digest",
+                    ),
+                ),
+            )
+        )
+
+    manifest = EvidenceManifest(entries=tuple(entries), schema=schema)
+    validate_manifest(manifest)
+    return manifest
+
+
 def _defer(
     *,
     reason: ManifestReason,
@@ -230,9 +314,7 @@ def resolve_manifest_evidence(
             if entry.logical_id == logical_id and entry.generation == generation
         )
 
-    unique_entries = tuple(
-        dict.fromkeys(matching_entries)
-    )
+    unique_entries = tuple(dict.fromkeys(matching_entries))
     if not unique_entries:
         return _defer(
             reason=ManifestReason.MANIFEST_ENTRY_NOT_FOUND,
@@ -269,9 +351,7 @@ def resolve_manifest_evidence(
             entry=entry,
         )
 
-    unique_paths = {
-        candidate.path: candidate for candidate in digest_matches
-    }
+    unique_paths = {candidate.path: candidate for candidate in digest_matches}
     if len(unique_paths) > 1:
         return _defer(
             reason=ManifestReason.AMBIGUOUS_DIGEST_MATCHES,
