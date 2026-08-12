@@ -1,0 +1,392 @@
+name: Evidence Topology Portability v0.1
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  produce-attested-checkpoint:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml@f31b56a5e21a668bcb98791b05542652760dcc27
+
+  prove-topology-portability:
+    needs: produce-attested-checkpoint
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable portability source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable portability checkout
+        env:
+          LIMINAL_PORTABILITY_REPOSITORY: ${{ job.workflow_repository }}
+          LIMINAL_PORTABILITY_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "${actual_sha}" = "${LIMINAL_PORTABILITY_WORKFLOW_SHA}" || {
+            echo "portability checkout mismatch: ${actual_sha} != ${LIMINAL_PORTABILITY_WORKFLOW_SHA}"
+            exit 1
+          }
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Download immutable producer evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-attested
+          path: source-evidence
+
+      - name: Locate unique producer subjects
+        id: source
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          root = Path("source-evidence")
+          manifests = sorted(root.rglob("evidence-manifest-v0.1.json"))
+          checkpoints = sorted(root.rglob("checkpoint-generation-1.json"))
+          assert len(manifests) == 1, manifests
+          assert len(checkpoints) == 1, checkpoints
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"manifest={manifests[0].as_posix()}\n")
+              output.write(f"checkpoint={checkpoints[0].as_posix()}\n")
+          print(f"source_manifest={manifests[0]}")
+          print(f"source_checkpoint={checkpoints[0]}")
+          PY
+
+      - name: Verify immutable producer signer on source manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANIFEST_PATH: ${{ steps.source.outputs.manifest }}
+        run: |
+          set -euo pipefail
+          mkdir -p source-verification
+          gh attestation verify \
+            "${MANIFEST_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > source-verification/manifest.json
+
+      - name: Verify immutable producer signer on source checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKPOINT_PATH: ${{ steps.source.outputs.checkpoint }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            "${CHECKPOINT_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > source-verification/checkpoint.json
+
+      - name: Materialize two topologies and prove portable trust
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          SOURCE_MANIFEST: ${{ steps.source.outputs.manifest }}
+          SOURCE_CHECKPOINT: ${{ steps.source.outputs.checkpoint }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          from liminal.evidence_bundle import (
+              build_verified_evidence_bundle,
+              canonical_evidence_bundle_bytes,
+              evidence_bundle_sha256,
+          )
+          from liminal.evidence_manifest import (
+              ManifestCandidate,
+              canonical_manifest_bytes,
+              parse_manifest_bytes,
+          )
+          from liminal.evidence_topology_portability import (
+              TopologyObservation,
+              VerifiedBundleInputs,
+              evaluate_topology_portability,
+          )
+          from liminal.recovery_trust_consumer_checkpoint_attested import checkpoint_sha256
+          from liminal.recovery_trust_consumer_checkpoint_witness import (
+              VerifiedCheckpointEvidence,
+              evaluate_checkpoint_candidate,
+              validate_witness,
+              witness_sha256,
+          )
+          from liminal.recovery_trust_root_registry import canonical_json_bytes
+
+          logical_id = "trust-consumer-checkpoint:generation-1"
+          generation = 1
+          signer_workflow = (
+              "safal207/Liminal/.github/workflows/"
+              "trusted-recovery-trust-consumer-checkpoint-attested.yml"
+          )
+          signer_sha = "f31b56a5e21a668bcb98791b05542652760dcc27"
+
+          source_manifest_path = Path(os.environ["SOURCE_MANIFEST"])
+          source_checkpoint_path = Path(os.environ["SOURCE_CHECKPOINT"])
+          manifest_raw = source_manifest_path.read_bytes()
+          checkpoint_raw = source_checkpoint_path.read_bytes()
+          manifest = parse_manifest_bytes(manifest_raw)
+          assert canonical_manifest_bytes(manifest) == manifest_raw
+          manifest_sha = hashlib.sha256(manifest_raw).hexdigest()
+          evidence_sha = hashlib.sha256(checkpoint_raw).hexdigest()
+
+          topology_a_manifest = Path("topology-a/evidence-manifest-v0.1.json")
+          topology_a_evidence = Path("topology-a/checkpoint-generation-1.json")
+          topology_b_manifest = Path("topology-b/meta/opaque-evidence-index.bin")
+          topology_b_evidence = Path("topology-b/transport/layers/opaque-blob.dat")
+          for path in (
+              topology_a_manifest,
+              topology_a_evidence,
+              topology_b_manifest,
+              topology_b_evidence,
+          ):
+              path.parent.mkdir(parents=True, exist_ok=True)
+          topology_a_manifest.write_bytes(manifest_raw)
+          topology_a_evidence.write_bytes(checkpoint_raw)
+          topology_b_manifest.write_bytes(manifest_raw)
+          topology_b_evidence.write_bytes(checkpoint_raw)
+
+          assert hashlib.sha256(topology_a_manifest.read_bytes()).hexdigest() == manifest_sha
+          assert hashlib.sha256(topology_b_manifest.read_bytes()).hexdigest() == manifest_sha
+          assert hashlib.sha256(topology_a_evidence.read_bytes()).hexdigest() == evidence_sha
+          assert hashlib.sha256(topology_b_evidence.read_bytes()).hexdigest() == evidence_sha
+
+          # Resolve the manifest itself by verified content digest in each bounded topology.
+          def unique_digest_path(root: Path, expected_sha: str) -> str:
+              matches = []
+              for path in sorted(root.rglob("*")):
+                  if path.is_file() and hashlib.sha256(path.read_bytes()).hexdigest() == expected_sha:
+                      matches.append(path.as_posix())
+              assert len(matches) == 1, matches
+              return matches[0]
+
+          resolved_manifest_a = unique_digest_path(Path("topology-a"), manifest_sha)
+          resolved_manifest_b = unique_digest_path(Path("topology-b"), manifest_sha)
+          assert resolved_manifest_a != resolved_manifest_b
+
+          manifest_verification_sha = hashlib.sha256(
+              Path("source-verification/manifest.json").read_bytes()
+          ).hexdigest()
+          checkpoint_verification_sha = hashlib.sha256(
+              Path("source-verification/checkpoint.json").read_bytes()
+          ).hexdigest()
+          verified = VerifiedBundleInputs(
+              manifest_sha256=manifest_sha,
+              manifest_verification_json_sha256=manifest_verification_sha,
+              manifest_signer_workflow=signer_workflow,
+              manifest_signer_digest=signer_sha,
+              evidence_verification_json_sha256=checkpoint_verification_sha,
+              evidence_signer_workflow=signer_workflow,
+              evidence_signer_digest=signer_sha,
+          )
+
+          left = TopologyObservation(
+              name="flat-expected-name",
+              expected_path=topology_a_evidence.as_posix(),
+              allowed_prefixes=("topology-a/",),
+              candidates=(
+                  ManifestCandidate(
+                      path=topology_a_evidence.as_posix(),
+                      sha256=evidence_sha,
+                      verification_available=True,
+                  ),
+              ),
+          )
+          right = TopologyObservation(
+              name="deep-renamed-blob",
+              expected_path="topology-b/checkpoint-generation-1.json",
+              allowed_prefixes=("topology-b/transport/layers/",),
+              candidates=(
+                  ManifestCandidate(
+                      path=topology_b_evidence.as_posix(),
+                      sha256=evidence_sha,
+                      verification_available=True,
+                  ),
+              ),
+          )
+          verdict = evaluate_topology_portability(
+              manifest,
+              logical_id=logical_id,
+              generation=generation,
+              left=left,
+              right=right,
+              verified=verified,
+          )
+          assert verdict.portable is True, verdict.reason
+          assert verdict.left.bundle_sha256 == verdict.right.bundle_sha256
+          assert verdict.left.authorization_reason == "verified_recovery"
+          assert verdict.right.authorization_reason == "verified_recovery"
+
+          bundle = build_verified_evidence_bundle(
+              manifest,
+              logical_id=logical_id,
+              generation=generation,
+              manifest_sha256=manifest_sha,
+              manifest_verification_json_sha256=manifest_verification_sha,
+              manifest_signer_workflow=signer_workflow,
+              manifest_signer_digest=signer_sha,
+              evidence_sha256=evidence_sha,
+              evidence_verification_json_sha256=checkpoint_verification_sha,
+              evidence_signer_workflow=signer_workflow,
+              evidence_signer_digest=signer_sha,
+              manifest_verification_succeeded=True,
+              evidence_verification_succeeded=True,
+          )
+          bundle_sha = evidence_bundle_sha256(bundle)
+          assert bundle_sha == verdict.left.bundle_sha256
+
+          output_dir = Path("artifacts/evidence-topology-portability")
+          output_dir.mkdir(parents=True, exist_ok=True)
+          bundle_path = output_dir / "portable-evidence-bundle.json"
+          bundle_path.write_bytes(canonical_evidence_bundle_bytes(bundle))
+
+          witness_root = json.loads(
+              Path("policies/recovery-trust-consumer-checkpoint-witness-v0.2.json").read_text()
+          )
+          baseline_checkpoint = json.loads(
+              Path("policies/recovery-trust-consumer-checkpoint-v0.2.json").read_text()
+          )
+          assert validate_witness(witness_root)
+          evidence = VerifiedCheckpointEvidence(
+              verified=True,
+              signer_workflow_path=signer_workflow.replace("safal207/Liminal/", ""),
+              signer_workflow_sha=signer_sha,
+              subject_sha256=evidence_sha,
+          )
+
+          decisions = []
+          for name, path in (
+              ("flat-expected-name", topology_a_evidence),
+              ("deep-renamed-blob", topology_b_evidence),
+          ):
+              candidate = json.loads(path.read_text())
+              assert checkpoint_sha256(candidate) == evidence_sha
+              decision = evaluate_checkpoint_candidate(
+                  witness_root,
+                  candidate,
+                  previous_checkpoint=baseline_checkpoint,
+                  checkpoint_evidence=evidence,
+              )
+              assert decision.authorized is True, decision.reason
+              assert decision.reason == "checkpoint_witness_advanced"
+              assert decision.next_witness is not None
+              decisions.append(
+                  {
+                      "topology": name,
+                      "authorized": decision.authorized,
+                      "reason": decision.reason,
+                      "next_witness_sha256": witness_sha256(decision.next_witness),
+                  }
+              )
+          assert decisions[0]["reason"] == decisions[1]["reason"]
+          assert decisions[0]["next_witness_sha256"] == decisions[1]["next_witness_sha256"]
+
+          result = {
+              "schema_version": "liminal.evidence-topology-portability-result.v0.1",
+              "verified": True,
+              "reason": "topology_portability_verified",
+              "logical_id": logical_id,
+              "generation": generation,
+              "manifest_sha256": manifest_sha,
+              "evidence_sha256": evidence_sha,
+              "evidence_bundle_sha256": bundle_sha,
+              "topologies": {
+                  "a": {
+                      "name": verdict.left.name,
+                      "manifest_path": resolved_manifest_a,
+                      "evidence_path": verdict.left.resolved_path,
+                      "resolution_reason": verdict.left.resolution_reason,
+                      "authorization_reason": verdict.left.authorization_reason,
+                      "bundle_sha256": verdict.left.bundle_sha256,
+                      "witness_decision": decisions[0],
+                  },
+                  "b": {
+                      "name": verdict.right.name,
+                      "manifest_path": resolved_manifest_b,
+                      "evidence_path": verdict.right.resolved_path,
+                      "resolution_reason": verdict.right.resolution_reason,
+                      "authorization_reason": verdict.right.authorization_reason,
+                      "bundle_sha256": verdict.right.bundle_sha256,
+                      "witness_decision": decisions[1],
+                  },
+              },
+              "equivalence": {
+                  "physical_paths_distinct": (
+                      verdict.left.resolved_path != verdict.right.resolved_path
+                      and resolved_manifest_a != resolved_manifest_b
+                  ),
+                  "manifest_digest_equal": True,
+                  "evidence_digest_equal": True,
+                  "bundle_digest_equal": (
+                      verdict.left.bundle_sha256 == verdict.right.bundle_sha256
+                  ),
+                  "recovery_decision_equal": (
+                      verdict.left.authorization_reason
+                      == verdict.right.authorization_reason
+                  ),
+                  "witness_decision_equal": (
+                      decisions[0]["reason"] == decisions[1]["reason"]
+                      and decisions[0]["next_witness_sha256"]
+                      == decisions[1]["next_witness_sha256"]
+                  ),
+              },
+          }
+          assert all(result["equivalence"].values())
+          (output_dir / "topology-portability-result.json").write_bytes(
+              canonical_json_bytes(result)
+          )
+          print(f"manifest_sha256={manifest_sha}")
+          print(f"evidence_sha256={evidence_sha}")
+          print(f"evidence_bundle_sha256={bundle_sha}")
+          print("topology_portability=VERIFIED")
+          PY
+
+      - name: Attest portable Evidence Bundle
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/evidence-topology-portability/portable-evidence-bundle.json
+
+      - name: Attest topology portability result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/evidence-topology-portability/topology-portability-result.json
+
+      - name: Upload topology portability evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: evidence-topology-portability
+          path: |
+            artifacts/evidence-topology-portability
+            topology-a
+            topology-b
+            source-verification
+          if-no-files-found: error
+          retention-days: 30
