@@ -1,0 +1,13 @@
+{
+  "schema_version": "liminal.recovery-trust-consumer-checkpoint-witness.v0.1",
+  "repository": "safal207/Liminal",
+  "observed_generation": 0,
+  "checkpoint_sha256": "9eea2ccb1105553c4d95433ae190f1a747400d6077c5bbca3153e0fd26cf3e00",
+  "accepted_registry_sha256": "bd43cb039d29245f3d7eb8b78a7a5fcde14d7bf638c4dfe98bb300b00f8670e1",
+  "accepted_manifest_sha256": "bd8aaa6162d0f7e9627e10ee6d495810820fd6fd8cd07d9d48e5d585786537b5",
+  "previous_witness_sha256": null,
+  "checkpoint_signer": {
+    "workflow_path": ".github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml",
+    "workflow_sha": "d0688725bd76fdf7221e84ca7c5bfb51e363ff72"
+  }
+}
