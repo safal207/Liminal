@@ -9,6 +9,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+from liminal.evidence_bundle import (
+    canonical_evidence_bundle_bytes,
+    evidence_bundle_sha256,
+    parse_evidence_bundle_bytes,
+)
 from liminal.recovery_trust_consumer_checkpoint_attested import checkpoint_sha256
 from liminal.recovery_trust_consumer_checkpoint_witness import (
     VerifiedCheckpointEvidence,
@@ -54,6 +59,7 @@ def main() -> int:
     )
     parser.add_argument("--candidate-checkpoint", required=True)
     parser.add_argument("--checkpoint-verification-json", required=True)
+    parser.add_argument("--evidence-bundle-json", required=True)
     parser.add_argument("--output-dir", required=True)
     args = parser.parse_args()
 
@@ -62,6 +68,7 @@ def main() -> int:
     candidate_path = Path(args.candidate_checkpoint)
     checkpoint_1 = _load(candidate_path)
     verification_path = Path(args.checkpoint_verification_json)
+    bundle_path = Path(args.evidence_bundle_json)
     output_dir = Path(args.output_dir)
 
     if not validate_witness(witness_0):
@@ -75,7 +82,27 @@ def main() -> int:
     if raw_candidate_sha256 != canonical_candidate_sha256:
         raise ValueError("candidate_checkpoint_not_canonical")
 
+    raw_bundle = bundle_path.read_bytes()
+    bundle = parse_evidence_bundle_bytes(raw_bundle)
+    canonical_bundle = canonical_evidence_bundle_bytes(bundle)
+    if raw_bundle != canonical_bundle:
+        raise ValueError("evidence_bundle_not_canonical")
+    bundle_sha256 = evidence_bundle_sha256(bundle)
+    if bundle.logical_id != "trust-consumer-checkpoint:generation-1":
+        raise ValueError("evidence_bundle_logical_id_mismatch")
+    if bundle.generation != 1:
+        raise ValueError("evidence_bundle_generation_mismatch")
+    if bundle.evidence.sha256 != canonical_candidate_sha256:
+        raise ValueError("evidence_bundle_checkpoint_digest_mismatch")
+    if bundle.evidence.verification_json_sha256 != verification_sha256:
+        raise ValueError("evidence_bundle_checkpoint_verification_digest_mismatch")
+
     signer = witness_0["checkpoint_signer"]
+    if bundle.evidence.signer_workflow != signer["workflow_path"]:
+        raise ValueError("evidence_bundle_checkpoint_signer_workflow_mismatch")
+    if bundle.evidence.signer_digest != signer["workflow_sha"]:
+        raise ValueError("evidence_bundle_checkpoint_signer_digest_mismatch")
+
     evidence = VerifiedCheckpointEvidence(
         verified=True,
         signer_workflow_path=signer["workflow_path"],
@@ -95,7 +122,7 @@ def main() -> int:
         raise ValueError("generation_1_witness_invalid")
 
     # Recovery boundary: after this point the consumer is modeled as having lost its local
-    # generation-1 checkpoint.  The recovered witness alone must still reject the old checkpoint.
+    # generation-1 checkpoint. The recovered witness alone must still reject the old checkpoint.
     stale = evaluate_checkpoint_candidate(
         witness_1,
         checkpoint_0,
@@ -121,6 +148,24 @@ def main() -> int:
         "external_provider_calls": 0,
         "permanent_checkpoint_mutated": False,
         "permanent_witness_mutated": False,
+        "evidence_bundle": {
+            "schema": bundle.schema,
+            "logical_id": bundle.logical_id,
+            "generation": bundle.generation,
+            "bundle_sha256": bundle_sha256,
+            "manifest_sha256": bundle.manifest.sha256,
+            "evidence_sha256": bundle.evidence.sha256,
+            "manifest_verification_json_sha256": (
+                bundle.manifest.verification_json_sha256
+            ),
+            "evidence_verification_json_sha256": (
+                bundle.evidence.verification_json_sha256
+            ),
+            "manifest_signer_workflow": bundle.manifest.signer_workflow,
+            "manifest_signer_digest": bundle.manifest.signer_digest,
+            "evidence_signer_workflow": bundle.evidence.signer_workflow,
+            "evidence_signer_digest": bundle.evidence.signer_digest,
+        },
         "checkpoint_attestation": {
             "cryptographically_verified": True,
             "subject_sha256": canonical_candidate_sha256,
