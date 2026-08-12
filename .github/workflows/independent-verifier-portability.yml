@@ -247,8 +247,6 @@ jobs:
                 --bundle "${candidate}" \
                 --certificate-identity "${signer_identity}" \
                 --certificate-oidc-issuer "${oidc_issuer}" \
-                --certificate-github-workflow-repository safal207/Liminal \
-                --certificate-github-workflow-ref "${SOURCE_REF}" \
                 --type "https://slsa.dev/provenance/v1" \
                 --digest "${digest}" \
                 --digestAlg sha256 \
