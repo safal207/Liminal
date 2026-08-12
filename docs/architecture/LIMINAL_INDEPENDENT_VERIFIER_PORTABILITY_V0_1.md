@@ -295,7 +295,7 @@ So the result must not be described as independent trust-provider portability.
 
 ## Expected next boundary
 
-The next meaningful experiment is **Trust-Provider Portability**: preserve the normalized security contract while changing more of the verification substrate itself rather than only the verifier implementation.
+The next meaningful experiment is **Trust-Provider Portability v0.1**: preserve the normalized security contract while changing more of the verification substrate itself rather than only the verifier implementation.
 
 Candidate direction:
 
