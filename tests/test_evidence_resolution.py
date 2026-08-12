@@ -3,6 +3,7 @@ from liminal.evidence_resolution import (
     ResolutionDisposition,
     ResolutionNode,
     ResolutionReason,
+    confirm_verified_recovery,
     resolve_evidence,
 )
 
@@ -22,7 +23,7 @@ def test_expected_path_resolves_without_reanchor() -> None:
             logical_id=CHECKPOINT_ID,
             expected_path=EXPECTED,
             allowed_prefixes=ALLOWED,
-            require_verified=True,
+            require_verification=True,
         ),
         [
             EvidenceLocator(
@@ -36,7 +37,7 @@ def test_expected_path_resolves_without_reanchor() -> None:
     assert result.disposition is ResolutionDisposition.RESOLVED
     assert result.reason == ResolutionReason.EXPECTED_LOCATOR_RESOLVED.value
     assert result.resolved_path == EXPECTED
-    assert result.verified is True
+    assert result.verification_available is True
     assert result.reanchor is None
 
 
@@ -46,7 +47,7 @@ def test_missing_expected_path_reanchors_to_one_admissible_nested_candidate() ->
             logical_id=CHECKPOINT_ID,
             expected_path=EXPECTED,
             allowed_prefixes=ALLOWED,
-            require_verified=True,
+            require_verification=True,
         ),
         [
             EvidenceLocator(
@@ -58,7 +59,7 @@ def test_missing_expected_path_reanchors_to_one_admissible_nested_candidate() ->
     )
 
     assert result.disposition is ResolutionDisposition.RESOLVED
-    assert result.reason == ResolutionReason.VERIFIED_REANCHOR.value
+    assert result.reason == ResolutionReason.REANCHOR_RESOLVED.value
     assert result.resolved_path == NESTED
     assert result.reanchor is not None
     assert result.reanchor.from_path == EXPECTED
@@ -71,7 +72,7 @@ def test_multiple_admissible_candidates_defer_fail_closed() -> None:
             logical_id=CHECKPOINT_ID,
             expected_path=EXPECTED,
             allowed_prefixes=ALLOWED,
-            require_verified=True,
+            require_verification=True,
         ),
         [
             EvidenceLocator(
@@ -93,7 +94,7 @@ def test_multiple_admissible_candidates_defer_fail_closed() -> None:
 
     assert result.disposition is ResolutionDisposition.DEFER
     assert result.reason == ResolutionReason.AMBIGUOUS_EVIDENCE_CANDIDATES.value
-    assert result.authorized is False
+    assert result.resolved is False
     assert result.resolved_path is None
 
 
@@ -103,7 +104,7 @@ def test_required_verification_unavailable_defers_instead_of_reanchoring() -> No
             logical_id=CHECKPOINT_ID,
             expected_path=EXPECTED,
             allowed_prefixes=ALLOWED,
-            require_verified=True,
+            require_verification=True,
         ),
         [
             EvidenceLocator(
@@ -115,17 +116,17 @@ def test_required_verification_unavailable_defers_instead_of_reanchoring() -> No
     )
 
     assert result.disposition is ResolutionDisposition.DEFER
-    assert result.reason == ResolutionReason.VERIFIED_EVIDENCE_REQUIRED.value
-    assert result.authorized is False
+    assert result.reason == ResolutionReason.VERIFICATION_PATH_REQUIRED.value
+    assert result.resolved is False
 
 
-def test_verified_recovery_ignores_unrelated_logical_evidence() -> None:
-    result = resolve_evidence(
+def test_verified_recovery_requires_external_verification_success() -> None:
+    resolution = resolve_evidence(
         ResolutionNode(
             logical_id=CHECKPOINT_ID,
             expected_path=EXPECTED,
             allowed_prefixes=ALLOWED,
-            require_verified=True,
+            require_verification=True,
         ),
         [
             EvidenceLocator(
@@ -141,7 +142,18 @@ def test_verified_recovery_ignores_unrelated_logical_evidence() -> None:
         ],
     )
 
-    assert result.authorized is True
-    assert result.verified is True
-    assert result.reason == ResolutionReason.VERIFIED_REANCHOR.value
-    assert result.resolved_path == NESTED
+    failed = confirm_verified_recovery(
+        resolution,
+        verification_succeeded=False,
+    )
+    verified = confirm_verified_recovery(
+        resolution,
+        verification_succeeded=True,
+    )
+
+    assert failed.authorized is False
+    assert failed.reason == ResolutionReason.VERIFICATION_FAILED.value
+    assert verified.authorized is True
+    assert verified.reason == ResolutionReason.VERIFIED_RECOVERY.value
+    assert verified.resolved_path == NESTED
+    assert verified.reanchor is not None
