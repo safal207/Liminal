@@ -1,7 +1,7 @@
 """Verified evidence bundle for chaining manifest, evidence, and recovery proof.
 
 The bundle is created only after manifest and evidence verification have succeeded.
-It deliberately excludes physical artifact paths from trust identity.  Downstream
+It deliberately excludes physical artifact paths from trust identity. Downstream
 recovery evidence can bind to the canonical bundle SHA-256 and thereby expose an
 inspectable chain from verified manifest to verified evidence without making
 artifact packaging authoritative.
@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from liminal.evidence_manifest import EvidenceManifest, validate_manifest
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_GIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 _SCHEMA = "liminal-evidence-bundle/v0.1"
 
 
@@ -48,6 +49,11 @@ def _validate_sha256(value: str, *, field: str) -> None:
         raise ValueError(f"{field}_must_be_lowercase_sha256")
 
 
+def _validate_git_sha(value: str, *, field: str) -> None:
+    if not _GIT_SHA_RE.fullmatch(value):
+        raise ValueError(f"{field}_must_be_lowercase_git_sha")
+
+
 def _validate_subject(subject: VerifiedBundleSubject, *, prefix: str) -> None:
     _validate_sha256(subject.sha256, field=f"{prefix}_sha256")
     _validate_sha256(
@@ -56,7 +62,7 @@ def _validate_subject(subject: VerifiedBundleSubject, *, prefix: str) -> None:
     )
     if not subject.signer_workflow:
         raise ValueError(f"{prefix}_signer_workflow_must_be_non_empty")
-    _validate_sha256(subject.signer_digest, field=f"{prefix}_signer_digest")
+    _validate_git_sha(subject.signer_digest, field=f"{prefix}_signer_digest")
 
 
 def validate_evidence_bundle(bundle: EvidenceBundle) -> None:
