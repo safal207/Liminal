@@ -8,6 +8,7 @@ from liminal.evidence_manifest import (
     ManifestReason,
     VerificationExpectation,
     canonical_manifest_bytes,
+    parse_manifest_bytes,
     resolve_manifest_evidence,
     validate_manifest,
 )
@@ -203,3 +204,30 @@ def test_missing_manifest_entry_defers() -> None:
 
     assert result.disposition is ManifestDisposition.DEFER
     assert result.reason == ManifestReason.MANIFEST_ENTRY_NOT_FOUND.value
+
+
+def test_strict_parser_round_trips_canonical_manifest() -> None:
+    manifest = _manifest(_entry())
+    parsed = parse_manifest_bytes(canonical_manifest_bytes(manifest))
+    assert parsed == manifest
+
+
+def test_strict_parser_rejects_malformed_json() -> None:
+    try:
+        parse_manifest_bytes(b"{not-json")
+    except ValueError as exc:
+        assert str(exc) == "invalid_evidence_manifest_json"
+    else:
+        raise AssertionError("expected ValueError")
+
+
+def test_strict_parser_rejects_wrong_generation_type() -> None:
+    payload = canonical_manifest_bytes(_manifest(_entry())).replace(
+        b'"generation":1', b'"generation":"1"'
+    )
+    try:
+        parse_manifest_bytes(payload)
+    except ValueError as exc:
+        assert str(exc) == "manifest_generation_must_be_integer"
+    else:
+        raise AssertionError("expected ValueError")
