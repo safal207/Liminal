@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   run-immutable-witness:
-    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness.yml@8de10a528d803877c0186fcb497d2ce3a92ee785
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness.yml@57281e9de12078d70cd5c30783f92f866dcc7324
 
   verify-witness-externally:
     needs: run-immutable-witness
@@ -67,7 +67,7 @@ jobs:
             witness-evidence/witness-generation-1.json \
             --repo safal207/Liminal \
             --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness.yml \
-            --signer-digest 8de10a528d803877c0186fcb497d2ce3a92ee785 \
+            --signer-digest 57281e9de12078d70cd5c30783f92f866dcc7324 \
             --source-ref "${{ github.ref }}" \
             --deny-self-hosted-runners \
             --format json \
@@ -82,7 +82,7 @@ jobs:
             witness-evidence/checkpoint-witness-drill-result.json \
             --repo safal207/Liminal \
             --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness.yml \
-            --signer-digest 8de10a528d803877c0186fcb497d2ce3a92ee785 \
+            --signer-digest 57281e9de12078d70cd5c30783f92f866dcc7324 \
             --source-ref "${{ github.ref }}" \
             --deny-self-hosted-runners \
             --format json \
