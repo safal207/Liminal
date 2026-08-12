@@ -1,0 +1,84 @@
+name: Trusted Recovery Trust Root Rotation Drill v0.1
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  run-and-attest-rotation-drill:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable rotation drill source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable rotation drill checkout
+        env:
+          LIMINAL_ROTATION_DRILL_REPOSITORY: ${{ job.workflow_repository }}
+          LIMINAL_ROTATION_DRILL_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "${actual_sha}" = "${LIMINAL_ROTATION_DRILL_WORKFLOW_SHA}" || {
+            echo "rotation drill checkout mismatch: ${actual_sha} != ${LIMINAL_ROTATION_DRILL_WORKFLOW_SHA}"
+            exit 1
+          }
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Run trust root rotation and downgrade rejection drill
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python scripts/run-recovery-trust-root-rotation-drill.py \
+            --registry policies/recovery-trust-root-registry-v0.1.json \
+            --rotated-verifier-sha ca69a7d342a4e00dfc2d11b13016a8eb7733da6b \
+            --repository-root "${GITHUB_WORKSPACE}" \
+            --output-dir artifacts/trust-root-rotation-drill
+
+      - name: Assert machine-readable rotation verdicts
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(
+              Path("artifacts/trust-root-rotation-drill/rotation-drill-result.json").read_text()
+          )
+          assert result["verified"] is True
+          assert result["external_provider_calls"] == 0
+          assert result["legitimate_rotation"]["authorized"] is True
+          assert result["legitimate_rotation"]["reason"] == "registry_rotation_authorized"
+          assert result["legitimate_rotation"]["workflow_blob_unchanged"] is True
+          assert result["downgrade_attempt"]["structurally_valid"] is True
+          assert result["downgrade_attempt"]["authorized"] is False
+          assert result["downgrade_attempt"]["reason"] == "verifier_root_downgrade"
+          print("rotation_drill=AUTHORIZED")
+          print("downgrade_attempt=REJECT:verifier_root_downgrade")
+          PY
+
+      - name: Attest rotation drill result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-root-rotation-drill/rotation-drill-result.json
+
+      - name: Upload trust root rotation drill evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trusted-recovery-trust-root-rotation-drill
+          path: artifacts/trust-root-rotation-drill
+          if-no-files-found: error
+          retention-days: 30
