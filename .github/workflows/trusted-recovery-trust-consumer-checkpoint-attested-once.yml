@@ -1,0 +1,106 @@
+name: Trusted Recovery Trust Consumer Checkpoint Attested Once
+
+on:
+  push:
+    branches:
+      - agent/recovery-routing-v0-1
+    paths:
+      - '.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested-once.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  run-immutable-checkpoint-consumer:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml@d0688725bd76fdf7221e84ca7c5bfb51e363ff72
+
+  verify-checkpoint-externally:
+    needs: run-immutable-checkpoint-consumer
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      attestations: read
+
+    steps:
+      - name: Download attested checkpoint evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-attested
+          path: checkpoint-evidence
+
+      - name: Assert checkpoint linkage and stale rejection
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          root = Path("checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested")
+          checkpoint_0 = json.loads((root / "checkpoint-generation-0.json").read_text())
+          checkpoint_1 = json.loads((root / "checkpoint-generation-1.json").read_text())
+          result = json.loads((root / "consumer-checkpoint-attested-result.json").read_text())
+
+          canonical_0 = (json.dumps(checkpoint_0, sort_keys=True, separators=(",", ":")) + "\n").encode()
+          checkpoint_0_sha256 = hashlib.sha256(canonical_0).hexdigest()
+
+          assert result["verified"] is True
+          assert result["external_provider_calls"] == 0
+          assert result["rotation_authorization"]["cryptographically_verified"] is True
+          assert result["advance"]["authorized"] is True
+          assert result["advance"]["accepted_generation"] == 1
+          assert result["stale_replay"]["authorized"] is False
+          assert result["stale_replay"]["reason"] == "stale_registry"
+          assert checkpoint_1["accepted_generation"] == 1
+          assert checkpoint_1["previous_checkpoint_sha256"] == checkpoint_0_sha256
+          assert checkpoint_1["accepted_registry_sha256"] == result["advance"]["accepted_registry_sha256"]
+          print(f"checkpoint_generation_0_sha256={checkpoint_0_sha256}")
+          print("checkpoint_advance=AUTHORIZED")
+          print("old_registry_replay=REJECT:stale_registry")
+          PY
+
+      - name: Verify immutable consumer checkpoint signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest d0688725bd76fdf7221e84ca7c5bfb51e363ff72 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > checkpoint-evidence/checkpoint-attestation-verification.json
+
+      - name: Verify immutable consumer result signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested/consumer-checkpoint-attested-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest d0688725bd76fdf7221e84ca7c5bfb51e363ff72 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > checkpoint-evidence/result-attestation-verification.json
+
+      - name: Upload external checkpoint verification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-external-verification
+          path: |
+            checkpoint-evidence/checkpoint-attestation-verification.json
+            checkpoint-evidence/result-attestation-verification.json
+          if-no-files-found: error
+          retention-days: 30
