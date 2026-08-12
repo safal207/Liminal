@@ -2,7 +2,7 @@
 
 ## Status
 
-Experimental evidence contract. Backward-compatible with the existing v0.1 implementation, which remains available for historical proof chains.
+Experimental evidence contract with a successful immutable representation-independence proof. Backward-compatible with the existing v0.1 implementation, which remains available for historical proof chains.
 
 ## Goal
 
@@ -101,22 +101,97 @@ v0.2 rejects:
 - tampered normalized-receipt digests;
 - malformed canonical fields.
 
-## Next real workflow gate
+## Verified immutable proof
 
-After exact-head CI is green, wire v0.2 into a dedicated immutable proof without altering the existing v0.1 trust anchors.
+Receipt-backed Bundle v0.2 passed unit/static/integration gates before the immutable proof workflow was pinned.
 
-The proof should retain one real `gh attestation verify --format json` output and materialize a second byte-distinct audit representation of the same successful verification event. Both must produce identical normalized receipt SHA-256 values and therefore the same Evidence Bundle v0.2 SHA-256 and witness decision.
+Immutable proof workflow:
+
+`608061196ef8504a5bed8208797a14bc2dc71c50`
+
+Pinned caller:
+
+`dd069652dd38ef11410650da9385b1fd923ecfd4`
+
+Successful one-shot:
+
+`31620226592`
+
+The proof used the same manifest/checkpoint subjects in two byte-distinct verification-audit representations. The raw capture digests differed, while the normalized receipt digests were identical between A and B.
+
+Canonical identities:
+
+- manifest SHA-256: `5f80518cb671ea0622336adbd9a0a9bd16b72ea803ad09d0ac2abd4415f58be2`;
+- checkpoint SHA-256: `74096c48cd730c55dd2f486f1af4b211b4f7f1ce38613134be645055ff1f946a`;
+- normalized manifest receipt SHA-256: `05367cac13290c50dbd413c37b3741a6d1977f19f2b12a29f0e1e154d79e73ca`;
+- normalized checkpoint receipt SHA-256: `fc14a91512662d58a6db21263bf0dd71ce5ad2abcc09a431c027c4bb73a4db70`;
+- Evidence Bundle v0.2 SHA-256: `63110899de2feb57152232b07e63a48921e3822320d6b1eb5e7cd6b016bd9892`;
+- proof-result SHA-256: `49e4e3706645fb47b70251d8ad2ea0714ba4e03595cbf91c16b980d47c1c36da`.
+
+The witness decision was identical for both representations:
 
 ```text
-raw capture A != raw capture B
-        ↓
-same verified contract
-        ↓
-receipt A == receipt B
-        ↓
-bundle v0.2 A == bundle v0.2 B
-        ↓
-same recovery / witness transition
+authorized: true
+reason: checkpoint_witness_advanced
+next_witness_sha256: cc389524836b013bb5a416f0a9f6647d9ff252d2de79598e4df119c6e5760d2f
 ```
 
-This proves verifier-output representation independence. A later experiment can replace the second representation with a genuinely independent verifier implementation or CI transport.
+The external verification job independently:
+
+- recomputed raw-capture inequality;
+- recomputed normalized receipt equality;
+- recomputed Bundle v0.2 equality;
+- checked canonical subject/receipt/bundle bindings;
+- verified the immutable producer signer on manifest and checkpoint;
+- verified the immutable proof signer on both A/B normalized receipt copies;
+- verified the immutable proof signer on both A/B Bundle v0.2 copies;
+- verified the proof-result signer.
+
+Only A receipt/bundle files were directly attested in the producer proof job; B copies independently verified against those attestations because their canonical bytes were identical. This is an additional content-identity check, not a second-verifier claim.
+
+Evidence artifacts:
+
+- normalized proof `9150941935` — `sha256:ffc420fe9f81ba6e823a212c8c4d32ecfc90752e9a926f483327b8158c25c74a`;
+- external verification `9150963798` — `sha256:db4e60a85fe698be68f017b346aeac3df5ebe27d28d767045325e0c8e8e33d58`.
+
+The pinned caller head also passed Python CI, Python Integration and Artillery.
+
+## Proven boundary
+
+The proof establishes:
+
+```text
+raw verifier representation A != B
+        ↓
+normalized security semantics A == B
+        ↓
+Verification Receipt SHA A == B
+        ↓
+Evidence Bundle v0.2 SHA A == B
+        ↓
+witness transition A == B
+```
+
+for two representations of the **same successful GitHub Attestations verification event**.
+
+It does not establish independent verifier/provider agreement.
+
+## Next real workflow gate
+
+Introduce a second verifier adapter whose authoritative verdict is independently obtained rather than derived from the first verifier's output. Normalize both independently obtained verification events and compare their receipts, Bundle v0.2 identities and witness transitions.
+
+```text
+GitHub verifier
+        +
+independent verifier
+        ↓
+Normalized Verification Receipt A/B
+        ↓
+semantic equality or fail closed
+        ↓
+Evidence Bundle v0.2
+        ↓
+recovery / witness policy
+```
+
+A mismatch in subject, signer, source, policy or verdict must remain a hard portability failure rather than being normalized away.
