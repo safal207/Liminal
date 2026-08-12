@@ -2,7 +2,7 @@
 
 ## Status
 
-Experimental recovery/evidence contract.
+Verified experimental recovery/evidence contract.
 
 ## Goal
 
@@ -118,27 +118,72 @@ Evidence Bundle                → portable receipt
 recovery policy                → authorization decision
 ```
 
-## v0.1 falsifiable proof gate
+## Verified GitHub Actions proof
 
-The real GitHub Actions experiment must use the same producer-attested checkpoint/manifest bytes and materialize them into two distinct layouts:
+The first immutable portability experiment passed on 12 Aug 2026.
+
+- immutable workflow: `2a71b4c77f7a9271dd47ffc5002d3fc254dc635a`
+- pinned one-shot caller: `cf258a247c9ea4393d16d3508b6dc03618b2b768`
+- successful run: `31617370441`
+
+The producer-attested manifest and checkpoint bytes were materialized into two distinct layouts:
 
 ```text
-A: flat expected-name layout
-B: deep nested renamed-blob layout
+Topology A
+  topology-a/evidence-manifest-v0.1.json
+  topology-a/checkpoint-generation-1.json
+
+Topology B
+  topology-b/meta/opaque-evidence-index.bin
+  topology-b/transport/layers/opaque-blob.dat
 ```
 
-The workflow must then independently run manifest-backed resolution for both layouts and record:
+Verified content identities:
 
-- both resolved physical paths;
-- both resolution reasons;
-- both canonical Evidence Bundle digests;
-- both trust decisions;
-- both witness decision reasons/digests when the witness policy is included.
+- manifest SHA-256: `5f80518cb671ea0622336adbd9a0a9bd16b72ea803ad09d0ac2abd4415f58be2`
+- checkpoint SHA-256: `74096c48cd730c55dd2f486f1af4b211b4f7f1ce38613134be645055ff1f946a`
+- portable Evidence Bundle SHA-256: `e3a11b8e98e1f5c7d5c56326d91a641848536f3bedb4be3f51fc1237d0a30d13`
+- portability result SHA-256: `b83584388985c82b88204835ffb4fa59d99e44598a6fa86a515f65b88ee57493`
 
-The proof passes only if the bundle and trust outputs are equal while the physical paths are different.
+Both layouts produced the same:
+
+- `verified_recovery` authorization reason;
+- `checkpoint_witness_advanced` witness decision;
+- next-witness SHA-256;
+- canonical Evidence Bundle SHA-256.
+
+The external verifier independently recomputed digest/decision equivalence and verified the immutable producer attestation on all four physical copies, including the renamed nested subjects:
+
+- `opaque-evidence-index.bin` — verified;
+- `opaque-blob.dat` — verified.
+
+It also verified the immutable portability workflow attestation on the Evidence Bundle and portability result.
+
+Evidence artifacts:
+
+- portability evidence artifact `9149843672`, digest `sha256:e8b4861ed9c4ff65b7a50861a18f1b2760b2cbea1b419ccce657b91d22a403af`;
+- external verification artifact `9149864501`, digest `sha256:7a4c001786457ac7b4d9e039c9744eb3a7660b0a2dcdf08053dbfdeca54d8543`.
+
+This proves packaging-topology independence for this GitHub Actions/Sigstore recovery chain: changing directory depth and filenames without changing bytes did not change manifest/evidence identity, the Evidence Bundle, recovery decision, witness transition, or signer verification result.
+
+## Current limit
+
+This experiment uses two packaging layouts inside the same GitHub Actions / GitHub Attestations transport. It does not yet prove verifier- or CI-provider independence.
+
+The current Evidence Bundle also binds raw verification JSON digests. Those receipts can legitimately vary across executions or verifier implementations even when the semantic verification result is equivalent. Therefore a cross-provider experiment should not assume that the current raw-receipt-based Evidence Bundle SHA will remain identical.
 
 ## Next portability boundary
 
-Passing two layouts inside GitHub Actions proves packaging-topology independence inside one CI transport. It does not yet prove provider independence.
+Before a cross-provider proof, define a canonical **Normalized Verification Receipt v0.1** that preserves the security-relevant semantics of verification while referencing raw verifier evidence separately.
 
-A later experiment should preserve the same logical evidence contract across a second artifact transport or CI implementation and compare the resulting portable receipt and trust decision.
+A later experiment can then test:
+
+```text
+same logical evidence identity
+→ different artifact transport / verifier implementation
+→ normalized verification semantics agree
+→ same trust decision
+→ portable verification receipt
+```
+
+That is the next falsifiable portability boundary.
