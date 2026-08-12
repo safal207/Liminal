@@ -23,9 +23,9 @@ def test_checkpoint_witness_workflow_keeps_immutable_trust_gates() -> None:
     ) in text
     assert f"--signer-digest {CHECKPOINT_ROOT}" in text
     assert "--deny-self-hosted-runners" in text
-    assert "checkpoint_attestation\"][\"cryptographically_verified\"] is True" in text
-    assert "local_generation_1_checkpoint_available\"] is False" in text
-    assert "stale_checkpoint_replay\"][\"reason\"] == \"stale_checkpoint\"" in text
+    assert 'result["checkpoint_attestation"]["cryptographically_verified"] is True' in text
+    assert 'result["recovered_consumer"]["local_generation_1_checkpoint_available"] is False' in text
+    assert 'result["stale_checkpoint_replay"]["reason"] == "stale_checkpoint"' in text
     assert "subject-path: artifacts/trust-consumer-checkpoint-witness/witness-generation-1.json" in text
     assert (
         "subject-path: artifacts/trust-consumer-checkpoint-witness/"
