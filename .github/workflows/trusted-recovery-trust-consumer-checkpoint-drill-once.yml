@@ -1,0 +1,76 @@
+name: Trusted Recovery Trust Consumer Checkpoint Drill Once
+
+on:
+  push:
+    branches:
+      - agent/recovery-routing-v0-1
+    paths:
+      - '.github/workflows/trusted-recovery-trust-consumer-checkpoint-drill-once.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  run-immutable-checkpoint-drill:
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-drill.yml@9255f42c9aef0640bc6adcffea7b3fd7c6ee531e
+
+  verify-checkpoint-drill-externally:
+    needs: run-immutable-checkpoint-drill
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      attestations: read
+
+    steps:
+      - name: Download checkpoint drill evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-drill
+          path: checkpoint-drill-evidence
+
+      - name: Assert advanced checkpoint and stale-registry rejection
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(
+              Path('checkpoint-drill-evidence/consumer-checkpoint-drill-result.json').read_text()
+          )
+          assert result['verified'] is True
+          assert result['advance']['authorized'] is True
+          assert result['advance']['reason'] == 'consumer_checkpoint_advanced'
+          assert result['advance']['accepted_generation'] == 1
+          assert result['stale_replay']['structurally_valid'] is True
+          assert result['stale_replay']['authorized'] is False
+          assert result['stale_replay']['reason'] == 'stale_registry'
+          assert result['permanent_registry_mutated'] is False
+          assert result['permanent_checkpoint_mutated'] is False
+          print('checkpoint_advance=AUTHORIZED')
+          print('old_registry_replay=REJECT:stale_registry')
+          PY
+
+      - name: Verify immutable checkpoint drill signer with GitHub CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            checkpoint-drill-evidence/consumer-checkpoint-drill-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-drill.yml \
+            --signer-digest 9255f42c9aef0640bc6adcffea7b3fd7c6ee531e \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > checkpoint-drill-evidence/consumer-checkpoint-attestation-verification.json
+
+      - name: Upload external checkpoint verification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-drill-external-verification
+          path: checkpoint-drill-evidence/consumer-checkpoint-attestation-verification.json
+          if-no-files-found: error
+          retention-days: 30
