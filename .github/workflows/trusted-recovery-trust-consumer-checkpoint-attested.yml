@@ -107,10 +107,71 @@ jobs:
           print("old_registry_replay=REJECT:stale_registry")
           PY
 
+      - name: Generate evidence manifest for accepted checkpoint
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          LIMINAL_CHECKPOINT_CONSUMER_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+
+          from liminal.evidence_manifest import (
+              EvidenceManifest,
+              EvidenceManifestEntry,
+              VerificationExpectation,
+              canonical_manifest_bytes,
+          )
+
+          checkpoint = Path(
+              "artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json"
+          )
+          digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+          manifest = EvidenceManifest(
+              entries=(
+                  EvidenceManifestEntry(
+                      logical_id="trust-consumer-checkpoint:generation-1",
+                      producer="safal207/Liminal",
+                      evidence_type="trusted-recovery-consumer-checkpoint",
+                      relative_locator=(
+                          "artifacts/trust-consumer-checkpoint-attested/"
+                          "checkpoint-generation-1.json"
+                      ),
+                      sha256=digest,
+                      generation=1,
+                      verification=VerificationExpectation(
+                          required=True,
+                          verifier="github_attestation",
+                          expected_signer=(
+                              "safal207/Liminal/.github/workflows/"
+                              "trusted-recovery-trust-consumer-checkpoint-attested.yml"
+                          ),
+                          expected_signer_digest=os.environ[
+                              "LIMINAL_CHECKPOINT_CONSUMER_WORKFLOW_SHA"
+                          ],
+                      ),
+                  ),
+              )
+          )
+          output = Path(
+              "artifacts/trust-consumer-checkpoint-attested/evidence-manifest-v0.1.json"
+          )
+          output.write_bytes(canonical_manifest_bytes(manifest))
+          print(f"checkpoint_sha256={digest}")
+          print(f"evidence_manifest={output}")
+          PY
+
       - name: Attest accepted generation-1 checkpoint
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
           subject-path: artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json
+
+      - name: Attest checkpoint evidence manifest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-consumer-checkpoint-attested/evidence-manifest-v0.1.json
 
       - name: Attest consumer checkpoint authorization result
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
