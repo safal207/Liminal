@@ -196,7 +196,7 @@ The claim remains limited to a shared GitHub/Sigstore attestation substrate. Ver
 
 ## Next real workflow gate
 
-**Trust-Provider Portability** should test whether the same normalized security contract can be established through a materially different trust/provider substrate.
+**Trust-Provider Portability v0.1** should test whether the same normalized security contract can be established through a materially different trust/provider substrate.
 
 ```text
 trust provider A
