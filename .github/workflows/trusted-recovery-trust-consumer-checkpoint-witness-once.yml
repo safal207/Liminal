@@ -41,9 +41,9 @@ jobs:
           def canonical(value):
               return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
 
-          w0 = json.loads(Path("witness-evidence/witness-generation-0.json").read_text())
-          w1 = json.loads(Path("witness-evidence/witness-generation-1.json").read_text())
-          result = json.loads(Path("witness-evidence/checkpoint-witness-drill-result.json").read_text())
+          w0 = json.loads(Path("witness-evidence/artifacts/trust-consumer-checkpoint-witness/witness-generation-0.json").read_text())
+          w1 = json.loads(Path("witness-evidence/artifacts/trust-consumer-checkpoint-witness/witness-generation-1.json").read_text())
+          result = json.loads(Path("witness-evidence/artifacts/trust-consumer-checkpoint-witness/checkpoint-witness-drill-result.json").read_text())
           w0_sha = hashlib.sha256(canonical(w0)).hexdigest()
           w1_sha = hashlib.sha256(canonical(w1)).hexdigest()
           assert w1["previous_witness_sha256"] == w0_sha
@@ -64,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           gh attestation verify \
-            witness-evidence/witness-generation-1.json \
+            witness-evidence/artifacts/trust-consumer-checkpoint-witness/witness-generation-1.json \
             --repo safal207/Liminal \
             --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness.yml \
             --signer-digest 57281e9de12078d70cd5c30783f92f866dcc7324 \
@@ -79,7 +79,7 @@ jobs:
         run: |
           set -euo pipefail
           gh attestation verify \
-            witness-evidence/checkpoint-witness-drill-result.json \
+            witness-evidence/artifacts/trust-consumer-checkpoint-witness/checkpoint-witness-drill-result.json \
             --repo safal207/Liminal \
             --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness.yml \
             --signer-digest 57281e9de12078d70cd5c30783f92f866dcc7324 \
