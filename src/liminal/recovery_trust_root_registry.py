@@ -42,6 +42,14 @@ class TrustRootRegistry:
         return sha256_hex(canonical_json_bytes(self.payload))
 
 
+@dataclass(frozen=True)
+class RegistryRotationDecision:
+    """Machine-readable authorization decision for one registry rotation."""
+
+    authorized: bool
+    reason: str
+
+
 def _exact_keys(value: Mapping[str, Any], expected: set[str]) -> bool:
     return set(value) == expected
 
@@ -178,38 +186,38 @@ def validate_registry(payload: object, manifests: Mapping[str, object]) -> bool:
     return history[-1]["manifest_sha256"] == active_digest
 
 
-def validate_registry_rotation(
+def evaluate_registry_rotation(
     previous_registry: object,
     current_registry: object,
     manifests: Mapping[str, object],
-) -> bool:
-    """Accept exactly one append-only generation and reject root/policy rollback."""
+) -> RegistryRotationDecision:
+    """Evaluate one append-only rotation and return a stable reason code."""
 
-    if not validate_registry(previous_registry, manifests) or not validate_registry(
-        current_registry, manifests
-    ):
-        return False
+    if not validate_registry(previous_registry, manifests):
+        return RegistryRotationDecision(False, "previous_registry_invalid")
+    if not validate_registry(current_registry, manifests):
+        return RegistryRotationDecision(False, "current_registry_invalid")
     assert isinstance(previous_registry, dict)
     assert isinstance(current_registry, dict)
 
     previous_generation = previous_registry["active_generation"]
     current_generation = current_registry["active_generation"]
     if current_generation != previous_generation + 1:
-        return False
+        return RegistryRotationDecision(False, "rotation_generation_not_incremented")
 
     previous_history = previous_registry["history"]
     current_history = current_registry["history"]
     if current_history[:-1] != previous_history:
-        return False
+        return RegistryRotationDecision(False, "registry_history_not_append_only")
 
     previous_entry = previous_history[-1]
     current_entry = current_history[-1]
     previous_manifest = manifests.get(previous_entry["manifest_path"])
     current_manifest = manifests.get(current_entry["manifest_path"])
     if not isinstance(previous_manifest, dict) or not isinstance(current_manifest, dict):
-        return False
+        return RegistryRotationDecision(False, "rotation_manifest_missing")
     if current_manifest.get("previous_manifest_sha256") != previous_registry["active_manifest_sha256"]:
-        return False
+        return RegistryRotationDecision(False, "previous_manifest_digest_mismatch")
 
     for root_name in ("builder", "verifier"):
         previous_root = previous_manifest["roots"][root_name]["workflow_sha"]
@@ -220,7 +228,7 @@ def validate_registry_rotation(
             if isinstance(manifests.get(entry["manifest_path"]), dict)
         }
         if current_root != previous_root and current_root in historical_roots:
-            return False
+            return RegistryRotationDecision(False, f"{root_name}_root_downgrade")
 
     for material_name in ("builder_environment_policy", "verifier_dependency_lock"):
         previous_material = previous_manifest["policy_material"][material_name]["sha256"]
@@ -231,6 +239,16 @@ def validate_registry_rotation(
             if isinstance(manifests.get(entry["manifest_path"]), dict)
         }
         if current_material != previous_material and current_material in historical_material:
-            return False
+            return RegistryRotationDecision(False, f"{material_name}_downgrade")
 
-    return True
+    return RegistryRotationDecision(True, "registry_rotation_authorized")
+
+
+def validate_registry_rotation(
+    previous_registry: object,
+    current_registry: object,
+    manifests: Mapping[str, object],
+) -> bool:
+    """Return whether one append-only rotation is authorized."""
+
+    return evaluate_registry_rotation(previous_registry, current_registry, manifests).authorized
