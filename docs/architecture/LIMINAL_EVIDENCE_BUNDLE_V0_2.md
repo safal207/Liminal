@@ -2,11 +2,11 @@
 
 ## Status
 
-Experimental evidence contract with a successful immutable representation-independence proof. Backward-compatible with the existing v0.1 implementation, which remains available for historical proof chains.
+Verified experimental evidence contract. Backward-compatible with the existing v0.1 implementation, which remains available for historical proof chains.
 
 ## Goal
 
-Remove raw verifier-output bytes from portable Evidence Bundle identity without removing the verification semantics that authorize trust.
+Remove raw verifier-output bytes and verifier-implementation identity from portable Evidence Bundle identity without removing the verification semantics that authorize trust.
 
 ```text
 Evidence Bundle v0.1
@@ -82,6 +82,7 @@ The following are deliberately absent from v0.2 canonical identity:
 - raw verifier JSON bytes;
 - raw verifier JSON SHA-256;
 - verifier CLI version;
+- verifier implementation identity;
 - timestamp;
 - certificate presentation bytes;
 - physical artifact path;
@@ -101,97 +102,114 @@ v0.2 rejects:
 - tampered normalized-receipt digests;
 - malformed canonical fields.
 
-## Verified immutable proof
+## Verified representation-independence proof
 
-Receipt-backed Bundle v0.2 passed unit/static/integration gates before the immutable proof workflow was pinned.
+The first v0.2 live proof retained one real `gh attestation verify --format json` output and created a byte-distinct audit representation of the same successful verification event.
 
-Immutable proof workflow:
+Reusable workflow:
 
 `608061196ef8504a5bed8208797a14bc2dc71c50`
-
-Pinned caller:
-
-`dd069652dd38ef11410650da9385b1fd923ecfd4`
 
 Successful one-shot:
 
 `31620226592`
 
-The proof used the same manifest/checkpoint subjects in two byte-distinct verification-audit representations. The raw capture digests differed, while the normalized receipt digests were identical between A and B.
+Both representations produced:
 
-Canonical identities:
-
-- manifest SHA-256: `5f80518cb671ea0622336adbd9a0a9bd16b72ea803ad09d0ac2abd4415f58be2`;
-- checkpoint SHA-256: `74096c48cd730c55dd2f486f1af4b211b4f7f1ce38613134be645055ff1f946a`;
-- normalized manifest receipt SHA-256: `05367cac13290c50dbd413c37b3741a6d1977f19f2b12a29f0e1e154d79e73ca`;
-- normalized checkpoint receipt SHA-256: `fc14a91512662d58a6db21263bf0dd71ce5ad2abcc09a431c027c4bb73a4db70`;
+- manifest receipt SHA-256: `05367cac13290c50dbd413c37b3741a6d1977f19f2b12a29f0e1e154d79e73ca`;
+- checkpoint receipt SHA-256: `fc14a91512662d58a6db21263bf0dd71ce5ad2abcc09a431c027c4bb73a4db70`;
 - Evidence Bundle v0.2 SHA-256: `63110899de2feb57152232b07e63a48921e3822320d6b1eb5e7cd6b016bd9892`;
-- proof-result SHA-256: `49e4e3706645fb47b70251d8ad2ea0714ba4e03595cbf91c16b980d47c1c36da`.
+- same `checkpoint_witness_advanced` transition;
+- next witness SHA-256: `cc389524836b013bb5a416f0a9f6647d9ff252d2de79598e4df119c6e5760d2f`.
 
-The witness decision was identical for both representations:
+This proved output-representation independence, not independent verifier agreement.
+
+## Verified independent-verifier proof
+
+The next live gate used two genuinely distinct verifier implementations:
 
 ```text
-authorized: true
-reason: checkpoint_witness_advanced
-next_witness_sha256: cc389524836b013bb5a416f0a9f6647d9ff252d2de79598e4df119c6e5760d2f
+GitHub CLI attestation verification
+        +
+Sigstore Cosign v3.0.6 verification
+        ↓
+independently established exact security semantics
+        ↓
+same normalized receipts
+        ↓
+same Evidence Bundle v0.2
+        ↓
+same witness transition
 ```
 
-The external verification job independently:
+Immutable workflow:
 
-- recomputed raw-capture inequality;
-- recomputed normalized receipt equality;
-- recomputed Bundle v0.2 equality;
-- checked canonical subject/receipt/bundle bindings;
-- verified the immutable producer signer on manifest and checkpoint;
-- verified the immutable proof signer on both A/B normalized receipt copies;
-- verified the immutable proof signer on both A/B Bundle v0.2 copies;
-- verified the proof-result signer.
+`fa20161f4e0c77f4caa97e2e0febfe0cea240d82`
 
-Only A receipt/bundle files were directly attested in the producer proof job; B copies independently verified against those attestations because their canonical bytes were identical. This is an additional content-identity check, not a second-verifier claim.
+Pinned caller:
+
+`ff9c14da8e35b3bbf02fa53fd4a64f0243da9755`
+
+Successful one-shot:
+
+`31623698930` — **SUCCESS**
+
+The independent verifier implementations produced exactly the same portable identities as the preceding representation-only proof:
+
+- manifest receipt SHA-256: `05367cac13290c50dbd413c37b3741a6d1977f19f2b12a29f0e1e154d79e73ca`;
+- checkpoint receipt SHA-256: `fc14a91512662d58a6db21263bf0dd71ce5ad2abcc09a431c027c4bb73a4db70`;
+- Evidence Bundle v0.2 SHA-256: `63110899de2feb57152232b07e63a48921e3822320d6b1eb5e7cd6b016bd9892`;
+- next witness SHA-256: `cc389524836b013bb5a416f0a9f6647d9ff252d2de79598e4df119c6e5760d2f`.
+
+Canonical proof-result SHA-256:
+
+`2b857ced0b8ae39ac700844358ef7017b1badc7149d063a6de3fad30b355c6b3`
+
+External recomputation record SHA-256:
+
+`e128b187b776b3e1da2adacd05cc4e6c299a6d2992d9537a9047c50e01b5f0f8`
+
+The external job independently recomputed bundle/receipt/witness equivalence and reran Cosign on the stored selected Sigstore bundles before rechecking immutable signer attestations.
 
 Evidence artifacts:
 
-- normalized proof `9150941935` — `sha256:ffc420fe9f81ba6e823a212c8c4d32ecfc90752e9a926f483327b8158c25c74a`;
-- external verification `9150963798` — `sha256:db4e60a85fe698be68f017b346aeac3df5ebe27d28d767045325e0c8e8e33d58`.
+- proof `9152287850` — `sha256:4ec977fcb559ba2f84bf91c5641798f98a5ccea59d028a4cd22d908c104662e3`;
+- external verification `9152310899` — `sha256:4ebc4978164bad5708f24fcb610ee35136fcfedc693f61b2c1bd0dd958398b44`.
 
-The pinned caller head also passed Python CI, Python Integration and Artillery.
-
-## Proven boundary
-
-The proof establishes:
+## Current proven boundary
 
 ```text
-raw verifier representation A != B
+physical topology drift
+        ↓ survives
+raw verifier representation drift
+        ↓ survives
+verifier implementation drift
+        ↓ survives
+canonical subject + signer + source + policy semantics
         ↓
-normalized security semantics A == B
+portable Evidence Bundle v0.2 identity
         ↓
-Verification Receipt SHA A == B
-        ↓
-Evidence Bundle v0.2 SHA A == B
-        ↓
-witness transition A == B
+portable witness transition
 ```
 
-for two representations of the **same successful GitHub Attestations verification event**.
-
-It does not establish independent verifier/provider agreement.
+The claim remains limited to a shared GitHub/Sigstore attestation substrate. Verifier portability is not yet trust-provider portability.
 
 ## Next real workflow gate
 
-Introduce a second verifier adapter whose authoritative verdict is independently obtained rather than derived from the first verifier's output. Normalize both independently obtained verification events and compare their receipts, Bundle v0.2 identities and witness transitions.
+**Trust-Provider Portability** should test whether the same normalized security contract can be established through a materially different trust/provider substrate.
 
 ```text
-GitHub verifier
+trust provider A
         +
-independent verifier
+trust provider B
         ↓
-Normalized Verification Receipt A/B
+independent security observations
         ↓
-semantic equality or fail closed
+normalized semantic equality or hard failure
         ↓
-Evidence Bundle v0.2
+Evidence Bundle
         ↓
-recovery / witness policy
+same recovery / witness transition
 ```
 
-A mismatch in subject, signer, source, policy or verdict must remain a hard portability failure rather than being normalized away.
+Normalization must never hide a provider-level disagreement.
