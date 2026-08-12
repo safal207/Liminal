@@ -98,7 +98,10 @@ def main() -> int:
         raise ValueError("evidence_bundle_checkpoint_verification_digest_mismatch")
 
     signer = witness_0["checkpoint_signer"]
-    if bundle.evidence.signer_workflow != signer["workflow_path"]:
+    expected_bundle_signer_workflow = (
+        f"{witness_0['repository']}/{signer['workflow_path']}"
+    )
+    if bundle.evidence.signer_workflow != expected_bundle_signer_workflow:
         raise ValueError("evidence_bundle_checkpoint_signer_workflow_mismatch")
     if bundle.evidence.signer_digest != signer["workflow_sha"]:
         raise ValueError("evidence_bundle_checkpoint_signer_digest_mismatch")
