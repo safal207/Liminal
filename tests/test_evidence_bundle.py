@@ -20,9 +20,9 @@ SIGNER = (
     "safal207/Liminal/.github/workflows/"
     "trusted-recovery-trust-consumer-checkpoint-attested.yml"
 )
-SIGNER_DIGEST = "a" * 64
+SIGNER_DIGEST = "a" * 40
 MANIFEST_SIGNER = SIGNER
-MANIFEST_SIGNER_DIGEST = "b" * 64
+MANIFEST_SIGNER_DIGEST = "b" * 40
 EVIDENCE_SHA = "c" * 64
 MANIFEST_SHA = "d" * 64
 MANIFEST_VERIFY_SHA = "e" * 64
@@ -112,7 +112,12 @@ def test_bundle_rejects_evidence_signer_digest_mismatch():
     with pytest.raises(
         ValueError, match="evidence_bundle_evidence_signer_digest_mismatch"
     ):
-        build(evidence_signer_digest="2" * 64)
+        build(evidence_signer_digest="2" * 40)
+
+
+def test_bundle_rejects_non_git_signer_digest_shape():
+    with pytest.raises(ValueError, match="manifest_signer_digest_must_be_lowercase_git_sha"):
+        build(manifest_signer_digest="3" * 64)
 
 
 def test_parser_rejects_unsupported_schema():
