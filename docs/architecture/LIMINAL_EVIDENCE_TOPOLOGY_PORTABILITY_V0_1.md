@@ -172,6 +172,13 @@ This experiment uses two packaging layouts inside the same GitHub Actions / GitH
 
 The current Evidence Bundle also binds raw verification JSON digests. Those receipts can legitimately vary across executions or verifier implementations even when the semantic verification result is equivalent. Therefore a cross-provider experiment should not assume that the current raw-receipt-based Evidence Bundle SHA will remain identical.
 
+That distinction gives us two portability layers:
+
+```text
+artifact topology portability     ✅ verified in v0.1
+verification receipt portability  ⏳ next boundary
+```
+
 ## Next portability boundary
 
 Before a cross-provider proof, define a canonical **Normalized Verification Receipt v0.1** that preserves the security-relevant semantics of verification while referencing raw verifier evidence separately.
