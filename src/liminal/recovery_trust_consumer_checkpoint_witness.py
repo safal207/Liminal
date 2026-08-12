@@ -1,8 +1,8 @@
 """External witness for recovering monotonic consumer-checkpoint state.
 
-The witness is deliberately separate from the consumer checkpoint itself.  A consumer that
+The witness is deliberately separate from the consumer checkpoint itself. A consumer that
 loses local checkpoint state can recover a cryptographically verified witness and still reject
-older, historically valid checkpoints.  Cryptographic verification of checkpoint attestations
+older, historically valid checkpoints. Cryptographic verification of checkpoint attestations
 is external to this module; callers pass only normalized verified evidence.
 """
 
@@ -20,8 +20,10 @@ from liminal.recovery_trust_root_registry import canonical_json_bytes, sha256_he
 
 
 WITNESS_SCHEMA_VERSION = "liminal.recovery-trust-consumer-checkpoint-witness.v0.1"
+WITNESS_SCHEMA_VERSION_V2 = "liminal.recovery-trust-consumer-checkpoint-witness.v0.2"
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _GIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+_SIGNER_TRANSITION_REASONS = {"manifest_backed_checkpoint_producer_rotation"}
 
 
 @dataclass(frozen=True)
@@ -62,8 +64,30 @@ def _valid_signer(value: object) -> bool:
     )
 
 
+def _valid_signer_transition(value: object, current_signer: object) -> bool:
+    if not isinstance(value, dict) or set(value) != {
+        "previous_signer",
+        "reason",
+        "previous_witness_workflow_sha",
+    }:
+        return False
+    previous_signer = value.get("previous_signer")
+    reason = value.get("reason")
+    previous_witness_sha = value.get("previous_witness_workflow_sha")
+    return (
+        _valid_signer(previous_signer)
+        and previous_signer != current_signer
+        and reason in _SIGNER_TRANSITION_REASONS
+        and isinstance(previous_witness_sha, str)
+        and _GIT_SHA_RE.fullmatch(previous_witness_sha) is not None
+    )
+
+
 def _validate_witness_body(payload: object) -> bool:
-    if not isinstance(payload, dict) or set(payload) != {
+    if not isinstance(payload, dict):
+        return False
+    schema = payload.get("schema_version")
+    common = {
         "schema_version",
         "repository",
         "observed_generation",
@@ -72,10 +96,20 @@ def _validate_witness_body(payload: object) -> bool:
         "accepted_manifest_sha256",
         "previous_witness_sha256",
         "checkpoint_signer",
-    }:
+    }
+    if schema == WITNESS_SCHEMA_VERSION:
+        if set(payload) != common:
+            return False
+    elif schema == WITNESS_SCHEMA_VERSION_V2:
+        if set(payload) != common | {"checkpoint_signer_transition"}:
+            return False
+        if not _valid_signer_transition(
+            payload.get("checkpoint_signer_transition"), payload.get("checkpoint_signer")
+        ):
+            return False
+    else:
         return False
-    if payload.get("schema_version") != WITNESS_SCHEMA_VERSION:
-        return False
+
     if payload.get("repository") != "safal207/Liminal":
         return False
     generation = payload.get("observed_generation")
@@ -106,6 +140,8 @@ def validate_witness(payload: object, previous_witness: object | None = None) ->
     if not _validate_witness_body(previous_witness):
         return False
     assert isinstance(previous_witness, dict)
+    if previous_witness["schema_version"] != payload["schema_version"]:
+        return False
     if previous_witness["observed_generation"] != generation - 1:
         return False
     return previous_digest == witness_sha256(previous_witness)
@@ -120,8 +156,8 @@ def evaluate_checkpoint_candidate(
 ) -> CheckpointWitnessDecision:
     """Evaluate a checkpoint against externally recovered witness state.
 
-    Same-generation replay of the exact witnessed checkpoint is idempotently accepted.  Older
-    generations are rejected even when the old checkpoint is structurally valid.  Advancement by
+    Same-generation replay of the exact witnessed checkpoint is idempotently accepted. Older
+    generations are rejected even when the old checkpoint is structurally valid. Advancement by
     exactly one generation requires a valid checkpoint chain plus cryptographically verified
     evidence from the checkpoint signer pinned in the witness.
     """
@@ -175,7 +211,7 @@ def evaluate_checkpoint_candidate(
         return CheckpointWitnessDecision(False, "checkpoint_subject_digest_mismatch")
 
     next_witness = {
-        "schema_version": WITNESS_SCHEMA_VERSION,
+        "schema_version": trusted_witness["schema_version"],
         "repository": trusted_witness["repository"],
         "observed_generation": generation,
         "checkpoint_sha256": candidate_digest,
@@ -184,4 +220,8 @@ def evaluate_checkpoint_candidate(
         "previous_witness_sha256": witness_sha256(trusted_witness),
         "checkpoint_signer": dict(expected_signer),
     }
+    if trusted_witness["schema_version"] == WITNESS_SCHEMA_VERSION_V2:
+        next_witness["checkpoint_signer_transition"] = dict(
+            trusted_witness["checkpoint_signer_transition"]
+        )
     return CheckpointWitnessDecision(True, "checkpoint_witness_advanced", next_witness)
