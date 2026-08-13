@@ -93,6 +93,17 @@ def _migrate(checkpoint_0: dict[str, object]):
     )
 
 
+def _evidence(checkpoint: dict[str, object]) -> VerifiedPortableCheckpointEvidence:
+    return VerifiedPortableCheckpointEvidence(
+        verified=True,
+        subject_sha256=checkpoint_sha256(checkpoint),
+        logical_producer_id=_authority().logical_producer_id,
+        producer_contract_sha256=PRODUCER_CONTRACT,
+        authorization_contract_sha256=AUTHORIZATION_CONTRACT,
+        evidence_type=_authority().evidence_type,
+    )
+
+
 def test_verified_v2_witness_migrates_to_logical_authority() -> None:
     checkpoint_0 = _load_checkpoint()
     decision = _migrate(checkpoint_0)
@@ -148,19 +159,11 @@ def test_v3_advance_uses_logical_authority_not_concrete_signer() -> None:
     migrated = _migrate(checkpoint_0)
     assert migrated.next_witness is not None
 
-    evidence = VerifiedPortableCheckpointEvidence(
-        verified=True,
-        subject_sha256=checkpoint_sha256(checkpoint_1),
-        logical_producer_id=_authority().logical_producer_id,
-        producer_contract_sha256=PRODUCER_CONTRACT,
-        authorization_contract_sha256=AUTHORIZATION_CONTRACT,
-        evidence_type=_authority().evidence_type,
-    )
     decision = evaluate_portable_checkpoint_candidate(
         migrated.next_witness,
         checkpoint_1,
         previous_checkpoint=checkpoint_0,
-        checkpoint_evidence=evidence,
+        checkpoint_evidence=_evidence(checkpoint_1),
     )
 
     assert decision.authorized is True
@@ -172,20 +175,38 @@ def test_v3_advance_uses_logical_authority_not_concrete_signer() -> None:
     assert validate_witness_v3(decision.next_witness, migrated.next_witness)
 
 
+def test_v3_validator_supports_arbitrary_adjacent_chain_depth() -> None:
+    checkpoint_0 = _load_checkpoint()
+    checkpoint_1 = _checkpoint_1(checkpoint_0)
+    migrated = _migrate(checkpoint_0)
+    assert migrated.next_witness is not None
+    advance = evaluate_portable_checkpoint_candidate(
+        migrated.next_witness,
+        checkpoint_1,
+        previous_checkpoint=checkpoint_0,
+        checkpoint_evidence=_evidence(checkpoint_1),
+    )
+    assert advance.next_witness is not None
+    witness_1 = advance.next_witness
+
+    witness_2 = copy.deepcopy(witness_1)
+    witness_2["observed_generation"] = 2
+    witness_2["checkpoint_sha256"] = "4" * 64
+    witness_2["accepted_registry_sha256"] = "5" * 64
+    witness_2["accepted_manifest_sha256"] = "6" * 64
+    witness_2["previous_witness_sha256"] = witness_v3_sha256(witness_1)
+
+    assert validate_witness_v3(witness_1, migrated.next_witness)
+    assert validate_witness_v3(witness_2, witness_1)
+
+
 def test_concrete_provider_can_change_without_changing_v3_authority() -> None:
     checkpoint_0 = _load_checkpoint()
     checkpoint_1 = _checkpoint_1(checkpoint_0)
     migrated = _migrate(checkpoint_0)
     assert migrated.next_witness is not None
 
-    github_evidence = VerifiedPortableCheckpointEvidence(
-        verified=True,
-        subject_sha256=checkpoint_sha256(checkpoint_1),
-        logical_producer_id=_authority().logical_producer_id,
-        producer_contract_sha256=PRODUCER_CONTRACT,
-        authorization_contract_sha256=AUTHORIZATION_CONTRACT,
-        evidence_type=_authority().evidence_type,
-    )
+    github_evidence = _evidence(checkpoint_1)
     external_evidence = copy.deepcopy(github_evidence)
 
     a = evaluate_portable_checkpoint_candidate(
@@ -204,11 +225,29 @@ def test_concrete_provider_can_change_without_changing_v3_authority() -> None:
     assert a.next_witness == b.next_witness
 
 
-def test_v3_fails_closed_on_authority_or_subject_drift() -> None:
+def test_v3_fails_closed_on_unverified_authority_or_subject_drift() -> None:
     checkpoint_0 = _load_checkpoint()
     checkpoint_1 = _checkpoint_1(checkpoint_0)
     migrated = _migrate(checkpoint_0)
     assert migrated.next_witness is not None
+
+    unverified = copy.deepcopy(_evidence(checkpoint_1))
+    unverified = VerifiedPortableCheckpointEvidence(
+        verified=False,
+        subject_sha256=unverified.subject_sha256,
+        logical_producer_id=unverified.logical_producer_id,
+        producer_contract_sha256=unverified.producer_contract_sha256,
+        authorization_contract_sha256=unverified.authorization_contract_sha256,
+        evidence_type=unverified.evidence_type,
+    )
+    rejected_unverified = evaluate_portable_checkpoint_candidate(
+        migrated.next_witness,
+        checkpoint_1,
+        previous_checkpoint=checkpoint_0,
+        checkpoint_evidence=unverified,
+    )
+    assert rejected_unverified.authorized is False
+    assert rejected_unverified.reason == "checkpoint_evidence_unverified"
 
     wrong_contract = VerifiedPortableCheckpointEvidence(
         verified=True,
@@ -227,7 +266,6 @@ def test_v3_fails_closed_on_authority_or_subject_drift() -> None:
     assert rejected_contract.authorized is False
     assert rejected_contract.reason == "producer_contract_mismatch"
 
-    wrong_subject = copy.deepcopy(wrong_contract)
     wrong_subject = VerifiedPortableCheckpointEvidence(
         verified=True,
         subject_sha256="0" * 64,
