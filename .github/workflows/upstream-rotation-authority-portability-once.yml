@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   prove:
-    uses: safal207/Liminal/.github/workflows/upstream-rotation-authority-portability.yml@3eda3d915524a3435b57d180eaab941ca7c6ee8f
+    uses: safal207/Liminal/.github/workflows/upstream-rotation-authority-portability.yml@28d96de36267fde8e1c66ce0c5f36c2c30e44813
 
   audit-independently:
     needs: prove
@@ -30,13 +30,13 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: safal207/Liminal
-          ref: 3eda3d915524a3435b57d180eaab941ca7c6ee8f
+          ref: 28d96de36267fde8e1c66ce0c5f36c2c30e44813
           fetch-depth: 0
 
       - name: Verify immutable audit checkout
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "3eda3d915524a3435b57d180eaab941ca7c6ee8f"
+          test "$(git rev-parse HEAD)" = "28d96de36267fde8e1c66ce0c5f36c2c30e44813"
 
       - name: Set up exact Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -58,7 +58,7 @@ jobs:
             proof/upstream-rotation-proof/upstream-rotation-authority-portability-result.json \
             --repo safal207/Liminal \
             --signer-workflow safal207/Liminal/.github/workflows/upstream-rotation-authority-portability.yml \
-            --signer-digest 3eda3d915524a3435b57d180eaab941ca7c6ee8f \
+            --signer-digest 28d96de36267fde8e1c66ce0c5f36c2c30e44813 \
             --source-ref "${{ github.ref }}" \
             --deny-self-hosted-runners \
             --format json \
@@ -185,7 +185,7 @@ jobs:
             --checkpoint-authorization-v1 policies/portable-checkpoint-authorization-contract-v0.1.json \
             --checkpoint-producer-v2 policies/portable-checkpoint-producer-contract-v0.2.json \
             --checkpoint-authorization-v2 policies/portable-checkpoint-authorization-contract-v0.2.json \
-            --verifier-sha 3eda3d915524a3435b57d180eaab941ca7c6ee8f \
+            --verifier-sha 28d96de36267fde8e1c66ce0c5f36c2c30e44813 \
             --output audit/recomputed-upstream-rotation-result.json
 
       - name: Compare exact recomputed result
@@ -210,7 +210,7 @@ jobs:
               "schema": "liminal-upstream-rotation-authority-external-audit/v0.1",
               "verified": True,
               "reason": "upstream_rotation_authority_recomputed",
-              "immutable_verifier_sha": "3eda3d915524a3435b57d180eaab941ca7c6ee8f",
+              "immutable_verifier_sha": "28d96de36267fde8e1c66ce0c5f36c2c30e44813",
               "result_sha256": hashlib.sha256(original).hexdigest(),
               "portable_rotation_authority_receipt_sha256": result[
                   "portable_rotation_authority_receipt_sha256"
