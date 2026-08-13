@@ -42,6 +42,14 @@ def _load(path: Path) -> dict[str, Any]:
     return payload
 
 
+def _load_canonical(path: Path) -> tuple[dict[str, Any], str]:
+    payload = _load(path)
+    canonical = canonical_json_bytes(payload)
+    if path.read_bytes() != canonical:
+        raise ValueError(f"non_canonical_json:{path}")
+    return payload, hashlib.sha256(canonical).hexdigest()
+
+
 def _require_verification_json(path: Path) -> str:
     raw = path.read_bytes()
     payload = json.loads(raw)
@@ -79,17 +87,59 @@ def main() -> int:
     parser.add_argument("--checkpoint-generation-0", required=True)
     parser.add_argument("--github-checkpoint", required=True)
     parser.add_argument("--github-verification-json", required=True)
+    parser.add_argument("--primary-producer-contract", required=True)
+    parser.add_argument("--primary-authorization-contract", required=True)
     parser.add_argument("--external-bundle", required=True)
+    parser.add_argument("--expected-producer-root-id", required=True)
+    parser.add_argument("--expected-control-plane-root-id", required=True)
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
 
     checkpoint_0 = _load(Path(args.checkpoint_generation_0))
     github_checkpoint = _load(Path(args.github_checkpoint))
     github_verification_sha = _require_verification_json(Path(args.github_verification_json))
+    primary_producer_contract, primary_producer_contract_sha = _load_canonical(
+        Path(args.primary_producer_contract)
+    )
+    primary_authorization_contract, primary_authorization_contract_sha = _load_canonical(
+        Path(args.primary_authorization_contract)
+    )
     external_bundle = _load(Path(args.external_bundle))
-    external_proof = verify_external_source_control_bundle(external_bundle)
+    external_proof = verify_external_source_control_bundle(
+        external_bundle,
+        expected_producer_root_id=args.expected_producer_root_id,
+        expected_control_plane_root_id=args.expected_control_plane_root_id,
+    )
     if not external_proof.verified:
         raise ValueError("external_source_control_proof_unverified")
+
+    external_producer_contract = external_bundle.get("producer_contract")
+    external_authorization_contract = external_bundle.get("authorization_contract")
+    if canonical_json_bytes(primary_producer_contract) != canonical_json_bytes(
+        external_producer_contract
+    ):
+        raise ValueError("producer_contract_cross_control_plane_mismatch")
+    if canonical_json_bytes(primary_authorization_contract) != canonical_json_bytes(
+        external_authorization_contract
+    ):
+        raise ValueError("authorization_contract_cross_control_plane_mismatch")
+    if primary_producer_contract_sha != external_proof.producer_contract_sha256:
+        raise ValueError("producer_contract_digest_mismatch")
+    if primary_authorization_contract_sha != external_proof.authorization_contract_sha256:
+        raise ValueError("authorization_contract_digest_mismatch")
+
+    logical_producer_id = primary_producer_contract.get("logical_producer_id")
+    evidence_type = primary_producer_contract.get("output_evidence_type")
+    if not isinstance(logical_producer_id, str) or not logical_producer_id:
+        raise ValueError("primary_logical_producer_id_invalid")
+    if not isinstance(evidence_type, str) or not evidence_type:
+        raise ValueError("primary_evidence_type_invalid")
+    if primary_authorization_contract.get("logical_producer_id") != logical_producer_id:
+        raise ValueError("primary_authorization_logical_producer_mismatch")
+    if primary_authorization_contract.get("producer_contract_sha256") != primary_producer_contract_sha:
+        raise ValueError("primary_authorization_producer_contract_mismatch")
+    if primary_authorization_contract.get("evidence_type") != evidence_type:
+        raise ValueError("primary_authorization_evidence_type_mismatch")
 
     external_checkpoint = external_bundle["checkpoint_generation_1"]
     if not isinstance(external_checkpoint, dict):
@@ -109,10 +159,10 @@ def main() -> int:
         raise ValueError("migration_predecessor_witness_mismatch")
 
     authority = PortableCheckpointAuthority(
-        logical_producer_id=external_proof.logical_producer_id,
-        producer_contract_sha256=external_proof.producer_contract_sha256,
-        authorization_contract_sha256=external_proof.authorization_contract_sha256,
-        evidence_type=external_proof.evidence_type,
+        logical_producer_id=logical_producer_id,
+        producer_contract_sha256=primary_producer_contract_sha,
+        authorization_contract_sha256=primary_authorization_contract_sha,
+        evidence_type=evidence_type,
     )
     migration = migrate_witness_v2_to_v3(
         witness_2,
@@ -131,18 +181,18 @@ def main() -> int:
     primary_evidence = VerifiedPortableCheckpointEvidence(
         verified=True,
         subject_sha256=github_subject,
-        logical_producer_id=authority.logical_producer_id,
-        producer_contract_sha256=authority.producer_contract_sha256,
-        authorization_contract_sha256=authority.authorization_contract_sha256,
-        evidence_type=authority.evidence_type,
+        logical_producer_id=logical_producer_id,
+        producer_contract_sha256=primary_producer_contract_sha,
+        authorization_contract_sha256=primary_authorization_contract_sha,
+        evidence_type=evidence_type,
     )
     secondary_evidence = VerifiedPortableCheckpointEvidence(
         verified=True,
         subject_sha256=external_subject,
-        logical_producer_id=authority.logical_producer_id,
-        producer_contract_sha256=authority.producer_contract_sha256,
-        authorization_contract_sha256=authority.authorization_contract_sha256,
-        evidence_type=authority.evidence_type,
+        logical_producer_id=external_proof.logical_producer_id,
+        producer_contract_sha256=external_proof.producer_contract_sha256,
+        authorization_contract_sha256=external_proof.authorization_contract_sha256,
+        evidence_type=external_proof.evidence_type,
     )
     primary = evaluate_portable_checkpoint_candidate(
         witness_3,
@@ -170,12 +220,12 @@ def main() -> int:
         producer_provider="github-actions-checkpoint-producer",
         producer_instance_id=GITHUB_PRODUCER_SHA,
         control_plane_provider="github-repository-policy",
-        control_plane_id="safal207/Liminal:recovery-policy",
+        control_plane_id="safal207/Liminal:portable-checkpoint-contracts-v0.1",
         subject_sha256=github_subject,
-        logical_producer_id=authority.logical_producer_id,
-        producer_contract_sha256=authority.producer_contract_sha256,
-        authorization_contract_sha256=authority.authorization_contract_sha256,
-        evidence_type=authority.evidence_type,
+        logical_producer_id=logical_producer_id,
+        producer_contract_sha256=primary_producer_contract_sha,
+        authorization_contract_sha256=primary_authorization_contract_sha,
+        evidence_type=evidence_type,
         generation=github_checkpoint["accepted_generation"],
         witness_reason=primary.reason,
         next_witness_sha256=primary_next_sha,
@@ -190,10 +240,10 @@ def main() -> int:
         control_plane_provider="offline-ed25519-control-plane",
         control_plane_id=external_proof.control_plane_root_id,
         subject_sha256=external_subject,
-        logical_producer_id=authority.logical_producer_id,
-        producer_contract_sha256=authority.producer_contract_sha256,
-        authorization_contract_sha256=authority.authorization_contract_sha256,
-        evidence_type=authority.evidence_type,
+        logical_producer_id=external_proof.logical_producer_id,
+        producer_contract_sha256=external_proof.producer_contract_sha256,
+        authorization_contract_sha256=external_proof.authorization_contract_sha256,
+        evidence_type=external_proof.evidence_type,
         generation=external_checkpoint["accepted_generation"],
         witness_reason=secondary.reason,
         next_witness_sha256=secondary_next_sha,
@@ -213,9 +263,9 @@ def main() -> int:
         "external_producer_root_id": external_proof.producer_root_id,
         "external_control_plane_root_id": external_proof.control_plane_root_id,
         "checkpoint_subject_sha256": github_subject,
-        "logical_producer_id": authority.logical_producer_id,
-        "producer_contract_sha256": authority.producer_contract_sha256,
-        "authorization_contract_sha256": authority.authorization_contract_sha256,
+        "logical_producer_id": logical_producer_id,
+        "producer_contract_sha256": primary_producer_contract_sha,
+        "authorization_contract_sha256": primary_authorization_contract_sha,
         "predecessor_witness_v2_sha256": predecessor_witness_sha,
         "migrated_witness_v3_sha256": witness_v3_sha256(witness_3),
         "next_witness_v3_sha256": primary_next_sha,
