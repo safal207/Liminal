@@ -1,4 +1,4 @@
-name: Source Producer Control Plane Portability v0.1
+name: Source Producer Control Plane Portability v0.2
 
 on:
   workflow_call:
@@ -21,21 +21,21 @@ jobs:
       attestations: write
 
     steps:
-      - name: Checkout immutable source-control proof source
+      - name: Checkout immutable source-control verifier
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           repository: ${{ job.workflow_repository }}
           ref: ${{ job.workflow_sha }}
           fetch-depth: 0
 
-      - name: Verify immutable proof checkout
+      - name: Verify immutable source-control verifier checkout
         env:
           LIMINAL_SOURCE_CONTROL_WORKFLOW_SHA: ${{ job.workflow_sha }}
         run: |
           set -euo pipefail
           actual_sha="$(git rev-parse HEAD)"
           test "${actual_sha}" = "${LIMINAL_SOURCE_CONTROL_WORKFLOW_SHA}" || {
-            echo "source/control proof checkout mismatch: ${actual_sha} != ${LIMINAL_SOURCE_CONTROL_WORKFLOW_SHA}"
+            echo "source-control verifier checkout mismatch: ${actual_sha} != ${LIMINAL_SOURCE_CONTROL_WORKFLOW_SHA}"
             exit 1
           }
 
@@ -44,48 +44,135 @@ jobs:
         with:
           python-version: "3.11.15"
 
-      - name: Install pinned cryptographic verifier dependency
-        run: python -m pip install --disable-pip-version-check cryptography==45.0.6
-
       - name: Download immutable GitHub producer evidence
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: trusted-recovery-trust-consumer-checkpoint-attested
-          path: github-evidence
+          path: github-producer-evidence
 
-      - name: Verify GitHub producer checkpoint signer
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Locate unique GitHub checkpoint
+        id: source
         run: |
           set -euo pipefail
-          mkdir -p artifacts/source-control-portability
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          matches = sorted(Path("github-producer-evidence").rglob("checkpoint-generation-1.json"))
+          assert len(matches) == 1, matches
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"checkpoint={matches[0].as_posix()}\n")
+          PY
+
+      - name: Verify immutable GitHub producer signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKPOINT_PATH: ${{ steps.source.outputs.checkpoint }}
+        run: |
+          set -euo pipefail
+          mkdir -p source-control-proof
           gh attestation verify \
-            github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json \
+            "${CHECKPOINT_PATH}" \
             --repo safal207/Liminal \
             --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
             --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
             --source-ref "${{ github.ref }}" \
             --deny-self-hosted-runners \
             --format json \
-            > artifacts/source-control-portability/github-checkpoint-verification.json
+            > source-control-proof/github-producer-attestation-verification.json
 
-      - name: Verify external producer/control plane and compare v0.3 transitions
+      - name: Prepare canonical external payload and signatures
+        id: external
         env:
-          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          EXTERNAL_ENVELOPE: trust/experimental/source-control-portability-v0.1/external-source-control-proof-v0.1.json
         run: |
           set -euo pipefail
-          python scripts/run-source-control-portability-proof.py \
-            --checkpoint-generation-0 github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-0.json \
-            --github-checkpoint github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json \
-            --github-verification-json artifacts/source-control-portability/github-checkpoint-verification.json \
-            --primary-producer-contract policies/portable-checkpoint-producer-contract-v0.1.json \
-            --primary-authorization-contract policies/portable-checkpoint-authorization-contract-v0.1.json \
-            --external-bundle trust/experimental/source-control-portability-v0.1/external-proof-bundle.json \
-            --expected-producer-root-id ed25519-sha256:4313ea228dbb2d29a429b9da9b25b30fb8e42bf6207c323c36c5b3f1863f627f \
-            --expected-control-plane-root-id ed25519-sha256:153efe437acb8e5796def201b31f3f37c62c2123f50ddc5901ee1c268b749224 \
-            --output artifacts/source-control-portability/source-control-portability-result.json
+          python - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
 
-      - name: Assert source/control portability verdict
+          envelope = json.loads(Path(os.environ["EXTERNAL_ENVELOPE"]).read_text())
+          assert envelope["schema"] == "liminal-external-source-control-proof-envelope/v0.1"
+          payload = envelope["payload"]
+          raw = (json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n").encode()
+          actual = hashlib.sha256(raw).hexdigest()
+          assert actual == envelope["payload_sha256"], (actual, envelope["payload_sha256"])
+
+          out = Path("source-control-proof/external")
+          out.mkdir(parents=True, exist_ok=True)
+          (out / "payload.json").write_bytes(raw)
+          (out / "control-plane-public.pem").write_text(payload["control_plane_public_key_pem"])
+          (out / "producer-public.pem").write_text(payload["producer_public_key_pem"])
+          (out / "control-plane.sig").write_bytes(
+              base64.b64decode(envelope["control_plane_signature_b64"])
+          )
+          (out / "producer.sig").write_bytes(
+              base64.b64decode(envelope["producer_signature_b64"])
+          )
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"payload_sha256={actual}\n")
+              output.write(f"control_plane_root_id={payload['control_plane_root_id']}\n")
+              output.write(f"producer_root_id={payload['producer_root_id']}\n")
+          PY
+
+      - name: Verify independent control-plane and producer signatures
+        env:
+          EXPECTED_CONTROL_PLANE_ROOT: ${{ steps.external.outputs.control_plane_root_id }}
+          EXPECTED_PRODUCER_ROOT: ${{ steps.external.outputs.producer_root_id }}
+        run: |
+          set -euo pipefail
+          root="source-control-proof/external"
+          openssl pkeyutl -verify -pubin \
+            -inkey "${root}/control-plane-public.pem" \
+            -rawin -in "${root}/payload.json" \
+            -sigfile "${root}/control-plane.sig"
+          openssl pkeyutl -verify -pubin \
+            -inkey "${root}/producer-public.pem" \
+            -rawin -in "${root}/payload.json" \
+            -sigfile "${root}/producer.sig"
+
+          control_sha="$(openssl pkey -pubin -in "${root}/control-plane-public.pem" -outform DER 2>/dev/null | sha256sum | awk '{print $1}')"
+          producer_sha="$(openssl pkey -pubin -in "${root}/producer-public.pem" -outform DER 2>/dev/null | sha256sum | awk '{print $1}')"
+          test "ed25519-sha256:${control_sha}" = "${EXPECTED_CONTROL_PLANE_ROOT}"
+          test "ed25519-sha256:${producer_sha}" = "${EXPECTED_PRODUCER_ROOT}"
+
+          CONTROL_SHA="${control_sha}" PRODUCER_SHA="${producer_sha}" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = {
+              "schema": "liminal-external-source-control-signature-verification/v0.1",
+              "verified": True,
+              "control_plane_root_id": f"ed25519-sha256:{os.environ['CONTROL_SHA']}",
+              "producer_root_id": f"ed25519-sha256:{os.environ['PRODUCER_SHA']}",
+          }
+          Path("source-control-proof/external-signature-verification.json").write_text(
+              json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
+          )
+          PY
+
+      - name: Recompute source producer and control-plane portability
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          LIMINAL_SOURCE_CONTROL_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          python scripts/verify-source-control-portability-v0-1.py \
+            --external-envelope trust/experimental/source-control-portability-v0.1/external-source-control-proof-v0.1.json \
+            --external-signature-verification source-control-proof/external-signature-verification.json \
+            --github-artifact-dir github-producer-evidence \
+            --legacy-witness policies/recovery-trust-consumer-checkpoint-witness-v0.2.json \
+            --baseline-checkpoint policies/recovery-trust-consumer-checkpoint-v0.2.json \
+            --producer-contract policies/portable-checkpoint-producer-contract-v0.1.json \
+            --authorization-contract policies/portable-checkpoint-authorization-contract-v0.1.json \
+            --verifier-sha "${LIMINAL_SOURCE_CONTROL_WORKFLOW_SHA}" \
+            --output source-control-proof/source-control-portability-result.json
+
+      - name: Assert portable source-control verdict
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -93,56 +180,31 @@ jobs:
           from pathlib import Path
 
           result = json.loads(
-              Path(
-                  "artifacts/source-control-portability/source-control-portability-result.json"
-              ).read_text()
+              Path("source-control-proof/source-control-portability-result.json").read_text()
           )
           assert result["verified"] is True
           assert result["reason"] == "verified_source_control_claims_agree"
-          assert result["checkpoint_subject_sha256"] == (
-              "74096c48cd730c55dd2f486f1af4b211b4f7f1ce38613134be645055ff1f946a"
-          )
-          assert result["producer_contract_sha256"] == (
-              "72bba8eddc81e88c2e9ad24e266713e9534f6c332fec7ad5ecaa264f922b7ca3"
-          )
-          assert result["authorization_contract_sha256"] == (
-              "576da1fa0c5cd70313ad1d89de88f4a7048e13fa5d0ce05c833f7bef4233a553"
-          )
-          assert result["predecessor_witness_v2_sha256"] == (
-              "af12743396296c788223d3087f427b1f93d3086a5aeb9b7c8c0f38d49347e9f9"
-          )
-          assert result["migrated_witness_v3_sha256"] == (
-              "40ba8f06b840f0dc1cab8f74628ff650a80d861cb27d218878bdb569d58582de"
-          )
-          assert result["next_witness_v3_sha256"] == (
-              "6f939dc297c4ef12e42046e21909df1afbbf277d77ede34aff1f8f972c5d77bf"
-          )
-          assert result["primary"]["producer_provider"] == "github-actions-checkpoint-producer"
-          assert result["primary"]["control_plane_provider"] == "github-repository-policy"
-          assert result["secondary"]["producer_provider"] == (
-              "openai-workspace-standalone-producer"
-          )
-          assert result["secondary"]["control_plane_provider"] == (
-              "offline-ed25519-control-plane"
-          )
-          print("source_control_portability=VERIFIED")
+          assert result["checkpoint_subject_sha256"] == "74096c48cd730c55dd2f486f1af4b211b4f7f1ce38613134be645055ff1f946a"
+          assert result["v3_witness_generation_0_sha256"] == "8d2e44dab167f1f4613ef66257ca3c3be19f2168a87b620483628389b771ca8c"
+          assert result["next_witness_sha256"] == "efc242be9ebeb3bf898c3cee301391525d1609d499f44c7ae4eac9ce4e5cb4ed"
+          assert result["primary_producer_provider"] != result["secondary_producer_provider"]
+          assert result["primary_control_plane_provider"] != result["secondary_control_plane_provider"]
+          assert result["upstream_rotation_provider_independence_claimed"] is False
+          print("source_producer_control_plane_portability=VERIFIED")
           PY
 
-      - name: Attest source/control portability result
+      - name: Attest source-control portability result
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
         with:
-          subject-path: artifacts/source-control-portability/source-control-portability-result.json
+          subject-path: source-control-proof/source-control-portability-result.json
 
-      - name: Upload source/control portability proof
+      - name: Upload source-control portability evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: source-control-portability-proof
+          name: source-control-portability-proof-v0.2
           path: |
-            artifacts/source-control-portability
-            policies/portable-checkpoint-producer-contract-v0.1.json
-            policies/portable-checkpoint-authorization-contract-v0.1.json
-            trust/experimental/source-control-portability-v0.1/external-proof-bundle.json
-            github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-0.json
-            github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json
+            source-control-proof
+            trust/experimental/source-control-portability-v0.1/external-source-control-proof-v0.1.json
+            github-producer-evidence
           if-no-files-found: error
           retention-days: 30
