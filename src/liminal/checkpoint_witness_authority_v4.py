@@ -1,12 +1,9 @@
 """Witness v0.4 adapter for provider-neutral checkpoint v0.3.
 
 Witness v0.3 remains immutable historical semantics and validates historical checkpoint
-v0.2. v0.4 is a separate schema that explicitly migrates a generation-0 v0.3 witness
-to the corresponding provider-neutral checkpoint-v0.3 genesis, then advances only over
-checkpoint-v0.3 candidates.
-
-Cryptographic verification remains external. All migration and checkpoint-producer
-evidence must already be verified.
+v0.2. v0.4 explicitly migrates both the checkpoint schema and the checkpoint producer /
+authorization contracts required by checkpoint v0.3. Concrete cryptographic verification
+remains external; all migration and checkpoint-producer evidence must already be verified.
 """
 
 from __future__ import annotations
@@ -27,8 +24,13 @@ from liminal.checkpoint_witness_authority_v3 import (
 from liminal.recovery_trust_root_registry import canonical_json_bytes, sha256_hex
 
 WITNESS_SCHEMA_VERSION_V4 = "liminal.recovery-trust-consumer-checkpoint-witness.v0.4"
-CHECKPOINT_SCHEMA_MIGRATION = "liminal-witness-checkpoint-schema-migration-claim/v0.1"
-CHECKPOINT_SCHEMA_MIGRATION_REASON = "checkpoint_v0_2_to_v0_3_authority_portability"
+CHECKPOINT_SCHEMA_MIGRATION = (
+    "liminal-witness-checkpoint-schema-and-authority-migration-claim/v0.2"
+)
+CHECKPOINT_SCHEMA_MIGRATION_REASON = (
+    "checkpoint_v0_2_to_v0_3_with_checkpoint_authority_contract_migration"
+)
+CHECKPOINT_AUTHORITY_SCHEMA = "liminal.checkpoint-authority/v0.1"
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
@@ -40,6 +42,12 @@ class WitnessCheckpointSchemaMigrationEvidence:
     legacy_checkpoint_sha256: str
     checkpoint_v3_sha256: str
     checkpoint_rotation_migration_claim_sha256: str
+    logical_producer_id: str
+    evidence_type: str
+    legacy_producer_contract_sha256: str
+    legacy_authorization_contract_sha256: str
+    next_producer_contract_sha256: str
+    next_authorization_contract_sha256: str
 
 
 @dataclass(frozen=True)
@@ -74,7 +82,7 @@ def _valid_checkpoint_authority(value: object) -> bool:
     }:
         return False
     return (
-        value.get("schema") == "liminal.checkpoint-authority/v0.1"
+        value.get("schema") == CHECKPOINT_AUTHORITY_SCHEMA
         and isinstance(value.get("logical_producer_id"), str)
         and bool(value.get("logical_producer_id"))
         and _valid_sha256(value.get("producer_contract_sha256"))
@@ -82,6 +90,21 @@ def _valid_checkpoint_authority(value: object) -> bool:
         and isinstance(value.get("evidence_type"), str)
         and bool(value.get("evidence_type"))
     )
+
+
+def _authority_dict(
+    logical_producer_id: str,
+    producer_contract_sha256: str,
+    authorization_contract_sha256: str,
+    evidence_type: str,
+) -> dict[str, str]:
+    return {
+        "schema": CHECKPOINT_AUTHORITY_SCHEMA,
+        "logical_producer_id": logical_producer_id,
+        "producer_contract_sha256": producer_contract_sha256,
+        "authorization_contract_sha256": authorization_contract_sha256,
+        "evidence_type": evidence_type,
+    }
 
 
 def _valid_migration_origin(value: object) -> bool:
@@ -92,6 +115,8 @@ def _valid_migration_origin(value: object) -> bool:
         "to_checkpoint_schema",
         "to_checkpoint_sha256",
         "checkpoint_rotation_migration_claim_sha256",
+        "from_checkpoint_authority",
+        "to_checkpoint_authority",
         "reason",
         "claim_sha256",
     }:
@@ -105,6 +130,8 @@ def _valid_migration_origin(value: object) -> bool:
         == "liminal.recovery-trust-consumer-checkpoint.v0.3"
         and _valid_sha256(value.get("to_checkpoint_sha256"))
         and _valid_sha256(value.get("checkpoint_rotation_migration_claim_sha256"))
+        and _valid_checkpoint_authority(value.get("from_checkpoint_authority"))
+        and _valid_checkpoint_authority(value.get("to_checkpoint_authority"))
         and value.get("reason") == CHECKPOINT_SCHEMA_MIGRATION_REASON
         and _valid_sha256(value.get("claim_sha256"))
     )
@@ -140,10 +167,14 @@ def _valid_witness_v4_body(payload: object) -> bool:
     previous = payload.get("previous_witness_sha256")
     if previous is not None and not _valid_sha256(previous):
         return False
+    authority = payload.get("checkpoint_authority")
+    migration = payload.get("checkpoint_schema_migration")
+    if not _valid_checkpoint_authority(authority) or not _valid_migration_origin(migration):
+        return False
+    assert isinstance(migration, dict)
     return (
-        _valid_checkpoint_authority(payload.get("checkpoint_authority"))
-        and isinstance(payload.get("authority_origin"), dict)
-        and _valid_migration_origin(payload.get("checkpoint_schema_migration"))
+        isinstance(payload.get("authority_origin"), dict)
+        and migration["to_checkpoint_authority"] == authority
     )
 
 
@@ -181,6 +212,12 @@ def _valid_migration_evidence(value: object) -> bool:
         and _valid_sha256(value.legacy_checkpoint_sha256)
         and _valid_sha256(value.checkpoint_v3_sha256)
         and _valid_sha256(value.checkpoint_rotation_migration_claim_sha256)
+        and bool(value.logical_producer_id)
+        and bool(value.evidence_type)
+        and _valid_sha256(value.legacy_producer_contract_sha256)
+        and _valid_sha256(value.legacy_authorization_contract_sha256)
+        and _valid_sha256(value.next_producer_contract_sha256)
+        and _valid_sha256(value.next_authorization_contract_sha256)
     )
 
 
@@ -198,6 +235,14 @@ def checkpoint_schema_migration_claim_sha256(
         "checkpoint_rotation_migration_claim_sha256": (
             evidence.checkpoint_rotation_migration_claim_sha256
         ),
+        "logical_producer_id": evidence.logical_producer_id,
+        "evidence_type": evidence.evidence_type,
+        "legacy_producer_contract_sha256": evidence.legacy_producer_contract_sha256,
+        "legacy_authorization_contract_sha256": (
+            evidence.legacy_authorization_contract_sha256
+        ),
+        "next_producer_contract_sha256": evidence.next_producer_contract_sha256,
+        "next_authorization_contract_sha256": evidence.next_authorization_contract_sha256,
         "reason": CHECKPOINT_SCHEMA_MIGRATION_REASON,
     }
     return sha256_hex(canonical_json_bytes(claim))
@@ -253,6 +298,61 @@ def migrate_witness_v3_genesis_to_v4(
             False, "checkpoint_rotation_migration_claim_mismatch"
         )
 
+    legacy_authority = witness_v3.get("checkpoint_authority")
+    if not _valid_checkpoint_authority(legacy_authority):
+        return WitnessCheckpointSchemaMigrationDecision(False, "legacy_checkpoint_authority_invalid")
+    assert isinstance(legacy_authority, dict)
+    if migration_evidence.logical_producer_id != legacy_authority["logical_producer_id"]:
+        return WitnessCheckpointSchemaMigrationDecision(False, "logical_producer_mismatch")
+    if migration_evidence.evidence_type != legacy_authority["evidence_type"]:
+        return WitnessCheckpointSchemaMigrationDecision(False, "evidence_type_mismatch")
+    if (
+        migration_evidence.legacy_producer_contract_sha256
+        != legacy_authority["producer_contract_sha256"]
+    ):
+        return WitnessCheckpointSchemaMigrationDecision(
+            False, "legacy_producer_contract_mismatch"
+        )
+    if (
+        migration_evidence.legacy_authorization_contract_sha256
+        != legacy_authority["authorization_contract_sha256"]
+    ):
+        return WitnessCheckpointSchemaMigrationDecision(
+            False, "legacy_authorization_contract_mismatch"
+        )
+    if (
+        migration_evidence.next_producer_contract_sha256
+        == migration_evidence.legacy_producer_contract_sha256
+    ):
+        return WitnessCheckpointSchemaMigrationDecision(False, "producer_contract_not_migrated")
+    if (
+        migration_evidence.next_authorization_contract_sha256
+        == migration_evidence.legacy_authorization_contract_sha256
+    ):
+        return WitnessCheckpointSchemaMigrationDecision(
+            False, "authorization_contract_not_migrated"
+        )
+
+    next_authority = _authority_dict(
+        migration_evidence.logical_producer_id,
+        migration_evidence.next_producer_contract_sha256,
+        migration_evidence.next_authorization_contract_sha256,
+        migration_evidence.evidence_type,
+    )
+    migration = {
+        "from_witness_schema": witness_v3["schema_version"],
+        "from_witness_sha256": legacy_witness_digest,
+        "from_checkpoint_sha256": witness_v3["checkpoint_sha256"],
+        "to_checkpoint_schema": checkpoint_v3["schema_version"],
+        "to_checkpoint_sha256": checkpoint_digest,
+        "checkpoint_rotation_migration_claim_sha256": (
+            migration_evidence.checkpoint_rotation_migration_claim_sha256
+        ),
+        "from_checkpoint_authority": legacy_authority,
+        "to_checkpoint_authority": next_authority,
+        "reason": CHECKPOINT_SCHEMA_MIGRATION_REASON,
+        "claim_sha256": checkpoint_schema_migration_claim_sha256(migration_evidence),
+    }
     witness = {
         "schema_version": WITNESS_SCHEMA_VERSION_V4,
         "trust_domain": witness_v3["trust_domain"],
@@ -262,25 +362,14 @@ def migrate_witness_v3_genesis_to_v4(
         "accepted_registry_sha256": checkpoint_v3["accepted_registry_sha256"],
         "accepted_manifest_sha256": checkpoint_v3["accepted_manifest_sha256"],
         "previous_witness_sha256": None,
-        "checkpoint_authority": witness_v3["checkpoint_authority"],
+        "checkpoint_authority": next_authority,
         "authority_origin": witness_v3["authority_origin"],
-        "checkpoint_schema_migration": {
-            "from_witness_schema": witness_v3["schema_version"],
-            "from_witness_sha256": legacy_witness_digest,
-            "from_checkpoint_sha256": witness_v3["checkpoint_sha256"],
-            "to_checkpoint_schema": checkpoint_v3["schema_version"],
-            "to_checkpoint_sha256": checkpoint_digest,
-            "checkpoint_rotation_migration_claim_sha256": (
-                migration_evidence.checkpoint_rotation_migration_claim_sha256
-            ),
-            "reason": CHECKPOINT_SCHEMA_MIGRATION_REASON,
-            "claim_sha256": checkpoint_schema_migration_claim_sha256(migration_evidence),
-        },
+        "checkpoint_schema_migration": migration,
     }
     if not validate_witness_v4(witness):
         return WitnessCheckpointSchemaMigrationDecision(False, "migrated_witness_invalid")
     return WitnessCheckpointSchemaMigrationDecision(
-        True, "witness_checkpoint_schema_migrated", witness
+        True, "witness_checkpoint_schema_and_authority_migrated", witness
     )
 
 
