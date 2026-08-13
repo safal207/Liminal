@@ -11,7 +11,7 @@ A live immutable proof established the same portable rotation authority semantic
 
 Both paths produced the same generation-1 manifest and registry, the same Portable Rotation-Authority Receipt, the same checkpoint-v0.3 generation-1 state, and the same witness-v0.4 trusted transition. A second audit job independently repeated signer checks, all four external Ed25519 signature checks, semantic recomputation, and exact result-byte comparison.
 
-RESONANCE journal entry: `signals/010-upstream-rotation-authority-portability.md`.
+RESONANCE journal entry: `signals/010-upstream-rotation-authority-portability.md`, commit `2b8513e734d79121c57df7f9414f6e2771d09371`.
 
 ## Goal
 
