@@ -4,16 +4,9 @@ The v0.1/v0.2 checkpoint witness schemas pin a concrete GitHub workflow signer.
 That is correct historical behavior, but it cannot represent source-producer or
 control-plane portability without pretending an external producer is the GitHub signer.
 
-This module introduces a separate v0.3 witness schema. Its checkpoint authority is a
-logical contract:
-
-    logical_producer_id
-    + producer_contract_sha256
-    + authorization_contract_sha256
-    + evidence_type
-
-Concrete signer/provider identities remain external evidence about that authority. They
-are never copied into the v0.3 authority identity.
+v0.3 separates logical authority from concrete proof of authority. The witness binds a
+logical producer contract and authorization contract; provider, signer and verifier
+identities remain external evidence about that authority.
 
 The module performs no cryptographic verification. Callers must pass already-verified
 migration and checkpoint-authority evidence. All mismatches fail closed.
@@ -39,6 +32,7 @@ from liminal.recovery_trust_root_registry import canonical_json_bytes, sha256_he
 
 WITNESS_SCHEMA_VERSION_V3 = "liminal.recovery-trust-consumer-checkpoint-witness.v0.3"
 AUTHORITY_SCHEMA_VERSION = "liminal.checkpoint-authority/v0.1"
+MIGRATION_CLAIM_SCHEMA = "liminal-witness-authority-migration-claim/v0.1"
 AUTHORITY_ORIGIN_KIND = "legacy-signer-to-logical-authority"
 AUTHORITY_MIGRATION_REASON = "source_control_portability_authority_migration"
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -47,9 +41,15 @@ _GIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 @dataclass(frozen=True)
 class WitnessAuthorityMigrationEvidence:
-    """Externally verified authorization to migrate a legacy genesis witness."""
+    """Externally verified authorization to migrate a legacy genesis witness.
+
+    ``verified`` is deliberately excluded from migration claim identity. Different
+    verifier implementations may establish the same semantic migration claim while
+    producing different verifier-output bytes.
+    """
 
     verified: bool
+    trust_domain: str
     legacy_witness_sha256: str
     legacy_signer_workflow_path: str
     legacy_signer_workflow_sha: str
@@ -57,7 +57,6 @@ class WitnessAuthorityMigrationEvidence:
     producer_contract_sha256: str
     authorization_contract_sha256: str
     evidence_type: str
-    migration_verification_sha256: str
 
 
 @dataclass(frozen=True)
@@ -134,7 +133,7 @@ def _valid_authority_origin(value: object) -> bool:
         "legacy_signer_workflow_path",
         "legacy_signer_workflow_sha",
         "migration_reason",
-        "migration_verification_sha256",
+        "migration_claim_sha256",
     }:
         return False
     return (
@@ -151,7 +150,7 @@ def _valid_authority_origin(value: object) -> bool:
         )
         and _valid_git_sha(value.get("legacy_signer_workflow_sha"))
         and value.get("migration_reason") == AUTHORITY_MIGRATION_REASON
-        and _valid_sha256(value.get("migration_verification_sha256"))
+        and _valid_sha256(value.get("migration_claim_sha256"))
     )
 
 
@@ -219,6 +218,7 @@ def _valid_migration_evidence(evidence: object) -> bool:
         return False
     return (
         isinstance(evidence.verified, bool)
+        and bool(evidence.trust_domain)
         and _valid_sha256(evidence.legacy_witness_sha256)
         and isinstance(evidence.legacy_signer_workflow_path, str)
         and evidence.legacy_signer_workflow_path.startswith(".github/workflows/")
@@ -227,8 +227,27 @@ def _valid_migration_evidence(evidence: object) -> bool:
         and _valid_sha256(evidence.producer_contract_sha256)
         and _valid_sha256(evidence.authorization_contract_sha256)
         and bool(evidence.evidence_type)
-        and _valid_sha256(evidence.migration_verification_sha256)
     )
+
+
+def migration_claim_sha256(evidence: WitnessAuthorityMigrationEvidence) -> str:
+    """Hash provider-neutral migration semantics, excluding verifier output/status."""
+
+    if not _valid_migration_evidence(evidence):
+        raise ValueError("migration_evidence_invalid")
+    payload = {
+        "schema": MIGRATION_CLAIM_SCHEMA,
+        "trust_domain": evidence.trust_domain,
+        "legacy_witness_sha256": evidence.legacy_witness_sha256,
+        "legacy_signer_workflow_path": evidence.legacy_signer_workflow_path,
+        "legacy_signer_workflow_sha": evidence.legacy_signer_workflow_sha,
+        "logical_producer_id": evidence.logical_producer_id,
+        "producer_contract_sha256": evidence.producer_contract_sha256,
+        "authorization_contract_sha256": evidence.authorization_contract_sha256,
+        "evidence_type": evidence.evidence_type,
+        "migration_reason": AUTHORITY_MIGRATION_REASON,
+    }
+    return sha256_hex(canonical_json_bytes(payload))
 
 
 def migrate_legacy_genesis_witness_to_v3(
@@ -256,6 +275,8 @@ def migrate_legacy_genesis_witness_to_v3(
     assert migration_evidence is not None
     if not migration_evidence.verified:
         return WitnessAuthorityMigrationDecision(False, "migration_evidence_unverified")
+    if migration_evidence.trust_domain != trust_domain:
+        return WitnessAuthorityMigrationDecision(False, "migration_trust_domain_mismatch")
 
     legacy_digest = legacy_witness_sha256(legacy_witness)
     if migration_evidence.legacy_witness_sha256 != legacy_digest:
@@ -298,9 +319,7 @@ def migrate_legacy_genesis_witness_to_v3(
             ),
             "legacy_signer_workflow_sha": migration_evidence.legacy_signer_workflow_sha,
             "migration_reason": AUTHORITY_MIGRATION_REASON,
-            "migration_verification_sha256": (
-                migration_evidence.migration_verification_sha256
-            ),
+            "migration_claim_sha256": migration_claim_sha256(migration_evidence),
         },
     }
     if not validate_witness_v3(witness):
