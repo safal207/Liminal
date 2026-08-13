@@ -16,6 +16,12 @@ BUNDLE_PATH = (
     / "source-control-portability-v0.1"
     / "external-proof-bundle.json"
 )
+PRODUCER_ROOT = (
+    "ed25519-sha256:4313ea228dbb2d29a429b9da9b25b30fb8e42bf6207c323c36c5b3f1863f627f"
+)
+CONTROL_ROOT = (
+    "ed25519-sha256:153efe437acb8e5796def201b31f3f37c62c2123f50ddc5901ee1c268b749224"
+)
 
 
 def _load() -> dict[str, object]:
@@ -24,18 +30,20 @@ def _load() -> dict[str, object]:
     return payload
 
 
+def _verify(bundle: object):
+    return verify_external_source_control_bundle(
+        bundle,
+        expected_producer_root_id=PRODUCER_ROOT,
+        expected_control_plane_root_id=CONTROL_ROOT,
+    )
+
+
 def test_external_bundle_verifies_all_signatures_and_bindings() -> None:
-    proof = verify_external_source_control_bundle(_load())
+    proof = _verify(_load())
 
     assert proof.verified is True
-    assert (
-        proof.producer_root_id
-        == "ed25519-sha256:4313ea228dbb2d29a429b9da9b25b30fb8e42bf6207c323c36c5b3f1863f627f"
-    )
-    assert (
-        proof.control_plane_root_id
-        == "ed25519-sha256:153efe437acb8e5796def201b31f3f37c62c2123f50ddc5901ee1c268b749224"
-    )
+    assert proof.producer_root_id == PRODUCER_ROOT
+    assert proof.control_plane_root_id == CONTROL_ROOT
     assert proof.subject_sha256 == (
         "74096c48cd730c55dd2f486f1af4b211b4f7f1ce38613134be645055ff1f946a"
     )
@@ -50,6 +58,22 @@ def test_external_bundle_verifies_all_signatures_and_bindings() -> None:
     )
 
 
+def test_bundle_cannot_supply_its_own_trust_root() -> None:
+    with pytest.raises(ValueError, match="producer_root_not_pinned"):
+        verify_external_source_control_bundle(
+            _load(),
+            expected_producer_root_id="ed25519-sha256:" + "0" * 64,
+            expected_control_plane_root_id=CONTROL_ROOT,
+        )
+
+    with pytest.raises(ValueError, match="control_plane_root_not_pinned"):
+        verify_external_source_control_bundle(
+            _load(),
+            expected_producer_root_id=PRODUCER_ROOT,
+            expected_control_plane_root_id="ed25519-sha256:" + "0" * 64,
+        )
+
+
 def test_tampered_checkpoint_fails_subject_binding() -> None:
     bundle = copy.deepcopy(_load())
     checkpoint = bundle["checkpoint_generation_1"]
@@ -57,7 +81,7 @@ def test_tampered_checkpoint_fails_subject_binding() -> None:
     checkpoint["accepted_registry_sha256"] = "0" * 64
 
     with pytest.raises(ValueError, match="producer_claim_subject_sha256_mismatch"):
-        verify_external_source_control_bundle(bundle)
+        _verify(bundle)
 
 
 def test_tampered_producer_claim_signature_fails_closed() -> None:
@@ -65,7 +89,7 @@ def test_tampered_producer_claim_signature_fails_closed() -> None:
     bundle["producer_claim_signature_b64"] = "A" * 88
 
     with pytest.raises(ValueError, match="producer_claim_signature_verification_failed"):
-        verify_external_source_control_bundle(bundle)
+        _verify(bundle)
 
 
 def test_tampered_control_plane_contract_fails_signature() -> None:
@@ -75,7 +99,7 @@ def test_tampered_control_plane_contract_fails_signature() -> None:
     contract["decision"] = "unauthorized"
 
     with pytest.raises(ValueError, match="authorization_contract_signature_verification_failed"):
-        verify_external_source_control_bundle(bundle)
+        _verify(bundle)
 
 
 def test_tampered_migration_predecessor_fails_signature() -> None:
@@ -85,7 +109,7 @@ def test_tampered_migration_predecessor_fails_signature() -> None:
     migration["from_witness_sha256"] = "0" * 64
 
     with pytest.raises(ValueError, match="authority_migration_signature_verification_failed"):
-        verify_external_source_control_bundle(bundle)
+        _verify(bundle)
 
 
 def test_root_fingerprint_cannot_be_relabelled() -> None:
@@ -93,4 +117,4 @@ def test_root_fingerprint_cannot_be_relabelled() -> None:
     bundle["producer_root_id"] = "ed25519-sha256:" + "0" * 64
 
     with pytest.raises(ValueError, match="producer_root_fingerprint_mismatch"):
-        verify_external_source_control_bundle(bundle)
+        _verify(bundle)
