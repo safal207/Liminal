@@ -1,0 +1,393 @@
+name: Trust Provider Portability v0.1
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  produce-attested-checkpoint:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml@f31b56a5e21a668bcb98791b05542652760dcc27
+
+  prove-trust-provider-portability:
+    needs: produce-attested-checkpoint
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable trust-provider source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable trust-provider checkout
+        env:
+          LIMINAL_TRUST_PROVIDER_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "${actual_sha}" = "${LIMINAL_TRUST_PROVIDER_WORKFLOW_SHA}" || {
+            echo "trust-provider checkout mismatch: ${actual_sha} != ${LIMINAL_TRUST_PROVIDER_WORKFLOW_SHA}"
+            exit 1
+          }
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Download immutable producer evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-attested
+          path: source-evidence
+
+      - name: Locate unique producer subjects
+        id: source
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          root = Path("source-evidence")
+          manifests = sorted(root.rglob("evidence-manifest-v0.1.json"))
+          checkpoints = sorted(root.rglob("checkpoint-generation-1.json"))
+          assert len(manifests) == 1, manifests
+          assert len(checkpoints) == 1, checkpoints
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"manifest={manifests[0].as_posix()}\n")
+              output.write(f"checkpoint={checkpoints[0].as_posix()}\n")
+          PY
+
+      - name: Assert exact local authorization policy digest
+        run: |
+          set -euo pipefail
+          expected="22fcc3c556528d080591041bc10c1a35f85bfbad348b8f669bfff4bb1b88b47f"
+          actual="$(sha256sum policies/recovery-trust-consumer-checkpoint-witness-v0.2.json | awk '{print $1}')"
+          test "${actual}" = "${expected}" || {
+            echo "authorization policy digest mismatch: ${actual} != ${expected}"
+            exit 1
+          }
+
+      - name: Verify GitHub Sigstore provider path
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANIFEST_PATH: ${{ steps.source.outputs.manifest }}
+          CHECKPOINT_PATH: ${{ steps.source.outputs.checkpoint }}
+        run: |
+          set -euo pipefail
+          mkdir -p provider-github
+          gh attestation verify \
+            "${MANIFEST_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > provider-github/manifest.json
+          gh attestation verify \
+            "${CHECKPOINT_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > provider-github/checkpoint.json
+
+      - name: Verify pinned offline Ed25519 provider path
+        env:
+          MANIFEST_PATH: ${{ steps.source.outputs.manifest }}
+          CHECKPOINT_PATH: ${{ steps.source.outputs.checkpoint }}
+          SOURCE_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          root_dir="trust/experimental/offline-ed25519-root-v0.1"
+          expected_root="ed25519-sha256:4b690cae29f41bea47c2beaca52e92dcb606c69638b9f48d8e540a981af1e402"
+          actual_root="ed25519-sha256:$(openssl pkey -pubin -in "${root_dir}/public-key.pem" -outform DER | sha256sum | awk '{print $1}')"
+          test "${actual_root}" = "${expected_root}" || {
+            echo "offline root fingerprint mismatch: ${actual_root} != ${expected_root}"
+            exit 1
+          }
+
+          mkdir -p provider-offline
+          python - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("trust/experimental/offline-ed25519-root-v0.1")
+          output = Path("provider-offline")
+          expected_root = "ed25519-sha256:4b690cae29f41bea47c2beaca52e92dcb606c69638b9f48d8e540a981af1e402"
+          expected = {
+              "authority_id": "liminal:checkpoint-producer",
+              "authorization_policy_sha256": "22fcc3c556528d080591041bc10c1a35f85bfbad348b8f669bfff4bb1b88b47f",
+              "execution_policy": "trusted-ci-no-self-hosted",
+              "producer_revision": "f31b56a5e21a668bcb98791b05542652760dcc27",
+              "repository": "safal207/Liminal",
+              "schema": "liminal-offline-provider-claim/v0.1",
+              "source_ref": os.environ["SOURCE_REF"],
+          }
+          subjects = {
+              "manifest": ("evidence_manifest", Path(os.environ["MANIFEST_PATH"]), root / "manifest-proof.json"),
+              "checkpoint": ("checkpoint", Path(os.environ["CHECKPOINT_PATH"]), root / "checkpoint-proof.json"),
+          }
+          for name, (kind, subject_path, proof_path) in subjects.items():
+              proof = json.loads(proof_path.read_text())
+              assert proof["root_id"] == expected_root
+              claim = proof["claim"]
+              for key, value in expected.items():
+                  assert claim[key] == value, (name, key, claim[key], value)
+              assert claim["subject_kind"] == kind
+              actual_subject_sha = hashlib.sha256(subject_path.read_bytes()).hexdigest()
+              assert claim["subject_sha256"] == actual_subject_sha, (
+                  name,
+                  claim["subject_sha256"],
+                  actual_subject_sha,
+              )
+              claim_bytes = (
+                  json.dumps(claim, sort_keys=True, separators=(",", ":")) + "\n"
+              ).encode()
+              (output / f"{name}.claim.json").write_bytes(claim_bytes)
+              (output / f"{name}.sig").write_bytes(
+                  base64.b64decode(proof["signature_base64"])
+              )
+          PY
+
+          openssl pkeyutl -verify -pubin \
+            -inkey "${root_dir}/public-key.pem" \
+            -rawin \
+            -in provider-offline/manifest.claim.json \
+            -sigfile provider-offline/manifest.sig
+          openssl pkeyutl -verify -pubin \
+            -inkey "${root_dir}/public-key.pem" \
+            -rawin \
+            -in provider-offline/checkpoint.claim.json \
+            -sigfile provider-offline/checkpoint.sig
+
+      - name: Compare provider semantics and prove witness transition portability
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          SOURCE_MANIFEST: ${{ steps.source.outputs.manifest }}
+          SOURCE_CHECKPOINT: ${{ steps.source.outputs.checkpoint }}
+          SOURCE_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          from liminal.portable_checkpoint_authorization import (
+              PortableCheckpointAuthorizationPolicy,
+              adapt_portable_trust_receipt_to_checkpoint_evidence,
+          )
+          from liminal.recovery_trust_consumer_checkpoint_attested import checkpoint_sha256
+          from liminal.recovery_trust_consumer_checkpoint_witness import (
+              evaluate_checkpoint_candidate,
+              witness_sha256,
+          )
+          from liminal.recovery_trust_root_registry import canonical_json_bytes
+          from liminal.trust_provider_portability import (
+              TrustProviderAgreementReason,
+              TrustProviderObservation,
+              canonical_portable_trust_receipt_bytes,
+              compare_independent_trust_providers,
+              portable_trust_receipt_from_observation,
+              portable_trust_receipt_sha256,
+          )
+
+          repository = "safal207/Liminal"
+          authority_id = "liminal:checkpoint-producer"
+          producer_revision = "f31b56a5e21a668bcb98791b05542652760dcc27"
+          source_ref = os.environ["SOURCE_REF"]
+          execution_policy = "trusted-ci-no-self-hosted"
+          authorization_policy_sha256 = "22fcc3c556528d080591041bc10c1a35f85bfbad348b8f669bfff4bb1b88b47f"
+          offline_root = "ed25519-sha256:4b690cae29f41bea47c2beaca52e92dcb606c69638b9f48d8e540a981af1e402"
+
+          manifest_raw = Path(os.environ["SOURCE_MANIFEST"]).read_bytes()
+          checkpoint_raw = Path(os.environ["SOURCE_CHECKPOINT"]).read_bytes()
+          subject_hashes = {
+              "manifest": hashlib.sha256(manifest_raw).hexdigest(),
+              "checkpoint": hashlib.sha256(checkpoint_raw).hexdigest(),
+          }
+
+          output_root = Path("artifacts/trust-provider-portability")
+          receipts_dir = output_root / "receipts"
+          receipts_dir.mkdir(parents=True, exist_ok=True)
+
+          agreements = {}
+          receipt_hashes = {}
+          receipts = {}
+          for subject, subject_sha in subject_hashes.items():
+              primary = TrustProviderObservation(
+                  provider="github-sigstore-public-good",
+                  verification_scheme="github_attestation",
+                  trust_root_id="sigstore-public-good:fulcio-rekor",
+                  subject_sha256=subject_sha,
+                  authority_id=authority_id,
+                  repository=repository,
+                  producer_revision=producer_revision,
+                  source_ref=source_ref,
+                  execution_policy=execution_policy,
+                  authorization_policy_sha256=authorization_policy_sha256,
+                  verified=True,
+              )
+              secondary = TrustProviderObservation(
+                  provider="offline-ed25519-ceremony-v0.1",
+                  verification_scheme="detached_ed25519",
+                  trust_root_id=offline_root,
+                  subject_sha256=subject_sha,
+                  authority_id=authority_id,
+                  repository=repository,
+                  producer_revision=producer_revision,
+                  source_ref=source_ref,
+                  execution_policy=execution_policy,
+                  authorization_policy_sha256=authorization_policy_sha256,
+                  verified=True,
+              )
+              agreement = compare_independent_trust_providers(primary, secondary)
+              assert agreement.agreed is True, agreement.reason
+              assert agreement.reason is TrustProviderAgreementReason.VERIFIED_TRUST_CLAIMS_AGREE
+              assert agreement.portable_receipt_sha256 is not None
+
+              primary_receipt = portable_trust_receipt_from_observation(primary)
+              secondary_receipt = portable_trust_receipt_from_observation(secondary)
+              assert primary_receipt == secondary_receipt
+              assert portable_trust_receipt_sha256(primary_receipt) == agreement.portable_receipt_sha256
+
+              (receipts_dir / f"{subject}-receipt-github.json").write_bytes(
+                  canonical_portable_trust_receipt_bytes(primary_receipt)
+              )
+              (receipts_dir / f"{subject}-receipt-offline.json").write_bytes(
+                  canonical_portable_trust_receipt_bytes(secondary_receipt)
+              )
+              agreements[subject] = agreement.reason.value
+              receipt_hashes[subject] = agreement.portable_receipt_sha256
+              receipts[subject] = (primary_receipt, secondary_receipt)
+
+          trusted_witness = json.loads(
+              Path("policies/recovery-trust-consumer-checkpoint-witness-v0.2.json").read_text()
+          )
+          previous_checkpoint = json.loads(
+              Path("policies/recovery-trust-consumer-checkpoint-v0.2.json").read_text()
+          )
+          candidate_checkpoint = json.loads(checkpoint_raw)
+          assert checkpoint_sha256(candidate_checkpoint) == subject_hashes["checkpoint"]
+
+          authorization_policy = PortableCheckpointAuthorizationPolicy(
+              authority_id=authority_id,
+              source_ref=source_ref,
+              execution_policy=execution_policy,
+              authorization_policy_sha256=authorization_policy_sha256,
+          )
+
+          witness_decisions = []
+          for provider, receipt in (
+              ("github-sigstore-public-good", receipts["checkpoint"][0]),
+              ("offline-ed25519-ceremony-v0.1", receipts["checkpoint"][1]),
+          ):
+              adapted = adapt_portable_trust_receipt_to_checkpoint_evidence(
+                  trusted_witness,
+                  receipt,
+                  authorization_policy,
+              )
+              assert adapted.authorized is True, adapted.reason
+              assert adapted.checkpoint_evidence is not None
+              decision = evaluate_checkpoint_candidate(
+                  trusted_witness,
+                  candidate_checkpoint,
+                  previous_checkpoint=previous_checkpoint,
+                  checkpoint_evidence=adapted.checkpoint_evidence,
+              )
+              assert decision.authorized is True, decision.reason
+              assert decision.reason == "checkpoint_witness_advanced"
+              assert decision.next_witness is not None
+              witness_decisions.append(
+                  {
+                      "provider": provider,
+                      "authorized": decision.authorized,
+                      "reason": decision.reason,
+                      "next_witness_sha256": witness_sha256(decision.next_witness),
+                  }
+              )
+
+          assert witness_decisions[0]["next_witness_sha256"] == (
+              witness_decisions[1]["next_witness_sha256"]
+          )
+
+          result = {
+              "schema_version": "liminal.trust-provider-portability.v0.1",
+              "verified": True,
+              "reason": "independent_trust_provider_semantics_agree",
+              "claim_boundary": (
+                  "independent trust root, signing authority, and signature scheme; "
+                  "shared GitHub Actions execution and artifact transport"
+              ),
+              "providers": {
+                  "primary": {
+                      "provider": "github-sigstore-public-good",
+                      "verification_scheme": "github_attestation",
+                      "trust_root_id": "sigstore-public-good:fulcio-rekor",
+                  },
+                  "secondary": {
+                      "provider": "offline-ed25519-ceremony-v0.1",
+                      "verification_scheme": "detached_ed25519",
+                      "trust_root_id": offline_root,
+                  },
+              },
+              "subject_sha256": subject_hashes,
+              "agreement_reason": agreements,
+              "portable_receipt_sha256": receipt_hashes,
+              "authorization_policy_sha256": authorization_policy_sha256,
+              "witness_decisions": witness_decisions,
+          }
+          assert all(item["authorized"] for item in witness_decisions)
+          output = output_root / "trust-provider-portability-result.json"
+          output.write_bytes(canonical_json_bytes(result))
+
+          print(f"manifest_portable_receipt_sha256={receipt_hashes['manifest']}")
+          print(f"checkpoint_portable_receipt_sha256={receipt_hashes['checkpoint']}")
+          print(f"next_witness_sha256={witness_decisions[0]['next_witness_sha256']}")
+          print("trust_provider_portability=VERIFIED")
+          PY
+
+      - name: Attest canonical manifest portable receipt
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-provider-portability/receipts/manifest-receipt-github.json
+
+      - name: Attest canonical checkpoint portable receipt
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-provider-portability/receipts/checkpoint-receipt-github.json
+
+      - name: Attest trust provider portability result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-provider-portability/trust-provider-portability-result.json
+
+      - name: Upload trust provider portability proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trust-provider-portability-proof
+          path: |
+            artifacts/trust-provider-portability
+            provider-github
+            provider-offline
+            trust/experimental/offline-ed25519-root-v0.1
+          if-no-files-found: error
+          retention-days: 30
