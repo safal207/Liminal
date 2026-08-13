@@ -43,8 +43,6 @@ The v0.3 authority schema is:
 
 `liminal.checkpoint-authority/v0.1`
 
-Example shape:
-
 ```json
 {
   "schema": "liminal.checkpoint-authority/v0.1",
@@ -64,13 +62,38 @@ The first v0.3 witness is created only through `migrate_legacy_genesis_witness_t
 - the exact legacy witness SHA-256;
 - the exact legacy signer workflow path;
 - the exact legacy signer workflow SHA;
+- the trust domain;
 - the logical producer identity;
 - the producer contract SHA-256;
 - the authorization contract SHA-256;
-- the evidence type;
-- a SHA-256 reference to the external migration-verification record.
+- the evidence type.
 
 The migration is deliberately restricted to a validated generation-0 legacy witness. Later generations must advance through the normal v0.3 predecessor chain rather than being independently re-rooted.
+
+### Portable migration identity
+
+The witness must **not** bind raw verifier output or a verifier-specific verification-record digest into its identity. Doing that would recreate the verifier-output coupling removed by Normalized Verification Receipt.
+
+Instead, v0.3 computes:
+
+`migration_claim_sha256`
+
+from canonical semantic mapping fields only:
+
+```text
+legacy witness identity
++ exact legacy signer pin
++ trust domain
++ logical producer id
++ producer contract digest
++ authorization contract digest
++ evidence type
++ migration reason
+        ↓
+canonical migration claim SHA-256
+```
+
+`verified` is deliberately excluded from this claim identity. External verification still must succeed before migration is authorized, but two verifier implementations that establish the same mapping can produce the same v0.3 witness root even when their raw verification outputs differ.
 
 The new witness retains an immutable `authority_origin` record:
 
@@ -78,7 +101,7 @@ The new witness retains an immutable `authority_origin` record:
 legacy witness hash
 + legacy signer pin
 + migration reason
-+ migration verification digest
++ migration claim digest
         ↓
 logical authority contract
 ```
@@ -192,13 +215,14 @@ It only consumes already-verified authority claims and evaluates them against an
 ## Next verification sequence
 
 1. Exact-head CI for the v0.3 model and tests.
-2. Materialize the real producer-contract and authorization-contract digests into a verified migration record.
-3. Produce a signed external producer/control-plane observation outside the current GitHub producer authority.
-4. Reproduce the same candidate checkpoint bytes from both producer paths.
-5. Feed independently verified pre-transition authority evidence into the same v0.3 witness root.
-6. Require the same `checkpoint_witness_advanced` decision and the same v0.3 next-witness SHA-256.
-7. Compare the two post-transition `SourceControlObservation` values.
-8. Only after exact agreement, create/pin a live immutable workflow proof.
+2. Materialize the real producer-contract and authorization-contract digests into a canonical migration claim.
+3. Verify that claim through independent proof paths without changing `migration_claim_sha256`.
+4. Produce a signed external producer/control-plane observation outside the current GitHub producer authority.
+5. Reproduce the same candidate checkpoint bytes from both producer paths.
+6. Feed independently verified pre-transition authority evidence into the same v0.3 witness root.
+7. Require the same `checkpoint_witness_advanced` decision and the same v0.3 next-witness SHA-256.
+8. Compare the two post-transition `SourceControlObservation` values.
+9. Only after exact agreement, create/pin a live immutable workflow proof.
 
 ## Falsifiable question
 
