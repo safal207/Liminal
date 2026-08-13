@@ -1,0 +1,142 @@
+name: Source Producer Control Plane Portability v0.1
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  produce-github-checkpoint:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml@f31b56a5e21a668bcb98791b05542652760dcc27
+
+  prove-source-control-portability:
+    needs: produce-github-checkpoint
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable source-control proof source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable proof checkout
+        env:
+          LIMINAL_SOURCE_CONTROL_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "${actual_sha}" = "${LIMINAL_SOURCE_CONTROL_WORKFLOW_SHA}" || {
+            echo "source/control proof checkout mismatch: ${actual_sha} != ${LIMINAL_SOURCE_CONTROL_WORKFLOW_SHA}"
+            exit 1
+          }
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Install pinned cryptographic verifier dependency
+        run: python -m pip install --disable-pip-version-check cryptography==45.0.6
+
+      - name: Download immutable GitHub producer evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-attested
+          path: github-evidence
+
+      - name: Verify GitHub producer checkpoint signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/source-control-portability
+          gh attestation verify \
+            github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > artifacts/source-control-portability/github-checkpoint-verification.json
+
+      - name: Verify external producer/control plane and compare v0.3 transitions
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python scripts/run-source-control-portability-proof.py \
+            --checkpoint-generation-0 github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-0.json \
+            --github-checkpoint github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json \
+            --github-verification-json artifacts/source-control-portability/github-checkpoint-verification.json \
+            --external-bundle trust/experimental/source-control-portability-v0.1/external-proof-bundle.json \
+            --output artifacts/source-control-portability/source-control-portability-result.json
+
+      - name: Assert source/control portability verdict
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(
+              Path(
+                  "artifacts/source-control-portability/source-control-portability-result.json"
+              ).read_text()
+          )
+          assert result["verified"] is True
+          assert result["reason"] == "verified_source_control_claims_agree"
+          assert result["checkpoint_subject_sha256"] == (
+              "74096c48cd730c55dd2f486f1af4b211b4f7f1ce38613134be645055ff1f946a"
+          )
+          assert result["producer_contract_sha256"] == (
+              "72bba8eddc81e88c2e9ad24e266713e9534f6c332fec7ad5ecaa264f922b7ca3"
+          )
+          assert result["authorization_contract_sha256"] == (
+              "576da1fa0c5cd70313ad1d89de88f4a7048e13fa5d0ce05c833f7bef4233a553"
+          )
+          assert result["predecessor_witness_v2_sha256"] == (
+              "af12743396296c788223d3087f427b1f93d3086a5aeb9b7c8c0f38d49347e9f9"
+          )
+          assert result["migrated_witness_v3_sha256"] == (
+              "40ba8f06b840f0dc1cab8f74628ff650a80d861cb27d218878bdb569d58582de"
+          )
+          assert result["next_witness_v3_sha256"] == (
+              "6f939dc297c4ef12e42046e21909df1afbbf277d77ede34aff1f8f972c5d77bf"
+          )
+          assert result["primary"]["producer_provider"] == "github-actions-checkpoint-producer"
+          assert result["primary"]["control_plane_provider"] == "github-repository-policy"
+          assert result["secondary"]["producer_provider"] == (
+              "openai-workspace-standalone-producer"
+          )
+          assert result["secondary"]["control_plane_provider"] == (
+              "offline-ed25519-control-plane"
+          )
+          print("source_control_portability=VERIFIED")
+          PY
+
+      - name: Attest source/control portability result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/source-control-portability/source-control-portability-result.json
+
+      - name: Upload source/control portability proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: source-control-portability-proof
+          path: |
+            artifacts/source-control-portability
+            trust/experimental/source-control-portability-v0.1/external-proof-bundle.json
+            github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-0.json
+            github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json
+          if-no-files-found: error
+          retention-days: 30
