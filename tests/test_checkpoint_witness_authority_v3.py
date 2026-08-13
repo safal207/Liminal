@@ -10,6 +10,7 @@ from liminal.checkpoint_witness_authority_v3 import (
     WitnessAuthorityMigrationEvidence,
     evaluate_checkpoint_candidate_v3,
     migrate_legacy_genesis_witness_to_v3,
+    migration_claim_sha256,
     validate_witness_v3,
     witness_v3_sha256,
 )
@@ -26,7 +27,6 @@ TRUST_DOMAIN = "liminal.trusted-recovery"
 LOGICAL_PRODUCER_ID = "liminal.trusted-recovery.checkpoint-producer"
 PRODUCER_CONTRACT_SHA256 = "1" * 64
 AUTHORIZATION_CONTRACT_SHA256 = "2" * 64
-MIGRATION_VERIFICATION_SHA256 = "3" * 64
 EVIDENCE_TYPE = "trusted-recovery-consumer-checkpoint"
 GEN1_REGISTRY = "5441072b0e550995a9ad0b27b4f3af7c7b5bf531f59e27c870ab1a8cf61789a1"
 GEN1_MANIFEST = "b9cb0b37da2d74ece6c1cf780b06b17fbbb96f02e073ac64fb26be49cae24277"
@@ -61,6 +61,7 @@ def _migration_evidence(legacy_witness: dict[str, object]) -> WitnessAuthorityMi
     assert isinstance(signer, dict)
     return WitnessAuthorityMigrationEvidence(
         verified=True,
+        trust_domain=TRUST_DOMAIN,
         legacy_witness_sha256=witness_sha256(legacy_witness),
         legacy_signer_workflow_path=str(signer["workflow_path"]),
         legacy_signer_workflow_sha=str(signer["workflow_sha"]),
@@ -68,7 +69,6 @@ def _migration_evidence(legacy_witness: dict[str, object]) -> WitnessAuthorityMi
         producer_contract_sha256=PRODUCER_CONTRACT_SHA256,
         authorization_contract_sha256=AUTHORIZATION_CONTRACT_SHA256,
         evidence_type=EVIDENCE_TYPE,
-        migration_verification_sha256=MIGRATION_VERIFICATION_SHA256,
     )
 
 
@@ -100,10 +100,11 @@ def _authority_evidence(
 
 def test_verified_legacy_genesis_migrates_to_provider_neutral_authority() -> None:
     legacy = _load(LEGACY_WITNESS_PATH)
+    evidence = _migration_evidence(legacy)
     decision = migrate_legacy_genesis_witness_to_v3(
         legacy,
         trust_domain=TRUST_DOMAIN,
-        migration_evidence=_migration_evidence(legacy),
+        migration_evidence=evidence,
     )
 
     assert decision.authorized is True
@@ -118,6 +119,18 @@ def test_verified_legacy_genesis_migrates_to_provider_neutral_authority() -> Non
     assert authority["authorization_contract_sha256"] == AUTHORIZATION_CONTRACT_SHA256
     assert "workflow_path" not in authority
     assert "workflow_sha" not in authority
+    origin = witness["authority_origin"]
+    assert isinstance(origin, dict)
+    assert origin["migration_claim_sha256"] == migration_claim_sha256(evidence)
+    assert "migration_verification_sha256" not in origin
+
+
+def test_migration_claim_identity_ignores_verifier_status_bytes() -> None:
+    legacy = _load(LEGACY_WITNESS_PATH)
+    verified = _migration_evidence(legacy)
+    unverified = replace(verified, verified=False)
+
+    assert migration_claim_sha256(verified) == migration_claim_sha256(unverified)
 
 
 def test_migration_rejects_unverified_mapping() -> None:
@@ -132,6 +145,20 @@ def test_migration_rejects_unverified_mapping() -> None:
 
     assert decision.authorized is False
     assert decision.reason == "migration_evidence_unverified"
+
+
+def test_migration_rejects_trust_domain_drift() -> None:
+    legacy = _load(LEGACY_WITNESS_PATH)
+    evidence = replace(_migration_evidence(legacy), trust_domain="other.domain")
+
+    decision = migrate_legacy_genesis_witness_to_v3(
+        legacy,
+        trust_domain=TRUST_DOMAIN,
+        migration_evidence=evidence,
+    )
+
+    assert decision.authorized is False
+    assert decision.reason == "migration_trust_domain_mismatch"
 
 
 def test_migration_rejects_wrong_legacy_witness_digest() -> None:
