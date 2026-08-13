@@ -17,6 +17,7 @@ _AUTHORIZATION_CONTRACT_SCHEMA = "liminal-portable-checkpoint-authorization-cont
 _PRODUCER_CLAIM_SCHEMA = "liminal-external-checkpoint-producer-claim/v0.1"
 _MIGRATION_SCHEMA = "liminal-witness-authority-migration/v0.1"
 _PROOF_MANIFEST_SCHEMA = "liminal-external-source-control-proof/v0.1"
+_ROOT_PREFIX = "ed25519-sha256:"
 
 
 @dataclass(frozen=True)
@@ -46,6 +47,14 @@ def _require_dict(bundle: dict[str, Any], key: str) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"{key}_must_be_object")
     return value
+
+
+def _validate_expected_root_id(value: str, *, field: str) -> None:
+    if not isinstance(value, str) or not value.startswith(_ROOT_PREFIX):
+        raise ValueError(f"{field}_must_be_ed25519_sha256_root_id")
+    digest = value[len(_ROOT_PREFIX) :]
+    if len(digest) != 64 or any(ch not in "0123456789abcdef" for ch in digest):
+        raise ValueError(f"{field}_must_be_ed25519_sha256_root_id")
 
 
 def _load_ed25519_public_key(pem_text: object, *, field: str) -> tuple[Ed25519PublicKey, bytes]:
@@ -79,7 +88,21 @@ def _verify_b64_signature(
 
 def verify_external_source_control_bundle(
     bundle: object,
+    *,
+    expected_producer_root_id: str,
+    expected_control_plane_root_id: str,
 ) -> VerifiedExternalSourceControlProof:
+    """Verify a bundle against roots pinned outside the bundle itself.
+
+    Public keys may travel with the bundle for portability, but their fingerprints are
+    not trusted from bundle metadata. Callers must supply the expected producer and
+    control-plane root identities from local verification policy.
+    """
+
+    _validate_expected_root_id(expected_producer_root_id, field="expected_producer_root_id")
+    _validate_expected_root_id(
+        expected_control_plane_root_id, field="expected_control_plane_root_id"
+    )
     if not isinstance(bundle, dict):
         raise ValueError("bundle_must_be_object")
     if bundle.get("schema") != _BUNDLE_SCHEMA:
@@ -109,8 +132,12 @@ def verify_external_source_control_bundle(
     control_key, control_pem = _load_ed25519_public_key(
         bundle.get("control_plane_public_key_pem"), field="control_plane_public_key"
     )
-    producer_root_id = f"ed25519-sha256:{_sha256(producer_pem)}"
-    control_root_id = f"ed25519-sha256:{_sha256(control_pem)}"
+    producer_root_id = f"{_ROOT_PREFIX}{_sha256(producer_pem)}"
+    control_root_id = f"{_ROOT_PREFIX}{_sha256(control_pem)}"
+    if producer_root_id != expected_producer_root_id:
+        raise ValueError("producer_root_not_pinned")
+    if control_root_id != expected_control_plane_root_id:
+        raise ValueError("control_plane_root_not_pinned")
     if bundle.get("producer_root_id") != producer_root_id:
         raise ValueError("producer_root_fingerprint_mismatch")
     if bundle.get("control_plane_root_id") != control_root_id:
