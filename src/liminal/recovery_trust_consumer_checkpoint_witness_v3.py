@@ -1,19 +1,13 @@
 """Provider-neutral checkpoint witness authority v0.3.
 
 v0.1/v0.2 witnesses bind checkpoint authority to a concrete GitHub workflow path
-and commit SHA. That is intentionally preserved as historical evidence, but it cannot
-serve as the portable authority identity for producer/control-plane portability.
+and commit SHA. That historical behavior remains unchanged. v0.3 introduces a logical
+producer authority contract so concrete signer/provider identity is evidence about
+authority rather than the portable authority identity itself.
 
-v0.3 replaces the concrete signer identity with a logical producer authority contract:
-
-    logical_producer_id
-    + producer_contract_sha256
-    + authorization_contract_sha256
-    + evidence_type
-
-Concrete signers/providers remain evidence *about* that authority and are verified
-outside this module. Migration from a v0.2 witness is fail-closed and requires an
-explicit verified migration record bound to the exact predecessor witness digest.
+Migration from v0.2 is explicit and fail-closed. Candidate advancement consumes only
+already verified portable checkpoint evidence; cryptographic verification remains
+outside this module.
 """
 
 from __future__ import annotations
@@ -117,7 +111,7 @@ def witness_v3_sha256(payload: object) -> str:
     return sha256_hex(canonical_json_bytes(payload))
 
 
-def validate_witness_v3(payload: object, previous_witness: object | None = None) -> bool:
+def _validate_witness_v3_body(payload: object) -> bool:
     if not isinstance(payload, dict):
         return False
     expected = {
@@ -138,7 +132,11 @@ def validate_witness_v3(payload: object, previous_witness: object | None = None)
     generation = payload.get("observed_generation")
     if not isinstance(generation, int) or isinstance(generation, bool) or generation < 0:
         return False
-    for key in ("checkpoint_sha256", "accepted_registry_sha256", "accepted_manifest_sha256"):
+    for key in (
+        "checkpoint_sha256",
+        "accepted_registry_sha256",
+        "accepted_manifest_sha256",
+    ):
         if not _valid_sha256(payload.get(key)):
             return False
     if not _valid_authority_dict(payload.get("checkpoint_authority")):
@@ -156,21 +154,38 @@ def validate_witness_v3(payload: object, previous_witness: object | None = None)
         return False
     if migration.get("reason") != _AUTHORITY_MIGRATION_REASON:
         return False
-
     previous_digest = payload.get("previous_witness_sha256")
     if generation == 0:
-        return previous_digest is None and previous_witness is None
-    if not _valid_sha256(previous_digest):
+        return previous_digest is None
+    return _valid_sha256(previous_digest)
+
+
+def validate_witness_v3(payload: object, previous_witness: object | None = None) -> bool:
+    """Validate a v0.3 witness and its immediate predecessor link.
+
+    The predecessor is validated structurally without recursively requiring its own
+    predecessor object. This keeps immediate-link validation usable at arbitrary chain
+    depth while callers that hold a full chain can validate each adjacent pair.
+    """
+
+    if not _validate_witness_v3_body(payload):
         return False
-    if previous_witness is None:
+    assert isinstance(payload, dict)
+    generation = payload["observed_generation"]
+    if generation == 0:
+        return previous_witness is None
+    if not _validate_witness_v3_body(previous_witness):
         return False
-    if isinstance(previous_witness, dict) and previous_witness.get("schema_version") == WITNESS_SCHEMA_VERSION_V3:
-        if not validate_witness_v3(previous_witness):
-            return False
-        if previous_witness["observed_generation"] != generation - 1:
-            return False
-        return previous_digest == witness_v3_sha256(previous_witness)
-    return False
+    assert isinstance(previous_witness, dict)
+    if previous_witness["observed_generation"] != generation - 1:
+        return False
+    if previous_witness["trust_domain"] != payload["trust_domain"]:
+        return False
+    if previous_witness["checkpoint_authority"] != payload["checkpoint_authority"]:
+        return False
+    if previous_witness["authority_migration"] != payload["authority_migration"]:
+        return False
+    return payload["previous_witness_sha256"] == witness_v3_sha256(previous_witness)
 
 
 def migrate_witness_v2_to_v3(
@@ -224,9 +239,9 @@ def evaluate_portable_checkpoint_candidate(
     previous_checkpoint: object | None,
     checkpoint_evidence: VerifiedPortableCheckpointEvidence | None,
 ) -> PortableCheckpointWitnessDecision:
-    """Advance a v0.3 witness using logical producer authority rather than concrete signer identity."""
+    """Advance a v0.3 witness under logical producer authority."""
 
-    if not validate_witness_v3(trusted_witness):
+    if not _validate_witness_v3_body(trusted_witness):
         return PortableCheckpointWitnessDecision(False, "trusted_witness_invalid")
     assert isinstance(trusted_witness, dict)
     if not isinstance(candidate_checkpoint, dict):
@@ -247,7 +262,9 @@ def evaluate_portable_checkpoint_candidate(
             and candidate_checkpoint.get("accepted_manifest_sha256")
             == trusted_witness["accepted_manifest_sha256"]
         ):
-            return PortableCheckpointWitnessDecision(True, "checkpoint_already_witnessed", trusted_witness)
+            return PortableCheckpointWitnessDecision(
+                True, "checkpoint_already_witnessed", trusted_witness
+            )
         return PortableCheckpointWitnessDecision(False, "same_generation_checkpoint_conflict")
     if generation != witnessed_generation + 1:
         return PortableCheckpointWitnessDecision(False, "checkpoint_generation_gap")
@@ -264,14 +281,26 @@ def evaluate_portable_checkpoint_candidate(
 
     expected = trusted_witness["checkpoint_authority"]
     comparisons = (
-        (checkpoint_evidence.logical_producer_id, expected["logical_producer_id"], "logical_producer_mismatch"),
-        (checkpoint_evidence.producer_contract_sha256, expected["producer_contract_sha256"], "producer_contract_mismatch"),
+        (
+            checkpoint_evidence.logical_producer_id,
+            expected["logical_producer_id"],
+            "logical_producer_mismatch",
+        ),
+        (
+            checkpoint_evidence.producer_contract_sha256,
+            expected["producer_contract_sha256"],
+            "producer_contract_mismatch",
+        ),
         (
             checkpoint_evidence.authorization_contract_sha256,
             expected["authorization_contract_sha256"],
             "authorization_contract_mismatch",
         ),
-        (checkpoint_evidence.evidence_type, expected["evidence_type"], "evidence_type_mismatch"),
+        (
+            checkpoint_evidence.evidence_type,
+            expected["evidence_type"],
+            "evidence_type_mismatch",
+        ),
     )
     for actual, required, reason in comparisons:
         if actual != required:
