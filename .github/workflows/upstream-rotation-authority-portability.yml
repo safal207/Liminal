@@ -1,0 +1,215 @@
+name: Upstream Rotation Authority Portability v0.1
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  produce-primary-rotation:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-root-rotation-drill.yml@e2cb6a014236bc561d03c405f4986146026041fa
+
+  prove-upstream-rotation-authority-portability:
+    needs: produce-primary-rotation
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable rotation-authority verifier
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable verifier checkout
+        env:
+          LIMINAL_ROTATION_AUTHORITY_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "${actual_sha}" = "${LIMINAL_ROTATION_AUTHORITY_WORKFLOW_SHA}" || {
+            echo "rotation-authority verifier checkout mismatch: ${actual_sha} != ${LIMINAL_ROTATION_AUTHORITY_WORKFLOW_SHA}"
+            exit 1
+          }
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Download immutable primary rotation evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-trust-root-rotation-drill
+          path: primary-rotation-evidence
+
+      - name: Locate and verify immutable primary rotation signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          result="$(find primary-rotation-evidence -type f -name rotation-drill-result.json -print)"
+          test "$(printf '%s\n' "${result}" | sed '/^$/d' | wc -l)" -eq 1
+          mkdir -p upstream-rotation-proof
+          gh attestation verify \
+            "${result}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-root-rotation-drill.yml \
+            --signer-digest e2cb6a014236bc561d03c405f4986146026041fa \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > upstream-rotation-proof/primary-rotation-attestation-verification.json
+
+      - name: Prepare canonical external signed payloads
+        id: external
+        env:
+          EXTERNAL_ENVELOPE: trust/experimental/upstream-rotation-authority-v0.1/external-proof-envelope.json
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          def canon(value):
+              return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+          envelope = json.loads(Path(os.environ["EXTERNAL_ENVELOPE"]).read_text())
+          assert envelope["schema"] == "liminal-upstream-rotation-authority-external-proof/v0.1"
+          control = envelope["control_plane"]
+          producer = envelope["producer"]
+          out = Path("upstream-rotation-proof/external")
+          out.mkdir(parents=True, exist_ok=True)
+          (out / "control-plane-public.pem").write_text(control["public_key_pem"])
+          (out / "producer-public.pem").write_text(producer["public_key_pem"])
+          for name, value in (
+              ("producer-contract", control["producer_contract"]),
+              ("authorization-contract", control["authorization_contract"]),
+              ("rotation-intent", control["rotation_intent"]),
+              ("producer-result", producer["result"]),
+          ):
+              (out / f"{name}.json").write_bytes(canon(value))
+          for name, encoded in (
+              ("producer-contract", control["producer_contract_signature_b64"]),
+              ("authorization-contract", control["authorization_contract_signature_b64"]),
+              ("rotation-intent", control["rotation_intent_signature_b64"]),
+              ("producer-result", producer["result_signature_b64"]),
+          ):
+              (out / f"{name}.sig").write_bytes(base64.b64decode(encoded))
+          envelope_sha = hashlib.sha256(Path(os.environ["EXTERNAL_ENVELOPE"]).read_bytes()).hexdigest()
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"control_plane_root_id={control['root_id']}\n")
+              output.write(f"producer_root_id={producer['root_id']}\n")
+              output.write(f"envelope_sha256={envelope_sha}\n")
+          PY
+
+      - name: Verify independent control-plane and producer signatures
+        env:
+          EXPECTED_CONTROL_PLANE_ROOT: ${{ steps.external.outputs.control_plane_root_id }}
+          EXPECTED_PRODUCER_ROOT: ${{ steps.external.outputs.producer_root_id }}
+        run: |
+          set -euo pipefail
+          root="upstream-rotation-proof/external"
+          for subject in producer-contract authorization-contract rotation-intent; do
+            openssl pkeyutl -verify -pubin \
+              -inkey "${root}/control-plane-public.pem" \
+              -rawin -in "${root}/${subject}.json" \
+              -sigfile "${root}/${subject}.sig"
+          done
+          openssl pkeyutl -verify -pubin \
+            -inkey "${root}/producer-public.pem" \
+            -rawin -in "${root}/producer-result.json" \
+            -sigfile "${root}/producer-result.sig"
+
+          control_sha="$(openssl pkey -pubin -in "${root}/control-plane-public.pem" -outform DER 2>/dev/null | sha256sum | awk '{print $1}')"
+          producer_sha="$(openssl pkey -pubin -in "${root}/producer-public.pem" -outform DER 2>/dev/null | sha256sum | awk '{print $1}')"
+          test "ed25519-sha256:${control_sha}" = "${EXPECTED_CONTROL_PLANE_ROOT}"
+          test "ed25519-sha256:${producer_sha}" = "${EXPECTED_PRODUCER_ROOT}"
+
+          CONTROL_SHA="${control_sha}" PRODUCER_SHA="${producer_sha}" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          result = {
+              "schema": "liminal-upstream-rotation-external-signature-verification/v0.1",
+              "verified": True,
+              "control_plane_root_id": f"ed25519-sha256:{os.environ['CONTROL_SHA']}",
+              "producer_root_id": f"ed25519-sha256:{os.environ['PRODUCER_SHA']}",
+              "verified_signatures": 4,
+          }
+          Path("upstream-rotation-proof/external-signature-verification.json").write_text(
+              json.dumps(result, sort_keys=True, separators=(",", ":")) + "\n"
+          )
+          PY
+
+      - name: Recompute upstream rotation authority and downstream transition
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          LIMINAL_ROTATION_AUTHORITY_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          python scripts/verify-upstream-rotation-authority-portability-v0-1.py \
+            --external-envelope trust/experimental/upstream-rotation-authority-v0.1/external-proof-envelope.json \
+            --external-signature-verification upstream-rotation-proof/external-signature-verification.json \
+            --standalone-source trust/experimental/upstream-rotation-authority-v0.1/standalone_rotation_producer.py \
+            --github-rotation-dir primary-rotation-evidence \
+            --legacy-checkpoint policies/recovery-trust-consumer-checkpoint-v0.2.json \
+            --legacy-witness policies/recovery-trust-consumer-checkpoint-witness-v0.2.json \
+            --baseline-registry policies/recovery-trust-root-registry-v0.1.json \
+            --baseline-manifest policies/recovery-trust-root-manifest-v0.1.json \
+            --rotation-contract policies/portable-rotation-producer-contract-v0.1.json \
+            --rotation-authorization-contract policies/portable-rotation-authorization-contract-v0.1.json \
+            --checkpoint-producer-v1 policies/portable-checkpoint-producer-contract-v0.1.json \
+            --checkpoint-authorization-v1 policies/portable-checkpoint-authorization-contract-v0.1.json \
+            --checkpoint-producer-v2 policies/portable-checkpoint-producer-contract-v0.2.json \
+            --checkpoint-authorization-v2 policies/portable-checkpoint-authorization-contract-v0.2.json \
+            --verifier-sha "${LIMINAL_ROTATION_AUTHORITY_WORKFLOW_SHA}" \
+            --output upstream-rotation-proof/upstream-rotation-authority-portability-result.json
+
+      - name: Assert upstream rotation portability verdict
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(
+              Path("upstream-rotation-proof/upstream-rotation-authority-portability-result.json").read_text()
+          )
+          assert result["verified"] is True
+          assert result["reason"] == "independent_upstream_rotation_authority_semantics_agree"
+          assert result["current_manifest_sha256"] == "b9cb0b37da2d74ece6c1cf780b06b17fbbb96f02e073ac64fb26be49cae24277"
+          assert result["current_registry_sha256"] == "5441072b0e550995a9ad0b27b4f3af7c7b5bf531f59e27c870ab1a8cf61789a1"
+          assert result["witness_reason"] == "checkpoint_witness_advanced"
+          assert result["primary_rotation_producer_provider"] != result["secondary_rotation_producer_provider"]
+          assert result["primary_control_plane_provider"] != result["secondary_control_plane_provider"]
+          print("upstream_rotation_authority_portability=VERIFIED")
+          PY
+
+      - name: Attest upstream rotation authority result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: upstream-rotation-proof/upstream-rotation-authority-portability-result.json
+
+      - name: Upload upstream rotation authority evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: upstream-rotation-authority-portability-proof-v0.1
+          path: |
+            upstream-rotation-proof
+            primary-rotation-evidence
+            trust/experimental/upstream-rotation-authority-v0.1/external-proof-envelope.json
+            trust/experimental/upstream-rotation-authority-v0.1/standalone_rotation_producer.py
+          if-no-files-found: error
+          retention-days: 30
