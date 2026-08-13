@@ -128,7 +128,7 @@ Run artifacts:
 - external audit `9177355189` — `sha256:20c4a07561b40caf749934ba5fbb39ce1110fa96df5a006f572cb0a75f07feec`
 - primary rotation evidence `9177328748` — `sha256:7926c741f547b0bf689c119b953a017ea42fa93750daf3b82bbad66505e3cff9`
 
-Artifacts are retained by GitHub Actions through 2026-09-12 under the workflow retention used by this proof.
+These run artifacts were configured with 30-day retention and reported GitHub expiry timestamps on 2026-09-12.
 
 ## Independence requirements
 
