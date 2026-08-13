@@ -44,12 +44,10 @@ REGISTRY_PATH = Path("policies/recovery-trust-root-registry-v0.1.json")
 MANIFEST_PATH = Path("policies/recovery-trust-root-manifest-v0.1.json")
 ROTATION_CONTRACT_PATH = Path("policies/portable-rotation-producer-contract-v0.1.json")
 ROTATION_AUTH_PATH = Path("policies/portable-rotation-authorization-contract-v0.1.json")
-CHECKPOINT_PRODUCER_CONTRACT_PATH = Path(
-    "policies/portable-checkpoint-producer-contract-v0.1.json"
-)
-CHECKPOINT_AUTH_CONTRACT_PATH = Path(
-    "policies/portable-checkpoint-authorization-contract-v0.1.json"
-)
+CHECKPOINT_PRODUCER_V1_PATH = Path("policies/portable-checkpoint-producer-contract-v0.1.json")
+CHECKPOINT_AUTH_V1_PATH = Path("policies/portable-checkpoint-authorization-contract-v0.1.json")
+CHECKPOINT_PRODUCER_V2_PATH = Path("policies/portable-checkpoint-producer-contract-v0.2.json")
+CHECKPOINT_AUTH_V2_PATH = Path("policies/portable-checkpoint-authorization-contract-v0.2.json")
 TRUST_DOMAIN = "liminal.trusted-recovery"
 GENESIS_MANIFEST_KEY = "policies/recovery-trust-root-manifest-v0.1.json"
 GENERATION_1_MANIFEST_KEY = "drill/generation-1-manifest.json"
@@ -98,8 +96,8 @@ def _witness_v3_genesis() -> dict[str, object]:
         legacy_signer_workflow_path=str(signer["workflow_path"]),
         legacy_signer_workflow_sha=str(signer["workflow_sha"]),
         logical_producer_id="liminal.trusted-recovery.checkpoint-producer",
-        producer_contract_sha256=_digest(CHECKPOINT_PRODUCER_CONTRACT_PATH),
-        authorization_contract_sha256=_digest(CHECKPOINT_AUTH_CONTRACT_PATH),
+        producer_contract_sha256=_digest(CHECKPOINT_PRODUCER_V1_PATH),
+        authorization_contract_sha256=_digest(CHECKPOINT_AUTH_V1_PATH),
         evidence_type="trusted-recovery-consumer-checkpoint",
     )
     decision = migrate_legacy_genesis_witness_to_v3(
@@ -109,21 +107,33 @@ def _witness_v3_genesis() -> dict[str, object]:
     return decision.witness
 
 
-def _witness_v4_genesis() -> tuple[dict[str, object], dict[str, object]]:
-    witness_v3 = _witness_v3_genesis()
-    checkpoint_v3 = _checkpoint_v3_genesis()
-    checkpoint_origin = checkpoint_v3["authority_origin"]
-    assert isinstance(checkpoint_origin, dict)
-    evidence = WitnessCheckpointSchemaMigrationEvidence(
-        verified=True,
+def _migration_evidence(
+    witness_v3: dict[str, object], checkpoint_v3: dict[str, object], *, verified: bool = True
+) -> WitnessCheckpointSchemaMigrationEvidence:
+    origin = checkpoint_v3["authority_origin"]
+    authority = witness_v3["checkpoint_authority"]
+    assert isinstance(origin, dict)
+    assert isinstance(authority, dict)
+    return WitnessCheckpointSchemaMigrationEvidence(
+        verified=verified,
         trust_domain=TRUST_DOMAIN,
         legacy_witness_v3_sha256=witness_v3_sha256(witness_v3),
         legacy_checkpoint_sha256=str(witness_v3["checkpoint_sha256"]),
         checkpoint_v3_sha256=checkpoint_v3_sha256(checkpoint_v3),
-        checkpoint_rotation_migration_claim_sha256=str(
-            checkpoint_origin["migration_claim_sha256"]
-        ),
+        checkpoint_rotation_migration_claim_sha256=str(origin["migration_claim_sha256"]),
+        logical_producer_id=str(authority["logical_producer_id"]),
+        evidence_type=str(authority["evidence_type"]),
+        legacy_producer_contract_sha256=_digest(CHECKPOINT_PRODUCER_V1_PATH),
+        legacy_authorization_contract_sha256=_digest(CHECKPOINT_AUTH_V1_PATH),
+        next_producer_contract_sha256=_digest(CHECKPOINT_PRODUCER_V2_PATH),
+        next_authorization_contract_sha256=_digest(CHECKPOINT_AUTH_V2_PATH),
     )
+
+
+def _witness_v4_genesis() -> tuple[dict[str, object], dict[str, object]]:
+    witness_v3 = _witness_v3_genesis()
+    checkpoint_v3 = _checkpoint_v3_genesis()
+    evidence = _migration_evidence(witness_v3, checkpoint_v3)
     decision = migrate_witness_v3_genesis_to_v4(
         witness_v3, checkpoint_v3, migration_evidence=evidence
     )
@@ -171,7 +181,6 @@ def _checkpoint_v3_generation_1(
     registry_1, manifests = _candidate_registry()
     authority = checkpoint_v3_genesis["rotation_authority"]
     assert isinstance(authority, dict)
-    current_registry_sha = sha256_hex(canonical_json_bytes(registry_1))
     observation = RotationAuthorityObservation(
         verified=True,
         rotation_producer_provider="external",
@@ -182,7 +191,7 @@ def _checkpoint_v3_generation_1(
         rotation_contract_sha256=str(authority["rotation_contract_sha256"]),
         authorization_contract_sha256=str(authority["authorization_contract_sha256"]),
         previous_registry_sha256=str(checkpoint_v3_genesis["accepted_registry_sha256"]),
-        current_registry_sha256=current_registry_sha,
+        current_registry_sha256=sha256_hex(canonical_json_bytes(registry_1)),
         previous_manifest_sha256=str(checkpoint_v3_genesis["accepted_manifest_sha256"]),
         current_manifest_sha256=str(registry_1["active_manifest_sha256"]),
         from_generation=0,
@@ -226,60 +235,79 @@ def _checkpoint_authority_evidence(
     )
 
 
-def test_migration_preserves_logical_checkpoint_authority() -> None:
+def test_migration_explicitly_updates_checkpoint_contract_authority() -> None:
     witness_v3 = _witness_v3_genesis()
     checkpoint_v3 = _checkpoint_v3_genesis()
-    origin = checkpoint_v3["authority_origin"]
-    assert isinstance(origin, dict)
-    evidence = WitnessCheckpointSchemaMigrationEvidence(
-        verified=True,
-        trust_domain=TRUST_DOMAIN,
-        legacy_witness_v3_sha256=witness_v3_sha256(witness_v3),
-        legacy_checkpoint_sha256=str(witness_v3["checkpoint_sha256"]),
-        checkpoint_v3_sha256=checkpoint_v3_sha256(checkpoint_v3),
-        checkpoint_rotation_migration_claim_sha256=str(origin["migration_claim_sha256"]),
-    )
+    evidence = _migration_evidence(witness_v3, checkpoint_v3)
     decision = migrate_witness_v3_genesis_to_v4(
         witness_v3, checkpoint_v3, migration_evidence=evidence
     )
     assert decision.authorized
-    assert decision.reason == "witness_checkpoint_schema_migrated"
+    assert decision.reason == "witness_checkpoint_schema_and_authority_migrated"
     assert decision.witness is not None
     assert validate_witness_v4(decision.witness)
-    assert decision.witness["checkpoint_authority"] == witness_v3["checkpoint_authority"]
+
+    old_authority = witness_v3["checkpoint_authority"]
+    new_authority = decision.witness["checkpoint_authority"]
+    assert isinstance(old_authority, dict)
+    assert isinstance(new_authority, dict)
+    assert new_authority["logical_producer_id"] == old_authority["logical_producer_id"]
+    assert new_authority["evidence_type"] == old_authority["evidence_type"]
+    assert new_authority["producer_contract_sha256"] == _digest(CHECKPOINT_PRODUCER_V2_PATH)
+    assert new_authority["authorization_contract_sha256"] == _digest(CHECKPOINT_AUTH_V2_PATH)
+    assert new_authority["producer_contract_sha256"] != old_authority["producer_contract_sha256"]
+    assert new_authority["authorization_contract_sha256"] != old_authority[
+        "authorization_contract_sha256"
+    ]
+
     migration = decision.witness["checkpoint_schema_migration"]
     assert isinstance(migration, dict)
+    assert migration["from_checkpoint_authority"] == old_authority
+    assert migration["to_checkpoint_authority"] == new_authority
     assert migration["claim_sha256"] == checkpoint_schema_migration_claim_sha256(evidence)
 
 
-def test_unverified_schema_migration_fails_closed() -> None:
+def test_unverified_schema_and_authority_migration_fails_closed() -> None:
     witness_v3 = _witness_v3_genesis()
     checkpoint_v3 = _checkpoint_v3_genesis()
-    origin = checkpoint_v3["authority_origin"]
-    assert isinstance(origin, dict)
-    evidence = WitnessCheckpointSchemaMigrationEvidence(
-        verified=False,
-        trust_domain=TRUST_DOMAIN,
-        legacy_witness_v3_sha256=witness_v3_sha256(witness_v3),
-        legacy_checkpoint_sha256=str(witness_v3["checkpoint_sha256"]),
-        checkpoint_v3_sha256=checkpoint_v3_sha256(checkpoint_v3),
-        checkpoint_rotation_migration_claim_sha256=str(origin["migration_claim_sha256"]),
-    )
+    evidence = _migration_evidence(witness_v3, checkpoint_v3, verified=False)
     decision = migrate_witness_v3_genesis_to_v4(
         witness_v3, checkpoint_v3, migration_evidence=evidence
     )
     assert decision.reason == "migration_evidence_unverified"
 
 
+def test_old_checkpoint_contract_cannot_be_reused_after_schema_migration() -> None:
+    witness_v3 = _witness_v3_genesis()
+    checkpoint_v3 = _checkpoint_v3_genesis()
+    evidence = replace(
+        _migration_evidence(witness_v3, checkpoint_v3),
+        next_producer_contract_sha256=_digest(CHECKPOINT_PRODUCER_V1_PATH),
+    )
+    decision = migrate_witness_v3_genesis_to_v4(
+        witness_v3, checkpoint_v3, migration_evidence=evidence
+    )
+    assert decision.reason == "producer_contract_not_migrated"
+
+
+def test_wrong_legacy_authority_binding_fails_closed() -> None:
+    witness_v3 = _witness_v3_genesis()
+    checkpoint_v3 = _checkpoint_v3_genesis()
+    evidence = replace(
+        _migration_evidence(witness_v3, checkpoint_v3),
+        legacy_authorization_contract_sha256="7" * 64,
+    )
+    decision = migrate_witness_v3_genesis_to_v4(
+        witness_v3, checkpoint_v3, migration_evidence=evidence
+    )
+    assert decision.reason == "legacy_authorization_contract_mismatch"
+
+
 def test_wrong_checkpoint_rotation_migration_claim_fails_closed() -> None:
     witness_v3 = _witness_v3_genesis()
     checkpoint_v3 = _checkpoint_v3_genesis()
-    evidence = WitnessCheckpointSchemaMigrationEvidence(
-        verified=True,
-        trust_domain=TRUST_DOMAIN,
-        legacy_witness_v3_sha256=witness_v3_sha256(witness_v3),
-        legacy_checkpoint_sha256=str(witness_v3["checkpoint_sha256"]),
-        checkpoint_v3_sha256=checkpoint_v3_sha256(checkpoint_v3),
+    evidence = replace(
+        _migration_evidence(witness_v3, checkpoint_v3),
         checkpoint_rotation_migration_claim_sha256="7" * 64,
     )
     decision = migrate_witness_v3_genesis_to_v4(
@@ -288,7 +316,7 @@ def test_wrong_checkpoint_rotation_migration_claim_fails_closed() -> None:
     assert decision.reason == "checkpoint_rotation_migration_claim_mismatch"
 
 
-def test_checkpoint_v3_advances_witness_v4() -> None:
+def test_checkpoint_v3_advances_witness_v4_under_new_contracts() -> None:
     witness_v4, checkpoint_v3_genesis = _witness_v4_genesis()
     checkpoint_v3_gen1 = _checkpoint_v3_generation_1(checkpoint_v3_genesis)
     decision = evaluate_checkpoint_candidate_v4(
@@ -301,32 +329,16 @@ def test_checkpoint_v3_advances_witness_v4() -> None:
     assert decision.reason == "checkpoint_witness_advanced"
     assert decision.next_witness is not None
     assert validate_witness_v4(decision.next_witness, witness_v4)
-    assert decision.next_witness["previous_witness_sha256"] == witness_v4_sha256(
-        witness_v4
-    )
+    assert decision.next_witness["previous_witness_sha256"] == witness_v4_sha256(witness_v4)
 
 
-def test_unverified_checkpoint_authority_evidence_fails_closed() -> None:
-    witness_v4, checkpoint_v3_genesis = _witness_v4_genesis()
-    checkpoint_v3_gen1 = _checkpoint_v3_generation_1(checkpoint_v3_genesis)
-    evidence = replace(
-        _checkpoint_authority_evidence(witness_v4, checkpoint_v3_gen1), verified=False
-    )
-    decision = evaluate_checkpoint_candidate_v4(
-        witness_v4,
-        checkpoint_v3_gen1,
-        previous_checkpoint=checkpoint_v3_genesis,
-        authority_evidence=evidence,
-    )
-    assert decision.reason == "checkpoint_authority_evidence_unverified"
-
-
-def test_checkpoint_producer_contract_drift_fails_closed() -> None:
+def test_legacy_checkpoint_authority_evidence_is_rejected_after_migration() -> None:
     witness_v4, checkpoint_v3_genesis = _witness_v4_genesis()
     checkpoint_v3_gen1 = _checkpoint_v3_generation_1(checkpoint_v3_genesis)
     evidence = replace(
         _checkpoint_authority_evidence(witness_v4, checkpoint_v3_gen1),
-        producer_contract_sha256="7" * 64,
+        producer_contract_sha256=_digest(CHECKPOINT_PRODUCER_V1_PATH),
+        authorization_contract_sha256=_digest(CHECKPOINT_AUTH_V1_PATH),
     )
     decision = evaluate_checkpoint_candidate_v4(
         witness_v4,
