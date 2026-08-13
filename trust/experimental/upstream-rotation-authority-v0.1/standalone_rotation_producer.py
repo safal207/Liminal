@@ -71,6 +71,7 @@ reg1 = {
     "history": [*reg0["history"], entry],
 }
 
+# Independent append-only / downgrade checks required by the producer contract.
 if reg1["history"][:-1] != reg0["history"]:
     raise SystemExit("registry_history_not_append_only")
 if man1["previous_manifest_sha256"] != reg0["active_manifest_sha256"]:
@@ -78,6 +79,7 @@ if man1["previous_manifest_sha256"] != reg0["active_manifest_sha256"]:
 for root_name in ("builder", "verifier"):
     old_sha = man0["roots"][root_name]["workflow_sha"]
     new_sha = man1["roots"][root_name]["workflow_sha"]
+    # Generation zero has no earlier historical root beyond current, so a changed root cannot be a historical downgrade.
     if new_sha != old_sha and reg0["active_generation"] > 0:
         raise SystemExit("unexpected_historical_root_context")
 for material_name in ("builder_environment_policy", "verifier_dependency_lock"):
