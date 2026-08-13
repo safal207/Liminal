@@ -2,7 +2,15 @@
 
 ## Status
 
-Experimental provider-portability contract. The pure comparison model and provider-neutral witness adapter are implemented. A one-shot offline Ed25519 public root and signed claim records are pinned for the first live experiment; live provider portability must not be claimed until the workflow independently verifies both trust paths.
+**Verified experimental provider-portability proof.** The pure comparison model, provider-neutral witness adapter, pre-existing offline Ed25519 root, immutable dual-provider workflow and external recomputation have all completed successfully.
+
+The proven independence boundary is deliberately limited to:
+
+- independent trust root;
+- independent signing authority;
+- independent signature scheme / proof path.
+
+GitHub Actions execution and artifact transport remain shared. The offline path has no transparency log and this experiment does not claim independent organizational governance.
 
 ## Goal
 
@@ -119,7 +127,7 @@ Any mismatch returns a deterministic failure reason and no portable receipt hash
 
 The existing checkpoint witness deliberately pins a concrete local producer workflow. Provider portability must not let an external provider overwrite that policy.
 
-`portable_checkpoint_authorization.py` therefore maps an already verified `PortableTrustReceipt` into the legacy `VerifiedCheckpointEvidence` only after checking it against:
+`portable_checkpoint_authorization.py` maps an already verified `PortableTrustReceipt` into the legacy `VerifiedCheckpointEvidence` only after checking it against:
 
 - the logical authority expected by local policy;
 - the repository pinned in the trusted witness;
@@ -172,9 +180,9 @@ These layers never:
 - manufacture a second provider identity from one proof path;
 - allow provider metadata to replace the producer signer pinned by local witness policy.
 
-## First independent root fixture
+## Independent root fixture
 
-The first live experiment uses an experimental one-shot offline Ed25519 root pinned under:
+The verified experiment uses a one-shot offline Ed25519 root pinned under:
 
 `trust/experimental/offline-ed25519-root-v0.1/`
 
@@ -184,7 +192,7 @@ It contains:
 - `manifest-proof.json`;
 - `checkpoint-proof.json`.
 
-The private key is not committed to the repository and must not be available to the GitHub Actions proof workflow. The signed claim records bind the known deterministic manifest/checkpoint subject digests to the portable producer, source and authorization-policy claims.
+The private key is not committed to the repository and was not available to the GitHub Actions proof workflow. The signed claim records bind the deterministic manifest/checkpoint subject digests to the portable producer, source and authorization-policy claims.
 
 Pinned public-root identity:
 
@@ -205,11 +213,27 @@ proof workflow
 
 This proves cryptographic round-trip correctness only. It does not prove an independent trust provider because the verifier run created its own authority.
 
-## Planned live gate
+## Verified live gate
+
+Immutable reusable workflow:
+
+`dc9f236d590f15ee005d2688f91da92460c512d2`
+
+Pinned one-shot caller:
+
+`cc34af1ed5bf7a997ff5c2d94f72001d0429d824`
+
+Successful one-shot run:
+
+`31658743875` — **SUCCESS**
+
+The workflow first passed exact-head Python CI, Python Integration and Artillery before being pinned.
+
+The successful run proved:
 
 ```text
 checkpoint / manifest bytes
-   ├─ GitHub + Sigstore attestation path
+   ├─ GitHub + Sigstore Public Good path
    │      ↓
    │  provider observation A
    │
@@ -219,6 +243,7 @@ checkpoint / manifest bytes
 
 A.provider != B.provider
 A.trust_root_id != B.trust_root_id
+A.verification_scheme != B.verification_scheme
 A.verified == B.verified == true
 A.portable_claims == B.portable_claims
         ↓
@@ -226,26 +251,121 @@ Portable Trust Receipt A == B
         ↓
 portable authorization adapter A/B
         ↓
-same witness decision and next-witness digest
+checkpoint_witness_advanced A/B
+        ↓
+same next-witness digest
 ```
 
-The external verifier must then recompute the portable receipt, independently rerun the offline Ed25519 verification, reverify the GitHub/Sigstore path and recompute both witness transitions instead of trusting a combined result flag.
+Both offline signatures were independently verified with OpenSSL and the pinned Ed25519 public root before their provider observations were admitted.
 
-## Current claim boundary
+### Subject identities
 
-The implemented code proves the comparison and authorization-adapter contracts. The pinned offline root proves only that an independent trust root exists before the future proof workflow; it does not by itself prove provider portability until the live gate succeeds.
+Manifest subject SHA-256:
 
-A live milestone must state exactly which properties are independent:
+`5f80518cb671ea0622336adbd9a0a9bd16b72ea803ad09d0ac2abd4415f58be2`
 
-- trust root;
-- signing authority;
-- verification substrate;
-- storage/transport;
-- CI environment;
-- transparency log, if any.
+Checkpoint subject SHA-256:
 
-For the planned one-shot offline-root experiment, the expected independence claim is limited to **trust root + signing authority + signature scheme**. GitHub remains shared for CI execution and artifact transport; the offline path has no transparency log.
+`74096c48cd730c55dd2f486f1af4b211b4f7f1ce38613134be645055ff1f946a`
+
+Authorization policy SHA-256:
+
+`22fcc3c556528d080591041bc10c1a35f85bfbad348b8f669bfff4bb1b88b47f`
+
+### Provider-neutral identities
+
+Manifest Portable Trust Receipt SHA-256:
+
+`e3558d426d560bd202bd7e16ef0364b378cc2956c36feccc78eeaf40bfaa084e`
+
+Checkpoint Portable Trust Receipt SHA-256:
+
+`2235b07a4188628091cbe94af6a16dc30516d0acea743f9b4517b58a5cbd1a80`
+
+Both provider paths produced:
+
+```text
+authorized: true
+reason: checkpoint_witness_advanced
+next_witness_sha256: cc389524836b013bb5a416f0a9f6647d9ff252d2de79598e4df119c6e5760d2f
+```
+
+The next-witness identity is the same one produced by the preceding GitHub-only verifier portability experiments. Provider-specific trust machinery therefore changed while the authorized state transition remained stable.
+
+Canonical proof-result SHA-256:
+
+`4ee314a71bd08f469d369c5689be653729d3dbad37b328b9da91409241d1da3d`
+
+External verification record SHA-256:
+
+`3b0a43d6915f002d1189cf9b98d527e22ec8b51cca8ab498d515aeaf8d731224`
+
+### External verification
+
+The separate external job did not trust the combined proof result. It independently:
+
+- reverified the GitHub/Sigstore producer attestations;
+- recomputed the offline Ed25519 public-root fingerprint;
+- revalidated both offline claim payloads against the real subject bytes;
+- reran both Ed25519 signature verifications;
+- rebuilt both provider observations;
+- recomputed provider independence and Portable Trust Receipt equality;
+- rebound both receipts through the trusted witness authorization policy;
+- recomputed both `checkpoint_witness_advanced` transitions and the next-witness digest;
+- checked byte identity of GitHub/offline receipt copies;
+- verified the immutable proof-workflow signer on both provider receipt copies and the result;
+- attested its own external verification record.
+
+### Evidence artifacts
+
+Trust-provider proof:
+
+- artifact `9165397390`
+- `sha256:ae84a4638808f923ed5633822be5e159048de94e6e2b11137c05173366445b0f`
+
+External verification:
+
+- artifact `9165410163`
+- `sha256:803aebec55db62b1ec0acbcbef390a832cdbbc8fbd3e65b0106215c9f065e064`
+
+Both artifacts have 30-day retention and expire on 12 Sep 2026.
+
+## Proven independence matrix
+
+| Property | Independent in v0.1? |
+| --- | --- |
+| Trust root | Yes |
+| Signing authority | Yes |
+| Signature / proof scheme | Yes |
+| Verifier path | Yes |
+| CI provider | No |
+| Artifact transport | No |
+| Transparency log | No — offline path has none |
+| Organizational governance | Not claimed |
+
+The precise milestone is therefore **trust-root + signing-authority + signature-scheme portability**, not total infrastructure independence.
+
+## Current proven boundary
+
+```text
+physical topology drift         ✅
+raw verifier output drift       ✅
+verifier implementation drift   ✅
+trust root drift                ✅
+signing authority drift         ✅
+signature scheme drift          ✅
+                                ↓
+portable subject / authority / source / policy claims
+                                ↓
+Portable Trust Receipt
+                                ↓
+local witness authorization
+                                ↓
+stable trusted state transition
+```
 
 ## Next falsifiable question
 
-Can the pinned offline Ed25519 root establish the same portable claims as GitHub/Sigstore for the real checkpoint evidence while producing the same Portable Trust Receipt and recovery transition?
+Can the portable contract survive **execution-provider and evidence-transport independence** as well — for example when one proof is produced and verified outside GitHub Actions and its evidence is transported independently of GitHub artifacts?
+
+That is the next boundary. Normalization must never hide disagreement about subject, authority, source, execution policy or authorization policy.
