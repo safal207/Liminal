@@ -12,9 +12,6 @@ from liminal.rotation_authority_portability import (
 )
 
 
-D = "a" * 64
-
-
 def _observation(**changes: object) -> RotationAuthorityObservation:
     base = RotationAuthorityObservation(
         verified=True,
@@ -37,13 +34,14 @@ def _observation(**changes: object) -> RotationAuthorityObservation:
 
 
 def _secondary(**changes: object) -> RotationAuthorityObservation:
-    return _observation(
-        rotation_producer_provider="openai-workspace-standalone-rotation-producer",
-        rotation_producer_instance_id="offline-rotation-v0.1",
-        control_plane_provider="offline-ed25519-rotation-control-plane",
-        control_plane_id="offline-rotation-policy-v0.1",
-        **changes,
-    )
+    defaults: dict[str, object] = {
+        "rotation_producer_provider": "openai-workspace-standalone-rotation-producer",
+        "rotation_producer_instance_id": "offline-rotation-v0.1",
+        "control_plane_provider": "offline-ed25519-rotation-control-plane",
+        "control_plane_id": "offline-rotation-policy-v0.1",
+    }
+    defaults.update(changes)
+    return _observation(**defaults)
 
 
 def test_verified_independent_paths_agree() -> None:
