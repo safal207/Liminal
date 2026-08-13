@@ -78,7 +78,11 @@ jobs:
             --checkpoint-generation-0 github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-0.json \
             --github-checkpoint github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json \
             --github-verification-json artifacts/source-control-portability/github-checkpoint-verification.json \
+            --primary-producer-contract policies/portable-checkpoint-producer-contract-v0.1.json \
+            --primary-authorization-contract policies/portable-checkpoint-authorization-contract-v0.1.json \
             --external-bundle trust/experimental/source-control-portability-v0.1/external-proof-bundle.json \
+            --expected-producer-root-id ed25519-sha256:4313ea228dbb2d29a429b9da9b25b30fb8e42bf6207c323c36c5b3f1863f627f \
+            --expected-control-plane-root-id ed25519-sha256:153efe437acb8e5796def201b31f3f37c62c2123f50ddc5901ee1c268b749224 \
             --output artifacts/source-control-portability/source-control-portability-result.json
 
       - name: Assert source/control portability verdict
@@ -135,6 +139,8 @@ jobs:
           name: source-control-portability-proof
           path: |
             artifacts/source-control-portability
+            policies/portable-checkpoint-producer-contract-v0.1.json
+            policies/portable-checkpoint-authorization-contract-v0.1.json
             trust/experimental/source-control-portability-v0.1/external-proof-bundle.json
             github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-0.json
             github-evidence/artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json
