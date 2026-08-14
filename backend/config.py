@@ -26,7 +26,7 @@ class Settings(BaseModel):
     # Database
     neo4j_uri: str = "bolt://localhost:7687"
     neo4j_user: str = "neo4j"
-    neo4j_password: str = "NewStrongPass123!"  # Override via NEO4J_PASSWORD env var
+    neo4j_password: str = ""  # Loaded from NEO4J_PASSWORD
 
     # Redis (optional)
     redis_url: str = "redis://localhost:6379"
@@ -34,7 +34,7 @@ class Settings(BaseModel):
 
     # JWT
     jwt_secret_key: str = (
-        "test-jwt-secret-key-for-local-development-only"  # Override via JWT_SECRET_KEY env var
+        ""  # Override via JWT_SECRET_KEY env var
     )
     jwt_algorithm: str = "HS256"
 
@@ -55,11 +55,11 @@ class Settings(BaseModel):
             "debug": environment == "development",  # Auto-disable debug in production
             "neo4j_uri": os.getenv("NEO4J_URI", "bolt://localhost:7687"),
             "neo4j_user": os.getenv("NEO4J_USER", "neo4j"),
-            "neo4j_password": os.getenv("NEO4J_PASSWORD", "NewStrongPass123!"),
+            "neo4j_password": os.getenv("NEO4J_PASSWORD", ""),
             "redis_url": os.getenv("REDIS_URL", "redis://localhost:6379"),
             "use_redis": os.getenv("USE_REDIS", "false").lower() == "true",
             "jwt_secret_key": os.getenv(
-                "JWT_SECRET_KEY", "test-jwt-secret-key-for-local-development-only"
+                "JWT_SECRET_KEY", ""
             ),
             "ml_enabled": os.getenv("ML_ENABLED", "true").lower() == "true",
             "openai_api_key": os.getenv("OPENAI_API_KEY"),
@@ -70,15 +70,15 @@ class Settings(BaseModel):
         if environment == "production":
             if (
                 env_values["jwt_secret_key"]
-                == "test-jwt-secret-key-for-local-development-only"
+                == ""
             ):
                 raise RuntimeError(
-                    "JWT_SECRET_KEY must be set to a strong random secret in production. "
+                    "JWT_SECRET_KEY must be set to a strong random secret. "
                     "Set the JWT_SECRET_KEY environment variable."
                 )
-            if env_values["neo4j_password"] == "NewStrongPass123!":
+            if env_values["neo4j_password"] == "":
                 raise RuntimeError(
-                    "NEO4J_PASSWORD must be changed from the default value in production. "
+                    "NEO4J_PASSWORD must be set before connecting. "
                     "Set the NEO4J_PASSWORD environment variable."
                 )
         elif environment not in ("development", "test"):
@@ -86,16 +86,16 @@ class Settings(BaseModel):
 
             if (
                 env_values["jwt_secret_key"]
-                == "test-jwt-secret-key-for-local-development-only"
+                == ""
             ):
                 warnings.warn(
-                    "Using default JWT_SECRET_KEY. Set JWT_SECRET_KEY before going to production.",
+                    "JWT_SECRET_KEY is not configured. Set it before using authenticated endpoints.",
                     UserWarning,
                     stacklevel=2,
                 )
-            if env_values["neo4j_password"] == "NewStrongPass123!":
+            if env_values["neo4j_password"] == "":
                 warnings.warn(
-                    "Using default NEO4J_PASSWORD. Set NEO4J_PASSWORD before going to production.",
+                    "NEO4J_PASSWORD is not configured. Set it before using Neo4j.",
                     UserWarning,
                     stacklevel=2,
                 )
