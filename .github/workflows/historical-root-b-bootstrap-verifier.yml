@@ -1,0 +1,19 @@
+name: Historical Root B Bootstrap Verifier v0.1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  describe-bootstrap-root:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Emit Root B verifier identity
+        run: |
+          set -euo pipefail
+          echo "trust_domain=liminal.trusted-recovery"
+          echo "root=historical-root-b"
+          echo "role=bootstrap-verifier"
+          echo "verification=detached-ed25519"
