@@ -26,11 +26,11 @@ Fallback срабатывает, если `passlib`/`bcrypt` не импорти
 **Файлы:** `backend/config.py:29`, `backend/config.py:36-38`, `backend/config.py:58`, `backend/config.py:61-63`
 
 ```python
-neo4j_password: str = "NewStrongPass123!"
-jwt_secret_key: str = "test-jwt-secret-key-for-local-development-only"
+neo4j_password: str = "<set via NEO4J_PASSWORD>"
+jwt_secret_key: str = "<set via JWT_SECRET_KEY>"
 ...
-"neo4j_password": os.getenv("NEO4J_PASSWORD", "NewStrongPass123!"),
-"jwt_secret_key": os.getenv("JWT_SECRET_KEY", "test-jwt-secret-key-for-local-development-only"),
+"neo4j_password": os.getenv("NEO4J_PASSWORD", "<set via NEO4J_PASSWORD>"),
+"jwt_secret_key": os.getenv("JWT_SECRET_KEY", "<set via JWT_SECRET_KEY>"),
 ```
 
 При забытой переменной окружения сервис стартует с предсказуемым секретом → подделка JWT, доступ к Neo4j. Решение: `raise RuntimeError` при `ENV in {"production","staging"}` и пустых креденшелах.
@@ -48,9 +48,9 @@ jwt_secret_key: str = "test-jwt-secret-key-for-local-development-only"
 **Файл:** `backend/production/docker-compose.production.yml:15, 88, 125`
 
 ```yaml
-NEO4J_PASSWORD=rgl_production_password
-NEO4J_AUTH=neo4j/rgl_production_password
-GF_SECURITY_ADMIN_PASSWORD=rgl_admin_password
+NEO4J_PASSWORD=<set via NEO4J_PASSWORD>
+NEO4J_AUTH=neo4j/<set via NEO4J_PASSWORD>
+GF_SECURITY_ADMIN_PASSWORD=<set via GRAFANA_ADMIN_PASSWORD>
 ```
 
 Прод-креды закоммичены в репозиторий. Должны идти через секреты Docker/K8s (`secrets:`).
@@ -75,7 +75,7 @@ DATABASE_URL=postgresql://user:password@localhost:5432/resonance_liminal
 const (
     neo4jURI      = "neo4j://localhost:7687"
     neo4jUsername = "neo4j"
-    neo4jPassword = "NewStrongPass123!"
+    neo4jPassword = "<set via NEO4J_PASSWORD>"
 )
 ```
 
@@ -218,8 +218,8 @@ app.emotimePollInterval = setInterval(pollEmotimeStatus, EMOTIME_POLL_MS);
 **Файлы:** `docker-compose.local.yml:12, 29, 40, 83`, `docker-compose.ml.yml:95-96`, `docker-compose.ml-production.yml:65-66`
 
 ```yaml
-POSTGRES_PASSWORD=test_postgres_password_123
-NEO4J_AUTH=neo4j/test_neo4j_password_123
+POSTGRES_PASSWORD=<set via POSTGRES_PASSWORD>
+NEO4J_AUTH=neo4j/<set via NEO4J_PASSWORD>
 MINIO_ROOT_USER=minioadmin
 MINIO_ROOT_PASSWORD=minioadmin
 ```
