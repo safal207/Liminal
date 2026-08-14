@@ -51,8 +51,8 @@ if (-not (Test-Path ".env")) {
     } else {
         @"
 # Демо окружение для Resonance Liminal
-OPENAI_API_KEY=demo_key
-ANTHROPIC_API_KEY=demo_key
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
 MULTI_LLM_MODE=demo
 XAI_CACHE_SIZE=1000
 XAI_ENABLE_SHAP=true
@@ -66,8 +66,6 @@ XAI_ENABLE_LIME=true
 if ($Mode -eq "demo") {
     Write-Host "🚀 Запуск системы в демо-режиме..." -ForegroundColor Cyan
     $env:MULTI_LLM_MODE = "demo"
-    $env:OPENAI_API_KEY = "demo_key"
-    $env:ANTHROPIC_API_KEY = "demo_key"
 } else {
     Write-Host "🚀 Запуск системы в production-режиме..." -ForegroundColor Cyan
     
