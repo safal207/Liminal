@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 import datetime
 import json
 import time
@@ -23,9 +25,12 @@ class RealityWebNeo4j:
     """
 
     def __init__(
-        self, uri="bolt://localhost:7687", user="neo4j", password="NewStrongPass123!"
+        self, uri="bolt://localhost:7687", user="neo4j", password=None
     ) -> None:
         """Initialize Neo4j connection and prepare the driver."""
+        password = password or os.getenv("NEO4J_PASSWORD", "")
+        if not password:
+            raise RuntimeError("NEO4J_PASSWORD must be set before opening Neo4j")
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
         self._diff = InMemoryDiffusion()
         # Initialize Neo4j database with constraints and indices
