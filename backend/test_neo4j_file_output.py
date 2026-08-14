@@ -36,7 +36,10 @@ def main():
     try:
         uri = "bolt://localhost:7687"
         user = "neo4j"
-        password = "NewStrongPass123!"
+        password = os.getenv("NEO4J_PASSWORD", "")
+        if not password:
+            log("NEO4J_PASSWORD is not set; skipping connection test")
+            return
 
         log(f"Попытка подключения к Neo4j: {uri}")
         driver = GraphDatabase.driver(uri, auth=(user, password))

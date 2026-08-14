@@ -58,8 +58,8 @@ Write-Status "🚀 BuildKit активирован для ускорения с�
 if (-not (Test-Path ".env")) {
     Write-Status "📄 Создаем .env файл с настройками по умолчанию..."
     @"
-OPENAI_API_KEY=demo_key
-ANTHROPIC_API_KEY=demo_key
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
 XAI_CACHE_SIZE=1000
 XAI_ENABLE_SHAP=true
 XAI_ENABLE_LIME=true

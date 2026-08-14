@@ -201,7 +201,10 @@ spec:
         - containerPort: 7687
         env:
         - name: NEO4J_AUTH
-          value: "neo4j/rgl_production_password"
+          valueFrom:
+            secretKeyRef:
+              name: rgl-runtime-secrets
+              key: neo4j-auth
         - name: NEO4J_PLUGINS
           value: '["apoc"]'
         - name: NEO4J_db_memory_pagecache_size

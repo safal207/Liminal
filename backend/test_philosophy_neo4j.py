@@ -450,7 +450,7 @@ def main():
     )
     parser.add_argument("--user", type=str, default="neo4j", help="Neo4j user")
     parser.add_argument(
-        "--password", type=str, default="NewStrongPass123!", help="Neo4j password"
+        "--password", type=str, default=None, help="Neo4j password"
     )
     parser.add_argument(
         "--create", action="store_true", help="Create philosophical transitions"

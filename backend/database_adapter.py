@@ -105,7 +105,7 @@ class DatabaseAdapter:
         self.neo4j_uri = neo4j_uri or os.getenv("NEO4J_URI", "bolt://localhost:7687")
         self.neo4j_user = neo4j_user or os.getenv("NEO4J_USER", "neo4j")
         self.neo4j_password = neo4j_password or os.getenv(
-            "NEO4J_PASSWORD", "NewStrongPass123!"
+            "NEO4J_PASSWORD", ""
         )
         self.neo4j_database = neo4j_database
 
@@ -172,6 +172,8 @@ class DatabaseAdapter:
 
         # Подключение к Neo4j
         try:
+            if not self.neo4j_password:
+                raise RuntimeError("NEO4J_PASSWORD must be set before connecting to Neo4j")
             self.neo4j_client = PhilosophyNeo4jWriter(
                 uri=self.neo4j_uri,
                 user=self.neo4j_user,

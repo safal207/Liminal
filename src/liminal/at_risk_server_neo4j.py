@@ -30,7 +30,7 @@ except Exception:  # pragma: no cover
 USE_NEO4J = os.getenv("LIMINAL_USE_NEO4J", "0") == "1"
 NEO4J_URI = os.getenv("LIMINAL_NEO4J_URI", "bolt://localhost:7687")
 NEO4J_USER = os.getenv("LIMINAL_NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.getenv("LIMINAL_NEO4J_PASSWORD", "NewStrongPass123!")
+NEO4J_PASSWORD = os.getenv("LIMINAL_NEO4J_PASSWORD", "")
 
 # ---- State initialization ----
 NEO4J_INIT_ERROR: Optional[str] = None

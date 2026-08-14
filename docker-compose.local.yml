@@ -9,7 +9,7 @@ services:
     environment:
       - POSTGRES_DB=liminal
       - POSTGRES_USER=liminal
-      - POSTGRES_PASSWORD=test_postgres_password_123
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
     volumes:
       - postgres_local_data:/var/lib/postgresql/data
     ports:
@@ -26,7 +26,7 @@ services:
     container_name: liminal-neo4j-local
     restart: unless-stopped
     environment:
-      - NEO4J_AUTH=neo4j/test_neo4j_password_123
+      - NEO4J_AUTH=neo4j/${NEO4J_PASSWORD:?NEO4J_PASSWORD must be set}
       - NEO4J_PLUGINS=["apoc"]
       - NEO4J_dbms_security_procedures_unrestricted=apoc.*
       - NEO4J_dbms_memory_heap_initial__size=256m
@@ -37,7 +37,7 @@ services:
       - "7474:7474"
       - "7687:7687"
     healthcheck:
-      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "test_neo4j_password_123", "RETURN 1"]
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "${NEO4J_PASSWORD}", "RETURN 1"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -80,7 +80,7 @@ services:
     container_name: liminal-grafana-local
     restart: unless-stopped
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=test_grafana_password_123
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD must be set}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_local_data:/var/lib/grafana

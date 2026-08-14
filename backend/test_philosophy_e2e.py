@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 NEO4J_CONFIG = {
     "uri": "bolt://localhost:7687",
     "user": "neo4j",
-    "password": "NewStrongPass123!",
+    "password": os.getenv("NEO4J_PASSWORD", ""),
 }
 
 WEBSOCKET_CONFIG = {

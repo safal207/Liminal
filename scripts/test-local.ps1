@@ -82,6 +82,9 @@ function Set-LocalEnvironment {
     
     # Install Python dependencies
     Set-Location $BackendDir
+
+    if ([string]::IsNullOrWhiteSpace($env:POSTGRES_PASSWORD)) { throw "POSTGRES_PASSWORD must be exported before running local tests" }
+    if ([string]::IsNullOrWhiteSpace($env:NEO4J_PASSWORD)) { throw "NEO4J_PASSWORD must be exported before running local tests" }
     
     Write-Info "Installing Python dependencies..."
     
@@ -150,9 +153,10 @@ function Test-DatabaseConnections {
     # Test PostgreSQL connection
     Write-Info "Testing PostgreSQL connection..."
     $PgTest = @"
+import os
 import psycopg2
 try:
-    conn = psycopg2.connect('postgresql://liminal:test_postgres_password_123@localhost:5432/liminal')
+    conn = psycopg2.connect(host="localhost", port=5432, dbname="liminal", user="liminal", password=os.environ["POSTGRES_PASSWORD"])
     conn.close()
     print('PostgreSQL: Connected successfully')
 except Exception as e:
@@ -170,9 +174,10 @@ except Exception as e:
     # Test Neo4j connection
     Write-Info "Testing Neo4j connection..."
     $Neo4jTest = @"
+import os
 from neo4j import GraphDatabase
 try:
-    driver = GraphDatabase.driver('bolt://localhost:7687', auth=('neo4j', 'test_neo4j_password_123'))
+    driver = GraphDatabase.driver("bolt://localhost:7687", auth=("neo4j", os.environ["NEO4J_PASSWORD"]))
     with driver.session() as session:
         result = session.run('RETURN 1 as test')
         record = result.single()
@@ -331,7 +336,7 @@ SERVICES STATUS:
 - Neo4j: Available on ports 7474 (HTTP) and 7687 (Bolt)
 - Redis: Available on port 6379
 - Prometheus: Available on port 9090
-- Grafana: Available on port 3000 (admin/test_grafana_password_123)
+- Grafana: Available on port 3000 (admin/<configured via GRAFANA_ADMIN_PASSWORD>)
 
 NEXT STEPS:
 1. Review any warnings or failures in the log: $LogFile

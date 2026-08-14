@@ -1,9 +1,13 @@
+import os
 import json
 
 from neo4j import GraphDatabase
 
 uri = "bolt://localhost:7687"
-auth = ("neo4j", "NewStrongPass123!")
+password = os.getenv("NEO4J_PASSWORD")
+if not password:
+    raise SystemExit("NEO4J_PASSWORD must be set before querying Neo4j")
+auth = ("neo4j", password)
 
 driver = GraphDatabase.driver(uri, auth=auth)
 with driver.session() as s:

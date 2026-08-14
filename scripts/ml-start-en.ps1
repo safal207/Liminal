@@ -48,8 +48,8 @@ if (-not (Test-Path ".env")) {
     if ($Demo) {
         Write-Status "Setting up DEMO mode with test API keys" $Yellow
         $apiKeyConfig = @"
-OPENAI_API_KEY=demo_key
-ANTHROPIC_API_KEY=demo_key
+OPENAI_API_KEY=$openAiKey
+ANTHROPIC_API_KEY=$anthropicKey
 XAI_CACHE_SIZE=1000
 XAI_ENABLE_SHAP=true
 XAI_ENABLE_LIME=true

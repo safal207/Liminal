@@ -61,9 +61,9 @@ class PhilosophyNeo4jWriter:
         """
         self.uri = uri or os.environ.get("NEO4J_URI", "bolt://localhost:7687")
         self.user = user or os.environ.get("NEO4J_USER", "neo4j")
-        self.password = password or os.environ.get(
-            "NEO4J_PASSWORD", "NewStrongPass123!"
-        )
+        self.password = password or os.environ.get("NEO4J_PASSWORD", "")
+        if not self.password:
+            raise RuntimeError("NEO4J_PASSWORD must be set before opening Neo4j")
         self.database = database
 
         self.driver = GraphDatabase.driver(self.uri, auth=(self.user, self.password))
