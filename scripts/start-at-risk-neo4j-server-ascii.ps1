@@ -14,7 +14,11 @@ $env:PYTHONUTF8 = '1'
 $env:LIMINAL_USE_NEO4J = "1"
 $env:LIMINAL_NEO4J_URI = "bolt://localhost:7687"
 $env:LIMINAL_NEO4J_USER = "neo4j"
-$env:LIMINAL_NEO4J_PASSWORD = "NewStrongPass123!"
+$env:LIMINAL_NEO4J_PASSWORD = $env:NEO4J_PASSWORD
+if ([string]::IsNullOrWhiteSpace($env:LIMINAL_NEO4J_PASSWORD)) {
+    Write-Error "Set NEO4J_PASSWORD before starting the Neo4j server."
+    exit 1
+}
 
 Write-Host "Starting Neo4j-based REST API server for at-risk connections" -ForegroundColor Cyan
 
