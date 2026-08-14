@@ -58,7 +58,7 @@ pip freeze > requirements.txt
 ```yaml
 # В docker-compose.yml заменить:
 environment:
-  - NEO4J_AUTH=neo4j/NewStrongPass123!
+  - NEO4J_AUTH=neo4j/<set via NEO4J_PASSWORD>
   - REDIS_PASSWORD=your_redis_password
 
 # На:
@@ -70,7 +70,7 @@ environment:
 **Создать файл `.env`:**
 ```bash
 # Создать .env файл
-echo "NEO4J_PASSWORD=NewStrongPass123!" > .env
+echo "NEO4J_PASSWORD=<set via NEO4J_PASSWORD>" > .env
 echo "REDIS_PASSWORD=your_redis_password" >> .env
 ```
 
