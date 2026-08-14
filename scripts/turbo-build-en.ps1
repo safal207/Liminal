@@ -57,8 +57,8 @@ Write-Status "BuildKit activated for faster builds" $Green
 if (-not (Test-Path ".env")) {
     Write-Status "Creating .env file with default settings..."
     @"
-OPENAI_API_KEY=demo_key
-ANTHROPIC_API_KEY=demo_key
+OPENAI_API_KEY=
+ANTHROPIC_API_KEY=
 XAI_CACHE_SIZE=1000
 XAI_ENABLE_SHAP=true
 XAI_ENABLE_LIME=true
