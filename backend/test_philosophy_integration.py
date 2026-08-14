@@ -61,7 +61,7 @@ except ImportError:
 # Neo4j connection parameters (for integration tests)
 NEO4J_URI = "bolt://localhost:7687"
 NEO4J_USER = "neo4j"
-NEO4J_PASSWORD = "NewStrongPass123!"
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "")
 
 # WebSocket relay settings
 WEBSOCKET_RELAY_URL = "http://localhost:8181/events"
