@@ -13,7 +13,11 @@ def test_neo4j_connection(timeout=10):
     start_time = time.time()
     uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")
     user = os.getenv("NEO4J_USER", "neo4j")
-    password = os.getenv("NEO4J_PASSWORD", "NewStrongPass123!")
+    password = os.getenv("NEO4J_PASSWORD", "")
+
+    if not password:
+        print("NEO4J_PASSWORD must be set before running this check")
+        return False
 
     print(f"🔌 Попытка подключения к Neo4j: {uri}")
     print(f"👤 Пользователь: {user}")
