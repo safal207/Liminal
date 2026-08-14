@@ -27,7 +27,7 @@ def run_check(
         print("NEO4J_PASSWORD must be set before running this check")
         return False
 
-    print("=== Neo4j Docker Connection Test ==="
+    print("=== Neo4j Docker Connection Test ===")
     print(f"Попытка подключения к Neo4j на {uri.split('://')[-1]}...")
 
     driver = GraphDatabase.driver(uri, auth=("neo4j", password))
