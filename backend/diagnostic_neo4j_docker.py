@@ -37,7 +37,7 @@ with open(log_file, "w", encoding="utf-8") as f:
         # Connection parameters for Docker
         uri = "bolt://localhost:7687"
         user = "neo4j"
-        password = "NewStrongPass123!"
+        password = os.getenv("NEO4J_PASSWORD", "")
 
         f.write(f"Connecting to: {uri}\n")
 
