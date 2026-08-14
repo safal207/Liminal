@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
+
 """
 Тест подключения к Neo4j Docker контейнеру
 """
@@ -12,7 +14,7 @@ from neo4j import GraphDatabase
 
 
 def run_check(
-    uri: str = "bolt://localhost:7687", password: str = "NewStrongPass123!"
+    uri: str = "bolt://localhost:7687", password: Optional[str] = None
 ) -> bool:
     """Attempt to connect to Neo4j and run a simple query.
 
@@ -20,7 +22,12 @@ def run_check(
     surfaced to the caller so CI can decide how to react.
     """
 
-    print("=== Neo4j Docker Connection Test ===")
+    password = password or os.getenv("NEO4J_PASSWORD")
+    if not password:
+        print("NEO4J_PASSWORD must be set before running this check")
+        return False
+
+    print("=== Neo4j Docker Connection Test ==="
     print(f"Попытка подключения к Neo4j на {uri.split('://')[-1]}...")
 
     driver = GraphDatabase.driver(uri, auth=("neo4j", password))
