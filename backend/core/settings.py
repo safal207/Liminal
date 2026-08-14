@@ -23,7 +23,7 @@ except (
 
     SettingsConfigDict = Dict[str, Any]  # type: ignore[misc,assignment]
 
-DEFAULT_SECRET = "resonance-liminal-secret-key-change-in-production"
+DEFAULT_SECRET = ""
 DEFAULT_ALGORITHM = "HS256"
 DEFAULT_EXPIRE_MINUTES = 30
 DEFAULT_MEMORY_TIMELINE_INITIAL_LIMIT = 100
@@ -167,7 +167,7 @@ class IntegrationSettings(BaseModel):
         json_schema_extra={"env": ["INTEGRATIONS__NEO4J_USER", "NEO4J_USER"]},
     )
     neo4j_password: str = Field(
-        "password",
+        "",
         validation_alias=AliasChoices("INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD"),
         json_schema_extra={"env": ["INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD"]},
     )
@@ -283,7 +283,7 @@ class Settings(BaseSettings):
                 "neo4j_password": (
                     ("INTEGRATIONS__NEO4J_PASSWORD", "NEO4J_PASSWORD"),
                     str,
-                    "password",
+                    "",
                 ),
                 "ml_enabled": (
                     ("INTEGRATIONS__ML_ENABLED", "ML_ENABLED"),
