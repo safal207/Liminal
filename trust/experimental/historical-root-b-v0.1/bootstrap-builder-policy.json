@@ -1,0 +1,1 @@
+{"authorization_scope":"historical-root-b-only","external_provider_calls":0,"provider":"external-ed25519-root-b","role":"genesis-bootstrap-builder","schema":"liminal-historical-root-b-bootstrap-builder-policy/v0.1","trust_domain":"liminal.trusted-recovery"}
