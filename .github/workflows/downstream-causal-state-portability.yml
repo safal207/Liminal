@@ -1,0 +1,143 @@
+name: Downstream Causal-State Portability v0.1
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  produce-historical-proof:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/historical-trust-base-portability.yml@64116d0eea55a874ac7f63b733416df39108d7a7
+
+  prove-downstream-causal-state:
+    needs: produce-historical-proof
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable downstream portability verifier
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable downstream portability checkout
+        env:
+          LIMINAL_CAUSAL_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "${actual_sha}" = "${LIMINAL_CAUSAL_WORKFLOW_SHA}" || {
+            echo "downstream causal portability checkout mismatch"
+            exit 1
+          }
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Download fresh historical portability proof
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: historical-trust-base-portability-proof-v0.1
+          path: historical-proof
+
+      - name: Verify immutable historical proof signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            historical-proof/historical-trust-base-portability-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/historical-trust-base-portability.yml \
+            --signer-digest 64116d0eea55a874ac7f63b733416df39108d7a7 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > historical-result-attestation-verification.json
+
+      - name: Independently re-audit historical convergence
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python scripts/audit-historical-trust-base-portability-v0-1.py \
+            --proof-dir historical-proof \
+            --output historical-upstream-audit.json
+
+      - name: Build portable downstream causal state
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          LIMINAL_CAUSAL_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          python scripts/verify-downstream-causal-state-portability-v0-1.py \
+            --historical-proof-dir historical-proof \
+            --historical-audit historical-upstream-audit.json \
+            --historical-attestation historical-result-attestation-verification.json \
+            --checkpoint-producer-contract policies/portable-causal-checkpoint-producer-contract-v0.1.json \
+            --checkpoint-authorization-contract policies/portable-causal-checkpoint-authorization-contract-v0.1.json \
+            --witness-producer-contract policies/portable-causal-witness-producer-contract-v0.1.json \
+            --witness-authorization-contract policies/portable-causal-witness-authorization-contract-v0.1.json \
+            --workflow-sha "${LIMINAL_CAUSAL_WORKFLOW_SHA}" \
+            --output-dir artifacts/downstream-causal-state-portability
+
+      - name: Assert downstream causal-state verdict
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path(
+              "artifacts/downstream-causal-state-portability/"
+              "downstream-causal-state-portability-result.json"
+          )
+          result = json.loads(path.read_text())
+          assert result["verified"] is True
+          assert result["reason"] == "downstream_causal_state_portability_verified"
+          receipt = result["receipt"]
+          assert receipt["raw_history_embedded"] is False
+          assert receipt["equivalent_downstream_checkpoint"] is True
+          assert receipt["equivalent_downstream_witness"] is True
+          assert (
+              result["primary_provenance"]["registry_sha256"]
+              != result["secondary_provenance"]["registry_sha256"]
+          )
+          assert (
+              result["primary_provenance"]["manifest_sha256"]
+              != result["secondary_provenance"]["manifest_sha256"]
+          )
+          portable = repr((result["checkpoint"], result["witness"]))
+          for side in ("primary_provenance", "secondary_provenance"):
+              for key in (
+                  "provider_id",
+                  "genesis_authority_id",
+                  "registry_sha256",
+                  "manifest_sha256",
+              ):
+                  assert result[side][key] not in portable
+          print("downstream_causal_state_portability=VERIFIED")
+          PY
+
+      - name: Attest downstream causal-state result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/downstream-causal-state-portability/downstream-causal-state-portability-result.json
+
+      - name: Upload downstream causal-state proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: downstream-causal-state-portability-proof-v0.1
+          path: artifacts/downstream-causal-state-portability
+          if-no-files-found: error
+          retention-days: 30
