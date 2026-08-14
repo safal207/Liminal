@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
+
 """
 Neo4j Temporal Data Lake Демонстрация
 ------------------------------------
@@ -279,7 +281,7 @@ def main():
         if args.docker:
             # Настройки для подключения к Docker контейнеру
             writer = ConsciousnessNeo4jWriter(
-                uri=args.uri, user="neo4j", password="NewStrongPass123!"
+                uri=args.uri, user="neo4j", password=os.getenv("NEO4J_PASSWORD", "")
             )
             print("Используется Docker Neo4j контейнер")
         else:
