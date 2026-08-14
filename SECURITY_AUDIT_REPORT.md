@@ -62,8 +62,8 @@ app.add_middleware(
 **Issues:**
 
 ```python
-jwt_secret_key: str = "test-jwt-secret-key-for-local-development-only"  # ⚠️
-neo4j_password: str = "NewStrongPass123!"  # ⚠️
+jwt_secret_key: str = "<set via JWT_SECRET_KEY>"  # ⚠️
+neo4j_password: str = "<set via NEO4J_PASSWORD>"  # ⚠️
 ```
 
 **Risk:**
