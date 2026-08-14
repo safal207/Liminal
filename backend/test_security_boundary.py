@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-_BINARY_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".woff", ".woff2", ".zip"}
+_BINARY_SUFFIXES = {".a", ".bin", ".class", ".dll", ".dylib", ".exe", ".gif", ".ico", ".jpg", ".jpeg", ".o", ".pdf", ".png", ".pyd", ".so", ".wasm", ".woff", ".woff2", ".zip"}
 _FORBIDDEN = (
     "NewStrong" + "Pass123!",
     "test-jwt-" + "secret-key-for-local-development-only",
@@ -32,9 +32,12 @@ class CredentialBoundaryTest(unittest.TestCase):
                 continue
             path = ROOT / relative_path
             try:
-                text = path.read_text(encoding="utf-8", errors="ignore")
+                raw = path.read_bytes()
             except OSError:
                 continue
+            if b"\\0" in raw[:8192]:
+                continue
+            text = raw.decode("utf-8", errors="ignore")
             for forbidden in _FORBIDDEN:
                 if forbidden in text:
                     violations.append(f"{relative_path}: {forbidden[:8]}…")
