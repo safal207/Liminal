@@ -1,0 +1,135 @@
+name: Portable Causal-State Evolution Once
+
+on:
+  push:
+    branches:
+      - agent/recovery-routing-v0-1
+    paths:
+      - .github/workflows/portable-causal-state-evolution-once.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  prove:
+    uses: safal207/Liminal/.github/workflows/portable-causal-state-evolution.yml@5f5cee5749eaa15814323f563c1544347524d000
+
+  audit-independently:
+    needs: prove
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable causal evolution verifier
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: safal207/Liminal
+          ref: 5f5cee5749eaa15814323f563c1544347524d000
+          fetch-depth: 0
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Download portable causal evolution proof
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: portable-causal-state-evolution-proof-v0.1
+          path: proof
+
+      - name: Verify immutable evolution proof signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            proof/portable-causal-state-evolution-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/portable-causal-state-evolution.yml \
+            --signer-digest 5f5cee5749eaa15814323f563c1544347524d000 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > evolution-result-attestation-verification.json
+
+      - name: Reverify bundled anchor signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            proof/materials/anchor-proof/downstream-causal-state-portability-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/downstream-causal-state-portability.yml \
+            --signer-digest 65140882f172c53b6556ce9aa7a190f40bacc3bf \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > anchor-result-attestation-verification.json
+
+      - name: Reverify bundled Path A signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            proof/materials/path-a/path-a-causal-evolution-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/causal-evolution-path-a-producer.yml \
+            --signer-digest 97b2c2f9b5b0e5ba250d97a8ceba070b07713792 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > path-a-result-attestation-verification.json
+
+      - name: Independently recompute portable causal evolution
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python scripts/audit-portable-causal-state-evolution-v0-1.py \
+            --proof-dir proof \
+            --repository-root "${GITHUB_WORKSPACE}" \
+            --output audit/portable-causal-state-evolution-external-audit.json
+
+      - name: Assert independent audit verdict
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          audit = json.loads(
+              Path("audit/portable-causal-state-evolution-external-audit.json").read_text()
+          )
+          assert audit["verified"] is True
+          assert audit["reason"] == "portable_causal_state_evolution_recomputed"
+          assert audit["epochs_advanced"] == 2
+          assert audit["final_causal_epoch"] == 2
+          assert audit["raw_history_embedded"] is False
+          print("portable_causal_state_evolution_external_audit=VERIFIED")
+          PY
+
+      - name: Attest independent audit result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: audit/portable-causal-state-evolution-external-audit.json
+
+      - name: Upload independent audit
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: portable-causal-state-evolution-external-audit-v0.1
+          path: |
+            audit
+            evolution-result-attestation-verification.json
+            anchor-result-attestation-verification.json
+            path-a-result-attestation-verification.json
+          if-no-files-found: error
+          retention-days: 30
