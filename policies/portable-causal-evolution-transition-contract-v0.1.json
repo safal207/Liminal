@@ -1,0 +1,1 @@
+{"allowed_transitions":["authorization-policy-step-1","authorization-policy-step-2"],"logical_state_id":"liminal.trusted-recovery.authorization-state","requires_semantic_convergence":true,"requires_verified_history_prefix":true,"schema":"liminal-portable-causal-transition-contract/v0.1","trust_domain":"liminal.trusted-recovery"}

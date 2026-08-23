@@ -1,0 +1,1 @@
+{"required_transition_contract_schema":"liminal-portable-causal-transition-contract/v0.1","requires_distinct_transition_provenance":true,"requires_full_checkpoint_prefix_validation":true,"requires_full_witness_prefix_validation":true,"schema":"liminal-portable-causal-transition-authorization-contract/v0.1","trust_domain":"liminal.trusted-recovery"}
