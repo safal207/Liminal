@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from liminal.causal_evolution_evidence import load_json, verify_evolution_envelope, verify_policy_source_material
+from liminal.causal_evolution_evidence import load_json, verify_evolution_envelope
 from liminal.causal_evolution_proof_materials import controls, digest, registry_prefix, semantic
 from liminal.recovery_trust_root_registry import validate_registry
 
@@ -21,8 +21,11 @@ def test_signed_root_b_causal_evolution_material_is_self_consistent() -> None:
         load_json(evolution_dir / "signed-evolution-envelope.json"),
     )
     assert signer == "ed25519-sha256:51c016fefc63fce955d954bcd2b30e08eb40effd18f36a9646bdb5baa0fabfd8"
-    verify_policy_source_material(repo, claim)
     assert claim["bootstrap_source_sha"] == "97b2c2f9b5b0e5ba250d97a8ceba070b07713792"
+    assert digest(load_json(repo / "policies/portable-causal-evolution-state-step-1-v0.1.json")) == claim["policy_step_1_sha256"]
+    assert digest(load_json(repo / "policies/portable-causal-evolution-state-step-2-v0.1.json")) == claim["policy_step_2_sha256"]
+    assert digest(load_json(repo / "policies/portable-causal-evolution-transition-contract-v0.1.json")) == claim["transition_contract_sha256"]
+    assert digest(load_json(repo / "policies/portable-causal-evolution-transition-authorization-contract-v0.1.json")) == claim["transition_authorization_contract_sha256"]
     assert claim["final_registry_sha256"] == digest(registry)
     assert claim["final_manifest_sha256"] == digest(b5)
 
