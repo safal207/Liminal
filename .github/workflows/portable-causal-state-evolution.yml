@@ -1,0 +1,159 @@
+name: Portable Causal-State Evolution v0.1
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  produce-anchor:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/downstream-causal-state-portability.yml@65140882f172c53b6556ce9aa7a190f40bacc3bf
+
+  produce-path-a:
+    needs: produce-anchor
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/causal-evolution-path-a-producer.yml@97b2c2f9b5b0e5ba250d97a8ceba070b07713792
+
+  prove-portable-causal-evolution:
+    needs: [produce-anchor, produce-path-a]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable causal evolution verifier
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable causal evolution checkout
+        env:
+          LIMINAL_EVOLUTION_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${LIMINAL_EVOLUTION_WORKFLOW_SHA}"
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Download fresh portable epoch-0 anchor
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: downstream-causal-state-portability-proof-v0.1
+          path: anchor
+
+      - name: Download fresh attested Path A evolution
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: portable-causal-evolution-path-a-v0.1
+          path: path-a-evidence
+
+      - name: Verify immutable anchor signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            anchor/downstream-causal-state-portability-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/downstream-causal-state-portability.yml \
+            --signer-digest 65140882f172c53b6556ce9aa7a190f40bacc3bf \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > anchor-result-attestation-verification.json
+
+      - name: Independently re-audit portable anchor
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python scripts/audit-downstream-causal-state-portability-v0-1.py \
+            --proof-dir anchor \
+            --output anchor-external-audit.json
+
+      - name: Verify immutable Path A signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            path-a-evidence/path-a/path-a-causal-evolution-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/causal-evolution-path-a-producer.yml \
+            --signer-digest 97b2c2f9b5b0e5ba250d97a8ceba070b07713792 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > path-a-result-attestation-verification.json
+
+      - name: Prove portable multi-epoch evolution
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          LIMINAL_EVOLUTION_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          python scripts/verify-portable-causal-state-evolution-v0-1.py \
+            --anchor-proof-dir anchor \
+            --path-a-dir path-a-evidence/path-a \
+            --path-a-attestation path-a-result-attestation-verification.json \
+            --path-b-dir trust/experimental/causal-evolution-root-b-v0.1 \
+            --rotation-contract policies/portable-rotation-producer-contract-v0.1.json \
+            --historical-authorization-contract policies/portable-rotation-authorization-contract-v0.1.json \
+            --transition-contract policies/portable-causal-evolution-transition-contract-v0.1.json \
+            --transition-authorization-contract policies/portable-causal-evolution-transition-authorization-contract-v0.1.json \
+            --repository-root "${GITHUB_WORKSPACE}" \
+            --workflow-sha "${LIMINAL_EVOLUTION_WORKFLOW_SHA}" \
+            --output-dir artifacts/portable-causal-state-evolution
+
+      - name: Assert multi-epoch verdict
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          result = json.loads(Path("artifacts/portable-causal-state-evolution/portable-causal-state-evolution-result.json").read_text())
+          assert result["verified"] is True
+          assert result["reason"] == "portable_causal_state_evolution_verified"
+          assert result["history_schedules"]["path_a"] == [[1, 3], [3, 4]]
+          assert result["history_schedules"]["path_b"] == [[1, 2], [2, 5]]
+          assert result["receipt"]["epochs_advanced"] == 2
+          assert result["receipt"]["final_causal_epoch"] == 2
+          assert result["receipt"]["raw_history_embedded"] is False
+          assert result["receipt"]["equivalent_checkpoint_chain"] is True
+          assert result["receipt"]["equivalent_witness_chain"] is True
+          assert len(set(result["semantic_states"].values())) == 3
+          assert result["claim_boundary"]["path_a_github_oidc_attestation_verified"] is True
+          assert result["claim_boundary"]["path_b_detached_ed25519_signature_verified"] is True
+          print("portable_causal_state_evolution=VERIFIED")
+          PY
+
+      - name: Attest portable causal evolution result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/portable-causal-state-evolution/portable-causal-state-evolution-result.json
+
+      - name: Upload portable causal evolution proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: portable-causal-state-evolution-proof-v0.1
+          path: artifacts/portable-causal-state-evolution
+          if-no-files-found: error
+          retention-days: 30
