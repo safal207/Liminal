@@ -1,9 +1,7 @@
 name: Portable Causal-State Evolution Once
 
 on:
-  push:
-    branches:
-      - agent/recovery-routing-v0-1
+  pull_request:
     paths:
       - .github/workflows/portable-causal-state-evolution-once.yml
   workflow_dispatch:
