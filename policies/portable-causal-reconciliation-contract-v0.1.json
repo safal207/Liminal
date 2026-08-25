@@ -1,0 +1,22 @@
+{
+  "schema": "liminal-portable-causal-reconciliation-contract/v0.1",
+  "trust_domain": "liminal.trusted-recovery",
+  "parent_cardinality": 2,
+  "topology": "canonical-two-parent-dag-join",
+  "required_bindings": [
+    "common_ancestor_state_ref_sha256",
+    "common_ancestor_checkpoint_sha256",
+    "common_ancestor_witness_sha256",
+    "both_parent_state_ref_sha256",
+    "both_parent_checkpoint_sha256",
+    "both_parent_witness_sha256",
+    "target_semantic_state_sha256"
+  ],
+  "canonical_parent_order": "ascending-parent-checkpoint-sha256",
+  "lineage_rule": "neither parent may be omitted, duplicated, or replaced by an unrelated predecessor",
+  "portable_identity_excludes": [
+    "provider_id",
+    "authority_id",
+    "vote_provenance_sha256"
+  ]
+}

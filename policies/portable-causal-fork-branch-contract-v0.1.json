@@ -1,0 +1,18 @@
+{
+  "schema": "liminal-portable-causal-fork-branch-contract/v0.1",
+  "trust_domain": "liminal.trusted-recovery",
+  "branch_cardinality": 2,
+  "required_bindings": [
+    "common_state_ref_sha256",
+    "logical_branch_id",
+    "branch_policy_sha256",
+    "branch_contract_sha256",
+    "authorization_contract_sha256"
+  ],
+  "portable_identity_excludes": [
+    "provider_id",
+    "authority_id",
+    "branch_provenance_sha256"
+  ],
+  "fork_requirement": "branch semantic states must be distinct and must both descend from the same validated portable checkpoint and witness tip"
+}

@@ -1,0 +1,10 @@
+{
+  "schema": "liminal-portable-causal-fork-state-policy/v0.1",
+  "logical_branch_id": "authorization-policy-fork-b",
+  "decision_mode": "sovereignty-priority",
+  "allowed_execution_regions": [
+    "eu-west-1"
+  ],
+  "approval_threshold": 2,
+  "deny_on_unknown_attestation": true
+}

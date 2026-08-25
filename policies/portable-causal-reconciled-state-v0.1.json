@@ -1,0 +1,12 @@
+{
+  "schema": "liminal-portable-causal-reconciliation-policy/v0.1",
+  "logical_reconciliation_id": "authorization-policy-fork-reconcile-v0.1",
+  "strategy": "explicit-union-with-deny-overrides",
+  "allowed_execution_regions": [
+    "eu-west-1",
+    "us-east-1"
+  ],
+  "approval_threshold": 2,
+  "deny_on_unknown_attestation": true,
+  "required_parent_lineages": 2
+}

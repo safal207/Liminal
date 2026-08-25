@@ -1,0 +1,18 @@
+{
+  "schema": "liminal-portable-causal-fork-authorization-contract/v0.1",
+  "trust_domain": "liminal.trusted-recovery",
+  "required_evidence": [
+    "verified_provider_evidence",
+    "provider_authority_binding",
+    "exact_common_state_ref_binding",
+    "branch_policy_source_binding",
+    "branch_contract_binding"
+  ],
+  "fail_closed_on": [
+    "unverified_branch_evidence",
+    "common_state_ref_mismatch",
+    "branch_contract_mismatch",
+    "branch_authorization_mismatch",
+    "raw_provider_evidence_in_portable_branch_object"
+  ]
+}
