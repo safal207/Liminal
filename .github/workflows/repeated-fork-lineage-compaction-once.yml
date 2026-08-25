@@ -1,0 +1,157 @@
+name: Repeated Fork Lineage Compaction Once
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/repeated-fork-lineage-compaction-once.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  prove:
+    uses: safal207/Liminal/.github/workflows/repeated-fork-lineage-compaction.yml@1cb40514f3a99eaca4dcdd6fa19fc28ffa660fb2
+
+  audit-independently:
+    needs: prove
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable compaction verifier
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: safal207/Liminal
+          ref: 1cb40514f3a99eaca4dcdd6fa19fc28ffa660fb2
+          fetch-depth: 0
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Download compact proof
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: repeated-fork-lineage-compaction-proof-v0.1
+          path: proof
+
+      - name: Download raw predecessor proof separately
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: causal-fork-reconciliation-portability-proof-v0.1
+          path: predecessor
+
+      - name: Verify immutable compaction signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            proof/repeated-fork-lineage-compaction-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/repeated-fork-lineage-compaction.yml \
+            --signer-digest 1cb40514f3a99eaca4dcdd6fa19fc28ffa660fb2 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > compaction-attestation-verification.json
+
+      - name: Reverify predecessor signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            predecessor/causal-fork-reconciliation-portability-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/causal-fork-reconciliation-portability.yml \
+            --signer-digest 51894987f038e6c24fadf5b3c2768feda4117d6f \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > predecessor-attestation-verification.json
+
+      - name: Reverify repeated Branch A signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            proof/materials/branch-a/repeated-causal-fork-branch-a-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/repeated-causal-fork-branch-a-producer.yml \
+            --signer-digest cbef175c7aae9325a05ed759ef03894afb11928e \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > repeated-branch-a-attestation-verification.json
+
+      - name: Independently recompute predecessor fork
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python scripts/audit-causal-fork-reconciliation-portability-v0-1.py \
+            --proof-dir predecessor \
+            --repository-root "${GITHUB_WORKSPACE}" \
+            --output predecessor-external-audit.json
+
+      - name: Independently recompute repeated compaction
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python scripts/audit-repeated-fork-lineage-compaction-v0-1.py \
+            --proof-dir proof \
+            --predecessor-proof-dir predecessor \
+            --predecessor-audit predecessor-external-audit.json \
+            --repository-root "${GITHUB_WORKSPACE}" \
+            --output audit/repeated-fork-lineage-compaction-external-audit.json
+
+      - name: Assert external audit verdict
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          audit = json.loads(
+              Path("audit/repeated-fork-lineage-compaction-external-audit.json").read_text()
+          )
+          assert audit["verified"] is True
+          assert audit["reason"] == "repeated_fork_lineage_compaction_recomputed"
+          assert audit["reconciliation_count"] == 2
+          assert audit["total_branch_event_count"] == 4
+          assert audit["reconciled_causal_epoch"] == 6
+          assert audit["bounded_accumulator_shape"] is True
+          assert audit["raw_predecessor_proof_embedded"] is False
+          assert audit["raw_provider_evidence_embedded"] is False
+          print("repeated_fork_lineage_compaction_external_audit=VERIFIED")
+          PY
+
+      - name: Attest external audit result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: audit/repeated-fork-lineage-compaction-external-audit.json
+
+      - name: Upload external audit
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: repeated-fork-lineage-compaction-external-audit-v0.1
+          path: |
+            audit
+            compaction-attestation-verification.json
+            predecessor-attestation-verification.json
+            repeated-branch-a-attestation-verification.json
+            predecessor-external-audit.json
+          if-no-files-found: error
+          retention-days: 30
