@@ -1,0 +1,170 @@
+name: Causal Fork Reconciliation Portability v0.1
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  produce-common:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/portable-causal-state-evolution.yml@5f5cee5749eaa15814323f563c1544347524d000
+
+  produce-branch-a:
+    needs: produce-common
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/causal-fork-branch-a-producer.yml@9ec014179132cb1bf5a6f21275583cd50425c96e
+
+  prove-fork-reconciliation:
+    needs: [produce-common, produce-branch-a]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable fork reconciliation verifier
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable fork reconciliation checkout
+        env:
+          LIMINAL_FORK_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${LIMINAL_FORK_WORKFLOW_SHA}"
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Download fresh portable multi-epoch prefix
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: portable-causal-state-evolution-proof-v0.1
+          path: evolution
+
+      - name: Download fresh attested Branch A evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: causal-fork-branch-a-evidence-v0.1
+          path: branch-a-evidence
+
+      - name: Verify immutable multi-epoch prefix signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            evolution/portable-causal-state-evolution-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/portable-causal-state-evolution.yml \
+            --signer-digest 5f5cee5749eaa15814323f563c1544347524d000 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > evolution-result-attestation-verification.json
+
+      - name: Independently re-audit portable multi-epoch prefix
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python scripts/audit-portable-causal-state-evolution-v0-1.py \
+            --proof-dir evolution \
+            --repository-root "${GITHUB_WORKSPACE}" \
+            --output evolution-external-audit.json
+
+      - name: Verify immutable Branch A signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            branch-a-evidence/branch-a/causal-fork-branch-a-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/causal-fork-branch-a-producer.yml \
+            --signer-digest 9ec014179132cb1bf5a6f21275583cd50425c96e \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > branch-a-result-attestation-verification.json
+
+      - name: Prove causal fork reconciliation portability
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          LIMINAL_FORK_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          python scripts/verify-causal-fork-reconciliation-portability-v0-1.py \
+            --evolution-proof-dir evolution \
+            --branch-a-dir branch-a-evidence/branch-a \
+            --branch-a-attestation branch-a-result-attestation-verification.json \
+            --branch-a-workflow-sha 9ec014179132cb1bf5a6f21275583cd50425c96e \
+            --branch-b-dir trust/experimental/causal-fork-branch-b-v0.1 \
+            --branch-a-policy policies/portable-causal-fork-state-a-v0.1.json \
+            --branch-b-policy policies/portable-causal-fork-state-b-v0.1.json \
+            --reconciliation-policy policies/portable-causal-reconciled-state-v0.1.json \
+            --branch-contract policies/portable-causal-fork-branch-contract-v0.1.json \
+            --branch-authorization-contract policies/portable-causal-fork-authorization-contract-v0.1.json \
+            --reconciliation-contract policies/portable-causal-reconciliation-contract-v0.1.json \
+            --reconciliation-authorization-contract policies/portable-causal-reconciliation-authorization-contract-v0.1.json \
+            --repository-root "${GITHUB_WORKSPACE}" \
+            --workflow-sha "${LIMINAL_FORK_WORKFLOW_SHA}" \
+            --output-dir artifacts/causal-fork-reconciliation
+
+      - name: Assert fork reconciliation verdict
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(
+              Path(
+                  "artifacts/causal-fork-reconciliation/causal-fork-reconciliation-portability-result.json"
+              ).read_text()
+          )
+          receipt = result["receipt"]
+          assert result["verified"] is True
+          assert result["reason"] == "causal_fork_reconciliation_portability_verified"
+          assert receipt["fork_causal_epoch"] == 3
+          assert receipt["reconciled_causal_epoch"] == 4
+          assert receipt["lineage_parent_count"] == 2
+          assert receipt["both_lineages_preserved"] is True
+          assert receipt["fork_semantics_divergent"] is True
+          assert receipt["branch_order_canonical"] is True
+          assert receipt["raw_evidence_embedded"] is False
+          assert result["claim_boundary"]["branch_a_github_oidc_attestation_verified"] is True
+          assert result["claim_boundary"]["branch_b_detached_ed25519_signature_verified"] is True
+          assert result["claim_boundary"]["both_parent_lineages_preserved"] is True
+          print("causal_fork_reconciliation_portability=VERIFIED")
+          PY
+
+      - name: Attest fork reconciliation result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/causal-fork-reconciliation/causal-fork-reconciliation-portability-result.json
+
+      - name: Upload fork reconciliation proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: causal-fork-reconciliation-portability-proof-v0.1
+          path: artifacts/causal-fork-reconciliation
+          if-no-files-found: error
+          retention-days: 30
