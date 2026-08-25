@@ -1,0 +1,8 @@
+{
+  "schema": "liminal-portable-repeated-causal-fork-authorization-contract/v0.1",
+  "require_exact_common_tip_binding": true,
+  "require_independent_provider": true,
+  "require_independent_authority": true,
+  "require_independent_provenance": true,
+  "fail_closed_on_ambiguity": true
+}

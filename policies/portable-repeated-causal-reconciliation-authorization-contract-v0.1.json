@@ -1,0 +1,8 @@
+{
+  "schema": "liminal-portable-repeated-causal-reconciliation-authorization-contract/v0.1",
+  "require_vote_per_exact_branch_tip": true,
+  "require_common_target_semantic_state": true,
+  "require_common_reconciliation_contract": true,
+  "require_common_authorization_contract": true,
+  "reject_missing_duplicate_or_replaced_parent": true
+}

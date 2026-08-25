@@ -1,0 +1,11 @@
+{
+  "schema": "liminal-portable-causal-lineage-compaction-contract/v0.1",
+  "accumulator_schema": "liminal-causal-lineage-accumulator/v0.1",
+  "event_schema": "liminal-causal-lineage-event/v0.1",
+  "counter_encoding": "fixed-u64-hex",
+  "previous_root_binding": "sha256",
+  "latest_event_binding": "sha256",
+  "tip_state_checkpoint_witness_binding": "sha256",
+  "embed_prior_raw_parent_lineages": false,
+  "require_fixed_accumulator_shape": true
+}

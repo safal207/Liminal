@@ -1,0 +1,7 @@
+{
+  "schema": "liminal-portable-repeated-causal-fork-state/v0.1",
+  "logical_branch_id": "authorization-policy-repeat-fork-b",
+  "decision": "rotate-builder-authority",
+  "authority_mode": "two-of-two",
+  "recovery_mode": "deny-until-reverified"
+}
