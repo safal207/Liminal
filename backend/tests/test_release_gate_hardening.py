@@ -5,6 +5,7 @@ from __future__ import annotations
 import ast
 import importlib
 import inspect
+import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock
@@ -35,6 +36,7 @@ from backend.core.settings import (
 )
 from backend.memory_timeline import MemoryTimeline
 from backend.websocket.connection_manager import ConnectionManager
+from backend.websocket.redis_client import RedisClient as WebSocketRedisClient
 from backend.websocket.redis_connection_manager import RedisConnectionManager
 
 core_settings = importlib.import_module("backend.core.settings")
@@ -50,6 +52,27 @@ def test_production_rejects_default_jwt_secret(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setenv("ENV", "production")
     with pytest.raises(RuntimeError, match="JWT_SECRET_KEY"):
         make_manager(DEFAULT_SECRET)
+
+
+def test_production_requires_a_bootstrap_auth_source() -> None:
+    for password in ("", "   ", "short"):
+        with pytest.raises(RuntimeError, match="LIMINAL_ADMIN_PASS"):
+            jwt_utils._require_production_auth_source("production", password)
+
+    jwt_utils._require_production_auth_source("production", "strong-password")
+
+
+def test_production_compose_passes_bootstrap_and_legacy_redis_secrets() -> None:
+    compose = (
+        Path(__file__).resolve().parents[2]
+        / "backend"
+        / "production"
+        / "docker-compose.production.yml"
+    ).read_text(encoding="utf-8")
+    core_service = compose.split("  neural-analytics:", 1)[0]
+
+    assert "LIMINAL_ADMIN_PASS: ${LIMINAL_ADMIN_PASS:?" in core_service
+    assert "REDIS_PASSWORD: ${REDIS_PASSWORD:?" in core_service
 
 
 def test_flat_environment_names_load_into_central_settings(
@@ -351,6 +374,35 @@ async def test_redis_manager_loads_distributed_rate_limit_script() -> None:
     assert await manager.initialize() is True
 
     manager._load_rate_limit_script.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+async def test_redis_listener_suppresses_self_published_broadcasts() -> None:
+    client = WebSocketRedisClient(test_mode=False)
+    client.instance_id = "local-instance"
+    channel = "liminal:broadcast"
+    callback = AsyncMock()
+    client.subscription_callbacks[channel] = callback
+
+    class PubSub:
+        async def listen(self):
+            for sender, source in (
+                ("local-instance", "local"),
+                ("remote-instance", "remote"),
+            ):
+                yield {
+                    "type": "message",
+                    "channel": channel,
+                    "data": json.dumps(
+                        {"sender_id": sender, "data": {"source": source}}
+                    ),
+                }
+
+    client.pubsub = PubSub()
+
+    await client._message_listener()
+
+    callback.assert_awaited_once_with({"source": "remote"})
 
 
 @pytest.mark.asyncio

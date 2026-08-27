@@ -43,6 +43,7 @@ except (ImportError, AttributeError) as exc:
 
 VALID_TOKEN_TYPES = frozenset({"access", "refresh"})
 MIN_PRODUCTION_SECRET_LENGTH = 32
+MIN_PRODUCTION_PASSWORD_LENGTH = 12
 
 
 class JWTManager:
@@ -168,6 +169,21 @@ jwt_manager = get_jwt_manager()
 # Replace with a durable user database before production use.
 _test_user_pass = os.getenv("LIMINAL_TEST_USER_PASS", "")
 _admin_pass = os.getenv("LIMINAL_ADMIN_PASS", "")
+
+
+def _require_production_auth_source(environment: str, admin_password: str) -> None:
+    """Fail closed until production has a durable store or bootstrap admin."""
+    if (
+        environment.strip().lower() == "production"
+        and len(admin_password.strip()) < MIN_PRODUCTION_PASSWORD_LENGTH
+    ):
+        raise RuntimeError(
+            "LIMINAL_ADMIN_PASS must contain at least 12 non-padding characters "
+            "when ENV=production until a durable authentication backend is configured"
+        )
+
+
+_require_production_auth_source(os.getenv("ENV", "development"), _admin_pass)
 
 fake_users_db: Dict[str, Any] = {}
 if _test_user_pass:

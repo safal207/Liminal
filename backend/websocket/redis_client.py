@@ -96,7 +96,7 @@ class RedisClient:
             url: URL для подключения к Redis (redis://host:port/db).
                  Если не указан, берется из переменной окружения REDIS_URL.
             prefix: Префикс для ключей в Redis, чтобы избежать конфликтов.
-            test_mode: Режим тестирования, если True - получает сообщения от того же инстанса.
+            test_mode: Сохранен для обратной совместимости тестовых вызовов.
         """
         self.url = url or os.environ.get("REDIS_URL", "redis://localhost:6379/0")
         self.prefix = prefix
@@ -446,10 +446,11 @@ class RedisClient:
                         payload = json.loads(message["data"])
                         sender_id = payload.get("sender_id")
 
-                        # В тестовом режиме игнорируем сообщения от того же инстанса
-                        if self.test_mode and sender_id == self.instance_id:
+                        # Локальная доставка выполняется до публикации в Redis.
+                        # Повторное получение собственного события удвоило бы ее.
+                        if sender_id == self.instance_id:
                             logger.debug(
-                                f"Игнорируем сообщение от того же инстанса в тестовом режиме: {channel}"
+                                f"Игнорируем сообщение от того же инстанса: {channel}"
                             )
                             continue
 
