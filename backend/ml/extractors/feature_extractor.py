@@ -16,9 +16,8 @@ from typing import Any, Dict, List, Optional
 
 import numpy as np
 import pandas as pd
-import requests
-
 import redis
+import requests
 
 # Настройка логгирования
 logging.basicConfig(
@@ -29,7 +28,10 @@ logger = logging.getLogger(__name__)
 # Константы
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
-BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
+BACKEND_URL = os.environ.get("BACKEND_URL") or os.environ.get(
+    "RGL_CORE_URL", "http://localhost:8000"
+)
+ML_METRICS_SERVICE_TOKEN = os.environ.get("ML_METRICS_SERVICE_TOKEN", "").strip()
 KENNING_URL = os.environ.get("KENNING_URL", "http://kenning-ml:5000")
 EXTRACT_INTERVAL = int(os.environ.get("EXTRACT_INTERVAL", "30"))  # секунд
 
@@ -60,7 +62,16 @@ class FeatureExtractor:
         """
         try:
             # Запрос к API бэкенда для получения ML-метрик
-            response = requests.get(f"{BACKEND_URL}/ml_metrics")
+            headers = (
+                {"X-Liminal-ML-Token": ML_METRICS_SERVICE_TOKEN}
+                if ML_METRICS_SERVICE_TOKEN
+                else {}
+            )
+            response = requests.get(
+                f"{BACKEND_URL}/ml_metrics",
+                headers=headers,
+                timeout=10,
+            )
 
             if response.status_code == 200:
                 data = response.json()
@@ -221,6 +232,8 @@ class FeatureExtractor:
 
 def main():
     """Точка входа для запуска экстрактора фичей"""
+    global EXTRACT_INTERVAL
+
     parser = argparse.ArgumentParser(
         description="ML Feature Extractor for Kenning integration"
     )
@@ -236,7 +249,6 @@ def main():
 
     args = parser.parse_args()
 
-    global EXTRACT_INTERVAL
     EXTRACT_INTERVAL = args.interval
 
     extractor = FeatureExtractor()

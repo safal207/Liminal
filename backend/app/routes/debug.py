@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import os
+import secrets
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from backend.auth.dependencies import token_verifier
 from backend.config import get_settings
@@ -32,9 +33,40 @@ def require_debug_access(
     return payload
 
 
+def require_ml_metrics_access(
+    token: Annotated[
+        str | None,
+        Header(alias="X-Liminal-ML-Token"),
+    ] = None,
+) -> None:
+    """Authenticate the internal metrics consumer without enabling debug routes."""
+    settings = get_settings()
+    configured = os.getenv("ML_METRICS_SERVICE_TOKEN", "").strip()
+    if settings.environment != "production" and not configured:
+        return
+    if len(configured) < 32:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="ML metrics service unavailable",
+        )
+    if token is None or not secrets.compare_digest(
+        token.encode("utf-8"),
+        configured.encode("utf-8"),
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid ML metrics service token",
+        )
+
+
 router = APIRouter(
     tags=["debug"],
     dependencies=[Depends(require_debug_routes_enabled), Depends(require_debug_access)],
+)
+
+ml_metrics_router = APIRouter(
+    tags=["ml-internal"],
+    dependencies=[Depends(require_ml_metrics_access)],
 )
 
 
@@ -52,6 +84,6 @@ async def get_connection_stats(
     return service.get_connection_stats()
 
 
-@router.get("/ml_metrics")
+@ml_metrics_router.get("/ml_metrics")
 async def get_ml_metrics(service: Annotated[Any, Depends(get_ml_service)]):
     return service.collect_metrics()

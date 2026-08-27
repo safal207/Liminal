@@ -160,6 +160,7 @@ app.include_router(auth.router)
 app.include_router(waves.router)
 app.include_router(fragments.router)
 app.include_router(debug.router)
+app.include_router(debug.ml_metrics_router)
 app.include_router(ws.router)
 app.include_router(billing.router)
 

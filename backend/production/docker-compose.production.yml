@@ -10,6 +10,7 @@ services:
     environment:
       ENV: production
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY to a strong random value}
+      ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?Set a strong ML metrics service token}
       LIMINAL_ADMIN_PASS: ${LIMINAL_ADMIN_PASS:?Set LIMINAL_ADMIN_PASS to a strong bootstrap password}
       REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
@@ -41,6 +42,7 @@ services:
       - "8001"
     environment:
       RGL_CORE_URL: http://rgl-core:8000
+      ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?Set a strong ML metrics service token}
       REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
     depends_on:
       - rgl-core

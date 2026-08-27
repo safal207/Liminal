@@ -6,9 +6,10 @@ import ast
 import importlib
 import inspect
 import json
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import jwt
 import pytest
@@ -73,6 +74,11 @@ def test_production_compose_passes_bootstrap_and_legacy_redis_secrets() -> None:
 
     assert "LIMINAL_ADMIN_PASS: ${LIMINAL_ADMIN_PASS:?" in core_service
     assert "REDIS_PASSWORD: ${REDIS_PASSWORD:?" in core_service
+    assert "ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?" in core_service
+    neural_service = compose.split("  neural-analytics:", 1)[1].split(
+        "  websocket-gateway:", 1
+    )[0]
+    assert "ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?" in neural_service
 
 
 def test_production_compose_provisions_kibana_system_before_kibana() -> None:
@@ -153,6 +159,78 @@ def test_debug_availability_gate_runs_before_authentication() -> None:
         debug_routes.require_debug_routes_enabled,
         debug_routes.require_debug_access,
     ]
+    assert [
+        dependency.dependency
+        for dependency in debug_routes.ml_metrics_router.dependencies
+    ] == [debug_routes.require_ml_metrics_access]
+
+
+def test_production_ml_metrics_requires_service_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = type("Settings", (), {"environment": "production"})()
+    monkeypatch.setattr(debug_routes, "get_settings", lambda: settings)
+    monkeypatch.delenv("ML_METRICS_SERVICE_TOKEN", raising=False)
+
+    with pytest.raises(HTTPException) as missing_config:
+        debug_routes.require_ml_metrics_access(None)
+    assert missing_config.value.status_code == 503
+
+    service_token = "ml-metrics-service-token-0123456789abcdef"
+    monkeypatch.setenv("ML_METRICS_SERVICE_TOKEN", service_token)
+    with pytest.raises(HTTPException) as missing_token:
+        debug_routes.require_ml_metrics_access(None)
+    assert missing_token.value.status_code == 401
+    with pytest.raises(HTTPException) as wrong_token:
+        debug_routes.require_ml_metrics_access("wrong-token")
+    assert wrong_token.value.status_code == 401
+
+    assert debug_routes.require_ml_metrics_access(service_token) is None
+
+
+def test_feature_extractor_sends_ml_metrics_service_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service_token = "extractor-service-token-0123456789abcdef"
+    monkeypatch.delenv("BACKEND_URL", raising=False)
+    monkeypatch.setenv("RGL_CORE_URL", "http://rgl-core:8000")
+    monkeypatch.setenv("ML_METRICS_SERVICE_TOKEN", service_token)
+    fake_requests = MagicMock()
+    fake_requests.get.return_value.status_code = 200
+    fake_requests.get.return_value.json.return_value = {"metric": 1}
+    fake_redis = MagicMock()
+
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "ml"
+        / "extractors"
+        / "feature_extractor.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "release_gate_feature_extractor",
+        source,
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    with patch.dict(
+        sys.modules,
+        {
+            "numpy": MagicMock(),
+            "pandas": MagicMock(),
+            "redis": fake_redis,
+            "requests": fake_requests,
+        },
+    ):
+        spec.loader.exec_module(module)
+        assert module.FeatureExtractor().extract_features_from_backend() == {
+            "metric": 1
+        }
+
+    fake_requests.get.assert_called_once_with(
+        "http://rgl-core:8000/ml_metrics",
+        headers={"X-Liminal-ML-Token": service_token},
+        timeout=10,
+    )
 
 
 def test_access_token_has_explicit_purpose() -> None:
