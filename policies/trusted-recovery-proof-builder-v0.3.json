@@ -1,0 +1,45 @@
+{
+  "actions": [
+    {
+      "action": "actions/attest",
+      "sha": "1e69f48acb82d1966a394da916b4c1698aa569d6"
+    },
+    {
+      "action": "actions/checkout",
+      "sha": "11d5960a326750d5838078e36cf38b85af677262"
+    },
+    {
+      "action": "actions/setup-python",
+      "sha": "a26af69be951a213d495a4c3e4e4022e16d87065"
+    },
+    {
+      "action": "actions/upload-artifact",
+      "sha": "ea165f8d65b6e75b540449e92b4886f43607fa02"
+    }
+  ],
+  "builder": {
+    "repository": "safal207/Liminal",
+    "workflow_file_sha256": "2960a30a4dfbb2c57dba862b6050474f0ea82c101616f7e54277970db1c6878a",
+    "workflow_path": ".github/workflows/trusted-recovery-proof-builder.yml",
+    "workflow_sha": "02beb48b9c8a61d67c585573aac6c5781c000e89"
+  },
+  "inputs": {
+    "dependency_lock": {
+      "path": "requirements/trusted-recovery-proof.lock",
+      "sha256": "436c88acf5f98d4521b681c133bb68e7598148d27102d070478c0b53f1c6b2d0"
+    },
+    "proof_script": {
+      "path": "scripts/run-live-recovery-decision-proof.py",
+      "sha256": "37ff22aec93b7b2d94c71d14202fc0c579e9492e3723cf6e72197db9c65b4cde"
+    }
+  },
+  "runtime": {
+    "pip_version": "26.1.2",
+    "python_implementation": "CPython",
+    "python_version": "3.11.15",
+    "runner_arch": "X64",
+    "runner_image_os": "ubuntu24",
+    "runner_image_version": null,
+    "runner_os": "Linux"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "active_generation": 0,
+  "active_manifest_sha256": "bd8aaa6162d0f7e9627e10ee6d495810820fd6fd8cd07d9d48e5d585786537b5",
+  "history": [
+    {
+      "generation": 0,
+      "manifest_path": "policies/recovery-trust-root-manifest-v0.1.json",
+      "manifest_sha256": "bd8aaa6162d0f7e9627e10ee6d495810820fd6fd8cd07d9d48e5d585786537b5"
+    }
+  ],
+  "schema_version": "liminal.recovery-trust-root-registry.v0.1"
+}

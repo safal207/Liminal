@@ -1,0 +1,24 @@
+{
+  "schema": "liminal-portable-causal-reconciliation-authorization-contract/v0.1",
+  "trust_domain": "liminal.trusted-recovery",
+  "required_votes": 2,
+  "vote_requirements": [
+    "exact_branch_ref_binding",
+    "exact_branch_state_ref_binding",
+    "exact_branch_checkpoint_binding",
+    "exact_branch_witness_binding",
+    "same_logical_reconciliation_id",
+    "same_target_semantic_state",
+    "same_reconciliation_contract",
+    "same_authorization_contract"
+  ],
+  "fail_closed_on": [
+    "missing_vote",
+    "duplicated_parent",
+    "vote_branch_mismatch",
+    "target_semantic_state_mismatch",
+    "reconciliation_contract_mismatch",
+    "reconciliation_authorization_mismatch",
+    "lineage_erasure"
+  ]
+}

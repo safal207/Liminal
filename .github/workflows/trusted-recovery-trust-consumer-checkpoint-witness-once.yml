@@ -1,0 +1,329 @@
+name: Trusted Recovery Trust Consumer Checkpoint Witness Once
+
+on:
+  push:
+    branches:
+      - agent/recovery-routing-v0-1
+    paths:
+      - '.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness-once.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  run-immutable-witness:
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness.yml@4fe0b61d28b776304d4a8e733b14dbc73c5810c7
+
+  verify-witness-externally:
+    needs: run-immutable-witness
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      attestations: read
+
+    steps:
+      - name: Download checkpoint witness evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-witness
+          path: witness-evidence
+
+      - name: Recompute manifest evidence bundle recovery and witness chain
+        id: recompute-chain
+        env:
+          GITHUB_OUTPUT_FILE: ${{ github.output }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("witness-evidence")
+          producer_sha = "f31b56a5e21a668bcb98791b05542652760dcc27"
+          producer_workflow = (
+              "safal207/Liminal/.github/workflows/"
+              "trusted-recovery-trust-consumer-checkpoint-attested.yml"
+          )
+          old_producer_sha = "d0688725bd76fdf7221e84ca7c5bfb51e363ff72"
+          previous_witness_anchor = "3f0af42a680f42923cb18591ba127206b2292599"
+
+          def canonical(value):
+              return (json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n").encode()
+
+          def sha(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+
+          def unique_name(name):
+              matches = sorted(path for path in root.rglob(name) if path.is_file())
+              assert len(matches) == 1, (name, [path.as_posix() for path in matches])
+              return matches[0]
+
+          all_files = tuple(sorted(path for path in root.rglob("*") if path.is_file()))
+
+          def unique_digest(digest, *, excluded=()):
+              excluded_set = set(excluded)
+              matches = [
+                  path
+                  for path in all_files
+                  if path not in excluded_set and sha(path) == digest
+              ]
+              assert len(matches) == 1, (digest, [path.as_posix() for path in matches])
+              return matches[0]
+
+          bundle_path = unique_name("evidence-bundle-v0.1.json")
+          w0_path = unique_name("witness-generation-0.json")
+          w1_path = unique_name("witness-generation-1.json")
+          result_path = unique_name("checkpoint-witness-drill-result.json")
+
+          bundle_raw = bundle_path.read_bytes()
+          bundle = json.loads(bundle_raw)
+          assert bundle_raw == canonical(bundle)
+          assert bundle["schema"] == "liminal-evidence-bundle/v0.1"
+          assert bundle["logical_id"] == "trust-consumer-checkpoint:generation-1"
+          assert bundle["generation"] == 1
+          assert bundle["producer"] == "safal207/Liminal"
+          assert bundle["evidence_type"] == "trusted-recovery-consumer-checkpoint"
+          assert bundle["manifest"]["signer_workflow"] == producer_workflow
+          assert bundle["manifest"]["signer_digest"] == producer_sha
+          assert bundle["evidence"]["signer_workflow"] == producer_workflow
+          assert bundle["evidence"]["signer_digest"] == producer_sha
+          bundle_sha = hashlib.sha256(bundle_raw).hexdigest()
+
+          manifest_path = unique_digest(
+              bundle["manifest"]["sha256"],
+              excluded=(bundle_path, w0_path, w1_path, result_path),
+          )
+          checkpoint_path = unique_digest(
+              bundle["evidence"]["sha256"],
+              excluded=(bundle_path, w0_path, w1_path, result_path, manifest_path),
+          )
+          manifest_verification_path = unique_digest(
+              bundle["manifest"]["verification_json_sha256"],
+              excluded=(
+                  bundle_path,
+                  w0_path,
+                  w1_path,
+                  result_path,
+                  manifest_path,
+                  checkpoint_path,
+              ),
+          )
+          checkpoint_verification_path = unique_digest(
+              bundle["evidence"]["verification_json_sha256"],
+              excluded=(
+                  bundle_path,
+                  w0_path,
+                  w1_path,
+                  result_path,
+                  manifest_path,
+                  checkpoint_path,
+                  manifest_verification_path,
+              ),
+          )
+
+          manifest_raw = manifest_path.read_bytes()
+          manifest = json.loads(manifest_raw)
+          assert manifest_raw == canonical(manifest)
+          assert manifest["schema"] == "liminal-evidence-manifest/v0.1"
+          entries = [
+              entry
+              for entry in manifest["entries"]
+              if entry["logical_id"] == bundle["logical_id"]
+              and entry["generation"] == bundle["generation"]
+          ]
+          assert len(entries) == 1
+          entry = entries[0]
+          assert entry["sha256"] == bundle["evidence"]["sha256"]
+          assert entry["producer"] == bundle["producer"]
+          assert entry["evidence_type"] == bundle["evidence_type"]
+          assert entry["verification"]["required"] is True
+          assert entry["verification"]["verifier"] == "github_attestation"
+          assert entry["verification"]["expected_signer"] == producer_workflow
+          assert entry["verification"]["expected_signer_digest"] == producer_sha
+
+          checkpoint_raw = checkpoint_path.read_bytes()
+          checkpoint = json.loads(checkpoint_raw)
+          assert checkpoint_raw == canonical(checkpoint)
+          checkpoint_sha = hashlib.sha256(checkpoint_raw).hexdigest()
+          assert checkpoint_sha == bundle["evidence"]["sha256"]
+
+          assert json.loads(manifest_verification_path.read_bytes())
+          assert json.loads(checkpoint_verification_path.read_bytes())
+
+          w0_raw = w0_path.read_bytes()
+          w1_raw = w1_path.read_bytes()
+          result_raw = result_path.read_bytes()
+          w0 = json.loads(w0_raw)
+          w1 = json.loads(w1_raw)
+          result = json.loads(result_raw)
+          assert w0_raw == canonical(w0)
+          assert w1_raw == canonical(w1)
+          assert result_raw == canonical(result)
+          w0_sha = hashlib.sha256(w0_raw).hexdigest()
+          w1_sha = hashlib.sha256(w1_raw).hexdigest()
+          result_sha = hashlib.sha256(result_raw).hexdigest()
+
+          assert w0["schema_version"] == (
+              "liminal.recovery-trust-consumer-checkpoint-witness.v0.2"
+          )
+          assert w0["checkpoint_signer"]["workflow_sha"] == producer_sha
+          transition = w0["checkpoint_signer_transition"]
+          assert transition["previous_signer"]["workflow_sha"] == old_producer_sha
+          assert transition["reason"] == "manifest_backed_checkpoint_producer_rotation"
+          assert transition["previous_witness_workflow_sha"] == previous_witness_anchor
+          assert w1["checkpoint_signer_transition"] == transition
+          assert w1["previous_witness_sha256"] == w0_sha
+
+          chain = result["evidence_bundle"]
+          assert chain["bundle_sha256"] == bundle_sha
+          assert chain["manifest_sha256"] == bundle["manifest"]["sha256"]
+          assert chain["evidence_sha256"] == checkpoint_sha
+          assert chain["manifest_verification_json_sha256"] == bundle["manifest"][
+              "verification_json_sha256"
+          ]
+          assert chain["evidence_verification_json_sha256"] == bundle["evidence"][
+              "verification_json_sha256"
+          ]
+          assert chain["manifest_signer_digest"] == producer_sha
+          assert chain["evidence_signer_digest"] == producer_sha
+          assert result["checkpoint_attestation"]["subject_sha256"] == checkpoint_sha
+          assert result["checkpoint_attestation"]["verification_json_sha256"] == bundle[
+              "evidence"
+          ]["verification_json_sha256"]
+          assert result["checkpoint_attestation"]["signer_workflow_sha"] == producer_sha
+          assert result["advance"]["checkpoint_sha256"] == checkpoint_sha
+          assert result["advance"]["witness_sha256"] == w1_sha
+          assert result["advance"]["reason"] == "checkpoint_witness_advanced"
+          assert result["recovered_consumer"]["local_generation_1_checkpoint_available"] is False
+          assert result["recovered_consumer"]["verified_witness_available"] is True
+          assert result["stale_checkpoint_replay"]["authorized"] is False
+          assert result["stale_checkpoint_replay"]["reason"] == "stale_checkpoint"
+
+          summary = {
+              "schema": "liminal-external-evidence-bundle-chain/v0.1",
+              "manifest_sha256": bundle["manifest"]["sha256"],
+              "checkpoint_sha256": checkpoint_sha,
+              "evidence_bundle_sha256": bundle_sha,
+              "witness_generation_0_sha256": w0_sha,
+              "witness_generation_1_sha256": w1_sha,
+              "recovery_result_sha256": result_sha,
+              "checkpoint_signer_digest": producer_sha,
+              "previous_checkpoint_signer_digest": old_producer_sha,
+              "previous_witness_anchor": previous_witness_anchor,
+              "stale_checkpoint_replay": "rejected",
+          }
+          summary_path = root / "external-chain-recomputation.json"
+          summary_path.write_bytes(canonical(summary))
+
+          output_path = os.environ["GITHUB_OUTPUT"]
+          with open(output_path, "a", encoding="utf-8") as output:
+              output.write(f"manifest_path={manifest_path.as_posix()}\n")
+              output.write(f"checkpoint_path={checkpoint_path.as_posix()}\n")
+              output.write(f"bundle_path={bundle_path.as_posix()}\n")
+              output.write(f"witness_path={w1_path.as_posix()}\n")
+              output.write(f"result_path={result_path.as_posix()}\n")
+          print(f"manifest_sha256={bundle['manifest']['sha256']}")
+          print(f"checkpoint_sha256={checkpoint_sha}")
+          print(f"evidence_bundle_sha256={bundle_sha}")
+          print(f"witness_generation_1_sha256={w1_sha}")
+          print(f"recovery_result_sha256={result_sha}")
+          print("old_checkpoint_replay=REJECT:stale_checkpoint")
+          PY
+
+      - name: Verify immutable producer signer on manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANIFEST_PATH: ${{ steps.recompute-chain.outputs.manifest_path }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            "${MANIFEST_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > witness-evidence/external-manifest-attestation-verification.json
+
+      - name: Verify immutable producer signer on checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKPOINT_PATH: ${{ steps.recompute-chain.outputs.checkpoint_path }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            "${CHECKPOINT_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > witness-evidence/external-checkpoint-attestation-verification.json
+
+      - name: Verify immutable witness signer on evidence bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUNDLE_PATH: ${{ steps.recompute-chain.outputs.bundle_path }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            "${BUNDLE_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness.yml \
+            --signer-digest 4fe0b61d28b776304d4a8e733b14dbc73c5810c7 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > witness-evidence/bundle-attestation-verification.json
+
+      - name: Verify immutable witness signer on generation-1 witness
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WITNESS_PATH: ${{ steps.recompute-chain.outputs.witness_path }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            "${WITNESS_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness.yml \
+            --signer-digest 4fe0b61d28b776304d4a8e733b14dbc73c5810c7 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > witness-evidence/witness-attestation-verification.json
+
+      - name: Verify immutable witness signer on recovery result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT_PATH: ${{ steps.recompute-chain.outputs.result_path }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            "${RESULT_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-witness.yml \
+            --signer-digest 4fe0b61d28b776304d4a8e733b14dbc73c5810c7 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > witness-evidence/result-attestation-verification.json
+
+      - name: Upload external evidence bundle chain verification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-witness-external-verification
+          path: |
+            witness-evidence/external-chain-recomputation.json
+            witness-evidence/external-manifest-attestation-verification.json
+            witness-evidence/external-checkpoint-attestation-verification.json
+            witness-evidence/bundle-attestation-verification.json
+            witness-evidence/witness-attestation-verification.json
+            witness-evidence/result-attestation-verification.json
+          if-no-files-found: error
+          retention-days: 30

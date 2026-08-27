@@ -1,0 +1,408 @@
+name: Trusted Recovery Trust Consumer Checkpoint Witness v0.1
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  produce-attested-checkpoint:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml@f31b56a5e21a668bcb98791b05542652760dcc27
+
+  recover-witness-and-attest:
+    needs: produce-attested-checkpoint
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable witness source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable witness checkout
+        env:
+          LIMINAL_WITNESS_REPOSITORY: ${{ job.workflow_repository }}
+          LIMINAL_WITNESS_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "${actual_sha}" = "${LIMINAL_WITNESS_WORKFLOW_SHA}" || {
+            echo "witness checkout mismatch: ${actual_sha} != ${LIMINAL_WITNESS_WORKFLOW_SHA}"
+            exit 1
+          }
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Download attested generation-1 checkpoint
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-attested
+          path: checkpoint-evidence
+
+      - name: Resolve checkpoint evidence manifest locator
+        id: resolve-manifest
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          from liminal.evidence_resolution import ResolutionDisposition, ResolutionNode, resolve_evidence
+          from liminal.github_actions_evidence_locator import (
+              GitHubActionsEvidenceSpec,
+              discover_github_actions_evidence_locators,
+          )
+
+          root = Path("checkpoint-evidence")
+          artifact_paths = sorted(
+              path.as_posix() for path in root.rglob("*") if path.is_file()
+          )
+          logical_id = "trust-consumer-checkpoint:evidence-manifest-v0.1"
+          expected = "checkpoint-evidence/evidence-manifest-v0.1.json"
+          allowed = (
+              "checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested/",
+          )
+          locators = discover_github_actions_evidence_locators(
+              GitHubActionsEvidenceSpec(
+                  logical_id=logical_id,
+                  expected_path=expected,
+                  filename="evidence-manifest-v0.1.json",
+                  allowed_prefixes=allowed,
+                  verification_available=True,
+              ),
+              artifact_paths,
+          )
+          resolution = resolve_evidence(
+              ResolutionNode(
+                  logical_id=logical_id,
+                  expected_path=expected,
+                  allowed_prefixes=allowed,
+                  require_verification=True,
+              ),
+              locators,
+          )
+          assert resolution.disposition is ResolutionDisposition.RESOLVED, resolution.reason
+          assert resolution.resolved_path is not None
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"path={resolution.resolved_path}\n")
+              output.write(f"reason={resolution.reason}\n")
+          print(f"manifest_resolution={resolution.reason}")
+          print(f"manifest_path={resolution.resolved_path}")
+          PY
+
+      - name: Verify checkpoint evidence manifest signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANIFEST_PATH: ${{ steps.resolve-manifest.outputs.path }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            "${MANIFEST_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > checkpoint-evidence/manifest-attestation-verification.json
+
+      - name: Resolve checkpoint evidence from verified manifest
+        id: resolve-checkpoint
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          MANIFEST_PATH: ${{ steps.resolve-manifest.outputs.path }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          from liminal.evidence_manifest import (
+              ManifestCandidate,
+              ManifestDisposition,
+              parse_manifest_bytes,
+              resolve_manifest_evidence,
+          )
+          from liminal.evidence_resolution import (
+              ResolutionDisposition,
+              ResolutionNode,
+              resolve_evidence,
+          )
+
+          logical_id = "trust-consumer-checkpoint:generation-1"
+          producer_sha = "f31b56a5e21a668bcb98791b05542652760dcc27"
+          signer_workflow = (
+              "safal207/Liminal/.github/workflows/"
+              "trusted-recovery-trust-consumer-checkpoint-attested.yml"
+          )
+          manifest_path = Path(os.environ["MANIFEST_PATH"])
+          manifest_bytes = manifest_path.read_bytes()
+          manifest = parse_manifest_bytes(manifest_bytes)
+
+          producer_root = Path(
+              "checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested"
+          )
+          candidates = []
+          for path in sorted(producer_root.rglob("*")):
+              if not path.is_file() or path == manifest_path:
+                  continue
+              candidates.append(
+                  ManifestCandidate(
+                      path=path.as_posix(),
+                      sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+                      verification_available=True,
+                  )
+              )
+
+          manifest_resolution = resolve_manifest_evidence(
+              [manifest],
+              logical_id=logical_id,
+              generation=1,
+              candidates=candidates,
+          )
+          assert manifest_resolution.disposition is ManifestDisposition.RESOLVED, (
+              manifest_resolution.reason
+          )
+          assert manifest_resolution.entry is not None
+          assert manifest_resolution.locator is not None
+          entry = manifest_resolution.entry
+          assert entry.producer == "safal207/Liminal"
+          assert entry.evidence_type == "trusted-recovery-consumer-checkpoint"
+          assert entry.verification.required is True
+          assert entry.verification.verifier == "github_attestation"
+          assert entry.verification.expected_signer == signer_workflow
+          assert entry.verification.expected_signer_digest == producer_sha
+
+          expected = "checkpoint-evidence/checkpoint-generation-1.json"
+          allowed = (
+              "checkpoint-evidence/artifacts/trust-consumer-checkpoint-attested/",
+          )
+          resolution = resolve_evidence(
+              ResolutionNode(
+                  logical_id=logical_id,
+                  expected_path=expected,
+                  allowed_prefixes=allowed,
+                  require_verification=True,
+              ),
+              [manifest_resolution.locator],
+          )
+          assert resolution.disposition is ResolutionDisposition.RESOLVED, resolution.reason
+          assert resolution.resolved_path is not None
+
+          proof = {
+              "logical_id": logical_id,
+              "generation": 1,
+              "manifest_path": manifest_path.as_posix(),
+              "manifest_reason": manifest_resolution.reason,
+              "manifest_document_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+              "evidence_sha256": entry.sha256,
+              "resolved_path": resolution.resolved_path,
+              "resolution_reason": resolution.reason,
+              "expected_signer": signer_workflow,
+              "expected_signer_digest": producer_sha,
+          }
+          Path("checkpoint-evidence/manifest-resolution.json").write_text(
+              json.dumps(proof, sort_keys=True, separators=(",", ":")) + "\n"
+          )
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"path={resolution.resolved_path}\n")
+              output.write(f"reason={resolution.reason}\n")
+              output.write(f"manifest_reason={manifest_resolution.reason}\n")
+              output.write(f"sha256={entry.sha256}\n")
+          print(f"manifest_evidence_resolution={manifest_resolution.reason}")
+          print(f"checkpoint_resolution={resolution.reason}")
+          print(f"checkpoint_sha256={entry.sha256}")
+          print(f"checkpoint_path={resolution.resolved_path}")
+          PY
+
+      - name: Verify checkpoint signer with GitHub CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKPOINT_PATH: ${{ steps.resolve-checkpoint.outputs.path }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            "${CHECKPOINT_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > checkpoint-evidence/checkpoint-attestation-verification.json
+
+      - name: Build verified evidence bundle
+        id: evidence-bundle
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          MANIFEST_PATH: ${{ steps.resolve-manifest.outputs.path }}
+          CHECKPOINT_PATH: ${{ steps.resolve-checkpoint.outputs.path }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+
+          from liminal.evidence_bundle import (
+              build_verified_evidence_bundle,
+              canonical_evidence_bundle_bytes,
+              evidence_bundle_sha256,
+          )
+          from liminal.evidence_manifest import parse_manifest_bytes
+
+          producer_sha = "f31b56a5e21a668bcb98791b05542652760dcc27"
+          signer_workflow = (
+              "safal207/Liminal/.github/workflows/"
+              "trusted-recovery-trust-consumer-checkpoint-attested.yml"
+          )
+          manifest_path = Path(os.environ["MANIFEST_PATH"])
+          checkpoint_path = Path(os.environ["CHECKPOINT_PATH"])
+          manifest_bytes = manifest_path.read_bytes()
+          checkpoint_bytes = checkpoint_path.read_bytes()
+          manifest_verification = Path(
+              "checkpoint-evidence/manifest-attestation-verification.json"
+          ).read_bytes()
+          checkpoint_verification = Path(
+              "checkpoint-evidence/checkpoint-attestation-verification.json"
+          ).read_bytes()
+          manifest = parse_manifest_bytes(manifest_bytes)
+          bundle = build_verified_evidence_bundle(
+              manifest,
+              logical_id="trust-consumer-checkpoint:generation-1",
+              generation=1,
+              manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),
+              manifest_verification_json_sha256=hashlib.sha256(
+                  manifest_verification
+              ).hexdigest(),
+              manifest_signer_workflow=signer_workflow,
+              manifest_signer_digest=producer_sha,
+              evidence_sha256=hashlib.sha256(checkpoint_bytes).hexdigest(),
+              evidence_verification_json_sha256=hashlib.sha256(
+                  checkpoint_verification
+              ).hexdigest(),
+              evidence_signer_workflow=signer_workflow,
+              evidence_signer_digest=producer_sha,
+              manifest_verification_succeeded=True,
+              evidence_verification_succeeded=True,
+          )
+          raw = canonical_evidence_bundle_bytes(bundle)
+          path = Path(
+              "artifacts/trust-consumer-checkpoint-witness/evidence-bundle-v0.1.json"
+          )
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_bytes(raw)
+          digest = evidence_bundle_sha256(bundle)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"path={path.as_posix()}\n")
+              output.write(f"sha256={digest}\n")
+          print(f"evidence_bundle_sha256={digest}")
+          print(f"manifest_sha256={bundle.manifest.sha256}")
+          print(f"checkpoint_sha256={bundle.evidence.sha256}")
+          PY
+
+      - name: Recover witness and reject stale checkpoint
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          CHECKPOINT_PATH: ${{ steps.resolve-checkpoint.outputs.path }}
+          EVIDENCE_BUNDLE_PATH: ${{ steps.evidence-bundle.outputs.path }}
+        run: |
+          set -euo pipefail
+          python scripts/run-recovery-trust-consumer-checkpoint-witness-drill.py \
+            --witness policies/recovery-trust-consumer-checkpoint-witness-v0.2.json \
+            --baseline-checkpoint policies/recovery-trust-consumer-checkpoint-v0.2.json \
+            --candidate-checkpoint "${CHECKPOINT_PATH}" \
+            --checkpoint-verification-json checkpoint-evidence/checkpoint-attestation-verification.json \
+            --evidence-bundle-json "${EVIDENCE_BUNDLE_PATH}" \
+            --output-dir artifacts/trust-consumer-checkpoint-witness
+
+      - name: Assert witness recovery verdicts and bundle links
+        env:
+          EVIDENCE_BUNDLE_SHA256: ${{ steps.evidence-bundle.outputs.sha256 }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          result = json.loads(
+              Path(
+                  "artifacts/trust-consumer-checkpoint-witness/checkpoint-witness-drill-result.json"
+              ).read_text()
+          )
+          assert result["verified"] is True
+          assert result["external_provider_calls"] == 0
+          assert result["permanent_checkpoint_mutated"] is False
+          assert result["permanent_witness_mutated"] is False
+          assert result["checkpoint_attestation"]["cryptographically_verified"] is True
+          assert result["evidence_bundle"]["bundle_sha256"] == os.environ[
+              "EVIDENCE_BUNDLE_SHA256"
+          ]
+          assert result["evidence_bundle"]["evidence_sha256"] == result[
+              "checkpoint_attestation"
+          ]["subject_sha256"]
+          assert result["evidence_bundle"]["evidence_signer_digest"] == (
+              "f31b56a5e21a668bcb98791b05542652760dcc27"
+          )
+          assert result["advance"]["authorized"] is True
+          assert result["advance"]["reason"] == "checkpoint_witness_advanced"
+          assert result["advance"]["observed_generation"] == 1
+          assert result["advance"]["checkpoint_sha256"] == result[
+              "evidence_bundle"
+          ]["evidence_sha256"]
+          assert result["recovered_consumer"]["local_generation_1_checkpoint_available"] is False
+          assert result["recovered_consumer"]["verified_witness_available"] is True
+          assert result["recovered_consumer"]["current_checkpoint_authorized"] is True
+          assert result["stale_checkpoint_replay"]["authorized"] is False
+          assert result["stale_checkpoint_replay"]["reason"] == "stale_checkpoint"
+          print("evidence_bundle_link=VERIFIED")
+          print("checkpoint_witness_advance=AUTHORIZED")
+          print("lost_local_checkpoint=recovered_from_witness")
+          print("old_checkpoint_replay=REJECT:stale_checkpoint")
+          PY
+
+      - name: Attest verified evidence bundle
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-consumer-checkpoint-witness/evidence-bundle-v0.1.json
+
+      - name: Attest recovered generation-1 witness
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-consumer-checkpoint-witness/witness-generation-1.json
+
+      - name: Attest witness recovery result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-consumer-checkpoint-witness/checkpoint-witness-drill-result.json
+
+      - name: Upload checkpoint witness evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-witness
+          path: |
+            artifacts/trust-consumer-checkpoint-witness
+            ${{ steps.resolve-manifest.outputs.path }}
+            ${{ steps.resolve-checkpoint.outputs.path }}
+            checkpoint-evidence/manifest-attestation-verification.json
+            checkpoint-evidence/manifest-resolution.json
+            checkpoint-evidence/checkpoint-attestation-verification.json
+          if-no-files-found: error
+          retention-days: 30

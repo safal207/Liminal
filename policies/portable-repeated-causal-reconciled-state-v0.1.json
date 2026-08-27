@@ -1,0 +1,7 @@
+{
+  "schema": "liminal-portable-repeated-causal-reconciled-state/v0.1",
+  "logical_reconciliation_id": "authorization-policy-repeat-fork-reconcile-v0.1",
+  "decision": "adopt-rotated-builder-with-strict-threshold",
+  "authority_mode": "two-of-two",
+  "recovery_mode": "quarantine-then-reverify"
+}

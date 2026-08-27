@@ -1,0 +1,71 @@
+name: Trusted Recovery Trust Root Registry Attestor v0.1
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  verify-and-attest-registry:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable registry attestor source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable registry attestor checkout
+        env:
+          LIMINAL_REGISTRY_ATTESTOR_REPOSITORY: ${{ job.workflow_repository }}
+          LIMINAL_REGISTRY_ATTESTOR_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "${actual_sha}" = "${LIMINAL_REGISTRY_ATTESTOR_WORKFLOW_SHA}" || {
+            echo "registry attestor checkout mismatch: ${actual_sha} != ${LIMINAL_REGISTRY_ATTESTOR_WORKFLOW_SHA}"
+            exit 1
+          }
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Verify trust root registry and historical material
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python scripts/check-recovery-trust-root-registry.py \
+            --registry policies/recovery-trust-root-registry-v0.1.json \
+            --repository-root "${GITHUB_WORKSPACE}" \
+            --canonical-registry-output artifacts/trust-root/recovery-trust-root-registry.canonical.json \
+            --output artifacts/trust-root/recovery-trust-root-registry-verification.json
+
+      - name: Attest canonical trust root registry
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-root/recovery-trust-root-registry.canonical.json
+
+      - name: Attest trust root registry verification receipt
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-root/recovery-trust-root-registry-verification.json
+
+      - name: Upload trust root registry evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trusted-recovery-trust-root-registry
+          path: |
+            policies/recovery-trust-root-registry-v0.1.json
+            policies/recovery-trust-root-manifest-v0.1.json
+            artifacts/trust-root/recovery-trust-root-registry.canonical.json
+            artifacts/trust-root/recovery-trust-root-registry-verification.json
+          if-no-files-found: error
+          retention-days: 30

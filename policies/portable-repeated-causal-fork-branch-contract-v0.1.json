@@ -1,0 +1,8 @@
+{
+  "schema": "liminal-portable-repeated-causal-fork-branch-contract/v0.1",
+  "common_tip_type": "attested-lineage-accumulator-tip",
+  "required_parent_count": 1,
+  "branch_causal_epoch_delta": 1,
+  "require_distinct_branch_semantics": true,
+  "raw_provider_identity_in_portable_ref": false
+}

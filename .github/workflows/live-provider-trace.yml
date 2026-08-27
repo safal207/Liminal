@@ -1,0 +1,111 @@
+name: Live Provider Trace
+
+on:
+  workflow_dispatch:
+    inputs:
+      provider:
+        description: "Provider to probe"
+        required: true
+        default: gonka
+        type: choice
+        options:
+          - gonka
+          - openai
+      model:
+        description: "Provider model ID to probe"
+        required: true
+        type: string
+      context_window_tokens:
+        description: "Context-window size for the selected model"
+        required: true
+        type: string
+      probe_mode:
+        description: "Nominal flow or an explicitly configured recovery probe"
+        required: true
+        default: nominal
+        type: choice
+        options:
+          - nominal
+          - induced-recovery
+      latency_budget_seconds:
+        description: "Wall-clock latency budget used only for normalization"
+        required: true
+        default: "10"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  live-provider-trace:
+    runs-on: ubuntu-latest
+    environment: live-provider-trace
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GONKA_BROKER_API_KEY: ${{ secrets.GONKA_BROKER_API_KEY }}
+      GONKA_BROKER_URL: ${{ secrets.GONKA_BROKER_URL }}
+      OPENAI_MOCK_ONLY: "false"
+      OPENAI_FALLBACK_TO_LOCAL: "false"
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Require selected provider configuration
+        shell: bash
+        env:
+          LIVE_PROVIDER: ${{ inputs.provider }}
+        run: |
+          set -euo pipefail
+          case "$LIVE_PROVIDER" in
+            openai)
+              if [ -z "${OPENAI_API_KEY:-}" ]; then
+                echo "OPENAI_API_KEY GitHub Secret is required."
+                exit 1
+              fi
+              ;;
+            gonka)
+              if [ -z "${GONKA_BROKER_API_KEY:-}" ]; then
+                echo "GONKA_BROKER_API_KEY GitHub Secret is required."
+                exit 1
+              fi
+              if [ -z "${GONKA_BROKER_URL:-}" ]; then
+                echo "GONKA_BROKER_URL GitHub Secret is required."
+                exit 1
+              fi
+              ;;
+            *)
+              echo "Unsupported provider: $LIVE_PROVIDER"
+              exit 1
+              ;;
+          esac
+
+      - name: Install minimal live-trace dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "openai>=1.30,<3" "httpx>=0.24" "structlog>=23.1"
+
+      - name: Run live provider trace
+        run: |
+          python scripts/run-live-provider-trace.py \
+            --provider "${{ inputs.provider }}" \
+            --model "${{ inputs.model }}" \
+            --context-window-tokens "${{ inputs.context_window_tokens }}" \
+            --probe-mode "${{ inputs.probe_mode }}" \
+            --latency-budget-seconds "${{ inputs.latency_budget_seconds }}" \
+            --output artifacts/live-provider-trace.json
+
+      - name: Upload evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-provider-trace-${{ inputs.provider }}
+          path: artifacts/live-provider-trace.json
+          if-no-files-found: warn
+          retention-days: 14

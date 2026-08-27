@@ -1,0 +1,9 @@
+{
+  "schema": "liminal-portable-repeated-causal-reconciliation-contract/v0.1",
+  "topology": "canonical-two-parent-dag-join",
+  "required_parent_count": 2,
+  "reconciled_causal_epoch_delta_from_common_tip": 2,
+  "preserve_both_checkpoint_lineages": true,
+  "preserve_both_witness_lineages": true,
+  "canonicalize_parent_order": true
+}

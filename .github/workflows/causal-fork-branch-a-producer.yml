@@ -1,0 +1,113 @@
+name: Causal Fork Branch A Producer v0.1
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  produce-branch-a:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable Branch A producer
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable Branch A producer checkout
+        env:
+          LIMINAL_BRANCH_A_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${LIMINAL_BRANCH_A_WORKFLOW_SHA}"
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Download portable multi-epoch proof
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: portable-causal-state-evolution-proof-v0.1
+          path: evolution
+
+      - name: Verify immutable multi-epoch proof signer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            evolution/portable-causal-state-evolution-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/portable-causal-state-evolution.yml \
+            --signer-digest 5f5cee5749eaa15814323f563c1544347524d000 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > evolution-attestation-verification.json
+
+      - name: Produce independently attested Branch A evidence
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          LIMINAL_BRANCH_A_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          python scripts/produce-causal-fork-branch-a-v0-1.py \
+            --evolution-proof-dir evolution \
+            --branch-a-policy policies/portable-causal-fork-state-a-v0.1.json \
+            --branch-b-policy policies/portable-causal-fork-state-b-v0.1.json \
+            --reconciliation-policy policies/portable-causal-reconciled-state-v0.1.json \
+            --branch-contract policies/portable-causal-fork-branch-contract-v0.1.json \
+            --branch-authorization-contract policies/portable-causal-fork-authorization-contract-v0.1.json \
+            --reconciliation-contract policies/portable-causal-reconciliation-contract-v0.1.json \
+            --reconciliation-authorization-contract policies/portable-causal-reconciliation-authorization-contract-v0.1.json \
+            --workflow-sha "${LIMINAL_BRANCH_A_WORKFLOW_SHA}" \
+            --output-dir branch-a
+
+      - name: Assert Branch A evidence verdict
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path("branch-a/causal-fork-branch-a-result.json").read_text())
+          assert result["verified"] is True
+          assert result["reason"] == "causal_fork_branch_a_evidence_verified"
+          assert result["provider_id"] == "github-oidc-fork-a"
+          assert result["branch_observation"]["logical_branch_id"] == "authorization-policy-fork-a"
+          assert result["reconciliation_vote"]["logical_reconciliation_id"] == "authorization-policy-fork-reconcile-v0.1"
+          assert result["branch_semantic_state_sha256"] != result["sibling_branch_semantic_state_sha256"]
+          assert result["reconciliation_target_semantic_state_sha256"] not in {
+              result["branch_semantic_state_sha256"],
+              result["sibling_branch_semantic_state_sha256"],
+          }
+          print("causal_fork_branch_a_evidence=VERIFIED")
+          PY
+
+      - name: Attest Branch A result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: branch-a/causal-fork-branch-a-result.json
+
+      - name: Upload Branch A evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: causal-fork-branch-a-evidence-v0.1
+          path: |
+            branch-a
+            evolution-attestation-verification.json
+          if-no-files-found: error
+          retention-days: 30

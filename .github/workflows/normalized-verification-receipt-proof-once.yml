@@ -1,0 +1,321 @@
+name: Normalized Verification Receipt Proof Once
+
+on:
+  push:
+    branches:
+      - agent/recovery-routing-v0-1
+    paths:
+      - .github/workflows/normalized-verification-receipt-proof-once.yml
+  workflow_dispatch:
+
+jobs:
+  run-immutable-proof:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/normalized-verification-receipt-proof.yml@608061196ef8504a5bed8208797a14bc2dc71c50
+
+  verify-normalized-proof-externally:
+    needs: run-immutable-proof
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      attestations: read
+
+    steps:
+      - name: Download normalized verification receipt proof
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: normalized-verification-receipt-proof
+          path: proof-evidence
+
+      - name: Download immutable producer evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-attested
+          path: producer-evidence
+
+      - name: Locate unique producer subjects
+        id: source
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          root = Path("producer-evidence")
+          manifests = sorted(root.rglob("evidence-manifest-v0.1.json"))
+          checkpoints = sorted(root.rglob("checkpoint-generation-1.json"))
+          assert len(manifests) == 1, manifests
+          assert len(checkpoints) == 1, checkpoints
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"manifest={manifests[0].as_posix()}\n")
+              output.write(f"checkpoint={checkpoints[0].as_posix()}\n")
+          PY
+
+      - name: Independently recompute representation, receipt and bundle equivalence
+        env:
+          SOURCE_MANIFEST: ${{ steps.source.outputs.manifest }}
+          SOURCE_CHECKPOINT: ${{ steps.source.outputs.checkpoint }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          root = Path("proof-evidence")
+          result_path = root / (
+              "artifacts/normalized-verification-receipt-proof/"
+              "normalized-verification-receipt-proof-result.json"
+          )
+          receipts = root / "artifacts/normalized-verification-receipt-proof/receipts"
+          bundles = root / "artifacts/normalized-verification-receipt-proof/bundles"
+          raw_a = root / "verifier-capture-a"
+          raw_b = root / "verifier-capture-b"
+          manifest_path = Path(os.environ["SOURCE_MANIFEST"])
+          checkpoint_path = Path(os.environ["SOURCE_CHECKPOINT"])
+
+          digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+          canonical = lambda value: (
+              json.dumps(value, sort_keys=True, separators=(",", ":")) + "\n"
+          ).encode()
+
+          result = json.loads(result_path.read_text())
+          assert result["schema_version"] == (
+              "liminal.normalized-verification-receipt-proof.v0.1"
+          )
+          assert result["verified"] is True
+          assert result["reason"] == (
+              "verification_output_representation_independence_verified"
+          )
+          assert "not an independent second verifier" in result["claim_boundary"]
+
+          actual_manifest_sha = digest(manifest_path)
+          actual_checkpoint_sha = digest(checkpoint_path)
+          assert actual_manifest_sha == result["manifest_sha256"]
+          assert actual_checkpoint_sha == result["checkpoint_sha256"]
+
+          for subject in ("manifest", "checkpoint"):
+              a_path = raw_a / f"{subject}.json"
+              b_path = raw_b / f"{subject}.json"
+              a_sha = digest(a_path)
+              b_sha = digest(b_path)
+              assert a_sha != b_sha
+              assert a_sha == result["raw_capture_sha256"][f"a_{subject}"]
+              assert b_sha == result["raw_capture_sha256"][f"b_{subject}"]
+              a_payload = json.loads(a_path.read_text())
+              b_payload = json.loads(b_path.read_text())
+              assert b_payload["capture_schema"] == (
+                  "liminal.verifier-audit-envelope/v0.1"
+              )
+              assert b_payload["security_semantics_authoritative"] is False
+              assert b_payload["provider_payload"] == a_payload
+
+          expected_signer = (
+              "safal207/Liminal/.github/workflows/"
+              "trusted-recovery-trust-consumer-checkpoint-attested.yml"
+          )
+          expected_signer_sha = "f31b56a5e21a668bcb98791b05542652760dcc27"
+          expected_ref = "refs/heads/agent/recovery-routing-v0-1"
+
+          receipt_hashes = {}
+          for subject, expected_subject_sha in (
+              ("manifest", actual_manifest_sha),
+              ("checkpoint", actual_checkpoint_sha),
+          ):
+              paths = [
+                  receipts / f"{subject}-receipt-a.json",
+                  receipts / f"{subject}-receipt-b.json",
+              ]
+              assert paths[0].read_bytes() == paths[1].read_bytes()
+              for path in paths:
+                  payload = json.loads(path.read_text())
+                  assert path.read_bytes() == canonical(payload)
+                  assert payload["schema"] == "liminal-verification-receipt/v0.1"
+                  assert payload["verification_scheme"] == "github_attestation"
+                  assert payload["subject_sha256"] == expected_subject_sha
+                  assert payload["repository"] == "safal207/Liminal"
+                  assert payload["signer_workflow"] == expected_signer
+                  assert payload["signer_digest"] == expected_signer_sha
+                  assert payload["source_ref"] == expected_ref
+                  assert payload["policy"]["deny_self_hosted_runners"] is True
+                  assert payload["verified"] is True
+              receipt_hash = digest(paths[0])
+              assert receipt_hash == digest(paths[1])
+              assert receipt_hash == result["normalized_receipt_sha256"][subject]
+              receipt_hashes[subject] = receipt_hash
+
+          bundle_a = bundles / "evidence-bundle-v0.2-a.json"
+          bundle_b = bundles / "evidence-bundle-v0.2-b.json"
+          assert bundle_a.read_bytes() == bundle_b.read_bytes()
+          bundle_payload = json.loads(bundle_a.read_text())
+          assert bundle_a.read_bytes() == canonical(bundle_payload)
+          assert bundle_payload["schema"] == "liminal-evidence-bundle/v0.2"
+          assert bundle_payload["logical_id"] == result["logical_id"]
+          assert bundle_payload["generation"] == result["generation"]
+          assert bundle_payload["manifest"]["sha256"] == actual_manifest_sha
+          assert bundle_payload["evidence"]["sha256"] == actual_checkpoint_sha
+          assert (
+              bundle_payload["manifest"]["verification"]["receipt_sha256"]
+              == receipt_hashes["manifest"]
+          )
+          assert (
+              bundle_payload["evidence"]["verification"]["receipt_sha256"]
+              == receipt_hashes["checkpoint"]
+          )
+          bundle_sha = digest(bundle_a)
+          assert bundle_sha == digest(bundle_b)
+          assert bundle_sha == result["evidence_bundle_v0_2_sha256"]
+
+          decisions = result["witness_decisions"]
+          assert len(decisions) == 2
+          assert decisions[0]["authorized"] is True
+          assert decisions[1]["authorized"] is True
+          assert decisions[0]["reason"] == decisions[1]["reason"] == (
+              "checkpoint_witness_advanced"
+          )
+          assert decisions[0]["next_witness_sha256"] == (
+              decisions[1]["next_witness_sha256"]
+          )
+          assert all(result["equivalence"].values())
+
+          external = {
+              "schema_version": (
+                  "liminal.normalized-verification-receipt-external.v0.1"
+              ),
+              "verified": True,
+              "reason": "normalized_receipt_and_bundle_equivalence_recomputed",
+              "manifest_sha256": actual_manifest_sha,
+              "checkpoint_sha256": actual_checkpoint_sha,
+              "manifest_receipt_sha256": receipt_hashes["manifest"],
+              "checkpoint_receipt_sha256": receipt_hashes["checkpoint"],
+              "evidence_bundle_v0_2_sha256": bundle_sha,
+              "next_witness_sha256": decisions[0]["next_witness_sha256"],
+          }
+          (root / "external-normalized-verification-chain.json").write_bytes(
+              canonical(external)
+          )
+          print(f"manifest_receipt_sha256={receipt_hashes['manifest']}")
+          print(f"checkpoint_receipt_sha256={receipt_hashes['checkpoint']}")
+          print(f"evidence_bundle_v0_2_sha256={bundle_sha}")
+          print("normalized_verification_external_recompute=VERIFIED")
+          PY
+
+      - name: Verify immutable producer signer on manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANIFEST_PATH: ${{ steps.source.outputs.manifest }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            "${MANIFEST_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > proof-evidence/external-producer-manifest-attestation.json
+
+      - name: Verify immutable producer signer on checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CHECKPOINT_PATH: ${{ steps.source.outputs.checkpoint }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            "${CHECKPOINT_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > proof-evidence/external-producer-checkpoint-attestation.json
+
+      - name: Verify immutable proof signer on both manifest receipt copies
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for suffix in a b; do
+            gh attestation verify \
+              "proof-evidence/artifacts/normalized-verification-receipt-proof/receipts/manifest-receipt-${suffix}.json" \
+              --repo safal207/Liminal \
+              --signer-workflow safal207/Liminal/.github/workflows/normalized-verification-receipt-proof.yml \
+              --signer-digest 608061196ef8504a5bed8208797a14bc2dc71c50 \
+              --source-ref "${{ github.ref }}" \
+              --deny-self-hosted-runners \
+              --format json \
+              > "proof-evidence/manifest-receipt-${suffix}-attestation.json"
+          done
+
+      - name: Verify immutable proof signer on both checkpoint receipt copies
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for suffix in a b; do
+            gh attestation verify \
+              "proof-evidence/artifacts/normalized-verification-receipt-proof/receipts/checkpoint-receipt-${suffix}.json" \
+              --repo safal207/Liminal \
+              --signer-workflow safal207/Liminal/.github/workflows/normalized-verification-receipt-proof.yml \
+              --signer-digest 608061196ef8504a5bed8208797a14bc2dc71c50 \
+              --source-ref "${{ github.ref }}" \
+              --deny-self-hosted-runners \
+              --format json \
+              > "proof-evidence/checkpoint-receipt-${suffix}-attestation.json"
+          done
+
+      - name: Verify immutable proof signer on both Evidence Bundle v0.2 copies
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for suffix in a b; do
+            gh attestation verify \
+              "proof-evidence/artifacts/normalized-verification-receipt-proof/bundles/evidence-bundle-v0.2-${suffix}.json" \
+              --repo safal207/Liminal \
+              --signer-workflow safal207/Liminal/.github/workflows/normalized-verification-receipt-proof.yml \
+              --signer-digest 608061196ef8504a5bed8208797a14bc2dc71c50 \
+              --source-ref "${{ github.ref }}" \
+              --deny-self-hosted-runners \
+              --format json \
+              > "proof-evidence/evidence-bundle-v0.2-${suffix}-attestation.json"
+          done
+
+      - name: Verify immutable proof signer on proof result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            proof-evidence/artifacts/normalized-verification-receipt-proof/normalized-verification-receipt-proof-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/normalized-verification-receipt-proof.yml \
+            --signer-digest 608061196ef8504a5bed8208797a14bc2dc71c50 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > proof-evidence/proof-result-attestation.json
+
+      - name: Upload external normalized verification proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: normalized-verification-receipt-external-verification
+          path: |
+            proof-evidence/external-normalized-verification-chain.json
+            proof-evidence/external-producer-manifest-attestation.json
+            proof-evidence/external-producer-checkpoint-attestation.json
+            proof-evidence/manifest-receipt-a-attestation.json
+            proof-evidence/manifest-receipt-b-attestation.json
+            proof-evidence/checkpoint-receipt-a-attestation.json
+            proof-evidence/checkpoint-receipt-b-attestation.json
+            proof-evidence/evidence-bundle-v0.2-a-attestation.json
+            proof-evidence/evidence-bundle-v0.2-b-attestation.json
+            proof-evidence/proof-result-attestation.json
+          if-no-files-found: error
+          retention-days: 30

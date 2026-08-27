@@ -1,0 +1,555 @@
+name: Independent Verifier Portability v0.1
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  produce-attested-checkpoint:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml@f31b56a5e21a668bcb98791b05542652760dcc27
+
+  prove-independent-verifier-portability:
+    needs: produce-attested-checkpoint
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable independent-verifier source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable independent-verifier checkout
+        env:
+          LIMINAL_INDEPENDENT_VERIFIER_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "${actual_sha}" = "${LIMINAL_INDEPENDENT_VERIFIER_WORKFLOW_SHA}" || {
+            echo "independent-verifier checkout mismatch: ${actual_sha} != ${LIMINAL_INDEPENDENT_VERIFIER_WORKFLOW_SHA}"
+            exit 1
+          }
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Install independent Cosign verifier
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        with:
+          cosign-release: v3.0.6
+
+      - name: Assert exact Cosign version
+        run: |
+          set -euo pipefail
+          cosign version | tee cosign-version.txt
+          grep -Fq "v3.0.6" cosign-version.txt
+
+      - name: Download immutable producer evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-attested
+          path: source-evidence
+
+      - name: Locate unique producer subjects
+        id: source
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          root = Path("source-evidence")
+          manifests = sorted(root.rglob("evidence-manifest-v0.1.json"))
+          checkpoints = sorted(root.rglob("checkpoint-generation-1.json"))
+          assert len(manifests) == 1, manifests
+          assert len(checkpoints) == 1, checkpoints
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"manifest={manifests[0].as_posix()}\n")
+              output.write(f"checkpoint={checkpoints[0].as_posix()}\n")
+          PY
+
+      - name: Verify producer subjects with GitHub CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANIFEST_PATH: ${{ steps.source.outputs.manifest }}
+          CHECKPOINT_PATH: ${{ steps.source.outputs.checkpoint }}
+        run: |
+          set -euo pipefail
+          mkdir -p verifier-gh
+          gh attestation verify \
+            "${MANIFEST_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > verifier-gh/manifest.json
+          gh attestation verify \
+            "${CHECKPOINT_PATH}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > verifier-gh/checkpoint.json
+
+      - name: Download Sigstore bundles without reusing GitHub verifier output
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MANIFEST_PATH: ${{ steps.source.outputs.manifest }}
+          CHECKPOINT_PATH: ${{ steps.source.outputs.checkpoint }}
+        run: |
+          set -euo pipefail
+          mkdir -p cosign-input
+
+          download_subject() {
+            local subject_name="$1"
+            local subject_path="$2"
+            local absolute_path
+            absolute_path="$(realpath "${subject_path}")"
+            local download_dir="cosign-download/${subject_name}"
+            local output_dir="cosign-input/${subject_name}"
+            mkdir -p "${download_dir}" "${output_dir}"
+            (
+              cd "${download_dir}"
+              gh attestation download \
+                "${absolute_path}" \
+                --repo safal207/Liminal \
+                --predicate-type "https://slsa.dev/provenance/v1" \
+                --limit 100
+            )
+            local jsonl
+            jsonl="$(find "${download_dir}" -maxdepth 1 -type f -name '*.jsonl' -print -quit)"
+            test -n "${jsonl}" || {
+              echo "no downloaded attestation JSONL for ${subject_name}"
+              exit 1
+            }
+            cp "${jsonl}" "${output_dir}/downloaded-bundles.jsonl"
+            python - "${jsonl}" "${output_dir}" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          source = Path(sys.argv[1])
+          target = Path(sys.argv[2])
+          lines = [line for line in source.read_text().splitlines() if line.strip()]
+          if not lines:
+              raise SystemExit("downloaded_attestation_jsonl_empty")
+          written = 0
+          for index, line in enumerate(lines):
+              bundle = json.loads(line)
+              if not isinstance(bundle, dict):
+                  continue
+              path = target / f"candidate-{index:03d}.sigstore.json"
+              path.write_text(json.dumps(bundle, sort_keys=True) + "\n")
+              written += 1
+          if written == 0:
+              raise SystemExit("no_sigstore_bundles_materialized")
+          print(f"sigstore_bundle_candidates={written}")
+          PY
+          }
+
+          download_subject manifest "${MANIFEST_PATH}"
+          download_subject checkpoint "${CHECKPOINT_PATH}"
+
+      - name: Independently verify subjects with Cosign and certificate policy
+        env:
+          MANIFEST_PATH: ${{ steps.source.outputs.manifest }}
+          CHECKPOINT_PATH: ${{ steps.source.outputs.checkpoint }}
+          SOURCE_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          mkdir -p verifier-cosign
+
+          signer_sha="f31b56a5e21a668bcb98791b05542652760dcc27"
+          signer_identity="https://github.com/safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml@${signer_sha}"
+          oidc_issuer="https://token.actions.githubusercontent.com"
+          expected_repo="https://github.com/safal207/Liminal"
+
+          verify_certificate_policy() {
+            local bundle="$1"
+            local prefix="$2"
+            python - "${bundle}" "${prefix}.der" <<'PY'
+          import base64
+          import json
+          import sys
+          from pathlib import Path
+
+          bundle = json.loads(Path(sys.argv[1]).read_text())
+          material = bundle.get("verificationMaterial")
+          if not isinstance(material, dict):
+              raise SystemExit("missing_verification_material")
+          certificate = material.get("certificate")
+          raw = None
+          if isinstance(certificate, dict):
+              raw = certificate.get("rawBytes")
+          if raw is None:
+              chain = material.get("x509CertificateChain")
+              if isinstance(chain, dict):
+                  certificates = chain.get("certificates")
+                  if isinstance(certificates, list) and certificates:
+                      first = certificates[0]
+                      if isinstance(first, dict):
+                          raw = first.get("rawBytes")
+          if not isinstance(raw, str) or not raw:
+              raise SystemExit("missing_leaf_certificate_raw_bytes")
+          Path(sys.argv[2]).write_bytes(base64.b64decode(raw))
+          PY
+            openssl x509 -inform DER -in "${prefix}.der" -text -noout > "${prefix}.txt"
+            grep -Fq "${signer_sha}" "${prefix}.txt"
+            grep -Fq "github-hosted" "${prefix}.txt"
+            grep -Fq "${expected_repo}" "${prefix}.txt"
+            grep -Fq "${SOURCE_REF}" "${prefix}.txt"
+          }
+
+          verify_subject() {
+            local subject_name="$1"
+            local subject_path="$2"
+            local digest
+            digest="$(sha256sum "${subject_path}" | awk '{print $1}')"
+            local match_count=0
+            local candidate
+            for candidate in cosign-input/"${subject_name}"/candidate-*.sigstore.json; do
+              local base
+              base="verifier-cosign/${subject_name}-$(basename "${candidate}" .sigstore.json)"
+              if cosign verify-blob-attestation \
+                --bundle "${candidate}" \
+                --certificate-identity "${signer_identity}" \
+                --certificate-oidc-issuer "${oidc_issuer}" \
+                --type "https://slsa.dev/provenance/v1" \
+                --digest "${digest}" \
+                --digestAlg sha256 \
+                > "${base}.stdout" 2> "${base}.stderr"; then
+                if verify_certificate_policy "${candidate}" "${base}-certificate"; then
+                  match_count=$((match_count + 1))
+                  if [ "${match_count}" -eq 1 ]; then
+                    cp "${candidate}" "verifier-cosign/${subject_name}-selected.sigstore.json"
+                    cp "${base}.stdout" "verifier-cosign/${subject_name}.stdout"
+                    cp "${base}.stderr" "verifier-cosign/${subject_name}.stderr"
+                    cp "${base}-certificate.txt" "verifier-cosign/${subject_name}-certificate.txt"
+                  fi
+                fi
+              fi
+            done
+            if [ "${match_count}" -lt 1 ]; then
+              echo "no independent Cosign verification satisfied exact policy for ${subject_name}"
+              exit 1
+            fi
+            printf '%s\n' "${match_count}" > "verifier-cosign/${subject_name}-matching-bundle-count.txt"
+            echo "${subject_name}_cosign_matching_bundles=${match_count}"
+          }
+
+          verify_subject manifest "${MANIFEST_PATH}"
+          verify_subject checkpoint "${CHECKPOINT_PATH}"
+
+      - name: Normalize independent verifier agreement and prove bundle equivalence
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          SOURCE_MANIFEST: ${{ steps.source.outputs.manifest }}
+          SOURCE_CHECKPOINT: ${{ steps.source.outputs.checkpoint }}
+          SOURCE_REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          from liminal.evidence_bundle_v2 import (
+              build_receipt_backed_evidence_bundle,
+              canonical_receipt_backed_evidence_bundle_bytes,
+              receipt_backed_evidence_bundle_sha256,
+          )
+          from liminal.evidence_manifest import canonical_manifest_bytes, parse_manifest_bytes
+          from liminal.independent_verifier_portability import (
+              VerifierAgreementReason,
+              VerifierObservation,
+              compare_independent_verifiers,
+              normalized_receipt_from_observation,
+          )
+          from liminal.recovery_trust_consumer_checkpoint_attested import checkpoint_sha256
+          from liminal.recovery_trust_consumer_checkpoint_witness import (
+              VerifiedCheckpointEvidence,
+              evaluate_checkpoint_candidate,
+              validate_witness,
+              witness_sha256,
+          )
+          from liminal.recovery_trust_root_registry import canonical_json_bytes
+          from liminal.verification_receipt import (
+              canonical_verification_receipt_bytes,
+              verification_receipt_sha256,
+          )
+
+          logical_id = "trust-consumer-checkpoint:generation-1"
+          generation = 1
+          repository = "safal207/Liminal"
+          signer_workflow = (
+              "safal207/Liminal/.github/workflows/"
+              "trusted-recovery-trust-consumer-checkpoint-attested.yml"
+          )
+          signer_sha = "f31b56a5e21a668bcb98791b05542652760dcc27"
+          source_ref = os.environ["SOURCE_REF"]
+
+          manifest_raw = Path(os.environ["SOURCE_MANIFEST"]).read_bytes()
+          checkpoint_raw = Path(os.environ["SOURCE_CHECKPOINT"]).read_bytes()
+          manifest = parse_manifest_bytes(manifest_raw)
+          assert canonical_manifest_bytes(manifest) == manifest_raw
+          manifest_sha = hashlib.sha256(manifest_raw).hexdigest()
+          checkpoint_sha = hashlib.sha256(checkpoint_raw).hexdigest()
+
+          output_root = Path("artifacts/independent-verifier-portability")
+          receipts_dir = output_root / "receipts"
+          bundles_dir = output_root / "bundles"
+          receipts_dir.mkdir(parents=True, exist_ok=True)
+          bundles_dir.mkdir(parents=True, exist_ok=True)
+
+          receipt_hashes = {}
+          bundle_hashes = {}
+          agreements = {}
+          observations = {}
+
+          for subject, subject_sha in (
+              ("manifest", manifest_sha),
+              ("checkpoint", checkpoint_sha),
+          ):
+              primary = VerifierObservation(
+                  implementation="github-cli/attestation-verify",
+                  verification_scheme="github_attestation",
+                  subject_sha256=subject_sha,
+                  repository=repository,
+                  signer_workflow=signer_workflow,
+                  signer_digest=signer_sha,
+                  source_ref=source_ref,
+                  deny_self_hosted_runners=True,
+                  verified=True,
+              )
+              secondary = VerifierObservation(
+                  implementation="sigstore/cosign-v3.0.6",
+                  verification_scheme="github_attestation",
+                  subject_sha256=subject_sha,
+                  repository=repository,
+                  signer_workflow=signer_workflow,
+                  signer_digest=signer_sha,
+                  source_ref=source_ref,
+                  deny_self_hosted_runners=True,
+                  verified=True,
+              )
+              agreement = compare_independent_verifiers(primary, secondary)
+              assert agreement.agreed is True, agreement.reason
+              assert agreement.reason is VerifierAgreementReason.VERIFIED_SEMANTICS_AGREE
+              assert agreement.receipt_sha256 is not None
+              agreements[subject] = agreement.reason.value
+              observations[subject] = {
+                  "primary_implementation": primary.implementation,
+                  "secondary_implementation": secondary.implementation,
+              }
+
+              receipts = {}
+              for label, observation in (("gh", primary), ("cosign", secondary)):
+                  receipt = normalized_receipt_from_observation(observation)
+                  path = receipts_dir / f"{subject}-receipt-{label}.json"
+                  path.write_bytes(canonical_verification_receipt_bytes(receipt))
+                  receipts[label] = receipt
+              gh_receipt_sha = verification_receipt_sha256(receipts["gh"])
+              cosign_receipt_sha = verification_receipt_sha256(receipts["cosign"])
+              assert gh_receipt_sha == cosign_receipt_sha == agreement.receipt_sha256
+              receipt_hashes[subject] = gh_receipt_sha
+
+          bundle_objects = {}
+          for label in ("gh", "cosign"):
+              manifest_receipt = normalized_receipt_from_observation(
+                  VerifierObservation(
+                      implementation=(
+                          "github-cli/attestation-verify"
+                          if label == "gh"
+                          else "sigstore/cosign-v3.0.6"
+                      ),
+                      verification_scheme="github_attestation",
+                      subject_sha256=manifest_sha,
+                      repository=repository,
+                      signer_workflow=signer_workflow,
+                      signer_digest=signer_sha,
+                      source_ref=source_ref,
+                      deny_self_hosted_runners=True,
+                      verified=True,
+                  )
+              )
+              checkpoint_receipt = normalized_receipt_from_observation(
+                  VerifierObservation(
+                      implementation=(
+                          "github-cli/attestation-verify"
+                          if label == "gh"
+                          else "sigstore/cosign-v3.0.6"
+                      ),
+                      verification_scheme="github_attestation",
+                      subject_sha256=checkpoint_sha,
+                      repository=repository,
+                      signer_workflow=signer_workflow,
+                      signer_digest=signer_sha,
+                      source_ref=source_ref,
+                      deny_self_hosted_runners=True,
+                      verified=True,
+                  )
+              )
+              bundle = build_receipt_backed_evidence_bundle(
+                  manifest,
+                  logical_id=logical_id,
+                  generation=generation,
+                  manifest_receipt=manifest_receipt,
+                  evidence_receipt=checkpoint_receipt,
+              )
+              path = bundles_dir / f"evidence-bundle-v0.2-{label}.json"
+              path.write_bytes(canonical_receipt_backed_evidence_bundle_bytes(bundle))
+              bundle_hashes[label] = receipt_backed_evidence_bundle_sha256(bundle)
+              bundle_objects[label] = bundle
+
+          assert bundle_hashes["gh"] == bundle_hashes["cosign"]
+          assert bundle_objects["gh"] == bundle_objects["cosign"]
+
+          witness_root = json.loads(
+              Path("policies/recovery-trust-consumer-checkpoint-witness-v0.2.json").read_text()
+          )
+          baseline_checkpoint = json.loads(
+              Path("policies/recovery-trust-consumer-checkpoint-v0.2.json").read_text()
+          )
+          assert validate_witness(witness_root)
+          candidate = json.loads(checkpoint_raw)
+          assert checkpoint_sha256(candidate) == checkpoint_sha
+
+          witness_decisions = []
+          for implementation in (
+              "github-cli/attestation-verify",
+              "sigstore/cosign-v3.0.6",
+          ):
+              verified_checkpoint = VerifiedCheckpointEvidence(
+                  verified=True,
+                  signer_workflow_path=signer_workflow.replace("safal207/Liminal/", ""),
+                  signer_workflow_sha=signer_sha,
+                  subject_sha256=checkpoint_sha,
+              )
+              decision = evaluate_checkpoint_candidate(
+                  witness_root,
+                  candidate,
+                  previous_checkpoint=baseline_checkpoint,
+                  checkpoint_evidence=verified_checkpoint,
+              )
+              assert decision.authorized is True, decision.reason
+              assert decision.reason == "checkpoint_witness_advanced"
+              assert decision.next_witness is not None
+              witness_decisions.append(
+                  {
+                      "implementation": implementation,
+                      "authorized": decision.authorized,
+                      "reason": decision.reason,
+                      "next_witness_sha256": witness_sha256(decision.next_witness),
+                  }
+              )
+          assert witness_decisions[0]["next_witness_sha256"] == (
+              witness_decisions[1]["next_witness_sha256"]
+          )
+
+          result = {
+              "schema_version": "liminal.independent-verifier-portability.v0.1",
+              "verified": True,
+              "reason": "independent_verifier_semantics_agree",
+              "claim_boundary": (
+                  "independent verifier implementations over shared GitHub/Sigstore "
+                  "attestation substrate; not independent trust providers"
+              ),
+              "logical_id": logical_id,
+              "generation": generation,
+              "manifest_sha256": manifest_sha,
+              "checkpoint_sha256": checkpoint_sha,
+              "verifier_observations": observations,
+              "agreement_reason": agreements,
+              "normalized_receipt_sha256": receipt_hashes,
+              "evidence_bundle_v0_2_sha256": bundle_hashes["gh"],
+              "cosign": {
+                  "version": "v3.0.6",
+                  "installer_sha": "6f9f17788090df1f26f669e9d70d6ae9567deba6",
+                  "manifest_matching_bundle_count": int(
+                      Path("verifier-cosign/manifest-matching-bundle-count.txt").read_text()
+                  ),
+                  "checkpoint_matching_bundle_count": int(
+                      Path("verifier-cosign/checkpoint-matching-bundle-count.txt").read_text()
+                  ),
+              },
+              "witness_decisions": witness_decisions,
+              "equivalence": {
+                  "implementations_distinct": (
+                      witness_decisions[0]["implementation"]
+                      != witness_decisions[1]["implementation"]
+                  ),
+                  "manifest_receipt_equal": (
+                      (receipts_dir / "manifest-receipt-gh.json").read_bytes()
+                      == (receipts_dir / "manifest-receipt-cosign.json").read_bytes()
+                  ),
+                  "checkpoint_receipt_equal": (
+                      (receipts_dir / "checkpoint-receipt-gh.json").read_bytes()
+                      == (receipts_dir / "checkpoint-receipt-cosign.json").read_bytes()
+                  ),
+                  "bundle_v0_2_equal": bundle_hashes["gh"] == bundle_hashes["cosign"],
+                  "witness_decision_equal": (
+                      witness_decisions[0]["reason"]
+                      == witness_decisions[1]["reason"]
+                      and witness_decisions[0]["next_witness_sha256"]
+                      == witness_decisions[1]["next_witness_sha256"]
+                  ),
+              },
+          }
+          assert all(result["equivalence"].values())
+          output = output_root / "independent-verifier-portability-result.json"
+          output.write_bytes(canonical_json_bytes(result))
+
+          print(f"manifest_receipt_sha256={receipt_hashes['manifest']}")
+          print(f"checkpoint_receipt_sha256={receipt_hashes['checkpoint']}")
+          print(f"evidence_bundle_v0_2_sha256={bundle_hashes['gh']}")
+          print("independent_verifier_portability=VERIFIED")
+          PY
+
+      - name: Attest independent manifest receipt
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/independent-verifier-portability/receipts/manifest-receipt-gh.json
+
+      - name: Attest independent checkpoint receipt
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/independent-verifier-portability/receipts/checkpoint-receipt-gh.json
+
+      - name: Attest independent Evidence Bundle v0.2
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/independent-verifier-portability/bundles/evidence-bundle-v0.2-gh.json
+
+      - name: Attest independent verifier portability result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/independent-verifier-portability/independent-verifier-portability-result.json
+
+      - name: Upload independent verifier portability proof
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: independent-verifier-portability-proof
+          path: |
+            artifacts/independent-verifier-portability
+            verifier-gh
+            verifier-cosign
+            cosign-input
+            cosign-version.txt
+          if-no-files-found: error
+          retention-days: 30

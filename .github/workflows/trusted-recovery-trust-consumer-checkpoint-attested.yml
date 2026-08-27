@@ -1,0 +1,192 @@
+name: Trusted Recovery Trust Consumer Checkpoint Attested v0.2
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  produce-rotation-evidence:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-trust-root-rotation-drill.yml@e2cb6a014236bc561d03c405f4986146026041fa
+
+  consume-and-attest-checkpoint:
+    needs: produce-rotation-evidence
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout immutable checkpoint consumer source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+          fetch-depth: 0
+
+      - name: Verify immutable checkpoint consumer checkout
+        env:
+          LIMINAL_CHECKPOINT_CONSUMER_REPOSITORY: ${{ job.workflow_repository }}
+          LIMINAL_CHECKPOINT_CONSUMER_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "${actual_sha}" = "${LIMINAL_CHECKPOINT_CONSUMER_WORKFLOW_SHA}" || {
+            echo "checkpoint consumer mismatch: ${actual_sha} != ${LIMINAL_CHECKPOINT_CONSUMER_WORKFLOW_SHA}"
+            exit 1
+          }
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Download immutable rotation authorization evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: trusted-recovery-trust-root-rotation-drill
+          path: rotation-evidence
+
+      - name: Verify rotation authorization signer with GitHub CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            rotation-evidence/rotation-drill-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-root-rotation-drill.yml \
+            --signer-digest e2cb6a014236bc561d03c405f4986146026041fa \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > rotation-evidence/rotation-attestation-verification.json
+
+      - name: Advance checkpoint from verified rotation authorization
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        run: |
+          set -euo pipefail
+          python scripts/run-recovery-trust-consumer-checkpoint-attested-drill.py \
+            --checkpoint policies/recovery-trust-consumer-checkpoint-v0.2.json \
+            --baseline-registry policies/recovery-trust-root-registry-v0.1.json \
+            --baseline-manifest policies/recovery-trust-root-manifest-v0.1.json \
+            --candidate-registry rotation-evidence/generation-1-registry.json \
+            --candidate-manifest rotation-evidence/generation-1-manifest.json \
+            --rotation-result rotation-evidence/rotation-drill-result.json \
+            --rotation-verification-json rotation-evidence/rotation-attestation-verification.json \
+            --output-dir artifacts/trust-consumer-checkpoint-attested
+
+      - name: Assert cryptographically gated checkpoint verdicts
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(
+              Path(
+                  "artifacts/trust-consumer-checkpoint-attested/consumer-checkpoint-attested-result.json"
+              ).read_text()
+          )
+          assert result["verified"] is True
+          assert result["external_provider_calls"] == 0
+          assert result["permanent_registry_mutated"] is False
+          assert result["permanent_checkpoint_mutated"] is False
+          assert result["rotation_authorization"]["cryptographically_verified"] is True
+          assert result["advance"]["authorized"] is True
+          assert result["advance"]["reason"] == "consumer_checkpoint_advanced"
+          assert result["advance"]["accepted_generation"] == 1
+          assert result["stale_replay"]["authorized"] is False
+          assert result["stale_replay"]["reason"] == "stale_registry"
+          print("attested_checkpoint_advance=AUTHORIZED")
+          print("old_registry_replay=REJECT:stale_registry")
+          PY
+
+      - name: Generate evidence manifest for accepted checkpoint
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+          LIMINAL_CHECKPOINT_CONSUMER_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import os
+          from pathlib import Path
+
+          from liminal.evidence_manifest import (
+              EvidenceManifest,
+              EvidenceManifestEntry,
+              VerificationExpectation,
+              canonical_manifest_bytes,
+          )
+
+          checkpoint = Path(
+              "artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json"
+          )
+          digest = hashlib.sha256(checkpoint.read_bytes()).hexdigest()
+          manifest = EvidenceManifest(
+              entries=(
+                  EvidenceManifestEntry(
+                      logical_id="trust-consumer-checkpoint:generation-1",
+                      producer="safal207/Liminal",
+                      evidence_type="trusted-recovery-consumer-checkpoint",
+                      relative_locator=(
+                          "artifacts/trust-consumer-checkpoint-attested/"
+                          "checkpoint-generation-1.json"
+                      ),
+                      sha256=digest,
+                      generation=1,
+                      verification=VerificationExpectation(
+                          required=True,
+                          verifier="github_attestation",
+                          expected_signer=(
+                              "safal207/Liminal/.github/workflows/"
+                              "trusted-recovery-trust-consumer-checkpoint-attested.yml"
+                          ),
+                          expected_signer_digest=os.environ[
+                              "LIMINAL_CHECKPOINT_CONSUMER_WORKFLOW_SHA"
+                          ],
+                      ),
+                  ),
+              )
+          )
+          output = Path(
+              "artifacts/trust-consumer-checkpoint-attested/evidence-manifest-v0.1.json"
+          )
+          output.write_bytes(canonical_manifest_bytes(manifest))
+          print(f"checkpoint_sha256={digest}")
+          print(f"evidence_manifest={output}")
+          PY
+
+      - name: Attest accepted generation-1 checkpoint
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-consumer-checkpoint-attested/checkpoint-generation-1.json
+
+      - name: Attest checkpoint evidence manifest
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-consumer-checkpoint-attested/evidence-manifest-v0.1.json
+
+      - name: Attest consumer checkpoint authorization result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/trust-consumer-checkpoint-attested/consumer-checkpoint-attested-result.json
+
+      - name: Upload attested checkpoint evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trusted-recovery-trust-consumer-checkpoint-attested
+          path: |
+            artifacts/trust-consumer-checkpoint-attested
+            rotation-evidence/generation-1-manifest.json
+            rotation-evidence/generation-1-registry.json
+            rotation-evidence/rotation-drill-result.json
+            rotation-evidence/rotation-attestation-verification.json
+          if-no-files-found: error
+          retention-days: 30

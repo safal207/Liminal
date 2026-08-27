@@ -1,0 +1,5 @@
+schema=liminal-historical-root-b-bootstrap-verifier-lock/v0.1
+trust_domain=liminal.trusted-recovery
+verification=ed25519-detached
+network_fetches=0
+root_a_dependencies=0

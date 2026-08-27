@@ -1,0 +1,1 @@
+{"excluded_history_fields":["provider_id","genesis_authority_id","history_generation","registry_sha256","manifest_sha256"],"logical_authority_id":"liminal.trusted-recovery.causal-witness","output_schema":"liminal-causal-trust-witness/v0.1","schema":"liminal-portable-causal-witness-producer-contract/v0.1","subject_schema":"liminal-causal-trust-checkpoint/v0.1"}

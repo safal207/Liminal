@@ -1,0 +1,112 @@
+name: Trusted Recovery Proof Builder v0.3
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  build-and-attest:
+    runs-on: ubuntu-24.04
+    environment: live-provider-trace
+    env:
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+      GONKA_BROKER_API_KEY: ${{ secrets.GONKA_BROKER_API_KEY }}
+      GONKA_BROKER_URL: ${{ secrets.GONKA_BROKER_URL }}
+
+    steps:
+      - name: Checkout trusted builder source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ job.workflow_repository }}
+          ref: ${{ job.workflow_sha }}
+
+      - name: Verify immutable builder checkout
+        shell: bash
+        env:
+          LIMINAL_BUILDER_REPOSITORY: ${{ job.workflow_repository }}
+          LIMINAL_BUILDER_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          actual_sha="$(git rev-parse HEAD)"
+          test "${actual_sha}" = "${LIMINAL_BUILDER_WORKFLOW_SHA}" || {
+            echo "builder checkout mismatch: ${actual_sha} != ${LIMINAL_BUILDER_WORKFLOW_SHA}"
+            exit 1
+          }
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11.15"
+
+      - name: Require Gonka broker configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${GONKA_BROKER_API_KEY:-}" || { echo 'GONKA_BROKER_API_KEY is required'; exit 1; }
+          test -n "${GONKA_BROKER_URL:-}" || { echo 'GONKA_BROKER_URL is required'; exit 1; }
+
+      - name: Install hash-locked live proof dependency closure
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install \
+            --disable-pip-version-check \
+            --require-hashes \
+            --only-binary=:all: \
+            -r requirements/trusted-recovery-proof.lock
+          python -m pip check
+
+      - name: Emit verified builder environment receipt
+        shell: bash
+        env:
+          LIMINAL_BUILDER_REPOSITORY: ${{ job.workflow_repository }}
+          LIMINAL_BUILDER_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          set -euo pipefail
+          test -n "${ImageOS:-}" || { echo 'ImageOS is required'; exit 1; }
+          test -n "${ImageVersion:-}" || { echo 'ImageVersion is required'; exit 1; }
+          python scripts/write-builder-environment-receipt.py \
+            --repository-root "${GITHUB_WORKSPACE}" \
+            --output artifacts/live-recovery-decision-proof/builder-environment.json \
+            --builder-repository "${LIMINAL_BUILDER_REPOSITORY}" \
+            --builder-workflow-path ".github/workflows/trusted-recovery-proof-builder.yml" \
+            --builder-workflow-sha "${LIMINAL_BUILDER_WORKFLOW_SHA}" \
+            --dependency-lock-path "requirements/trusted-recovery-proof.lock" \
+            --proof-script-path "scripts/run-live-recovery-decision-proof.py" \
+            --runner-os "${RUNNER_OS}" \
+            --runner-arch "${RUNNER_ARCH}" \
+            --runner-image-os "${ImageOS}" \
+            --runner-image-version "${ImageVersion}" \
+            --action "actions/checkout=11d5960a326750d5838078e36cf38b85af677262" \
+            --action "actions/setup-python=a26af69be951a213d495a4c3e4e4022e16d87065" \
+            --action "actions/attest=1e69f48acb82d1966a394da916b4c1698aa569d6" \
+            --action "actions/upload-artifact=ea165f8d65b6e75b540449e92b4886f43607fa02"
+
+      - name: Run trusted live Gonka recovery decision proof
+        env:
+          LIMINAL_BUILDER_REPOSITORY: ${{ job.workflow_repository }}
+          LIMINAL_BUILDER_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        run: |
+          python scripts/run-live-recovery-decision-proof.py \
+            --model "MiniMaxAI/MiniMax-M2.7" \
+            --max-output-tokens "1536" \
+            --run-id "${{ github.run_id }}-${{ github.run_attempt }}" \
+            --output-dir artifacts/live-recovery-decision-proof
+
+      - name: Generate GitHub OIDC artifact attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: artifacts/live-recovery-decision-proof/recovery-proof-bundle.zip
+
+      - name: Upload trusted proof artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: trusted-recovery-decision-proof
+          path: artifacts/live-recovery-decision-proof
+          if-no-files-found: warn
+          retention-days: 30

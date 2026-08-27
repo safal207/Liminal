@@ -1,0 +1,24 @@
+name: Trusted Recovery Decision Proof
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  build-and-attest:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-proof-builder.yml@02beb48b9c8a61d67c585573aac6c5781c000e89
+    secrets: inherit
+
+  verify-and-attest-policy-root:
+    needs: build-and-attest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: safal207/Liminal/.github/workflows/trusted-recovery-proof-verifier.yml@0aa3dce24f9aeb0c90f955fa5f68d12685e5654a
+    with:
+      source_ref: ${{ github.ref }}

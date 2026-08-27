@@ -1,0 +1,256 @@
+name: Execution Transport Portability Once
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - agent/recovery-routing-v0-1
+    paths:
+      - .github/workflows/execution-transport-portability-once.yml
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+  attestations: write
+
+jobs:
+  run-immutable-proof:
+    uses: safal207/Liminal/.github/workflows/execution-transport-portability.yml@118a136cd63d43216399be10d66bcb589655e92d
+    with:
+      execution_transport_workflow_sha: 118a136cd63d43216399be10d66bcb589655e92d
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+      attestations: write
+
+  verify-proof-externally:
+    needs: run-immutable-proof
+    runs-on: ubuntu-latest
+    env:
+      IMMUTABLE_PROOF_SHA: 118a136cd63d43216399be10d66bcb589655e92d
+      EXPECTED_CHECKPOINT_SHA256: 74096c48cd730c55dd2f486f1af4b211b4f7f1ce38613134be645055ff1f946a
+      EXPECTED_TRUST_RECEIPT_SHA256: 2235b07a4188628091cbe94af6a16dc30516d0acea743f9b4517b58a5cbd1a80
+      EXPECTED_AUTHORIZATION_POLICY_SHA256: 22fcc3c556528d080591041bc10c1a35f85bfbad348b8f669bfff4bb1b88b47f
+      EXPECTED_NEXT_WITNESS_SHA256: cc389524836b013bb5a416f0a9f6647d9ff252d2de79598e4df119c6e5760d2f
+      EXPECTED_EXECUTION_TRANSPORT_RECEIPT_SHA256: 644b575189d18d61e7ed8415d59087c69d0ddc02ba5743b24c86dfacc7b24b49
+      EXPECTED_EXTERNAL_RESULT_SHA256: 70d9413ef99348ab495b4fe173cba9493372ec9ee25a4ac5deb64a5b9c94a979
+      EXPECTED_EXTERNAL_ROOT_ID: ed25519-sha256:72c2477f78a0a901f6f1cef45ccec69053842eb980c666f0cbdc01589dcd69d9
+      EXPECTED_DRIVE_FILE_ID: 1wLKINhrx6BGilKvUKI_OZQLOV5oEiDdN
+      EXPECTED_DRIVE_ZIP_SHA256: c3822f1d5658d4c9965a67b1a4264dafc04cb5ea6f64c516ced7a920b49cd161
+
+    steps:
+      - name: Checkout immutable proof source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: 118a136cd63d43216399be10d66bcb589655e92d
+          fetch-depth: 0
+
+      - name: Verify immutable proof checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${IMMUTABLE_PROOF_SHA}"
+
+      - name: Set up exact Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.11.15"
+          check-latest: false
+
+      - name: Download execution-transport portability proof
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: execution-transport-portability-proof
+          path: proof
+
+      - name: Verify immutable proof signer on result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          result="$(find proof -type f -name 'execution-transport-portability-result.json' -print -quit)"
+          test -n "${result}"
+          gh attestation verify \
+            "${result}" \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/execution-transport-portability.yml \
+            --signer-digest "${IMMUTABLE_PROOF_SHA}" \
+            --source-ref refs/heads/agent/recovery-routing-v0-1 \
+            --deny-self-hosted-runners
+
+      - name: Reverify external execution signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          public_key="$(find proof -type f -path '*/execution-transport-external-v0.1/public-key.pem' -print -quit)"
+          proof_json="$(find proof -type f -path '*/execution-transport-external-v0.1/proof.json' -print -quit)"
+          result_json="$(find proof -type f -path '*/execution-transport-external-v0.1/result.json' -print -quit)"
+          test -n "${public_key}" && test -n "${proof_json}" && test -n "${result_json}"
+
+          actual_root="ed25519-sha256:$(openssl pkey -pubin -in "${public_key}" -outform DER | sha256sum | awk '{print $1}')"
+          test "${actual_root}" = "${EXPECTED_EXTERNAL_ROOT_ID}"
+
+          PUBLIC_KEY="${public_key}" PROOF_JSON="${proof_json}" RESULT_JSON="${result_json}" python - <<'PY'
+          import base64
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          proof = json.loads(Path(os.environ["PROOF_JSON"]).read_text())
+          result_bytes = Path(os.environ["RESULT_JSON"]).read_bytes()
+          canonical = (
+              json.dumps(proof["result"], sort_keys=True, separators=(",", ":")) + "\n"
+          ).encode()
+          assert canonical == result_bytes
+          assert hashlib.sha256(result_bytes).hexdigest() == proof["result_sha256"]
+          assert proof["result_sha256"] == os.environ["EXPECTED_EXTERNAL_RESULT_SHA256"]
+          assert proof["root_id"] == os.environ["EXPECTED_EXTERNAL_ROOT_ID"]
+          signature_path = Path("external-result.sig")
+          signature_path.write_bytes(base64.b64decode(proof["signature_base64"]))
+          PY
+
+          openssl pkeyutl -verify -pubin \
+            -inkey "${public_key}" \
+            -rawin \
+            -in "${result_json}" \
+            -sigfile external-result.sig
+
+      - name: Independently recompute execution-transport agreement
+        env:
+          PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/src
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          from liminal.execution_transport_portability import (
+              ExecutionTransportAgreementReason,
+              ExecutionTransportObservation,
+              compare_independent_execution_transport_paths,
+          )
+          from liminal.recovery_trust_root_registry import canonical_json_bytes
+
+          combined_files = sorted(
+              Path("proof").rglob("execution-transport-portability-result.json")
+          )
+          external_files = sorted(Path("proof").rglob("execution-transport-external-v0.1/result.json"))
+          assert len(combined_files) == 1, combined_files
+          assert len(external_files) == 1, external_files
+          combined = json.loads(combined_files[0].read_text())
+          external = json.loads(external_files[0].read_text())
+
+          assert combined["verified"] is True
+          assert combined["checkpoint_subject_sha256"] == os.environ[
+              "EXPECTED_CHECKPOINT_SHA256"
+          ]
+          assert combined["portable_trust_receipt_sha256"] == os.environ[
+              "EXPECTED_TRUST_RECEIPT_SHA256"
+          ]
+          assert combined["authorization_policy_sha256"] == os.environ[
+              "EXPECTED_AUTHORIZATION_POLICY_SHA256"
+          ]
+          assert combined["next_witness_sha256"] == os.environ[
+              "EXPECTED_NEXT_WITNESS_SHA256"
+          ]
+          assert combined["portable_execution_transport_receipt_sha256"] == os.environ[
+              "EXPECTED_EXECUTION_TRANSPORT_RECEIPT_SHA256"
+          ]
+
+          assert external["verified"] is True
+          assert external["execution_provider"] == "openai-chatgpt-workspace"
+          assert external["transport_provider"] == "google-drive"
+          assert external["transport_file_id"] == os.environ["EXPECTED_DRIVE_FILE_ID"]
+          assert external["drive_roundtrip_zip_sha256"] == os.environ[
+              "EXPECTED_DRIVE_ZIP_SHA256"
+          ]
+
+          primary = ExecutionTransportObservation(
+              execution_provider="github-actions-hosted",
+              execution_environment_id="github-hosted:independent-audit",
+              transport_provider="github-actions-artifact",
+              transport_channel_id="github-run:31658743875:artifact:9165388614",
+              subject_sha256=combined["checkpoint_subject_sha256"],
+              portable_trust_receipt_sha256=combined[
+                  "portable_trust_receipt_sha256"
+              ],
+              authorization_policy_sha256=combined[
+                  "authorization_policy_sha256"
+              ],
+              witness_reason=combined["witness_reason"],
+              next_witness_sha256=combined["next_witness_sha256"],
+              verified=True,
+          )
+          secondary = ExecutionTransportObservation(
+              execution_provider=external["execution_provider"],
+              execution_environment_id=external["execution_environment_id"],
+              transport_provider=external["transport_provider"],
+              transport_channel_id=f"google-drive:{external['transport_file_id']}",
+              subject_sha256=external["checkpoint_subject_sha256"],
+              portable_trust_receipt_sha256=external[
+                  "portable_trust_receipt_sha256"
+              ],
+              authorization_policy_sha256=external[
+                  "authorization_policy_sha256"
+              ],
+              witness_reason=external["witness_reason"],
+              next_witness_sha256=external["next_witness_sha256"],
+              verified=external["verified"],
+          )
+          agreement = compare_independent_execution_transport_paths(primary, secondary)
+          assert agreement.agreed is True, agreement.reason
+          assert (
+              agreement.reason
+              is ExecutionTransportAgreementReason.VERIFIED_EXECUTION_TRANSPORT_CLAIMS_AGREE
+          )
+          assert agreement.portable_receipt_sha256 == os.environ[
+              "EXPECTED_EXECUTION_TRANSPORT_RECEIPT_SHA256"
+          ]
+
+          audit = {
+              "schema_version": (
+                  "liminal.execution-transport-portability.external-verification.v0.1"
+              ),
+              "verified": True,
+              "execution_provider_independent": True,
+              "transport_provider_independent": True,
+              "primary_execution_provider": primary.execution_provider,
+              "secondary_execution_provider": secondary.execution_provider,
+              "primary_transport_provider": primary.transport_provider,
+              "secondary_transport_provider": secondary.transport_provider,
+              "checkpoint_subject_sha256": primary.subject_sha256,
+              "portable_trust_receipt_sha256": primary.portable_trust_receipt_sha256,
+              "next_witness_sha256": primary.next_witness_sha256,
+              "portable_execution_transport_receipt_sha256": (
+                  agreement.portable_receipt_sha256
+              ),
+              "external_result_sha256": os.environ[
+                  "EXPECTED_EXTERNAL_RESULT_SHA256"
+              ],
+          }
+          out = Path("external-verification")
+          out.mkdir(exist_ok=True)
+          (out / "execution-transport-portability-external-verification.json").write_bytes(
+              canonical_json_bytes(audit)
+          )
+          print("external_execution_transport_verification=VERIFIED")
+          PY
+
+      - name: Attest external verification result
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6
+        with:
+          subject-path: external-verification/execution-transport-portability-external-verification.json
+
+      - name: Upload external verification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: execution-transport-portability-external-verification
+          path: external-verification
+          if-no-files-found: error
+          retention-days: 30

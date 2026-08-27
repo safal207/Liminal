@@ -27,6 +27,10 @@ class _CompatLogger:
     def info(self, msg: str, *args: Any, **kwargs: Any) -> None:
         self._logger.info(msg, *args, **kwargs)
 
+    # Loguru exposes .success(); structlog/stdlib do not, so map it to info.
+    def success(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        self._logger.info(msg, *args, **kwargs)
+
     def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
         # structlog usually maps to .warning as well
         if hasattr(self._logger, "warning"):

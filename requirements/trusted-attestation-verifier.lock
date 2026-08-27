@@ -1,0 +1,10 @@
+# Trusted attestation verifier dependency closure.
+# Platform scope: GitHub-hosted Ubuntu 24.04 x86_64, CPython 3.11.15.
+# Hashes originate from the wheel closure captured in workflow run 31462868476.
+
+cffi==2.1.1 \
+    --hash=sha256:34e261f78cb6ceaaa36f42f2613f4380d94d9c759a9c73c769ee6e0247364632
+cryptography==50.0.0 \
+    --hash=sha256:82148ec5bddac30b51a5b3c1945075f896fa022cb93f8e4a01e9f6ee95292c5f
+pycparser==3.0 \
+    --hash=sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992

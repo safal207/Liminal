@@ -1,0 +1,206 @@
+name: Evidence Topology Portability Once
+
+on:
+  push:
+    branches:
+      - agent/recovery-routing-v0-1
+    paths:
+      - '.github/workflows/evidence-topology-portability-once.yml'
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+jobs:
+  run-immutable-portability:
+    uses: safal207/Liminal/.github/workflows/evidence-topology-portability.yml@2a71b4c77f7a9271dd47ffc5002d3fc254dc635a
+
+  verify-portability-externally:
+    needs: run-immutable-portability
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      attestations: read
+
+    steps:
+      - name: Download topology portability evidence
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: evidence-topology-portability
+          path: portability-evidence
+
+      - name: Recompute portable digest and decision equivalence
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib
+          import json
+          from pathlib import Path
+
+          root = Path("portability-evidence")
+          result_path = root / "artifacts/evidence-topology-portability/topology-portability-result.json"
+          bundle_path = root / "artifacts/evidence-topology-portability/portable-evidence-bundle.json"
+          manifest_a = root / "topology-a/evidence-manifest-v0.1.json"
+          evidence_a = root / "topology-a/checkpoint-generation-1.json"
+          manifest_b = root / "topology-b/meta/opaque-evidence-index.bin"
+          evidence_b = root / "topology-b/transport/layers/opaque-blob.dat"
+
+          result = json.loads(result_path.read_text())
+          bundle = json.loads(bundle_path.read_text())
+          digest = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+
+          assert result["schema_version"] == "liminal.evidence-topology-portability-result.v0.1"
+          assert result["verified"] is True
+          assert result["reason"] == "topology_portability_verified"
+          assert digest(manifest_a) == result["manifest_sha256"]
+          assert digest(manifest_b) == result["manifest_sha256"]
+          assert digest(evidence_a) == result["evidence_sha256"]
+          assert digest(evidence_b) == result["evidence_sha256"]
+          assert evidence_a.read_bytes() == evidence_b.read_bytes()
+          assert manifest_a.read_bytes() == manifest_b.read_bytes()
+          assert digest(bundle_path) == result["evidence_bundle_sha256"]
+          assert bundle["logical_id"] == result["logical_id"]
+          assert bundle["generation"] == result["generation"]
+          assert bundle["manifest"]["sha256"] == result["manifest_sha256"]
+          assert bundle["evidence"]["sha256"] == result["evidence_sha256"]
+
+          a = result["topologies"]["a"]
+          b = result["topologies"]["b"]
+          assert a["manifest_path"] != b["manifest_path"]
+          assert a["evidence_path"] != b["evidence_path"]
+          assert a["bundle_sha256"] == b["bundle_sha256"] == result["evidence_bundle_sha256"]
+          assert a["authorization_reason"] == b["authorization_reason"] == "verified_recovery"
+          assert a["witness_decision"]["authorized"] is True
+          assert b["witness_decision"]["authorized"] is True
+          assert a["witness_decision"]["reason"] == b["witness_decision"]["reason"]
+          assert (
+              a["witness_decision"]["next_witness_sha256"]
+              == b["witness_decision"]["next_witness_sha256"]
+          )
+          assert all(result["equivalence"].values())
+
+          external = {
+              "schema_version": "liminal.evidence-topology-portability-external.v0.1",
+              "verified": True,
+              "reason": "portable_digest_and_decision_equivalence_recomputed",
+              "manifest_sha256": result["manifest_sha256"],
+              "evidence_sha256": result["evidence_sha256"],
+              "evidence_bundle_sha256": result["evidence_bundle_sha256"],
+              "topology_a_evidence_path": a["evidence_path"],
+              "topology_b_evidence_path": b["evidence_path"],
+              "witness_next_sha256": a["witness_decision"]["next_witness_sha256"],
+          }
+          Path("portability-evidence/external-portability-chain.json").write_text(
+              json.dumps(external, sort_keys=True, separators=(",", ":")) + "\n"
+          )
+          print(f"manifest_sha256={result['manifest_sha256']}")
+          print(f"evidence_sha256={result['evidence_sha256']}")
+          print(f"evidence_bundle_sha256={result['evidence_bundle_sha256']}")
+          print("topology_portability_external_recompute=VERIFIED")
+          PY
+
+      - name: Verify producer signer on flat manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            portability-evidence/topology-a/evidence-manifest-v0.1.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > portability-evidence/topology-a-manifest-attestation.json
+
+      - name: Verify producer signer on renamed nested manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            portability-evidence/topology-b/meta/opaque-evidence-index.bin \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > portability-evidence/topology-b-manifest-attestation.json
+
+      - name: Verify producer signer on flat checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            portability-evidence/topology-a/checkpoint-generation-1.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > portability-evidence/topology-a-checkpoint-attestation.json
+
+      - name: Verify producer signer on renamed nested checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            portability-evidence/topology-b/transport/layers/opaque-blob.dat \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/trusted-recovery-trust-consumer-checkpoint-attested.yml \
+            --signer-digest f31b56a5e21a668bcb98791b05542652760dcc27 \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > portability-evidence/topology-b-checkpoint-attestation.json
+
+      - name: Verify immutable portability signer on Evidence Bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            portability-evidence/artifacts/evidence-topology-portability/portable-evidence-bundle.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/evidence-topology-portability.yml \
+            --signer-digest 2a71b4c77f7a9271dd47ffc5002d3fc254dc635a \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > portability-evidence/bundle-attestation-verification.json
+
+      - name: Verify immutable portability signer on result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh attestation verify \
+            portability-evidence/artifacts/evidence-topology-portability/topology-portability-result.json \
+            --repo safal207/Liminal \
+            --signer-workflow safal207/Liminal/.github/workflows/evidence-topology-portability.yml \
+            --signer-digest 2a71b4c77f7a9271dd47ffc5002d3fc254dc635a \
+            --source-ref "${{ github.ref }}" \
+            --deny-self-hosted-runners \
+            --format json \
+            > portability-evidence/result-attestation-verification.json
+
+      - name: Upload external topology portability verification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: evidence-topology-portability-external-verification
+          path: |
+            portability-evidence/external-portability-chain.json
+            portability-evidence/topology-a-manifest-attestation.json
+            portability-evidence/topology-b-manifest-attestation.json
+            portability-evidence/topology-a-checkpoint-attestation.json
+            portability-evidence/topology-b-checkpoint-attestation.json
+            portability-evidence/bundle-attestation-verification.json
+            portability-evidence/result-attestation-verification.json
+          if-no-files-found: error
+          retention-days: 30

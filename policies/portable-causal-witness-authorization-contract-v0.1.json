@@ -1,0 +1,1 @@
+{"forbids":["raw_history_identity_in_witness","checkpoint_subject_drift"],"logical_authority_id":"liminal.trusted-recovery.causal-witness","requires":["portable_checkpoint_valid","checkpoint_bytes_equal_across_histories","semantic_state_ref_equal_across_histories"],"schema":"liminal-portable-causal-witness-authorization-contract/v0.1"}
