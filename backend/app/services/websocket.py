@@ -147,6 +147,8 @@ class ConnectionManagerService:
                 redis_url=redis_url,
                 max_connections=max_connections,
                 max_connections_per_ip=max_connections_per_ip,
+                rate_limit_messages_per_second=rate_limit_messages_per_second,
+                rate_limit_burst=rate_limit_burst,
             )
 
         redis_client = None

@@ -27,6 +27,8 @@ class RedisConnectionManager(ConnectionManager):
         max_connections: int = 100,
         max_connections_per_ip: int = 10,
         redis_prefix: str = "liminal",
+        rate_limit_messages_per_second: int = 10,
+        rate_limit_burst: int = 20,
     ):
         """
         Инициализирует RedisConnectionManager.
@@ -37,12 +39,15 @@ class RedisConnectionManager(ConnectionManager):
             max_connections_per_ip: Максимальное количество соединений с одного IP.
             redis_prefix: Префикс для ключей в Redis.
         """
+        redis_client = RedisClient(redis_url, redis_prefix)
         super().__init__(
-            redis_client=None,
+            redis_client=redis_client,
             max_connections=max_connections,
             max_connections_per_ip=max_connections_per_ip,
+            rate_limit_messages_per_second=rate_limit_messages_per_second,
+            rate_limit_burst=rate_limit_burst,
         )
-        self.redis: RedisClient = RedisClient(redis_url, redis_prefix)
+        self.redis: RedisClient = redis_client
         self._is_connected = False
         self._local_channels: Set[str] = set()  # Локально подписанные каналы
         self.remote_subscriptions: Dict[str, Set[str]] = {}  # Канал -> {ws_id, ...}
@@ -70,6 +75,7 @@ class RedisConnectionManager(ConnectionManager):
         connected = await self.redis.connect()
         if connected:
             self._is_connected = True
+            await super().initialize()
 
             # Подписываемся на системные каналы Redis (глобальные, без префикса)
             # Добавляем подписку на канал с префиксом и без префикса

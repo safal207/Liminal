@@ -1,22 +1,16 @@
 """Compatibility wrapper exposing the FastAPI application at the legacy module path.
 
 Historically the project exposed ``app`` from a top-level ``api`` module.  The
-backend refactor moved the real application into :mod:`backend.app.main` and
-added :mod:`backend.api` as the canonical import location.  Some third-party
-integrations and ad-hoc scripts, however, still ``import api`` directly.
+backend refactor moved the canonical application into :mod:`backend.app.main`.
+Some third-party integrations and ad-hoc scripts, however, still ``import api``
+directly.
 
 To avoid breaking those environments we keep this tiny facade that simply
-re-exports the modern application object and lifespan context.  Importing this
-module has no side effects beyond importing :mod:`backend.api`.
+re-exports the hardened application object and lifespan context.
 """
 
 from __future__ import annotations
 
-from backend.api import app
-
-try:
-    from backend.api import lifespan  # type: ignore[attr-defined]
-except ImportError:
-    lifespan = None  # Backward compatibility for environments without lifespan export.
+from backend.app.main import app, lifespan
 
 __all__ = ["app", "lifespan"]

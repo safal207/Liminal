@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import ast
 import importlib
 import inspect
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import jwt
 import pytest
@@ -18,6 +19,7 @@ import backend.auth.jwt_utils as jwt_utils
 import backend.config as legacy_config
 import scripts.check_release_security as release_security
 from backend.app.services.websocket import (
+    ConnectionManagerService,
     LocalTokenBucket,
     TimelineWebSocketService,
     WebSocketMessageError,
@@ -257,6 +259,66 @@ def test_websocket_authentication_has_no_query_token_parameter() -> None:
         "token"
         not in inspect.signature(TimelineWebSocketService.handle_connection).parameters
     )
+
+
+def test_legacy_api_entrypoint_reexports_hardened_app() -> None:
+    legacy_entrypoint = importlib.import_module("api")
+    hardened_main = importlib.import_module("backend.app.main")
+
+    assert legacy_entrypoint.app is hardened_main.app
+    assert str(legacy_entrypoint.app.url_path_for("websocket_timeline")) == (
+        "/ws/timeline"
+    )
+
+
+def test_legacy_backend_route_delegates_without_query_token() -> None:
+    source = (Path(__file__).resolve().parents[2] / "backend" / "api.py").read_text(
+        encoding="utf-8"
+    )
+    module = ast.parse(source)
+    endpoint = next(
+        node
+        for node in module.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name == "websocket_timeline"
+    )
+
+    assert "token" not in {argument.arg for argument in endpoint.args.args}
+    assert any(
+        isinstance(node, ast.Attribute) and node.attr == "handle_connection"
+        for node in ast.walk(endpoint)
+    )
+
+
+def test_redis_factory_wires_shared_rate_limit_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("USE_REDIS", "true")
+    monkeypatch.setenv("WS_RATE_LIMIT_PER_SECOND", "7")
+    monkeypatch.setenv("WS_RATE_LIMIT_BURST", "11")
+
+    manager = ConnectionManagerService()._create_manager()
+
+    assert isinstance(manager, RedisConnectionManager)
+    assert manager.redis_client is manager.redis
+    assert manager.rate_limit_messages_per_second == 7
+    assert manager.rate_limit_burst == 11
+
+
+@pytest.mark.asyncio
+async def test_redis_manager_loads_distributed_rate_limit_script() -> None:
+    manager = RedisConnectionManager()
+    pubsub = MagicMock()
+    pubsub.subscribe = AsyncMock()
+    manager.redis.redis = MagicMock()
+    manager.redis.redis.pubsub.return_value = pubsub
+    manager.redis.connect = AsyncMock(return_value=True)
+    manager.redis.subscribe = AsyncMock()
+    manager._load_rate_limit_script = AsyncMock()
+
+    assert await manager.initialize() is True
+
+    manager._load_rate_limit_script.assert_awaited_once_with()
 
 
 @pytest.mark.asyncio
