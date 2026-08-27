@@ -39,7 +39,7 @@ except ImportError as exc:  # pragma: no cover - optional research stack
     burnout_router = None
 
 try:
-    from backend.personality.router import router as personality_router
+    from backend.personality import router as personality_router
 except ImportError as exc:  # pragma: no cover - optional GraphQL stack
     logger.info("Personality routes disabled: %s", exc)
     personality_router = None
@@ -201,6 +201,7 @@ async def health_check():
 
 @app.get("/ready")
 async def readiness_check(
+    response: Response,
     manager: Annotated[object, Depends(get_connection_manager)],
 ):
     try:
@@ -223,6 +224,8 @@ async def readiness_check(
     ready = checks["app_loaded"] and checks["event_loop"]
     if redis_cfg:
         ready = ready and redis_ok
+    if not ready:
+        response.status_code = 503
 
     return {
         "ready": ready,

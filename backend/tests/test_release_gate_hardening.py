@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import jwt
 import pytest
-from fastapi import HTTPException
+from fastapi import HTTPException, Response
 
 import backend.app.routes.debug as debug_routes
 import backend.app.routes.ws as websocket_routes
@@ -287,6 +287,38 @@ def test_legacy_backend_route_delegates_without_query_token() -> None:
     assert any(
         isinstance(node, ast.Attribute) and node.attr == "handle_connection"
         for node in ast.walk(endpoint)
+    )
+
+
+@pytest.mark.asyncio
+async def test_readiness_returns_503_when_required_redis_is_disconnected() -> None:
+    hardened_main = importlib.import_module("backend.app.main")
+    response = Response()
+    manager = type("DisconnectedRedisManager", (), {"_is_connected": False})()
+
+    payload = await hardened_main.readiness_check(response, manager)
+
+    assert response.status_code == 503
+    assert payload["ready"] is False
+    assert payload["checks"]["redis_connected"] is False
+
+
+def test_core_entrypoint_imports_the_gated_personality_router() -> None:
+    source = (
+        Path(__file__).resolve().parents[2] / "backend" / "app" / "main.py"
+    ).read_text(encoding="utf-8")
+    module = ast.parse(source)
+    personality_imports = [
+        node
+        for node in ast.walk(module)
+        if isinstance(node, ast.ImportFrom)
+        and node.module is not None
+        and node.module.startswith("backend.personality")
+    ]
+
+    assert any(node.module == "backend.personality" for node in personality_imports)
+    assert all(
+        node.module != "backend.personality.router" for node in personality_imports
     )
 
 
