@@ -215,7 +215,6 @@ class TimelineWebSocketService:
     async def handle_connection(
         self,
         websocket: WebSocket,
-        token: Optional[str] = None,
     ) -> None:
         manager = self._manager_service.get_manager()
         timeline = self._memory_service.get_timeline()
@@ -228,57 +227,37 @@ class TimelineWebSocketService:
         user_id: Optional[str] = None
 
         try:
-            if token:
-                user_id = self._auth_service.verify_websocket_token(token)
-                if user_id:
-                    authenticated = await manager.authenticate_connection(
-                        websocket, user_id
-                    )
-                    if authenticated:
-                        self._ml_service.register_auth_event(user_id, True)
-                        await websocket.send_json(
-                            {
-                                "type": "auth_success",
-                                "message": "Authentication successful",
-                            }
-                        )
+            await websocket.send_json(
+                {
+                    "type": "auth_required",
+                    "message": "Send an access JWT token",
+                }
+            )
+            try:
+                auth_message = parse_client_message(
+                    await websocket.receive_text(),
+                    expected_types={"auth"},
+                )
+            except WebSocketMessageError:
+                await manager.reject_connection(
+                    websocket, "Invalid authentication message"
+                )
+                return
 
+            user_id = self._auth_service.verify_websocket_token(auth_message["token"])
+            if user_id:
+                authenticated = await manager.authenticate_connection(
+                    websocket, user_id
+                )
+
+            self._ml_service.register_auth_event(user_id or "unknown", authenticated)
             if not authenticated:
-                await websocket.send_json(
-                    {
-                        "type": "auth_required",
-                        "message": "Send an access JWT token",
-                    }
-                )
-                try:
-                    auth_message = parse_client_message(
-                        await websocket.receive_text(),
-                        expected_types={"auth"},
-                    )
-                except WebSocketMessageError:
-                    await manager.reject_connection(
-                        websocket, "Invalid authentication message"
-                    )
-                    return
+                await manager.reject_connection(websocket, "Invalid access token")
+                return
 
-                user_id = self._auth_service.verify_websocket_token(
-                    auth_message["token"]
-                )
-                if user_id:
-                    authenticated = await manager.authenticate_connection(
-                        websocket, user_id
-                    )
-
-                self._ml_service.register_auth_event(
-                    user_id or "unknown", authenticated
-                )
-                if not authenticated:
-                    await manager.reject_connection(websocket, "Invalid access token")
-                    return
-
-                await websocket.send_json(
-                    {"type": "auth_success", "message": "Authentication successful"}
-                )
+            await websocket.send_json(
+                {"type": "auth_success", "message": "Authentication successful"}
+            )
 
             if not user_id:
                 await manager.reject_connection(websocket, "Authentication failed")

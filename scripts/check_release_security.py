@@ -117,6 +117,33 @@ def parse_requirement_names(path: Path) -> set[str]:
     return names
 
 
+def production_dockerfile_errors(dockerfile: str) -> list[str]:
+    """Return release-boundary violations in the production API image."""
+    errors: list[str] = []
+    if "-r requirements-core.txt" not in dockerfile:
+        errors.append("production Dockerfile must install requirements-core.txt")
+    if "requirements.txt" in dockerfile.replace("requirements-core.txt", ""):
+        errors.append(
+            "production Dockerfile must not install aggregate requirements.txt"
+        )
+    if any(
+        marker in dockerfile
+        for marker in (
+            "test-requirements",
+            "requirements-dev",
+            "requirements-research",
+        )
+    ):
+        errors.append(
+            "production Dockerfile must not install test/dev/research dependencies"
+        )
+    if "ARG PYTHON_IMAGE" not in dockerfile or "FROM ${PYTHON_IMAGE}" not in dockerfile:
+        errors.append(
+            "production Dockerfile must require an external immutable base image"
+        )
+    return errors
+
+
 def main() -> int:
     errors: list[str] = []
 
@@ -146,23 +173,7 @@ def main() -> int:
         errors.append("production API Dockerfile is missing")
     else:
         dockerfile = PRODUCTION_DOCKERFILE.read_text(encoding="utf-8")
-        if "-r requirements-core.txt" not in dockerfile:
-            errors.append("production Dockerfile must install requirements-core.txt")
-        if "requirements.txt" in dockerfile.replace("requirements-core.txt", ""):
-            errors.append(
-                "production Dockerfile must not install aggregate requirements.txt"
-            )
-        if "test-requirements" in dockerfile or "requirements-dev" in dockerfile:
-            errors.append(
-                "production Dockerfile must not install test/dev dependencies"
-            )
-        if (
-            "ARG PYTHON_IMAGE" not in dockerfile
-            or "FROM ${PYTHON_IMAGE}" not in dockerfile
-        ):
-            errors.append(
-                "production Dockerfile must require an external immutable base image"
-            )
+        errors.extend(production_dockerfile_errors(dockerfile))
 
     if not PRODUCTION_COMPOSE.exists():
         errors.append("production compose file is missing")

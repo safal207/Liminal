@@ -1,35 +1,36 @@
 config:
-  target: "http://127.0.0.1:8000"
+  target: "ws://127.0.0.1:8000/ws/timeline"
   phases:
     - duration: 10
       arrivalRate: 3
-  engines:
-    ws: {}
+  ensure:
+    maxErrorRate: 0
+
+before:
+  flow:
+    - get:
+        url: "http://127.0.0.1:8000/ready"
+        expect:
+          - statusCode: 200
+    - post:
+        url: "http://127.0.0.1:8000/auth/login"
+        json:
+          username: "testuser"
+          password: "testpass"
+        expect:
+          - statusCode: 200
+        capture:
+          json: "$.access_token"
+          as: token
 
 scenarios:
   - name: Authenticated WS connect and subscribe
+    engine: ws
     flow:
-      - get:
-          url: "/ready"
-          expect:
-            - statusCode: 200
-      - post:
-          url: "/auth/login"
-          json:
-            username: "testuser"
-            password: "testpass"
-          expect:
-            - statusCode: 200
-          capture:
-            json: "$.access_token"
-            as: token
-      - ws:
-          connect: "ws://127.0.0.1:8000/ws/timeline?token={{ token }}"
+      - connect: "{{ target }}"
+      - send: '{"type":"auth","token":"{{ token }}"}'
       - think: 1
-      - ws:
-          send: '{"type":"subscribe","channel":"timeline"}'
+      - send: '{"type":"subscribe","channel":"timeline"}'
       - think: 1
-      - ws:
-          send: '{"type":"unsubscribe","channel":"timeline"}'
-      - ws:
-          close: true
+      - send: '{"type":"unsubscribe","channel":"timeline"}'
+      - think: 1

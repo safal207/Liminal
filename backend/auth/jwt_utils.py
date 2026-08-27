@@ -88,7 +88,11 @@ class JWTManager:
         if hashed_password.startswith("sha256$"):
             logger.warning("Rejected legacy SHA-256 password hash")
             return False
-        return pwd_context.verify(plain_password, hashed_password)
+        try:
+            return pwd_context.verify(plain_password, hashed_password)
+        except ValueError:
+            logger.warning("Rejected malformed password hash")
+            return False
 
     def get_password_hash(self, password: str) -> str:
         """Hash a password; cryptographic failures are propagated fail-closed."""
@@ -110,11 +114,7 @@ class JWTManager:
         )
         to_encode["exp"] = expire
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
-        logger.info(
-            "JWT token created for user=%s type=%s",
-            data.get("sub", "unknown"),
-            token_type,
-        )
+        logger.debug("JWT token created type=%s", token_type)
         return encoded_jwt
 
     def verify_token(
@@ -196,10 +196,10 @@ if not fake_users_db:
 def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
     user = fake_users_db.get(username)
     if not user:
-        logger.warning("Authentication failed for unknown user=%s", username)
+        logger.warning("Authentication failed")
         return None
     if not jwt_manager.verify_password(password, user["hashed_password"]):
-        logger.warning("Authentication failed for user=%s", username)
+        logger.warning("Authentication failed")
         return None
     return user
 

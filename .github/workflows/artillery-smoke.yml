@@ -21,6 +21,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
@@ -36,13 +38,13 @@ jobs:
           python -m pip check
           python -m pip freeze --all
 
-      - name: Set up Node 20
+      - name: Set up Node 22.18.0
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22.18.0"
 
       - name: Install Artillery
-        run: npm i -g artillery@2
+        run: npm i -g artillery@2.0.34
 
       - name: Start backend (uvicorn)
         run: |

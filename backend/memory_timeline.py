@@ -117,10 +117,11 @@ class MemoryTimeline:
 
     async def subscribe(self, websocket: WebSocket):
         """Подписывает WebSocket на обновления таймлайна."""
-        token = websocket.headers.get("Authorization")
-        payload = await token_verifier.ensure_websocket(websocket, token)
-        if payload is None and not getattr(websocket, "user_id", None):
-            return
+        if not getattr(websocket, "user_id", None):
+            token = websocket.headers.get("Authorization")
+            payload = await token_verifier.ensure_websocket(websocket, token)
+            if payload is None:
+                return
 
         await self._ensure_lock()
         async with self._lock:

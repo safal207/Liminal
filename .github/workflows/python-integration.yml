@@ -22,9 +22,12 @@ jobs:
       USE_REDIS: "false"
       USE_REDIS_CLIENT: "false"
       ML_ENABLED: "false"
+      RUN_INTEGRATION_TESTS: "1"
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v5

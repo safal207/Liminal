@@ -17,20 +17,24 @@ from ..dependencies import (
 )
 
 
-def require_debug_access(
-    payload: Annotated[dict, Depends(token_verifier)],
-) -> dict:
-    """Require access auth and explicit production opt-in for diagnostics."""
+def require_debug_routes_enabled() -> None:
+    """Hide diagnostics before evaluating authentication in production."""
     settings = get_settings()
     enabled_in_production = os.getenv("ENABLE_DEBUG_ROUTES", "false").lower() == "true"
     if settings.environment == "production" and not enabled_in_production:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+
+
+def require_debug_access(
+    payload: Annotated[dict, Depends(token_verifier)],
+) -> dict:
+    """Require a valid access token for enabled diagnostics routes."""
     return payload
 
 
 router = APIRouter(
     tags=["debug"],
-    dependencies=[Depends(require_debug_access)],
+    dependencies=[Depends(require_debug_routes_enabled), Depends(require_debug_access)],
 )
 
 

@@ -5,12 +5,13 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-from urllib.parse import quote
 
 import pytest
 import requests
-import websockets
-from websockets.exceptions import ConnectionClosed
+
+websockets = pytest.importorskip("websockets")
+websocket_exceptions = pytest.importorskip("websockets.exceptions")
+ConnectionClosed = websocket_exceptions.ConnectionClosed
 
 API_URL = os.getenv("WS_API_URL", "http://localhost:8080")
 WS_URL = os.getenv("WS_URL", "ws://localhost:8080/ws/timeline")
@@ -42,17 +43,24 @@ def test_server_ready_integration() -> None:
 @pytest.mark.integration
 @pytest.mark.asyncio
 async def test_authenticated_websocket_subscription_integration() -> None:
-    token = quote(_get_access_token(), safe="")
+    token = _get_access_token()
 
     async with websockets.connect(
-        f"{WS_URL}?token={token}",
+        WS_URL,
         ping_interval=None,
         open_timeout=5,
     ) as websocket:
+        auth_required = json.loads(await asyncio.wait_for(websocket.recv(), timeout=5))
+        assert auth_required["type"] == "auth_required"
+
+        await websocket.send(json.dumps({"type": "auth", "token": token}))
         auth_response = json.loads(await asyncio.wait_for(websocket.recv(), timeout=5))
         assert auth_response["type"] == "auth_success"
 
         await websocket.send('{"type":"subscribe","channel":"timeline"}')
+        initial_state = json.loads(await asyncio.wait_for(websocket.recv(), timeout=5))
+        assert initial_state["event"] == "initial_state"
+
         subscribed = json.loads(await asyncio.wait_for(websocket.recv(), timeout=5))
         assert subscribed == {"type": "subscribed", "channel": "timeline"}
 
@@ -65,7 +73,7 @@ async def test_authenticated_websocket_subscription_integration() -> None:
 @pytest.mark.asyncio
 async def test_invalid_websocket_token_is_rejected_integration() -> None:
     async with websockets.connect(
-        f"{WS_URL}?token=invalid-token",
+        WS_URL,
         ping_interval=None,
         open_timeout=5,
     ) as websocket:

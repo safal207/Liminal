@@ -3,17 +3,23 @@
 from __future__ import annotations
 
 import importlib
+import inspect
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from unittest.mock import AsyncMock
 
 import jwt
 import pytest
 from fastapi import HTTPException
 
 import backend.app.routes.debug as debug_routes
+import backend.app.routes.ws as websocket_routes
 import backend.auth.jwt_utils as jwt_utils
 import backend.config as legacy_config
+import scripts.check_release_security as release_security
 from backend.app.services.websocket import (
     LocalTokenBucket,
+    TimelineWebSocketService,
     WebSocketMessageError,
     parse_client_message,
 )
@@ -25,6 +31,9 @@ from backend.core.settings import (
     JWTSettings,
     Settings,
 )
+from backend.memory_timeline import MemoryTimeline
+from backend.websocket.connection_manager import ConnectionManager
+from backend.websocket.redis_connection_manager import RedisConnectionManager
 
 core_settings = importlib.import_module("backend.core.settings")
 
@@ -82,9 +91,20 @@ def test_production_debug_routes_are_disabled_by_default(
     monkeypatch.delenv("ENABLE_DEBUG_ROUTES", raising=False)
 
     with pytest.raises(HTTPException) as exc_info:
-        debug_routes.require_debug_access({"sub": "user-1"})
+        debug_routes.require_debug_routes_enabled()
 
     assert exc_info.value.status_code == 404
+
+
+def test_debug_availability_gate_runs_before_authentication() -> None:
+    dependencies = [
+        dependency.dependency for dependency in debug_routes.router.dependencies
+    ]
+
+    assert dependencies == [
+        debug_routes.require_debug_routes_enabled,
+        debug_routes.require_debug_access,
+    ]
 
 
 def test_access_token_has_explicit_purpose() -> None:
@@ -136,6 +156,35 @@ def test_legacy_sha256_password_hash_is_rejected() -> None:
     manager = make_manager()
 
     assert manager.verify_password("password", "sha256$deadbeef") is False
+
+
+def test_malformed_password_hash_is_rejected() -> None:
+    assert make_manager().verify_password("password", "not-a-password-hash") is False
+
+
+def test_password_verifier_operational_failure_is_not_hidden(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class BrokenPasswordContext:
+        def verify(self, plain_password: str, hashed_password: str) -> bool:
+            raise RuntimeError("password verifier unavailable")
+
+    monkeypatch.setattr(jwt_utils, "pwd_context", BrokenPasswordContext())
+
+    with pytest.raises(RuntimeError, match="password verifier unavailable"):
+        make_manager().verify_password("password", "valid-looking-hash")
+
+
+def test_auth_logs_do_not_include_user_identifiers(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    user_identifier = "sensitive-user@example.test"
+    caplog.set_level("DEBUG", logger="auth.jwt_utils")
+
+    make_manager().create_access_token({"sub": user_identifier})
+    jwt_utils.authenticate_user(user_identifier, "incorrect-password")
+
+    assert user_identifier not in caplog.text
 
 
 def test_password_hashing_failure_does_not_downgrade(
@@ -198,3 +247,91 @@ def test_local_rate_limit_protects_when_redis_is_unavailable() -> None:
     assert limiter.is_limited("connection") is False
     assert limiter.is_limited("connection") is False
     assert limiter.is_limited("connection") is True
+
+
+def test_websocket_authentication_has_no_query_token_parameter() -> None:
+    assert (
+        "token" not in inspect.signature(websocket_routes.websocket_timeline).parameters
+    )
+    assert (
+        "token"
+        not in inspect.signature(TimelineWebSocketService.handle_connection).parameters
+    )
+
+
+@pytest.mark.asyncio
+async def test_redis_manager_preserves_base_subscription_contract() -> None:
+    assert inspect.signature(RedisConnectionManager.subscribe) == inspect.signature(
+        ConnectionManager.subscribe
+    )
+    assert inspect.signature(RedisConnectionManager.unsubscribe) == inspect.signature(
+        ConnectionManager.unsubscribe
+    )
+    assert inspect.signature(RedisConnectionManager.broadcast) == inspect.signature(
+        ConnectionManager.broadcast
+    )
+    assert inspect.signature(
+        RedisConnectionManager.send_personal_message
+    ) == inspect.signature(ConnectionManager.send_personal_message)
+    assert inspect.signature(
+        RedisConnectionManager.get_connection_stats
+    ) == inspect.signature(ConnectionManager.get_connection_stats)
+
+    manager = RedisConnectionManager()
+    sender = AsyncMock()
+    recipient = AsyncMock()
+    await manager.subscribe("sender", "timeline", sender)
+    await manager.subscribe("recipient", "timeline", recipient)
+
+    sent_count = await manager.broadcast(
+        "timeline", {"type": "message"}, sender_id="sender"
+    )
+
+    assert sent_count == 1
+    sender.send_json.assert_not_awaited()
+    recipient.send_json.assert_awaited_once_with({"type": "message"})
+
+    await manager.send_personal_message({"type": "personal"}, "recipient")
+    recipient.send_json.assert_awaited_with({"type": "personal"})
+
+    await manager.unsubscribe("recipient", "timeline")
+    assert manager.is_user_subscribed("recipient", "timeline") is False
+    assert manager.get_connection_stats()["is_distributed"] is False
+
+
+@pytest.mark.asyncio
+async def test_timeline_does_not_reauthenticate_an_authenticated_socket() -> None:
+    timeline = MemoryTimeline()
+    websocket = AsyncMock()
+    websocket.user_id = "authenticated-user"
+    websocket.headers = {}
+
+    await timeline.subscribe(websocket)
+
+    websocket.close.assert_not_awaited()
+    websocket.send_json.assert_awaited_once()
+    assert websocket in timeline.subscribers
+
+
+def test_release_guard_rejects_research_dependencies() -> None:
+    dockerfile = """\
+ARG PYTHON_IMAGE
+FROM ${PYTHON_IMAGE}
+RUN pip install -r requirements-core.txt -r requirements-research.txt
+"""
+
+    assert release_security.production_dockerfile_errors(dockerfile) == [
+        "production Dockerfile must not install test/dev/research dependencies"
+    ]
+
+
+def test_artillery_websocket_smoke_uses_in_band_authentication() -> None:
+    load_test = (
+        Path(__file__).resolve().parents[2] / "tests/load/ws-burst.yml"
+    ).read_text(encoding="utf-8")
+    websocket_scenario = load_test.split("scenarios:", 1)[1]
+
+    assert "?token=" not in load_test
+    assert "engine: ws" in websocket_scenario
+    assert websocket_scenario.index("- connect:") < websocket_scenario.index("- send:")
+    assert '"type":"auth","token":"{{ token }}"' in websocket_scenario
