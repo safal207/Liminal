@@ -12,6 +12,7 @@ ENV_EXAMPLE = ROOT / ".env.example"
 CORE_REQUIREMENTS = ROOT / "requirements-core.txt"
 PRODUCTION_DOCKERFILE = ROOT / "backend/Dockerfile"
 PRODUCTION_COMPOSE = ROOT / "backend/production/docker-compose.production.yml"
+PRODUCTION_NGINX_CONFIG = ROOT / "backend/nginx/nginx.conf"
 
 REQUIRED_ENV_KEYS = {
     "ENV",
@@ -89,6 +90,7 @@ REQUIRED_COMPOSE_SNIPPETS = {
     "condition: service_completed_successfully",
     "internal: true",
     "http://localhost:8000/ready",
+    "../nginx/nginx.conf:/etc/nginx/nginx.conf:ro",
     "redis@${REDIS_IMAGE_DIGEST:?",
     "neo4j@${NEO4J_IMAGE_DIGEST:?",
     "prom/prometheus@${PROMETHEUS_IMAGE_DIGEST:?",
@@ -198,6 +200,15 @@ def main() -> int:
                 "@${" not in stripped or "_IMAGE_DIGEST" not in stripped
             ):
                 errors.append(f"mutable production image reference: {stripped}")
+
+    if not PRODUCTION_NGINX_CONFIG.exists():
+        errors.append("production nginx config is missing")
+    else:
+        nginx_config = PRODUCTION_NGINX_CONFIG.read_text(encoding="utf-8")
+        if "server rgl-core:8000" not in nginx_config:
+            errors.append("production nginx must target the rgl-core service")
+        if "server liminal-backend:8000" in nginx_config:
+            errors.append("production nginx targets an undefined legacy service")
 
     if errors:
         print("Release security checks failed:", file=sys.stderr)

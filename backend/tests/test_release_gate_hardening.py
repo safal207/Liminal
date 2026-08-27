@@ -81,6 +81,21 @@ def test_production_compose_passes_bootstrap_and_legacy_redis_secrets() -> None:
     assert "ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?" in neural_service
 
 
+def test_production_nginx_mount_resolves_and_targets_core_service() -> None:
+    root = Path(__file__).resolve().parents[2]
+    compose_path = root / "backend/production/docker-compose.production.yml"
+    compose = compose_path.read_text(encoding="utf-8")
+    nginx_config_path = (compose_path.parent / "../nginx/nginx.conf").resolve()
+
+    assert "../nginx/nginx.conf:/etc/nginx/nginx.conf:ro" in compose
+    assert nginx_config_path == root / "backend/nginx/nginx.conf"
+    assert nginx_config_path.is_file()
+
+    nginx_config = nginx_config_path.read_text(encoding="utf-8")
+    assert "server rgl-core:8000" in nginx_config
+    assert "server liminal-backend:8000" not in nginx_config
+
+
 def test_production_compose_provisions_kibana_system_before_kibana() -> None:
     compose = (
         Path(__file__).resolve().parents[2]
