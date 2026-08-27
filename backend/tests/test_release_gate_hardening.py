@@ -75,6 +75,29 @@ def test_production_compose_passes_bootstrap_and_legacy_redis_secrets() -> None:
     assert "REDIS_PASSWORD: ${REDIS_PASSWORD:?" in core_service
 
 
+def test_production_compose_provisions_kibana_system_before_kibana() -> None:
+    compose = (
+        Path(__file__).resolve().parents[2]
+        / "backend"
+        / "production"
+        / "docker-compose.production.yml"
+    ).read_text(encoding="utf-8")
+    elasticsearch = compose.split("  elasticsearch:", 1)[1].split(
+        "  elasticsearch-setup:", 1
+    )[0]
+    setup = compose.split("  elasticsearch-setup:", 1)[1].split("  logstash:", 1)[0]
+    kibana = compose.split("  kibana:", 1)[1].split("\nvolumes:", 1)[0]
+
+    assert 'xpack.security.enabled: "true"' in elasticsearch
+    assert 'xpack.security.http.ssl.enabled: "false"' in elasticsearch
+    assert "condition: service_healthy" in setup
+    assert "KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?" in setup
+    assert "/_security/user/kibana_system/_password" in setup
+    assert "--data-binary @-" in setup
+    assert "ELASTICSEARCH_HOSTS: http://elasticsearch:9200" in kibana
+    assert "condition: service_completed_successfully" in kibana
+
+
 def test_flat_environment_names_load_into_central_settings(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -172,12 +172,51 @@ services:
       discovery.type: single-node
       ES_JAVA_OPTS: -Xms512m -Xmx512m
       xpack.security.enabled: "true"
+      # Security auto-configuration is skipped when xpack.security.enabled is explicit.
+      # Keep the authenticated HTTP endpoint confined to the internal network.
+      xpack.security.http.ssl.enabled: "false"
       ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD}
     volumes:
       - elasticsearch-data:/usr/share/elasticsearch/data
     networks:
       - internal
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS -u elastic:\"$${ELASTIC_PASSWORD}\" http://localhost:9200/_cluster/health >/dev/null",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  elasticsearch-setup:
+    profiles: ["observability"]
+    image: docker.elastic.co/elasticsearch/elasticsearch@${ELASTICSEARCH_IMAGE_DIGEST:?Set ELASTICSEARCH_IMAGE_DIGEST to sha256 digest}
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD}
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?Set KIBANA_SYSTEM_PASSWORD}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    command:
+      - bash
+      - -euc
+      - |
+        escaped="$${KIBANA_SYSTEM_PASSWORD//\\/\\\\}"
+        escaped="$${escaped//\"/\\\"}"
+        printf '{"password":"%s"}' "$${escaped}" |
+          curl -fsS --output /dev/null \
+            --user "elastic:$${ELASTIC_PASSWORD}" \
+            --header 'Content-Type: application/json' \
+            --request POST \
+            --data-binary @- \
+            http://elasticsearch:9200/_security/user/kibana_system/_password
+    networks:
+      - internal
+    restart: "no"
 
   logstash:
     profiles: ["observability"]
@@ -198,11 +237,14 @@ services:
     expose:
       - "5601"
     environment:
-      ELASTICSEARCH_HOSTS: https://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
       ELASTICSEARCH_USERNAME: kibana_system
       ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?Set KIBANA_SYSTEM_PASSWORD}
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
+      elasticsearch-setup:
+        condition: service_completed_successfully
     networks:
       - internal
     restart: unless-stopped
