@@ -78,7 +78,9 @@ def test_production_compose_passes_bootstrap_and_legacy_redis_secrets() -> None:
 
     gateway = (production / "docker-compose.gateway.yml").read_text(encoding="utf-8")
     for document in (compose, neural_service, gateway):
-        assert 'REDIS_URL: "rediss://:' in document
+        assert 'REDIS_URL: "rediss://redis:6379/0?' in document
+        assert "REDIS_PASSWORD: ${REDIS_PASSWORD:?" in document
+        assert "@redis:6379" not in document
         assert "ssl_cert_reqs=required" in document
         assert "ssl_ca_certs=/etc/liminal/tls/redis-ca.crt" in document
     assert "--tls-port 6379" in compose
@@ -133,6 +135,26 @@ def test_optional_services_require_explicit_compose_overrides() -> None:
     assert "--web.route-prefix=/" in observability
     assert 'GF_SERVER_SERVE_FROM_SUB_PATH: "true"' in observability
     assert "SERVER_BASEPATH: /kibana" in observability
+
+    relative_mounts = (
+        "../monitoring/prometheus.yml",
+        "../../grafana/dashboards",
+        "../../grafana/provisioning/dashboards",
+        "../../grafana/provisioning/datasources",
+        "../../grafana/provisioning/alerting",
+        "../monitoring/logstash.conf",
+    )
+    for source in relative_mounts:
+        assert (production / source).resolve().exists()
+
+    prometheus = (
+        (production / "../monitoring/prometheus.yml")
+        .resolve()
+        .read_text(encoding="utf-8")
+    )
+    assert 'targets: ["rgl-core:8000"]' in prometheus
+    assert "liminal-backend:8000" not in prometheus
+    assert "node-exporter:9100" not in prometheus
 
     observability_nginx = (
         Path(__file__).resolve().parents[2] / "backend" / "nginx" / "observability.conf"
@@ -568,6 +590,32 @@ def test_connection_manager_service_can_bind_a_shared_manager() -> None:
     service.set_manager(manager)
 
     assert service.get_manager() is manager
+
+
+@pytest.mark.asyncio
+async def test_websocket_redis_password_is_not_embedded_in_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    password = "random/reserved?#password"
+    url = (
+        "rediss://redis:6379/0?ssl_cert_reqs=required"
+        "&ssl_ca_certs=/etc/liminal/tls/redis-ca.crt"
+    )
+    monkeypatch.setenv("REDIS_PASSWORD", password)
+    client = WebSocketRedisClient(url=url)
+    backend = MagicMock()
+    backend.ping = AsyncMock()
+
+    with patch(
+        "backend.websocket.redis_client.redis.from_url", return_value=backend
+    ) as factory:
+        assert await client.connect() is True
+
+    factory.assert_called_once_with(
+        url,
+        decode_responses=True,
+        password=password,
+    )
 
 
 @pytest.mark.asyncio

@@ -8,15 +8,15 @@ import json
 import os
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Optional, Set, Union
+from typing import Any, Callable, List, Optional, Set
+
+import redis.asyncio as redis
+from redis.asyncio.client import Redis
+from redis.exceptions import RedisError
 
 from backend.logging_config import get_logger
 
 logger = get_logger(__name__)
-
-import redis.asyncio as redis
-from redis.asyncio.client import Redis
-from redis.exceptions import ConnectionError, RedisError
 
 # Условный импорт метрик Prometheus
 try:
@@ -99,6 +99,7 @@ class RedisClient:
             test_mode: Сохранен для обратной совместимости тестовых вызовов.
         """
         self.url = url or os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        self.password = os.environ.get("REDIS_PASSWORD") or None
         self.prefix = prefix
         self.redis: Optional[Redis] = None
         self.pubsub = None
@@ -116,7 +117,11 @@ class RedisClient:
             bool: True если соединение успешно, иначе False.
         """
         try:
-            self.redis = redis.from_url(self.url, decode_responses=True)
+            self.redis = redis.from_url(
+                self.url,
+                decode_responses=True,
+                password=self.password,
+            )
             # Проверка соединения
             await self.redis.ping()
             self.pubsub = self.redis.pubsub()
@@ -319,7 +324,7 @@ class RedisClient:
         try:
             full_channel = self._full_channel(channel)
             payload = {"data": message, "sender_id": self.instance_id}
-            result = await self.redis.publish(full_channel, json.dumps(payload))
+            await self.redis.publish(full_channel, json.dumps(payload))
 
             # Обновляем метрики - успешная публикация сообщения
             if METRICS_ENABLED:

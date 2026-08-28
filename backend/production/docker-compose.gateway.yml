@@ -7,7 +7,8 @@ services:
       - "8002"
     environment:
       RGL_CORE_URL: http://rgl-core:8000
-      REDIS_URL: "rediss://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0?ssl_cert_reqs=required&ssl_ca_certs=/etc/liminal/tls/redis-ca.crt"
+      REDIS_URL: "rediss://redis:6379/0?ssl_cert_reqs=required&ssl_ca_certs=/etc/liminal/tls/redis-ca.crt"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
       MAX_CONNECTIONS: "10000"
     volumes:
       - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/redis/ca.crt:/etc/liminal/tls/redis-ca.crt:ro

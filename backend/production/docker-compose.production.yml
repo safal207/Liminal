@@ -12,7 +12,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY to a strong random value}
       ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?Set a strong ML metrics service token}
       LIMINAL_ADMIN_PASS: ${LIMINAL_ADMIN_PASS:?Set LIMINAL_ADMIN_PASS to a strong bootstrap password}
-      REDIS_URL: "rediss://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0?ssl_cert_reqs=required&ssl_ca_certs=/etc/liminal/tls/redis-ca.crt"
+      REDIS_URL: "rediss://redis:6379/0?ssl_cert_reqs=required&ssl_ca_certs=/etc/liminal/tls/redis-ca.crt"
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
       USE_REDIS: "true"
       NEO4J_URI: bolt://neo4j:7687

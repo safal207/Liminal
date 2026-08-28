@@ -9,7 +9,8 @@ services:
     environment:
       RGL_CORE_URL: http://rgl-core:8000
       ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?Set a strong ML metrics service token}
-      REDIS_URL: "rediss://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0?ssl_cert_reqs=required&ssl_ca_certs=/etc/liminal/tls/redis-ca.crt"
+      REDIS_URL: "rediss://redis:6379/0?ssl_cert_reqs=required&ssl_ca_certs=/etc/liminal/tls/redis-ca.crt"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
     volumes:
       - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/redis/ca.crt:/etc/liminal/tls/redis-ca.crt:ro
     depends_on:
