@@ -72,6 +72,9 @@ BANNED_COMPOSE_PATTERNS = {
     r"\"7687:7687\"": "public Neo4j Bolt port",
     r"\"3000:3000\"": "public Grafana port",
     r"\"9090:9090\"": "public Prometheus port",
+    r'(?m)^\s*-\s*["\']?(?:0\.0\.0\.0:)?8080:8080["\']?\s*$': (
+        "public observability ingress port"
+    ),
     r"production/Dockerfile\.rgl-core": "missing legacy core Dockerfile",
     r"production/Dockerfile\.analytics": "missing legacy analytics Dockerfile",
     r"production/Dockerfile\.websocket": "missing legacy WebSocket Dockerfile",
@@ -102,6 +105,7 @@ REQUIRED_COMPOSE_SNIPPETS = {
         "@${WEBSOCKET_GATEWAY_IMAGE_DIGEST:?",
     },
     OBSERVABILITY_COMPOSE: {
+        '"127.0.0.1:8080:8080"',
         "GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?",
         "ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?",
         "ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?",

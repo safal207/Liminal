@@ -2,6 +2,8 @@
 # base ingress deliberately contains no references to these service hostnames.
 services:
   nginx:
+    ports:
+      - "127.0.0.1:8080:8080"
     volumes:
       - ../nginx/observability.conf:/etc/nginx/liminal.d/observability.conf:ro
     depends_on:

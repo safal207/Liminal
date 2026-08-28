@@ -113,6 +113,10 @@ def test_optional_services_require_explicit_compose_overrides() -> None:
     assert "WEBSOCKET_GATEWAY_IMAGE_DIGEST:?" in gateway
     assert "PROMETHEUS_IMAGE_DIGEST:?" in observability
     assert "GRAFANA_ADMIN_PASSWORD:?" in observability
+    assert '"127.0.0.1:8080:8080"' in observability
+    unsafe_observability_ports = observability.replace('"127.0.0.1:8080:8080"', "")
+    assert '"0.0.0.0:8080:8080"' not in unsafe_observability_ports
+    assert '"8080:8080"' not in unsafe_observability_ports
     assert (
         "../nginx/observability.conf:/etc/nginx/liminal.d/observability.conf:ro"
         in observability
