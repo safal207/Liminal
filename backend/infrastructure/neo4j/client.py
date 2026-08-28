@@ -8,7 +8,7 @@ from threading import Lock
 from time import perf_counter
 from typing import Any, Dict, List, Optional
 
-from neo4j import GraphDatabase
+from neo4j import GraphDatabase, TrustCustomCAs
 from neo4j.time import DateTime as Neo4jDateTime
 
 from backend.metrics.collectors import (
@@ -35,7 +35,33 @@ class Neo4jClient(Neo4jGateway):
     """Gateway that communicates with a Neo4j instance via the official driver."""
 
     def __init__(self, uri: str, user: str, password: str):
-        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+        environment = os.getenv("ENV", "development").strip().lower()
+        ca_certificate = os.getenv("NEO4J_CA_CERT", "").strip()
+        uri_scheme = uri.partition(":")[0].lower()
+        verified_tls_scheme = uri_scheme in {"bolt+s", "neo4j+s"}
+        driver_config: Dict[str, Any] = {}
+
+        if ca_certificate:
+            if uri_scheme not in {"bolt", "neo4j"}:
+                raise RuntimeError(
+                    "NEO4J_CA_CERT requires a bolt:// or neo4j:// URI so the "
+                    "driver can apply custom CA verification"
+                )
+            driver_config.update(
+                encrypted=True,
+                trusted_certificates=TrustCustomCAs(ca_certificate),
+            )
+        elif environment == "production" and not verified_tls_scheme:
+            raise RuntimeError(
+                "Production Neo4j requires NEO4J_CA_CERT or a verified-TLS "
+                "bolt+s:// / neo4j+s:// URI"
+            )
+
+        self.driver = GraphDatabase.driver(
+            uri,
+            auth=(user, password),
+            **driver_config,
+        )
         try:
             self._max_pool_size = int(os.getenv("NEO4J_MAX_POOL_SIZE", "100"))
         except ValueError:

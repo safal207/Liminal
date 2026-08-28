@@ -19,6 +19,7 @@ import backend.app.routes.debug as debug_routes
 import backend.app.routes.ws as websocket_routes
 import backend.auth.jwt_utils as jwt_utils
 import backend.config as legacy_config
+import backend.infrastructure.neo4j as neo4j_gateway
 import scripts.check_release_security as release_security
 from backend.app.services.websocket import (
     ConnectionManagerService,
@@ -35,6 +36,7 @@ from backend.core.settings import (
     JWTSettings,
     Settings,
 )
+from backend.infrastructure.neo4j.client import Neo4jClient
 from backend.memory_timeline import MemoryTimeline
 from backend.redis_client import RedisClient as LegacyRedisClient
 from backend.websocket.connection_manager import ConnectionManager
@@ -87,6 +89,10 @@ def test_production_compose_passes_bootstrap_and_legacy_redis_secrets() -> None:
     assert "--tls-port 6379" in compose
     assert "--port 0" in compose
     assert "--tls-ca-cert-file /etc/liminal/tls/ca.crt" in compose
+    assert "NEO4J_CA_CERT: /etc/liminal/tls/neo4j-ca.crt" in core_service
+    assert "NEO4J_server_bolt_tls__level: REQUIRED" in compose
+    assert 'NEO4J_dbms_ssl_policy_bolt_enabled: "true"' in compose
+    assert "neo4j/bolt/ca.crt:/etc/liminal/tls/neo4j-ca.crt:ro" in compose
 
 
 def test_production_nginx_mount_resolves_and_targets_core_service() -> None:
@@ -153,7 +159,17 @@ def test_optional_services_require_explicit_compose_overrides() -> None:
     )
     assert "--web.route-prefix=/" in observability
     assert 'GF_SERVER_SERVE_FROM_SUB_PATH: "true"' in observability
+    assert "GF_SERVER_PROTOCOL: https" in observability
+    assert "GF_SERVER_CERT_FILE: /etc/grafana/tls/server.crt" in observability
     assert "SERVER_BASEPATH: /kibana" in observability
+    assert 'SERVER_SSL_ENABLED: "true"' in observability
+    assert (
+        "SERVER_SSL_CERTIFICATE: /usr/share/kibana/config/tls/server.crt"
+        in observability
+    )
+    assert (
+        "observability/ca.crt:/etc/nginx/tls/observability-ca.crt:ro" in observability
+    )
 
     relative_mounts = (
         "../monitoring/prometheus.yml",
@@ -178,8 +194,28 @@ def test_optional_services_require_explicit_compose_overrides() -> None:
     observability_nginx = (
         Path(__file__).resolve().parents[2] / "backend" / "nginx" / "observability.conf"
     ).read_text(encoding="utf-8")
-    assert "location /kibana/" in observability_nginx
-    assert "http://kibana:5601/" in observability_nginx
+    grafana_location = observability_nginx.split("location /grafana/", 1)[1].split(
+        "location /kibana/", 1
+    )[0]
+    kibana_location = observability_nginx.split("location /kibana/", 1)[1].split(
+        "location /neo4j/", 1
+    )[0]
+
+    assert "https://grafana:3000/" in grafana_location
+    assert "https://kibana:5601/" in kibana_location
+    assert "http://grafana:3000/" not in observability_nginx
+    assert "http://kibana:5601/" not in observability_nginx
+    for location, service in (
+        (grafana_location, "grafana"),
+        (kibana_location, "kibana"),
+    ):
+        assert (
+            "proxy_ssl_trusted_certificate /etc/nginx/tls/observability-ca.crt"
+            in location
+        )
+        assert "proxy_ssl_verify on" in location
+        assert "proxy_ssl_server_name on" in location
+        assert f"proxy_ssl_name {service}" in location
 
 
 def test_production_proxy_trust_is_bound_to_the_nginx_container() -> None:
@@ -240,6 +276,62 @@ def test_flat_environment_names_load_into_central_settings(
     assert loaded.integrations.use_redis is True
 
     core_settings.get_settings.cache_clear()
+
+
+def test_production_neo4j_client_verifies_a_custom_ca(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ca_certificate = "/etc/liminal/tls/neo4j-ca.crt"
+    trust = object()
+    driver = MagicMock()
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("NEO4J_CA_CERT", ca_certificate)
+
+    with (
+        patch(
+            "backend.infrastructure.neo4j.client.TrustCustomCAs",
+            return_value=trust,
+        ) as trust_factory,
+        patch(
+            "backend.infrastructure.neo4j.client.GraphDatabase.driver",
+            return_value=driver,
+        ) as driver_factory,
+    ):
+        client = Neo4jClient("bolt://neo4j:7687", "neo4j", "secret")
+
+    assert client.driver is driver
+    trust_factory.assert_called_once_with(ca_certificate)
+    driver_factory.assert_called_once_with(
+        "bolt://neo4j:7687",
+        auth=("neo4j", "secret"),
+        encrypted=True,
+        trusted_certificates=trust,
+    )
+
+
+def test_production_neo4j_client_rejects_unverified_plaintext(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.delenv("NEO4J_CA_CERT", raising=False)
+
+    with pytest.raises(RuntimeError, match="Production Neo4j requires"):
+        Neo4jClient("bolt://neo4j:7687", "neo4j", "secret")
+
+
+def test_production_neo4j_gateway_does_not_fall_back_to_mock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.delenv("NEO4J_USE_MOCK", raising=False)
+    monkeypatch.delenv("TESTING", raising=False)
+
+    with patch(
+        "backend.infrastructure.neo4j.client.Neo4jClient",
+        side_effect=RuntimeError("TLS configuration failed"),
+    ):
+        with pytest.raises(RuntimeError, match="TLS configuration failed"):
+            neo4j_gateway._build_default_gateway()
 
 
 def test_compat_config_uses_same_authoritative_jwt_secret(
@@ -790,6 +882,21 @@ RUN pip install -r requirements-core.txt
         "PYTHON_IMAGE must be an immutable @sha256 reference",
         "production ASGI launch must enforce WS_MAX_MESSAGE_BYTES at transport",
     ]
+
+
+def test_release_guard_ignores_comment_only_ws_markers() -> None:
+    dockerfile = """\
+ARG PYTHON_IMAGE
+FROM ${PYTHON_IMAGE}
+RUN pip install -r requirements-core.txt
+# --ws-max-size ${WS_MAX_MESSAGE_BYTES:-16384}
+CMD ["uvicorn", "backend.main:app"]
+"""
+
+    assert release_security.production_dockerfile_errors(
+        dockerfile,
+        "python:3.11-slim@sha256:" + "a" * 64,
+    ) == ["production ASGI launch must enforce WS_MAX_MESSAGE_BYTES at transport"]
 
 
 def test_artillery_websocket_smoke_uses_in_band_authentication() -> None:

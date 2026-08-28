@@ -6,6 +6,7 @@ services:
       - "127.0.0.1:8080:8080"
     volumes:
       - ../nginx/observability.conf:/etc/nginx/liminal.d/observability.conf:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/observability/ca.crt:/etc/nginx/tls/observability-ca.crt:ro
     depends_on:
       - prometheus
       - grafana
@@ -37,11 +38,16 @@ services:
       - ../../grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
       - ../../grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - ../../grafana/provisioning/alerting:/etc/grafana/provisioning/alerting:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/observability/grafana.crt:/etc/grafana/tls/server.crt:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/observability/grafana.key:/etc/grafana/tls/server.key:ro
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD}
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_SERVER_ROOT_URL: ${LIMINAL_OBSERVABILITY_BASE_URL:?Set LIMINAL_OBSERVABILITY_BASE_URL}/grafana/
       GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_SERVER_PROTOCOL: https
+      GF_SERVER_CERT_FILE: /etc/grafana/tls/server.crt
+      GF_SERVER_CERT_KEY: /etc/grafana/tls/server.key
     depends_on:
       - prometheus
     networks:
@@ -134,8 +140,13 @@ services:
       SERVER_BASEPATH: /kibana
       SERVER_REWRITEBASEPATH: "false"
       SERVER_PUBLICBASEURL: ${LIMINAL_OBSERVABILITY_BASE_URL:?Set LIMINAL_OBSERVABILITY_BASE_URL}/kibana
+      SERVER_SSL_ENABLED: "true"
+      SERVER_SSL_CERTIFICATE: /usr/share/kibana/config/tls/server.crt
+      SERVER_SSL_KEY: /usr/share/kibana/config/tls/server.key
     volumes:
       - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/elasticsearch/ca.crt:/usr/share/kibana/config/certs/ca.crt:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/observability/kibana.crt:/usr/share/kibana/config/tls/server.crt:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/observability/kibana.key:/usr/share/kibana/config/tls/server.key:ro
     depends_on:
       elasticsearch:
         condition: service_healthy

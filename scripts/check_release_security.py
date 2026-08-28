@@ -101,6 +101,11 @@ REQUIRED_COMPOSE_SNIPPETS = {
         "--tls-ca-cert-file /etc/liminal/tls/ca.crt",
         "WS_MAX_MESSAGE_BYTES: ${WS_MAX_MESSAGE_BYTES:-16384}",
         "NEO4J_PASSWORD: ${NEO4J_PASSWORD:?",
+        "NEO4J_CA_CERT: /etc/liminal/tls/neo4j-ca.crt",
+        "NEO4J_server_bolt_tls__level: REQUIRED",
+        'NEO4J_dbms_ssl_policy_bolt_enabled: "true"',
+        "neo4j/bolt/ca.crt:/etc/liminal/tls/neo4j-ca.crt:ro",
+        "neo4j:/ssl:ro",
         'FORWARDED_ALLOW_IPS: "172.30.0.10"',
         "egress:\n        gw_priority: 1",
         "egress:\n    internal: false",
@@ -140,7 +145,14 @@ REQUIRED_COMPOSE_SNIPPETS = {
         "ELASTICSEARCH_SSL_VERIFICATIONMODE: full",
         "--web.route-prefix=/",
         'GF_SERVER_SERVE_FROM_SUB_PATH: "true"',
+        "GF_SERVER_PROTOCOL: https",
+        "GF_SERVER_CERT_FILE: /etc/grafana/tls/server.crt",
+        "GF_SERVER_CERT_KEY: /etc/grafana/tls/server.key",
         "SERVER_BASEPATH: /kibana",
+        'SERVER_SSL_ENABLED: "true"',
+        "SERVER_SSL_CERTIFICATE: /usr/share/kibana/config/tls/server.crt",
+        "SERVER_SSL_KEY: /usr/share/kibana/config/tls/server.key",
+        "observability/ca.crt:/etc/nginx/tls/observability-ca.crt:ro",
         "SERVER_PUBLICBASEURL: ${LIMINAL_OBSERVABILITY_BASE_URL:?",
         "../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro",
         "../../grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro",
@@ -170,6 +182,25 @@ PROFILE_ONLY_BASE_MARKERS = {
 }
 
 PYTHON_IMAGE_PATTERN = re.compile(r"^[^\s@]+@sha256:[0-9A-Fa-f]{64}$")
+
+
+def dockerfile_instructions(dockerfile: str) -> list[str]:
+    """Return logical Dockerfile instructions without blank/comment-only lines."""
+    instructions: list[str] = []
+    current = ""
+    for raw_line in dockerfile.splitlines():
+        stripped = raw_line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        current = f"{current} {stripped}".strip()
+        if current.endswith("\\"):
+            current = current[:-1].rstrip()
+            continue
+        instructions.append(current)
+        current = ""
+    if current:
+        instructions.append(current)
+    return instructions
 
 
 def parse_env_keys(path: Path) -> set[str]:
@@ -225,10 +256,12 @@ def production_dockerfile_errors(
     ).strip()
     if PYTHON_IMAGE_PATTERN.fullmatch(supplied_image) is None:
         errors.append("PYTHON_IMAGE must be an immutable @sha256 reference")
-    if (
-        "--ws-max-size" not in dockerfile
-        or "${WS_MAX_MESSAGE_BYTES:-16384}" not in dockerfile
-    ):
+    launch = "\n".join(
+        instruction
+        for instruction in dockerfile_instructions(dockerfile)
+        if re.match(r"^(?:CMD|ENTRYPOINT)\s", instruction, flags=re.IGNORECASE)
+    )
+    if "--ws-max-size" not in launch or "${WS_MAX_MESSAGE_BYTES:-16384}" not in launch:
         errors.append(
             "production ASGI launch must enforce WS_MAX_MESSAGE_BYTES at transport"
         )
@@ -324,12 +357,31 @@ def main() -> int:
         observability_nginx = OBSERVABILITY_NGINX_CONFIG.read_text(encoding="utf-8")
         for upstream in (
             "http://prometheus:9090",
-            "http://grafana:3000",
-            "http://kibana:5601",
+            "https://grafana:3000",
+            "https://kibana:5601",
         ):
             if upstream not in observability_nginx:
                 errors.append(
                     f"observability nginx config missing upstream: {upstream}"
+                )
+        for plaintext_upstream in (
+            "http://grafana:3000",
+            "http://kibana:5601",
+        ):
+            if plaintext_upstream in observability_nginx:
+                errors.append(
+                    f"observability nginx contains plaintext upstream: {plaintext_upstream}"
+                )
+        for snippet in (
+            "proxy_ssl_trusted_certificate /etc/nginx/tls/observability-ca.crt",
+            "proxy_ssl_verify on",
+            "proxy_ssl_server_name on",
+            "proxy_ssl_name grafana",
+            "proxy_ssl_name kibana",
+        ):
+            if snippet not in observability_nginx:
+                errors.append(
+                    f"observability nginx missing TLS verification guard: {snippet}"
                 )
 
     if errors:

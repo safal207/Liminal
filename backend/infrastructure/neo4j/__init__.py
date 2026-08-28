@@ -46,12 +46,20 @@ def _build_default_gateway() -> Neo4jGateway:
     user = integrations.neo4j_user
     password = integrations.neo4j_password
 
-    if os.getenv("NEO4J_USE_MOCK", "false").lower() == "true" or os.getenv("TESTING"):
+    environment = os.getenv("ENV", "development").strip().lower()
+    mock_requested = os.getenv("NEO4J_USE_MOCK", "false").lower() == "true" or bool(
+        os.getenv("TESTING")
+    )
+    if mock_requested:
+        if environment == "production":
+            raise RuntimeError("The Neo4j mock gateway is disabled in production")
         return MockNeo4jGateway()
 
     try:
         return Neo4jClient(uri=uri, user=user, password=password)
     except Exception:
+        if environment == "production":
+            raise
         # Fall back to an in-memory mock when a connection cannot be established
         return MockNeo4jGateway()
 
