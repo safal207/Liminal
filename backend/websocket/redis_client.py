@@ -171,6 +171,22 @@ class RedisClient:
 
             logger.info("Соединение с Redis закрыто")
 
+    async def ping(self) -> bool:
+        """Probe the live Redis connection without relying on startup state."""
+        if self.redis is None:
+            return False
+        try:
+            await self.redis.ping()
+            if METRICS_ENABLED:
+                redis_connection_status.labels(instance_id=self.instance_id).set(1)
+            return True
+        except RedisError as e:
+            if METRICS_ENABLED:
+                redis_connection_status.labels(instance_id=self.instance_id).set(0)
+                redis_errors_total.labels(type="connection").inc()
+            logger.error(f"Redis readiness probe failed: {str(e)}")
+            return False
+
     def _make_key(self, key: str) -> str:
         """
         Создает полный ключ с префиксом.

@@ -211,8 +211,9 @@ async def readiness_check(
     except RuntimeError:
         loop_ok = False
 
-    redis_cfg = hasattr(manager, "_is_connected")
-    redis_ok = getattr(manager, "_is_connected", True) if redis_cfg else True
+    redis_probe = getattr(manager, "is_redis_ready", None)
+    redis_cfg = callable(redis_probe)
+    redis_ok = await redis_probe() if redis_cfg else True
 
     checks = {
         "app_loaded": True,

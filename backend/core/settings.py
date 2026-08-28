@@ -6,6 +6,7 @@ import os
 import secrets
 from functools import lru_cache
 from typing import Any, Sequence
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
@@ -79,6 +80,46 @@ class BillingSettings(BaseModel):
     stripe_success_url: str = "http://127.0.0.1:8000/"
     stripe_cancel_url: str = "http://127.0.0.1:8000/"
     store_path: str = ""
+
+
+def _validate_production_billing(billing: BillingSettings) -> None:
+    if _first_env(("ENV",), "development").strip().lower() != "production":
+        return
+
+    configured = any(
+        value.strip()
+        for value in (
+            billing.stripe_secret_key,
+            billing.stripe_webhook_secret,
+            billing.stripe_price_pro_monthly,
+        )
+    )
+    if not configured:
+        return
+
+    required = {
+        "STRIPE_SECRET_KEY": billing.stripe_secret_key,
+        "STRIPE_WEBHOOK_SECRET": billing.stripe_webhook_secret,
+        "STRIPE_PRICE_PRO_MONTHLY": billing.stripe_price_pro_monthly,
+        "STRIPE_SUCCESS_URL": billing.stripe_success_url,
+        "STRIPE_CANCEL_URL": billing.stripe_cancel_url,
+        "BILLING_STORE_PATH": billing.store_path,
+    }
+    missing = sorted(name for name, value in required.items() if not value.strip())
+    if missing:
+        raise RuntimeError(
+            f"Production Stripe billing configuration is incomplete: {missing}"
+        )
+    if not os.path.isabs(billing.store_path):
+        raise RuntimeError("BILLING_STORE_PATH must be absolute in production")
+
+    for name, value in (
+        ("STRIPE_SUCCESS_URL", billing.stripe_success_url),
+        ("STRIPE_CANCEL_URL", billing.stripe_cancel_url),
+    ):
+        parsed = urlsplit(value)
+        if parsed.scheme != "https" or not parsed.netloc:
+            raise RuntimeError(f"{name} must be an absolute HTTPS URL in production")
 
 
 class IntegrationSettings(BaseModel):
@@ -189,6 +230,11 @@ class Settings(BaseModel):
                 store_path=_first_env(("BILLING__STORE_PATH", "BILLING_STORE_PATH")),
             ),
         )
+        billing = values["billing"]
+        if not isinstance(billing, BillingSettings):
+            billing = BillingSettings(**billing)
+            values["billing"] = billing
+        _validate_production_billing(billing)
         super().__init__(**values)
 
 

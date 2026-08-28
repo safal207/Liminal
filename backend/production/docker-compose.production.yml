@@ -19,6 +19,12 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:?Set NEO4J_PASSWORD}
       NEO4J_CA_CERT: /etc/liminal/tls/neo4j-ca.crt
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_PRO_MONTHLY: ${STRIPE_PRICE_PRO_MONTHLY:-}
+      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL:-}
+      STRIPE_CANCEL_URL: ${STRIPE_CANCEL_URL:-}
+      BILLING_STORE_PATH: ${BILLING_STORE_PATH:-/app/data/billing_store.json}
       LOG_LEVEL: INFO
       WORKERS: "4"
       WS_MAX_MESSAGE_BYTES: ${WS_MAX_MESSAGE_BYTES:-16384}
@@ -28,6 +34,7 @@ services:
     volumes:
       - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/redis/ca.crt:/etc/liminal/tls/redis-ca.crt:ro
       - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/neo4j/bolt/ca.crt:/etc/liminal/tls/neo4j-ca.crt:ro
+      - billing-data:/app/data
     depends_on:
       redis:
         condition: service_healthy
@@ -121,7 +128,7 @@ services:
       - "443:443"
     volumes:
       - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/nginx:/etc/nginx/ssl:ro
     depends_on:
       - rgl-core
     networks:
@@ -131,6 +138,7 @@ services:
     restart: unless-stopped
 
 volumes:
+  billing-data:
   redis-data:
   neo4j-data:
   neo4j-logs:

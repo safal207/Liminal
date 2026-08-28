@@ -102,6 +102,13 @@ REQUIRED_COMPOSE_SNIPPETS = {
         "WS_MAX_MESSAGE_BYTES: ${WS_MAX_MESSAGE_BYTES:-16384}",
         "NEO4J_PASSWORD: ${NEO4J_PASSWORD:?",
         "NEO4J_CA_CERT: /etc/liminal/tls/neo4j-ca.crt",
+        "STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}",
+        "STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}",
+        "STRIPE_PRICE_PRO_MONTHLY: ${STRIPE_PRICE_PRO_MONTHLY:-}",
+        "STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL:-}",
+        "STRIPE_CANCEL_URL: ${STRIPE_CANCEL_URL:-}",
+        "BILLING_STORE_PATH: ${BILLING_STORE_PATH:-/app/data/billing_store.json}",
+        "billing-data:/app/data",
         "NEO4J_server_bolt_tls__level: REQUIRED",
         'NEO4J_dbms_ssl_policy_bolt_enabled: "true"',
         "neo4j/bolt/ca.crt:/etc/liminal/tls/neo4j-ca.crt:ro",
@@ -114,6 +121,7 @@ REQUIRED_COMPOSE_SNIPPETS = {
         "internal: true",
         "http://localhost:8000/ready",
         "../nginx/nginx.conf:/etc/nginx/nginx.conf:ro",
+        "nginx:/etc/nginx/ssl:ro",
         "redis@${REDIS_IMAGE_DIGEST:?",
         "neo4j@${NEO4J_IMAGE_DIGEST:?",
         "nginx@${NGINX_IMAGE_DIGEST:?",
@@ -343,6 +351,11 @@ def main() -> int:
                 "base production nginx resolves optional observability services"
             )
         for snippet in (
+            "listen 443 ssl",
+            "ssl_certificate /etc/nginx/ssl/server.crt",
+            "ssl_certificate_key /etc/nginx/ssl/server.key",
+            "ssl_protocols TLSv1.2 TLSv1.3",
+            "return 308 https://$host$request_uri",
             "location /ws/",
             "proxy_http_version 1.1",
             "proxy_set_header Upgrade $http_upgrade",

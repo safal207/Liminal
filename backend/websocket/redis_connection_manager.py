@@ -126,6 +126,13 @@ class RedisConnectionManager(ConnectionManager):
             self._is_connected = False
             logger.info("RedisConnectionManager shutdown completed")
 
+    async def is_redis_ready(self) -> bool:
+        """Return live Redis readiness and keep connection state current."""
+        live = await self.redis.ping()
+        if not live:
+            self._is_connected = False
+        return self._is_connected and live
+
     async def connect(self, websocket: WebSocket, user_id: str) -> bool:
         """
         Регистрирует новое подключение пользователя и синхронизирует с Redis.

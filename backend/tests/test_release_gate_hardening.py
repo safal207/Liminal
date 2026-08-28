@@ -32,6 +32,7 @@ from backend.auth.dependencies import TokenVerifier
 from backend.auth.jwt_utils import JWTManager
 from backend.core.settings import (
     DEFAULT_SECRET,
+    BillingSettings,
     IntegrationSettings,
     JWTSettings,
     Settings,
@@ -93,6 +94,19 @@ def test_production_compose_passes_bootstrap_and_legacy_redis_secrets() -> None:
     assert "NEO4J_server_bolt_tls__level: REQUIRED" in compose
     assert 'NEO4J_dbms_ssl_policy_bolt_enabled: "true"' in compose
     assert "neo4j/bolt/ca.crt:/etc/liminal/tls/neo4j-ca.crt:ro" in compose
+    for variable in (
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_PRICE_PRO_MONTHLY",
+        "STRIPE_SUCCESS_URL",
+        "STRIPE_CANCEL_URL",
+    ):
+        assert f"{variable}: ${{{variable}:-}}" in core_service
+    assert (
+        "BILLING_STORE_PATH: ${BILLING_STORE_PATH:-/app/data/billing_store.json}"
+        in core_service
+    )
+    assert "billing-data:/app/data" in core_service
 
 
 def test_production_nginx_mount_resolves_and_targets_core_service() -> None:
@@ -114,6 +128,12 @@ def test_production_nginx_mount_resolves_and_targets_core_service() -> None:
     assert "proxy_http_version 1.1" in nginx_config
     assert "proxy_set_header Upgrade $http_upgrade" in nginx_config
     assert "proxy_set_header Connection $connection_upgrade" in nginx_config
+    assert "listen 443 ssl" in nginx_config
+    assert "ssl_certificate /etc/nginx/ssl/server.crt" in nginx_config
+    assert "ssl_certificate_key /etc/nginx/ssl/server.key" in nginx_config
+    assert "ssl_protocols TLSv1.2 TLSv1.3" in nginx_config
+    assert "return 308 https://$host$request_uri" in nginx_config
+    assert "nginx:/etc/nginx/ssl:ro" in compose
 
 
 def test_production_core_has_dedicated_default_egress() -> None:
@@ -332,6 +352,35 @@ def test_production_neo4j_gateway_does_not_fall_back_to_mock(
     ):
         with pytest.raises(RuntimeError, match="TLS configuration failed"):
             neo4j_gateway._build_default_gateway()
+
+
+def test_production_stripe_requires_complete_https_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENV", "production")
+    incomplete = BillingSettings(
+        stripe_secret_key="sk_live_secret",
+        stripe_price_pro_monthly="price_pro",
+        stripe_success_url="https://liminal.example/success",
+        stripe_cancel_url="https://liminal.example/cancel",
+        store_path="/app/data/billing_store.json",
+    )
+    with pytest.raises(RuntimeError, match="STRIPE_WEBHOOK_SECRET"):
+        Settings(billing=incomplete)
+
+    insecure = incomplete.model_copy(
+        update={
+            "stripe_webhook_secret": "whsec_secret",
+            "stripe_success_url": "http://liminal.example/success",
+        }
+    )
+    with pytest.raises(RuntimeError, match="STRIPE_SUCCESS_URL"):
+        Settings(billing=insecure)
+
+    configured = insecure.model_copy(
+        update={"stripe_success_url": "https://liminal.example/success"}
+    )
+    assert Settings(billing=configured).billing == configured
 
 
 def test_compat_config_uses_same_authoritative_jwt_secret(
@@ -651,10 +700,12 @@ def test_legacy_backend_route_delegates_without_query_token() -> None:
 async def test_readiness_returns_503_when_required_redis_is_disconnected() -> None:
     hardened_main = importlib.import_module("backend.app.main")
     response = Response()
-    manager = type("DisconnectedRedisManager", (), {"_is_connected": False})()
+    manager = MagicMock()
+    manager.is_redis_ready = AsyncMock(return_value=False)
 
     payload = await hardened_main.readiness_check(response, manager)
 
+    manager.is_redis_ready.assert_awaited_once_with()
     assert response.status_code == 503
     assert payload["ready"] is False
     assert payload["checks"]["redis_connected"] is False
@@ -769,6 +820,22 @@ async def test_redis_manager_loads_distributed_rate_limit_script() -> None:
     assert await manager.initialize() is True
 
     manager._load_rate_limit_script.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+async def test_redis_manager_readiness_uses_a_live_ping() -> None:
+    manager = RedisConnectionManager()
+    manager._is_connected = True
+    manager.redis.ping = AsyncMock(side_effect=(True, False, True))
+
+    assert await manager.is_redis_ready() is True
+    assert manager._is_connected is True
+    assert await manager.is_redis_ready() is False
+    assert manager._is_connected is False
+    # A recovered socket alone cannot recreate lost Pub/Sub subscriptions;
+    # readiness remains false until the manager is initialized again.
+    assert await manager.is_redis_ready() is False
+    assert manager.redis.ping.await_count == 3
 
 
 @pytest.mark.asyncio
