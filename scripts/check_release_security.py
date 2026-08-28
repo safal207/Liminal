@@ -12,7 +12,11 @@ ENV_EXAMPLE = ROOT / ".env.example"
 CORE_REQUIREMENTS = ROOT / "requirements-core.txt"
 PRODUCTION_DOCKERFILE = ROOT / "backend/Dockerfile"
 PRODUCTION_COMPOSE = ROOT / "backend/production/docker-compose.production.yml"
+RESEARCH_COMPOSE = ROOT / "backend/production/docker-compose.research.yml"
+GATEWAY_COMPOSE = ROOT / "backend/production/docker-compose.gateway.yml"
+OBSERVABILITY_COMPOSE = ROOT / "backend/production/docker-compose.observability.yml"
 PRODUCTION_NGINX_CONFIG = ROOT / "backend/nginx/nginx.conf"
+OBSERVABILITY_NGINX_CONFIG = ROOT / "backend/nginx/observability.conf"
 
 REQUIRED_ENV_KEYS = {
     "ENV",
@@ -74,33 +78,58 @@ BANNED_COMPOSE_PATTERNS = {
 }
 
 REQUIRED_COMPOSE_SNIPPETS = {
-    "context: ../..",
-    "dockerfile: backend/Dockerfile",
-    "PYTHON_IMAGE: ${PYTHON_IMAGE:?",
-    "JWT_SECRET_KEY: ${JWT_SECRET_KEY:?",
-    "ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?",
-    "NEO4J_PASSWORD: ${NEO4J_PASSWORD:?",
-    "GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?",
-    "ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?",
-    "ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?",
-    "KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?",
-    'xpack.security.enabled: "true"',
-    'xpack.security.http.ssl.enabled: "false"',
-    "http://elasticsearch:9200/_security/user/kibana_system/_password",
-    "condition: service_completed_successfully",
-    "internal: true",
-    "http://localhost:8000/ready",
-    "../nginx/nginx.conf:/etc/nginx/nginx.conf:ro",
-    "redis@${REDIS_IMAGE_DIGEST:?",
-    "neo4j@${NEO4J_IMAGE_DIGEST:?",
-    "prom/prometheus@${PROMETHEUS_IMAGE_DIGEST:?",
-    "grafana/grafana@${GRAFANA_IMAGE_DIGEST:?",
-    "nginx@${NGINX_IMAGE_DIGEST:?",
-    "elasticsearch@${ELASTICSEARCH_IMAGE_DIGEST:?",
-    "logstash@${LOGSTASH_IMAGE_DIGEST:?",
-    "kibana@${KIBANA_IMAGE_DIGEST:?",
-    "@${NEURAL_ANALYTICS_IMAGE_DIGEST:?",
-    "@${WEBSOCKET_GATEWAY_IMAGE_DIGEST:?",
+    PRODUCTION_COMPOSE: {
+        "context: ../..",
+        "dockerfile: backend/Dockerfile",
+        "PYTHON_IMAGE: ${PYTHON_IMAGE:?",
+        "JWT_SECRET_KEY: ${JWT_SECRET_KEY:?",
+        "ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?",
+        "NEO4J_PASSWORD: ${NEO4J_PASSWORD:?",
+        "FORWARDED_ALLOW_IPS: \"172.30.0.10\"",
+        "ipv4_address: 172.30.0.10",
+        "subnet: 172.30.0.0/24",
+        "internal: true",
+        "http://localhost:8000/ready",
+        "../nginx/nginx.conf:/etc/nginx/nginx.conf:ro",
+        "redis@${REDIS_IMAGE_DIGEST:?",
+        "neo4j@${NEO4J_IMAGE_DIGEST:?",
+        "nginx@${NGINX_IMAGE_DIGEST:?",
+    },
+    RESEARCH_COMPOSE: {
+        "@${NEURAL_ANALYTICS_IMAGE_DIGEST:?",
+    },
+    GATEWAY_COMPOSE: {
+        "@${WEBSOCKET_GATEWAY_IMAGE_DIGEST:?",
+    },
+    OBSERVABILITY_COMPOSE: {
+        "GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?",
+        "ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?",
+        "ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?",
+        "KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?",
+        'xpack.security.enabled: "true"',
+        'xpack.security.http.ssl.enabled: "false"',
+        "http://elasticsearch:9200/_security/user/kibana_system/_password",
+        "condition: service_completed_successfully",
+        "../nginx/observability.conf:/etc/nginx/liminal.d/observability.conf:ro",
+        "prom/prometheus@${PROMETHEUS_IMAGE_DIGEST:?",
+        "grafana/grafana@${GRAFANA_IMAGE_DIGEST:?",
+        "elasticsearch@${ELASTICSEARCH_IMAGE_DIGEST:?",
+        "logstash@${LOGSTASH_IMAGE_DIGEST:?",
+        "kibana@${KIBANA_IMAGE_DIGEST:?",
+    },
+}
+
+PROFILE_ONLY_BASE_MARKERS = {
+    "NEURAL_ANALYTICS_IMAGE_",
+    "WEBSOCKET_GATEWAY_IMAGE_",
+    "PROMETHEUS_IMAGE_DIGEST",
+    "GRAFANA_IMAGE_DIGEST",
+    "ELASTICSEARCH_IMAGE_DIGEST",
+    "LOGSTASH_IMAGE_DIGEST",
+    "KIBANA_IMAGE_DIGEST",
+    "GRAFANA_ADMIN_PASSWORD",
+    "ELASTIC_PASSWORD",
+    "KIBANA_SYSTEM_PASSWORD",
 }
 
 
@@ -183,23 +212,39 @@ def main() -> int:
         dockerfile = PRODUCTION_DOCKERFILE.read_text(encoding="utf-8")
         errors.extend(production_dockerfile_errors(dockerfile))
 
-    if not PRODUCTION_COMPOSE.exists():
-        errors.append("production compose file is missing")
-    else:
-        compose = PRODUCTION_COMPOSE.read_text(encoding="utf-8")
+    compose_documents: dict[Path, str] = {}
+    for compose_path, required_snippets in REQUIRED_COMPOSE_SNIPPETS.items():
+        if not compose_path.exists():
+            errors.append(f"production compose file is missing: {compose_path.name}")
+            continue
+        compose = compose_path.read_text(encoding="utf-8")
+        compose_documents[compose_path] = compose
         for pattern, description in BANNED_COMPOSE_PATTERNS.items():
             if re.search(pattern, compose, flags=re.IGNORECASE):
-                errors.append(f"production compose contains {description}")
-        for snippet in REQUIRED_COMPOSE_SNIPPETS:
+                errors.append(
+                    f"{compose_path.name} contains {description}"
+                )
+        for snippet in required_snippets:
             if snippet not in compose:
-                errors.append(f"production compose missing guard: {snippet}")
+                errors.append(
+                    f"{compose_path.name} missing guard: {snippet}"
+                )
 
         for line in compose.splitlines():
             stripped = line.strip()
             if stripped.startswith("image:") and (
                 "@${" not in stripped or "_IMAGE_DIGEST" not in stripped
             ):
-                errors.append(f"mutable production image reference: {stripped}")
+                errors.append(
+                    f"mutable image in {compose_path.name}: {stripped}"
+                )
+
+    base_compose = compose_documents.get(PRODUCTION_COMPOSE, "")
+    for marker in PROFILE_ONLY_BASE_MARKERS:
+        if marker in base_compose:
+            errors.append(
+                f"base production compose contains optional-only setting: {marker}"
+            )
 
     if not PRODUCTION_NGINX_CONFIG.exists():
         errors.append("production nginx config is missing")
@@ -209,6 +254,26 @@ def main() -> int:
             errors.append("production nginx must target the rgl-core service")
         if "server liminal-backend:8000" in nginx_config:
             errors.append("production nginx targets an undefined legacy service")
+        if "http://prometheus:9090" in nginx_config or "http://grafana:3000" in nginx_config:
+            errors.append("base production nginx resolves optional observability services")
+        for snippet in (
+            "location /ws/",
+            "proxy_http_version 1.1",
+            "proxy_set_header Upgrade $http_upgrade",
+            "proxy_set_header Connection $connection_upgrade",
+        ):
+            if snippet not in nginx_config:
+                errors.append(f"production nginx missing WebSocket guard: {snippet}")
+
+    if not OBSERVABILITY_NGINX_CONFIG.exists():
+        errors.append("optional observability nginx config is missing")
+    else:
+        observability_nginx = OBSERVABILITY_NGINX_CONFIG.read_text(encoding="utf-8")
+        for upstream in ("http://prometheus:9090", "http://grafana:3000"):
+            if upstream not in observability_nginx:
+                errors.append(
+                    f"observability nginx config missing upstream: {upstream}"
+                )
 
     if errors:
         print("Release security checks failed:", file=sys.stderr)

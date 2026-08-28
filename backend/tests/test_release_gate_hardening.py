@@ -64,20 +64,18 @@ def test_production_requires_a_bootstrap_auth_source() -> None:
 
 
 def test_production_compose_passes_bootstrap_and_legacy_redis_secrets() -> None:
-    compose = (
-        Path(__file__).resolve().parents[2]
-        / "backend"
-        / "production"
-        / "docker-compose.production.yml"
-    ).read_text(encoding="utf-8")
-    core_service = compose.split("  neural-analytics:", 1)[0]
+    production = Path(__file__).resolve().parents[2] / "backend" / "production"
+    compose = (production / "docker-compose.production.yml").read_text(
+        encoding="utf-8"
+    )
+    core_service = compose.split("  redis:", 1)[0]
 
     assert "LIMINAL_ADMIN_PASS: ${LIMINAL_ADMIN_PASS:?" in core_service
     assert "REDIS_PASSWORD: ${REDIS_PASSWORD:?" in core_service
     assert "ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?" in core_service
-    neural_service = compose.split("  neural-analytics:", 1)[1].split(
-        "  websocket-gateway:", 1
-    )[0]
+    neural_service = (production / "docker-compose.research.yml").read_text(
+        encoding="utf-8"
+    )
     assert "ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?" in neural_service
 
 
@@ -94,6 +92,48 @@ def test_production_nginx_mount_resolves_and_targets_core_service() -> None:
     nginx_config = nginx_config_path.read_text(encoding="utf-8")
     assert "server rgl-core:8000" in nginx_config
     assert "server liminal-backend:8000" not in nginx_config
+    assert "http://prometheus:9090" not in nginx_config
+    assert "http://grafana:3000" not in nginx_config
+    assert "location /ws/" in nginx_config
+    assert "proxy_http_version 1.1" in nginx_config
+    assert "proxy_set_header Upgrade $http_upgrade" in nginx_config
+    assert "proxy_set_header Connection $connection_upgrade" in nginx_config
+
+
+def test_optional_services_require_explicit_compose_overrides() -> None:
+    production = Path(__file__).resolve().parents[2] / "backend" / "production"
+    base = (production / "docker-compose.production.yml").read_text(encoding="utf-8")
+    research = (production / "docker-compose.research.yml").read_text(
+        encoding="utf-8"
+    )
+    gateway = (production / "docker-compose.gateway.yml").read_text(
+        encoding="utf-8"
+    )
+    observability = (production / "docker-compose.observability.yml").read_text(
+        encoding="utf-8"
+    )
+
+    for marker in release_security.PROFILE_ONLY_BASE_MARKERS:
+        assert marker not in base
+    assert "NEURAL_ANALYTICS_IMAGE_DIGEST:?" in research
+    assert "WEBSOCKET_GATEWAY_IMAGE_DIGEST:?" in gateway
+    assert "PROMETHEUS_IMAGE_DIGEST:?" in observability
+    assert "GRAFANA_ADMIN_PASSWORD:?" in observability
+    assert "../nginx/observability.conf:/etc/nginx/liminal.d/observability.conf:ro" in observability
+
+
+def test_production_proxy_trust_is_bound_to_the_nginx_container() -> None:
+    compose = (
+        Path(__file__).resolve().parents[2]
+        / "backend"
+        / "production"
+        / "docker-compose.production.yml"
+    ).read_text(encoding="utf-8")
+
+    assert 'FORWARDED_ALLOW_IPS: "172.30.0.10"' in compose
+    assert "ipv4_address: 172.30.0.10" in compose
+    assert "subnet: 172.30.0.0/24" in compose
+    assert 'FORWARDED_ALLOW_IPS: "*"' not in compose
 
 
 def test_production_compose_provisions_kibana_system_before_kibana() -> None:
@@ -101,7 +141,7 @@ def test_production_compose_provisions_kibana_system_before_kibana() -> None:
         Path(__file__).resolve().parents[2]
         / "backend"
         / "production"
-        / "docker-compose.production.yml"
+        / "docker-compose.observability.yml"
     ).read_text(encoding="utf-8")
     elasticsearch = compose.split("  elasticsearch:", 1)[1].split(
         "  elasticsearch-setup:", 1

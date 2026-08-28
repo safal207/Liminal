@@ -1,0 +1,18 @@
+# Add this file explicitly to enable the optional research service. Keeping its
+# required image identity outside the core file lets core-only Compose parsing
+# remain independent of research credentials.
+services:
+  neural-analytics:
+    image: ${NEURAL_ANALYTICS_IMAGE_REPOSITORY:?Set repository}@${NEURAL_ANALYTICS_IMAGE_DIGEST:?Set sha256 digest}
+    expose:
+      - "8001"
+    environment:
+      RGL_CORE_URL: http://rgl-core:8000
+      ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?Set a strong ML metrics service token}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
+    depends_on:
+      - rgl-core
+      - redis
+    networks:
+      - internal
+    restart: unless-stopped
