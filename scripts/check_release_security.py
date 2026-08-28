@@ -102,6 +102,8 @@ REQUIRED_COMPOSE_SNIPPETS = {
         "WS_MAX_MESSAGE_BYTES: ${WS_MAX_MESSAGE_BYTES:-16384}",
         "NEO4J_PASSWORD: ${NEO4J_PASSWORD:?",
         'FORWARDED_ALLOW_IPS: "172.30.0.10"',
+        "egress:\n        gw_priority: 1",
+        "egress:\n    internal: false",
         "ipv4_address: 172.30.0.10",
         "subnet: 172.30.0.0/24",
         "internal: true",

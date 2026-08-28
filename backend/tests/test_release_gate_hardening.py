@@ -36,6 +36,7 @@ from backend.core.settings import (
     Settings,
 )
 from backend.memory_timeline import MemoryTimeline
+from backend.redis_client import RedisClient as LegacyRedisClient
 from backend.websocket.connection_manager import ConnectionManager
 from backend.websocket.redis_client import RedisClient as WebSocketRedisClient
 from backend.websocket.redis_connection_manager import RedisConnectionManager
@@ -107,6 +108,24 @@ def test_production_nginx_mount_resolves_and_targets_core_service() -> None:
     assert "proxy_http_version 1.1" in nginx_config
     assert "proxy_set_header Upgrade $http_upgrade" in nginx_config
     assert "proxy_set_header Connection $connection_upgrade" in nginx_config
+
+
+def test_production_core_has_dedicated_default_egress() -> None:
+    compose = (
+        Path(__file__).resolve().parents[2]
+        / "backend"
+        / "production"
+        / "docker-compose.production.yml"
+    ).read_text(encoding="utf-8")
+    core_service = compose.split("\n  rgl-core:\n", 1)[1].split("\n  redis:\n", 1)[0]
+    data_services = compose.split("\n  redis:\n", 1)[1].split("\n  nginx:\n", 1)[0]
+    network_definitions = compose.split("\nnetworks:", 1)[1]
+
+    assert "      internal:" in core_service
+    assert "      egress:\n        gw_priority: 1" in core_service
+    assert "egress" not in data_services
+    assert "  egress:\n    internal: false" in network_definitions
+    assert "  internal:\n    internal: true" in network_definitions
 
 
 def test_optional_services_require_explicit_compose_overrides() -> None:
@@ -614,6 +633,32 @@ async def test_websocket_redis_password_is_not_embedded_in_url(
     factory.assert_called_once_with(
         url,
         decode_responses=True,
+        password=password,
+    )
+
+
+def test_legacy_readiness_redis_uses_tls_url_and_separate_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    password = "random/reserved?#password"
+    url = (
+        "rediss://redis:6379/0?ssl_cert_reqs=required"
+        "&ssl_ca_certs=/etc/liminal/tls/redis-ca.crt"
+    )
+    monkeypatch.setenv("REDIS_URL", url)
+    monkeypatch.setenv("REDIS_PASSWORD", password)
+    backend = MagicMock()
+
+    with patch("backend.redis_client.redis.from_url", return_value=backend) as factory:
+        client = LegacyRedisClient()
+
+    assert client.client is backend
+    backend.ping.assert_called_once_with()
+    factory.assert_called_once_with(
+        url,
+        decode_responses=True,
+        socket_timeout=5,
+        socket_connect_timeout=5,
         password=password,
     )
 

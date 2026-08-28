@@ -32,7 +32,11 @@ services:
       neo4j:
         condition: service_healthy
     networks:
-      - internal
+      internal:
+      # Keep outbound billing traffic on a dedicated network while Redis and
+      # Neo4j remain confined to the internal-only network.
+      egress:
+        gw_priority: 1
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8000/ready"]
@@ -124,6 +128,8 @@ volumes:
 
 networks:
   edge:
+  egress:
+    internal: false
   internal:
     internal: true
     ipam:

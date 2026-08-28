@@ -13,6 +13,7 @@ class RedisClient:
     def __init__(self, host="redis", port=6379, db=0, password=None):
         """Initialize Redis connection for various backend services"""
         # Try to get from environment or use default
+        redis_url = os.environ.get("REDIS_URL")
         redis_host = os.environ.get("REDIS_HOST", host)
         redis_port = int(os.environ.get("REDIS_PORT", port))
         redis_db = int(os.environ.get("REDIS_DB", db))
@@ -26,20 +27,29 @@ class RedisClient:
             redis_host = "localhost"
 
         try:
-            self.client = redis.Redis(
-                host=redis_host,
-                port=redis_port,
-                db=redis_db,
-                password=redis_password,
-                decode_responses=True,
-                socket_timeout=5,
-                socket_connect_timeout=5,
-            )
+            connection_options = {
+                "decode_responses": True,
+                "socket_timeout": 5,
+                "socket_connect_timeout": 5,
+            }
+            if redis_password is not None:
+                connection_options["password"] = redis_password
+
+            if redis_url:
+                self.client = redis.from_url(redis_url, **connection_options)
+                redis_location = "configured REDIS_URL"
+            else:
+                self.client = redis.Redis(
+                    host=redis_host,
+                    port=redis_port,
+                    db=redis_db,
+                    **connection_options,
+                )
+                redis_location = f"{redis_host}:{redis_port}, db={redis_db}"
+
             # Test connection
             self.client.ping()
-            logger.info(
-                f"Connected to Redis at {redis_host}:{redis_port}, db={redis_db}"
-            )
+            logger.info(f"Connected to Redis at {redis_location}")
         except redis.ConnectionError as e:
             logger.warning(f"Redis connection failed: {e} - Using dummy mode")
             self.client = DummyRedis()
