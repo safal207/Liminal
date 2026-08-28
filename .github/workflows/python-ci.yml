@@ -2,73 +2,194 @@ name: Python CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: python-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
     runs-on: ubuntu-latest
-
-    # Unit tests do not require external services by default
+    timeout-minutes: 30
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements-core.txt
+            requirements-dev.txt
 
-    - name: Show requirements files
-      run: |
-        echo "requirements.txt:"
-        cat -n requirements.txt || true
-        echo "requirements-dev.txt:"
-        if [ -f requirements-dev.txt ]; then cat -n requirements-dev.txt; else echo "requirements-dev.txt not found"; fi
+      - name: Install core and development dependencies
+        run: |
+          python -m pip install --upgrade pip wheel "setuptools>=83.0.0"
+          python -m pip install -r requirements-core.txt
+          python -m pip install -r requirements-dev.txt
+          python -m pip install bandit==1.7.9 pip-audit==2.7.3
+          python -m pip check
+          python -m pip freeze --all
 
-    - name: Cache pip dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt', '**/requirements-dev.txt') }}
+      - name: Release configuration guard
+        # Syntax-only fixture for the guard; production supplies PYTHON_IMAGE
+        # through Compose and must use an operator-verified registry digest.
+        env:
+          PYTHON_IMAGE: release-guard.invalid/python@sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        run: python scripts/check_release_security.py
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip wheel setuptools
-        pip install -r requirements.txt
-        pip install -e ./tools/flake8_shim
-        pip install pytest>=8.2 pytest-asyncio>=0.23 anyio>=4.5 requests>=2.31 websockets>=12.0
-        pip install black>=24.4 isort>=5.13 flake8>=7.0 mypy>=1.10 pre-commit>=3.7 flake8-bugbear>=24.4
-        pip install strawberry-graphql>=0.205 uvicorn>=0.30
+      - name: Pre-commit on release-critical files
+        run: |
+          pre-commit run --show-diff-on-failure --files \
+            backend/auth/jwt_utils.py \
+            backend/auth/dependencies.py \
+            backend/core/settings.py \
+            backend/config.py \
+            backend/app/main.py \
+            backend/app/services/auth.py \
+            backend/app/services/websocket.py \
+            backend/app/routes/debug.py \
+            backend/personality/__init__.py \
+            backend/tests/test_release_gate_hardening.py \
+            tests/test_websocket_integration.py \
+            tests/unit/test_api.py \
+            conftest.py \
+            scripts/check_release_security.py \
+            requirements-core.txt \
+            requirements-research.txt \
+            requirements.txt \
+            backend/Dockerfile \
+            tests/load/ws-burst.yml \
+            .env.example \
+            backend/production/docker-compose.production.yml \
+            .github/workflows/python-ci.yml \
+            .github/workflows/python-integration.yml \
+            .github/workflows/artillery-smoke.yml
 
-    - name: Pre-commit (all files)
-      run: |
-        pre-commit run --all-files --show-diff-on-failure || true
+      - name: Format and lint release-critical Python files
+        run: |
+          black --check \
+            backend/auth/jwt_utils.py \
+            backend/auth/dependencies.py \
+            backend/core/settings.py \
+            backend/config.py \
+            backend/app/main.py \
+            backend/app/services/auth.py \
+            backend/app/services/websocket.py \
+            backend/app/routes/debug.py \
+            backend/personality/__init__.py \
+            backend/tests/test_release_gate_hardening.py \
+            tests/test_websocket_integration.py \
+            tests/unit/test_api.py \
+            conftest.py \
+            scripts/check_release_security.py
+          isort --check-only --profile black \
+            backend/auth/jwt_utils.py \
+            backend/auth/dependencies.py \
+            backend/core/settings.py \
+            backend/config.py \
+            backend/app/main.py \
+            backend/app/services/auth.py \
+            backend/app/services/websocket.py \
+            backend/app/routes/debug.py \
+            backend/personality/__init__.py \
+            backend/tests/test_release_gate_hardening.py \
+            tests/test_websocket_integration.py \
+            tests/unit/test_api.py \
+            conftest.py \
+            scripts/check_release_security.py
+          flake8 \
+            backend/auth/jwt_utils.py \
+            backend/auth/dependencies.py \
+            backend/core/settings.py \
+            backend/config.py \
+            backend/app/main.py \
+            backend/app/services/auth.py \
+            backend/app/services/websocket.py \
+            backend/app/routes/debug.py \
+            backend/personality/__init__.py \
+            backend/tests/test_release_gate_hardening.py \
+            tests/test_websocket_integration.py \
+            tests/unit/test_api.py \
+            conftest.py \
+            scripts/check_release_security.py
 
-    - name: Lint and format (black, isort, flake8)
-      run: |
-        black --check . || true
-        isort --check-only --profile black . || true
-        flake8 || true
+      - name: Type-check release-critical files
+        run: |
+          mypy --ignore-missing-imports --follow-imports=skip \
+            backend/auth/jwt_utils.py \
+            backend/auth/dependencies.py \
+            backend/core/settings.py \
+            backend/config.py \
+            backend/app/main.py \
+            backend/app/services/auth.py \
+            backend/app/services/websocket.py \
+            backend/app/routes/debug.py \
+            backend/personality/__init__.py
 
-    - name: Type check (mypy)
-      run: |
-        mypy src tests || true
+      - name: Static security analysis
+        run: |
+          bandit -q -r -ll \
+            backend/auth \
+            backend/core/settings.py \
+            backend/config.py \
+            backend/app/main.py \
+            backend/app/services/auth.py \
+            backend/app/services/websocket.py \
+            backend/app/routes/debug.py \
+            backend/personality/__init__.py \
+            -x backend/tests
+          pip-audit --strict -r requirements-core.txt
 
-    - name: Smoke test agent audit demo runner
-      run: |
-        python examples/agent_audit_demo/run_demo.py
-        python examples/agent_audit_demo/run_demo.py --mode static
-        python examples/agent_audit_demo/run_demo.py --mode integrated
+      - name: Core application import smoke
+        env:
+          ENV: test
+          JWT_SECRET_KEY: ci-import-smoke-secret-0123456789abcdef
+        run: |
+          export PYTHONPATH="${PWD}:${PYTHONPATH}"
+          python -c "from backend.main import app; assert app is not None"
 
-    - name: Run unit tests (skip integration)
-      run: |
-        export PYTHONPATH="${PWD}:${PYTHONPATH}"
-        cd backend && python -m pytest -v --maxfail=1 --durations=10 -m "not integration"
+      - name: Release-gate negative tests with coverage
+        env:
+          ENV: test
+          JWT_SECRET_KEY: ci-release-gate-secret-0123456789abcdef
+        run: |
+          export PYTHONPATH="${PWD}:${PYTHONPATH}"
+          python -m pytest -q backend/tests/test_release_gate_hardening.py \
+            --cov=backend.auth.jwt_utils \
+            --cov=backend.auth.dependencies \
+            --cov=backend.core.settings \
+            --cov=backend.config \
+            --cov-report=term-missing \
+            --cov-fail-under=60
 
-    - name: Smoke test Prometheus metrics registry
-      run: |
-        python tools/metrics_smoke_test.py
+      - name: Smoke test agent audit demo runner
+        run: |
+          python examples/agent_audit_demo/run_demo.py
+          python examples/agent_audit_demo/run_demo.py --mode static
+          python examples/agent_audit_demo/run_demo.py --mode integrated
 
-    # Optional: add coverage in future when structure is stable
+      - name: Run core unit tests
+        env:
+          ENV: test
+          JWT_SECRET_KEY: ci-unit-test-secret-0123456789abcdef
+        run: |
+          export PYTHONPATH="${PWD}:${PYTHONPATH}"
+          # Optional burnout research suites require requirements-research.txt
+          # and are tracked separately in issue #123.
+          python -m pytest -v --maxfail=1 --durations=10 -m "not integration" \
+            --ignore=tests/unit/test_burnout_api.py \
+            --ignore=tests/unit/test_burnout_guard.py
+
+      - name: Smoke test Prometheus metrics registry
+        run: python tools/metrics_smoke_test.py

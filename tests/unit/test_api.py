@@ -29,11 +29,9 @@ class TestAPIUnit:
         assert json_data["status"] == "ok"
 
     def test_websocket_connection_unit(self):
-        """Test WebSocket connection establishment (unit level)"""
-        # WebSocket connections require async test frameworks; here we just
-        # ensure the route is registered on the application.
-        routes = {route.path for route in app.routes}
-        assert "/ws/timeline" in routes
+        """Test the public WebSocket route contract."""
+        websocket_path = app.url_path_for("websocket_timeline")
+        assert str(websocket_path) == "/ws/timeline"
 
     def test_emotion_analysis_unit(self):
         """Placeholder unit test for emotion analysis logic"""

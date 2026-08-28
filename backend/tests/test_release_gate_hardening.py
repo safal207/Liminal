@@ -1,0 +1,978 @@
+"""Negative tests for the release-gate security boundaries."""
+
+from __future__ import annotations
+
+import ast
+import importlib
+import inspect
+import json
+import sys
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import jwt
+import pytest
+from fastapi import HTTPException, Response
+
+import backend.app.routes.debug as debug_routes
+import backend.app.routes.ws as websocket_routes
+import backend.auth.jwt_utils as jwt_utils
+import backend.config as legacy_config
+import backend.infrastructure.neo4j as neo4j_gateway
+import scripts.check_release_security as release_security
+from backend.app.services.websocket import (
+    ConnectionManagerService,
+    LocalTokenBucket,
+    TimelineWebSocketService,
+    WebSocketMessageError,
+    parse_client_message,
+)
+from backend.auth.dependencies import TokenVerifier
+from backend.auth.jwt_utils import JWTManager
+from backend.core.settings import (
+    DEFAULT_SECRET,
+    BillingSettings,
+    IntegrationSettings,
+    JWTSettings,
+    Settings,
+)
+from backend.infrastructure.neo4j.client import Neo4jClient
+from backend.memory_timeline import MemoryTimeline
+from backend.redis_client import RedisClient as LegacyRedisClient
+from backend.websocket.connection_manager import ConnectionManager
+from backend.websocket.redis_client import RedisClient as WebSocketRedisClient
+from backend.websocket.redis_connection_manager import RedisConnectionManager
+
+core_settings = importlib.import_module("backend.core.settings")
+
+STRONG_SECRET = "release-gate-test-secret-0123456789abcdef"
+
+
+def make_manager(secret: str = STRONG_SECRET) -> JWTManager:
+    return JWTManager(Settings(jwt=JWTSettings(secret_key=secret)))
+
+
+def test_production_rejects_default_jwt_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENV", "production")
+    with pytest.raises(RuntimeError, match="JWT_SECRET_KEY"):
+        make_manager(DEFAULT_SECRET)
+
+
+def test_production_requires_a_bootstrap_auth_source() -> None:
+    for password in ("", "   ", "short"):
+        with pytest.raises(RuntimeError, match="LIMINAL_ADMIN_PASS"):
+            jwt_utils._require_production_auth_source("production", password)
+
+    jwt_utils._require_production_auth_source("production", "strong-password")
+
+
+def test_production_compose_passes_bootstrap_and_legacy_redis_secrets() -> None:
+    production = Path(__file__).resolve().parents[2] / "backend" / "production"
+    compose = (production / "docker-compose.production.yml").read_text(encoding="utf-8")
+    core_service = compose.split("  redis:", 1)[0]
+
+    assert "LIMINAL_ADMIN_PASS: ${LIMINAL_ADMIN_PASS:?" in core_service
+    assert "REDIS_PASSWORD: ${REDIS_PASSWORD:?" in core_service
+    assert "ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?" in core_service
+    neural_service = (production / "docker-compose.research.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?" in neural_service
+
+    gateway = (production / "docker-compose.gateway.yml").read_text(encoding="utf-8")
+    for document in (compose, neural_service, gateway):
+        assert 'REDIS_URL: "rediss://redis:6379/0?' in document
+        assert "REDIS_PASSWORD: ${REDIS_PASSWORD:?" in document
+        assert "@redis:6379" not in document
+        assert "ssl_cert_reqs=required" in document
+        assert "ssl_ca_certs=/etc/liminal/tls/redis-ca.crt" in document
+    assert "--tls-port 6379" in compose
+    assert "--port 0" in compose
+    assert "--tls-ca-cert-file /etc/liminal/tls/ca.crt" in compose
+    assert "NEO4J_CA_CERT: /etc/liminal/tls/neo4j-ca.crt" in core_service
+    assert "NEO4J_server_bolt_tls__level: REQUIRED" in compose
+    assert 'NEO4J_dbms_ssl_policy_bolt_enabled: "true"' in compose
+    assert "neo4j/bolt/ca.crt:/etc/liminal/tls/neo4j-ca.crt:ro" in compose
+    for variable in (
+        "STRIPE_SECRET_KEY",
+        "STRIPE_WEBHOOK_SECRET",
+        "STRIPE_PRICE_PRO_MONTHLY",
+        "STRIPE_SUCCESS_URL",
+        "STRIPE_CANCEL_URL",
+    ):
+        assert f"{variable}: ${{{variable}:-}}" in core_service
+    assert (
+        "BILLING_STORE_PATH: ${BILLING_STORE_PATH:-/app/data/billing_store.json}"
+        in core_service
+    )
+    assert "billing-data:/app/data" in core_service
+
+
+def test_production_nginx_mount_resolves_and_targets_core_service() -> None:
+    root = Path(__file__).resolve().parents[2]
+    compose_path = root / "backend/production/docker-compose.production.yml"
+    compose = compose_path.read_text(encoding="utf-8")
+    nginx_config_path = (compose_path.parent / "../nginx/nginx.conf").resolve()
+
+    assert "../nginx/nginx.conf:/etc/nginx/nginx.conf:ro" in compose
+    assert nginx_config_path == root / "backend/nginx/nginx.conf"
+    assert nginx_config_path.is_file()
+
+    nginx_config = nginx_config_path.read_text(encoding="utf-8")
+    assert "server rgl-core:8000" in nginx_config
+    assert "server liminal-backend:8000" not in nginx_config
+    assert "http://prometheus:9090" not in nginx_config
+    assert "http://grafana:3000" not in nginx_config
+    assert "location /ws/" in nginx_config
+    assert "proxy_http_version 1.1" in nginx_config
+    assert "proxy_set_header Upgrade $http_upgrade" in nginx_config
+    assert "proxy_set_header Connection $connection_upgrade" in nginx_config
+    assert "listen 443 ssl" in nginx_config
+    assert "ssl_certificate /etc/nginx/ssl/server.crt" in nginx_config
+    assert "ssl_certificate_key /etc/nginx/ssl/server.key" in nginx_config
+    assert "ssl_protocols TLSv1.2 TLSv1.3" in nginx_config
+    assert "return 308 https://$host$request_uri" in nginx_config
+    assert "nginx:/etc/nginx/ssl:ro" in compose
+
+
+def test_production_core_has_dedicated_default_egress() -> None:
+    compose = (
+        Path(__file__).resolve().parents[2]
+        / "backend"
+        / "production"
+        / "docker-compose.production.yml"
+    ).read_text(encoding="utf-8")
+    core_service = compose.split("\n  rgl-core:\n", 1)[1].split("\n  redis:\n", 1)[0]
+    data_services = compose.split("\n  redis:\n", 1)[1].split("\n  nginx:\n", 1)[0]
+    network_definitions = compose.split("\nnetworks:", 1)[1]
+
+    assert "      internal:" in core_service
+    assert "      egress:\n        gw_priority: 1" in core_service
+    assert "egress" not in data_services
+    assert "  egress:\n    internal: false" in network_definitions
+    assert "  internal:\n    internal: true" in network_definitions
+
+
+def test_optional_services_require_explicit_compose_overrides() -> None:
+    production = Path(__file__).resolve().parents[2] / "backend" / "production"
+    base = (production / "docker-compose.production.yml").read_text(encoding="utf-8")
+    research = (production / "docker-compose.research.yml").read_text(encoding="utf-8")
+    gateway = (production / "docker-compose.gateway.yml").read_text(encoding="utf-8")
+    observability = (production / "docker-compose.observability.yml").read_text(
+        encoding="utf-8"
+    )
+
+    for marker in release_security.PROFILE_ONLY_BASE_MARKERS:
+        assert marker not in base
+    assert "NEURAL_ANALYTICS_IMAGE_DIGEST:?" in research
+    assert "WEBSOCKET_GATEWAY_IMAGE_DIGEST:?" in gateway
+    assert "PROMETHEUS_IMAGE_DIGEST:?" in observability
+    assert "GRAFANA_ADMIN_PASSWORD:?" in observability
+    assert '"127.0.0.1:8080:8080"' in observability
+    unsafe_observability_ports = observability.replace('"127.0.0.1:8080:8080"', "")
+    assert '"0.0.0.0:8080:8080"' not in unsafe_observability_ports
+    assert '"8080:8080"' not in unsafe_observability_ports
+    assert (
+        "../nginx/observability.conf:/etc/nginx/liminal.d/observability.conf:ro"
+        in observability
+    )
+    assert "--web.route-prefix=/" in observability
+    assert 'GF_SERVER_SERVE_FROM_SUB_PATH: "true"' in observability
+    assert "GF_SERVER_PROTOCOL: https" in observability
+    assert "GF_SERVER_CERT_FILE: /etc/grafana/tls/server.crt" in observability
+    assert "SERVER_BASEPATH: /kibana" in observability
+    assert 'SERVER_SSL_ENABLED: "true"' in observability
+    assert (
+        "SERVER_SSL_CERTIFICATE: /usr/share/kibana/config/tls/server.crt"
+        in observability
+    )
+    assert (
+        "observability/ca.crt:/etc/nginx/tls/observability-ca.crt:ro" in observability
+    )
+
+    relative_mounts = (
+        "../monitoring/prometheus.yml",
+        "../../grafana/dashboards",
+        "../../grafana/provisioning/dashboards",
+        "../../grafana/provisioning/datasources",
+        "../../grafana/provisioning/alerting",
+        "../monitoring/logstash.conf",
+    )
+    for source in relative_mounts:
+        assert (production / source).resolve().exists()
+
+    prometheus = (
+        (production / "../monitoring/prometheus.yml")
+        .resolve()
+        .read_text(encoding="utf-8")
+    )
+    assert 'targets: ["rgl-core:8000"]' in prometheus
+    assert "liminal-backend:8000" not in prometheus
+    assert "node-exporter:9100" not in prometheus
+
+    observability_nginx = (
+        Path(__file__).resolve().parents[2] / "backend" / "nginx" / "observability.conf"
+    ).read_text(encoding="utf-8")
+    grafana_location = observability_nginx.split("location /grafana/", 1)[1].split(
+        "location /kibana/", 1
+    )[0]
+    kibana_location = observability_nginx.split("location /kibana/", 1)[1].split(
+        "location /neo4j/", 1
+    )[0]
+
+    assert "https://grafana:3000/" in grafana_location
+    assert "https://kibana:5601/" in kibana_location
+    assert "http://grafana:3000/" not in observability_nginx
+    assert "http://kibana:5601/" not in observability_nginx
+    for location, service in (
+        (grafana_location, "grafana"),
+        (kibana_location, "kibana"),
+    ):
+        assert (
+            "proxy_ssl_trusted_certificate /etc/nginx/tls/observability-ca.crt"
+            in location
+        )
+        assert "proxy_ssl_verify on" in location
+        assert "proxy_ssl_server_name on" in location
+        assert f"proxy_ssl_name {service}" in location
+
+
+def test_production_proxy_trust_is_bound_to_the_nginx_container() -> None:
+    compose = (
+        Path(__file__).resolve().parents[2]
+        / "backend"
+        / "production"
+        / "docker-compose.production.yml"
+    ).read_text(encoding="utf-8")
+
+    assert 'FORWARDED_ALLOW_IPS: "172.30.0.10"' in compose
+    assert "ipv4_address: 172.30.0.10" in compose
+    assert "subnet: 172.30.0.0/24" in compose
+    assert 'FORWARDED_ALLOW_IPS: "*"' not in compose
+
+
+def test_production_compose_provisions_kibana_system_before_kibana() -> None:
+    compose = (
+        Path(__file__).resolve().parents[2]
+        / "backend"
+        / "production"
+        / "docker-compose.observability.yml"
+    ).read_text(encoding="utf-8")
+    elasticsearch = compose.split("  elasticsearch:", 1)[1].split(
+        "  elasticsearch-setup:", 1
+    )[0]
+    setup = compose.split("  elasticsearch-setup:", 1)[1].split("  logstash:", 1)[0]
+    kibana = compose.split("  kibana:", 1)[1].split("\nvolumes:", 1)[0]
+
+    assert 'xpack.security.enabled: "true"' in elasticsearch
+    assert 'xpack.security.http.ssl.enabled: "true"' in elasticsearch
+    assert (
+        "xpack.security.http.ssl.certificate_authorities: certs/ca.crt" in elasticsearch
+    )
+    assert "condition: service_healthy" in setup
+    assert "KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?" in setup
+    assert "/_security/user/kibana_system/_password" in setup
+    assert "--data-binary @-" in setup
+    assert "--cacert /usr/share/elasticsearch/config/certs/ca.crt" in setup
+    assert "https://elasticsearch:9200" in setup
+    assert "ELASTICSEARCH_HOSTS: https://elasticsearch:9200" in kibana
+    assert "ELASTICSEARCH_SSL_VERIFICATIONMODE: full" in kibana
+    assert "condition: service_completed_successfully" in kibana
+
+
+def test_flat_environment_names_load_into_central_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("JWT_SECRET_KEY", STRONG_SECRET)
+    monkeypatch.setenv("NEO4J_PASSWORD", "non-default-password")
+    monkeypatch.setenv("USE_REDIS", "true")
+    core_settings.get_settings.cache_clear()
+
+    loaded = core_settings.get_settings()
+
+    assert loaded.jwt.secret_key == STRONG_SECRET
+    assert loaded.integrations.neo4j_password == "non-default-password"
+    assert loaded.integrations.use_redis is True
+
+    core_settings.get_settings.cache_clear()
+
+
+def test_production_neo4j_client_verifies_a_custom_ca(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ca_certificate = "/etc/liminal/tls/neo4j-ca.crt"
+    trust = object()
+    driver = MagicMock()
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.setenv("NEO4J_CA_CERT", ca_certificate)
+
+    with (
+        patch(
+            "backend.infrastructure.neo4j.client.TrustCustomCAs",
+            return_value=trust,
+        ) as trust_factory,
+        patch(
+            "backend.infrastructure.neo4j.client.GraphDatabase.driver",
+            return_value=driver,
+        ) as driver_factory,
+    ):
+        client = Neo4jClient("bolt://neo4j:7687", "neo4j", "secret")
+
+    assert client.driver is driver
+    trust_factory.assert_called_once_with(ca_certificate)
+    driver_factory.assert_called_once_with(
+        "bolt://neo4j:7687",
+        auth=("neo4j", "secret"),
+        encrypted=True,
+        trusted_certificates=trust,
+    )
+
+
+def test_production_neo4j_client_rejects_unverified_plaintext(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.delenv("NEO4J_CA_CERT", raising=False)
+
+    with pytest.raises(RuntimeError, match="Production Neo4j requires"):
+        Neo4jClient("bolt://neo4j:7687", "neo4j", "secret")
+
+
+def test_production_neo4j_gateway_does_not_fall_back_to_mock(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENV", "production")
+    monkeypatch.delenv("NEO4J_USE_MOCK", raising=False)
+    monkeypatch.delenv("TESTING", raising=False)
+
+    with patch(
+        "backend.infrastructure.neo4j.client.Neo4jClient",
+        side_effect=RuntimeError("TLS configuration failed"),
+    ):
+        with pytest.raises(RuntimeError, match="TLS configuration failed"):
+            neo4j_gateway._build_default_gateway()
+
+
+def test_production_stripe_requires_complete_https_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("ENV", "production")
+    incomplete = BillingSettings(
+        stripe_secret_key="sk_live_secret",
+        stripe_price_pro_monthly="price_pro",
+        stripe_success_url="https://liminal.example/success",
+        stripe_cancel_url="https://liminal.example/cancel",
+        store_path="/app/data/billing_store.json",
+    )
+    with pytest.raises(RuntimeError, match="STRIPE_WEBHOOK_SECRET"):
+        Settings(billing=incomplete)
+
+    insecure = incomplete.model_copy(
+        update={
+            "stripe_webhook_secret": "whsec_secret",
+            "stripe_success_url": "http://liminal.example/success",
+        }
+    )
+    with pytest.raises(RuntimeError, match="STRIPE_SUCCESS_URL"):
+        Settings(billing=insecure)
+
+    configured = insecure.model_copy(
+        update={"stripe_success_url": "https://liminal.example/success"}
+    )
+    assert Settings(billing=configured).billing == configured
+
+
+def test_compat_config_uses_same_authoritative_jwt_secret(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    central = Settings(
+        jwt=JWTSettings(secret_key=STRONG_SECRET),
+        integrations=IntegrationSettings(neo4j_password="non-default-password"),
+    )
+    monkeypatch.setattr(legacy_config, "get_core_settings", lambda: central)
+    monkeypatch.setenv("ENV", "production")
+    legacy_config.get_settings.cache_clear()
+
+    assert legacy_config.get_settings().jwt_secret_key == central.jwt.secret_key
+
+    legacy_config.get_settings.cache_clear()
+
+
+def test_production_debug_routes_are_disabled_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = type("Settings", (), {"environment": "production"})()
+    monkeypatch.setattr(debug_routes, "get_settings", lambda: settings)
+    monkeypatch.delenv("ENABLE_DEBUG_ROUTES", raising=False)
+
+    with pytest.raises(HTTPException) as exc_info:
+        debug_routes.require_debug_routes_enabled()
+
+    assert exc_info.value.status_code == 404
+
+
+def test_debug_availability_gate_runs_before_authentication() -> None:
+    dependencies = [
+        dependency.dependency for dependency in debug_routes.router.dependencies
+    ]
+
+    assert dependencies == [
+        debug_routes.require_debug_routes_enabled,
+        debug_routes.require_debug_access,
+    ]
+    assert [
+        dependency.dependency
+        for dependency in debug_routes.ml_metrics_router.dependencies
+    ] == [debug_routes.require_ml_metrics_access]
+
+
+def test_production_ml_metrics_requires_service_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = type("Settings", (), {"environment": "production"})()
+    monkeypatch.setattr(debug_routes, "get_settings", lambda: settings)
+    monkeypatch.delenv("ML_METRICS_SERVICE_TOKEN", raising=False)
+
+    with pytest.raises(HTTPException) as missing_config:
+        debug_routes.require_ml_metrics_access(None)
+    assert missing_config.value.status_code == 503
+
+    service_token = "ml-metrics-service-token-0123456789abcdef"
+    monkeypatch.setenv("ML_METRICS_SERVICE_TOKEN", service_token)
+    with pytest.raises(HTTPException) as missing_token:
+        debug_routes.require_ml_metrics_access(None)
+    assert missing_token.value.status_code == 401
+    with pytest.raises(HTTPException) as wrong_token:
+        debug_routes.require_ml_metrics_access("wrong-token")
+    assert wrong_token.value.status_code == 401
+
+    assert debug_routes.require_ml_metrics_access(service_token) is None
+
+
+def test_staging_ml_metrics_requires_service_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = type("Settings", (), {"environment": "staging"})()
+    monkeypatch.setattr(debug_routes, "get_settings", lambda: settings)
+    monkeypatch.delenv("ML_METRICS_SERVICE_TOKEN", raising=False)
+
+    with pytest.raises(HTTPException) as missing_config:
+        debug_routes.require_ml_metrics_access(None)
+
+    assert missing_config.value.status_code == 503
+
+
+def test_feature_extractor_sends_ml_metrics_service_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    service_token = "extractor-service-token-0123456789abcdef"
+    monkeypatch.delenv("BACKEND_URL", raising=False)
+    monkeypatch.setenv("RGL_CORE_URL", "http://rgl-core:8000")
+    monkeypatch.setenv("ML_METRICS_SERVICE_TOKEN", service_token)
+    fake_requests = MagicMock()
+    fake_requests.get.return_value.status_code = 200
+    fake_requests.get.return_value.json.return_value = {"metric": 1}
+    fake_redis = MagicMock()
+
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "ml"
+        / "extractors"
+        / "feature_extractor.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "release_gate_feature_extractor",
+        source,
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    with patch.dict(
+        sys.modules,
+        {
+            "numpy": MagicMock(),
+            "pandas": MagicMock(),
+            "redis": fake_redis,
+            "requests": fake_requests,
+        },
+    ):
+        spec.loader.exec_module(module)
+        assert module._metrics_endpoint_url("https://metrics.example") == (
+            "https://metrics.example/ml_metrics"
+        )
+        with pytest.raises(ValueError, match="must use HTTPS"):
+            module._metrics_endpoint_url("http://metrics.example")
+        assert module.FeatureExtractor().extract_features_from_backend() == {
+            "metric": 1
+        }
+
+    fake_requests.get.assert_called_once_with(
+        "http://rgl-core:8000/ml_metrics",
+        headers={"X-Liminal-ML-Token": service_token},
+        timeout=10,
+        allow_redirects=False,
+    )
+
+
+def test_access_token_has_explicit_purpose() -> None:
+    manager = make_manager()
+    token = manager.create_access_token({"sub": "user-1"})
+
+    payload = manager.verify_token(token, expected_type="access")
+
+    assert payload is not None
+    assert payload["token_type"] == "access"
+
+
+def test_refresh_token_is_rejected_by_access_dependency() -> None:
+    manager = make_manager()
+    refresh = manager.create_access_token(
+        {"sub": "user-1", "token_type": "refresh"},
+        expires_delta=timedelta(days=7),
+    )
+    verifier = TokenVerifier(manager, expected_type="access")
+
+    with pytest.raises(HTTPException) as exc_info:
+        verifier._validate(refresh)
+
+    assert exc_info.value.status_code == 401
+
+
+def test_access_token_is_rejected_as_refresh_token() -> None:
+    manager = make_manager()
+    access = manager.create_access_token({"sub": "user-1"})
+
+    assert manager.verify_token(access, expected_type="refresh") is None
+
+
+def test_token_without_purpose_is_rejected() -> None:
+    manager = make_manager()
+    token = jwt.encode(
+        {
+            "sub": "user-1",
+            "exp": datetime.now(UTC) + timedelta(minutes=5),
+        },
+        manager.secret_key,
+        algorithm=manager.algorithm,
+    )
+
+    assert manager.verify_token(token, expected_type="access") is None
+
+
+def test_legacy_sha256_password_hash_is_rejected() -> None:
+    manager = make_manager()
+
+    assert manager.verify_password("password", "sha256$deadbeef") is False
+
+
+def test_malformed_password_hash_is_rejected() -> None:
+    assert make_manager().verify_password("password", "not-a-password-hash") is False
+
+
+def test_password_verifier_operational_failure_is_not_hidden(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class BrokenPasswordContext:
+        def verify(self, plain_password: str, hashed_password: str) -> bool:
+            raise RuntimeError("password verifier unavailable")
+
+    monkeypatch.setattr(jwt_utils, "pwd_context", BrokenPasswordContext())
+
+    with pytest.raises(RuntimeError, match="password verifier unavailable"):
+        make_manager().verify_password("password", "valid-looking-hash")
+
+
+def test_auth_logs_do_not_include_user_identifiers(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    user_identifier = "sensitive-user@example.test"
+    caplog.set_level("DEBUG", logger="auth.jwt_utils")
+
+    make_manager().create_access_token({"sub": user_identifier})
+    jwt_utils.authenticate_user(user_identifier, "incorrect-password")
+
+    assert user_identifier not in caplog.text
+
+
+def test_password_hashing_failure_does_not_downgrade(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class BrokenPasswordContext:
+        def hash(self, password: str) -> str:
+            raise ValueError("bcrypt failure")
+
+    monkeypatch.setattr(jwt_utils, "pwd_context", BrokenPasswordContext())
+
+    with pytest.raises(ValueError, match="bcrypt failure"):
+        make_manager().get_password_hash("secret")
+
+
+def test_websocket_rejects_oversized_message() -> None:
+    oversized = '{"type":"broadcast","channel":"x","content":"' + ("a" * 20000) + '"}'
+
+    with pytest.raises(WebSocketMessageError) as exc_info:
+        parse_client_message(oversized)
+
+    assert exc_info.value.code == "message_too_large"
+
+
+@pytest.mark.parametrize(
+    "message, expected_code",
+    [
+        ('{"type":"unknown"}', "unknown_type"),
+        ('{"type":"subscribe","channel":"bad channel"}', "invalid_channel"),
+        (
+            '{"type":"subscribe","channel":"timeline","extra":true}',
+            "invalid_schema",
+        ),
+        ('{"type":"broadcast","channel":"timeline","content":""}', "invalid_content"),
+    ],
+)
+def test_websocket_schema_rejects_invalid_messages(
+    message: str,
+    expected_code: str,
+) -> None:
+    with pytest.raises(WebSocketMessageError) as exc_info:
+        parse_client_message(message)
+
+    assert exc_info.value.code == expected_code
+
+
+def test_auth_phase_rejects_non_auth_message() -> None:
+    with pytest.raises(WebSocketMessageError) as exc_info:
+        parse_client_message(
+            '{"type":"subscribe","channel":"timeline"}',
+            expected_types={"auth"},
+        )
+
+    assert exc_info.value.code == "unexpected_type"
+
+
+def test_local_rate_limit_protects_when_redis_is_unavailable() -> None:
+    limiter = LocalTokenBucket(rate=1, burst=2)
+
+    assert limiter.is_limited("connection") is False
+    assert limiter.is_limited("connection") is False
+    assert limiter.is_limited("connection") is True
+
+
+def test_websocket_authentication_has_no_query_token_parameter() -> None:
+    assert (
+        "token" not in inspect.signature(websocket_routes.websocket_timeline).parameters
+    )
+    assert (
+        "token"
+        not in inspect.signature(TimelineWebSocketService.handle_connection).parameters
+    )
+
+
+def test_legacy_api_entrypoint_reexports_hardened_app() -> None:
+    legacy_entrypoint = importlib.import_module("api")
+    hardened_main = importlib.import_module("backend.app.main")
+
+    assert legacy_entrypoint.app is hardened_main.app
+    assert str(legacy_entrypoint.app.url_path_for("websocket_timeline")) == (
+        "/ws/timeline"
+    )
+
+
+def test_legacy_backend_route_delegates_without_query_token() -> None:
+    source = (Path(__file__).resolve().parents[2] / "backend" / "api.py").read_text(
+        encoding="utf-8"
+    )
+    module = ast.parse(source)
+    endpoint = next(
+        node
+        for node in module.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name == "websocket_timeline"
+    )
+
+    assert "token" not in {argument.arg for argument in endpoint.args.args}
+    assert any(
+        isinstance(node, ast.Attribute) and node.attr == "handle_connection"
+        for node in ast.walk(endpoint)
+    )
+    assert "set_connection_manager(connection_manager)" in source
+
+
+@pytest.mark.asyncio
+async def test_readiness_returns_503_when_required_redis_is_disconnected() -> None:
+    hardened_main = importlib.import_module("backend.app.main")
+    response = Response()
+    manager = MagicMock()
+    manager.is_redis_ready = AsyncMock(return_value=False)
+
+    payload = await hardened_main.readiness_check(response, manager)
+
+    manager.is_redis_ready.assert_awaited_once_with()
+    assert response.status_code == 503
+    assert payload["ready"] is False
+    assert payload["checks"]["redis_connected"] is False
+
+
+def test_core_entrypoint_imports_the_gated_personality_router() -> None:
+    source = (
+        Path(__file__).resolve().parents[2] / "backend" / "app" / "main.py"
+    ).read_text(encoding="utf-8")
+    module = ast.parse(source)
+    personality_imports = [
+        node
+        for node in ast.walk(module)
+        if isinstance(node, ast.ImportFrom)
+        and node.module is not None
+        and node.module.startswith("backend.personality")
+    ]
+
+    assert any(node.module == "backend.personality" for node in personality_imports)
+    assert all(
+        node.module != "backend.personality.router" for node in personality_imports
+    )
+
+
+def test_redis_factory_wires_shared_rate_limit_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("USE_REDIS", "true")
+    monkeypatch.setenv("WS_RATE_LIMIT_PER_SECOND", "7")
+    monkeypatch.setenv("WS_RATE_LIMIT_BURST", "11")
+
+    manager = ConnectionManagerService()._create_manager()
+
+    assert isinstance(manager, RedisConnectionManager)
+    assert manager.redis_client is manager.redis
+    assert manager.rate_limit_messages_per_second == 7
+    assert manager.rate_limit_burst == 11
+
+
+def test_connection_manager_service_can_bind_a_shared_manager() -> None:
+    manager = ConnectionManager()
+    service = ConnectionManagerService()
+
+    service.set_manager(manager)
+
+    assert service.get_manager() is manager
+
+
+@pytest.mark.asyncio
+async def test_websocket_redis_password_is_not_embedded_in_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    password = "random/reserved?#password"
+    url = (
+        "rediss://redis:6379/0?ssl_cert_reqs=required"
+        "&ssl_ca_certs=/etc/liminal/tls/redis-ca.crt"
+    )
+    monkeypatch.setenv("REDIS_PASSWORD", password)
+    client = WebSocketRedisClient(url=url)
+    backend = MagicMock()
+    backend.ping = AsyncMock()
+
+    with patch(
+        "backend.websocket.redis_client.redis.from_url", return_value=backend
+    ) as factory:
+        assert await client.connect() is True
+
+    factory.assert_called_once_with(
+        url,
+        decode_responses=True,
+        password=password,
+    )
+
+
+def test_legacy_readiness_redis_uses_tls_url_and_separate_password(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    password = "random/reserved?#password"
+    url = (
+        "rediss://redis:6379/0?ssl_cert_reqs=required"
+        "&ssl_ca_certs=/etc/liminal/tls/redis-ca.crt"
+    )
+    monkeypatch.setenv("REDIS_URL", url)
+    monkeypatch.setenv("REDIS_PASSWORD", password)
+    backend = MagicMock()
+
+    with patch("backend.redis_client.redis.from_url", return_value=backend) as factory:
+        client = LegacyRedisClient()
+
+    assert client.client is backend
+    backend.ping.assert_called_once_with()
+    factory.assert_called_once_with(
+        url,
+        decode_responses=True,
+        socket_timeout=5,
+        socket_connect_timeout=5,
+        password=password,
+    )
+
+
+@pytest.mark.asyncio
+async def test_redis_manager_loads_distributed_rate_limit_script() -> None:
+    manager = RedisConnectionManager()
+    pubsub = MagicMock()
+    pubsub.subscribe = AsyncMock()
+    manager.redis.redis = MagicMock()
+    manager.redis.redis.pubsub.return_value = pubsub
+    manager.redis.connect = AsyncMock(return_value=True)
+    manager.redis.subscribe = AsyncMock()
+    manager._load_rate_limit_script = AsyncMock()
+
+    assert await manager.initialize() is True
+
+    manager._load_rate_limit_script.assert_awaited_once_with()
+
+
+@pytest.mark.asyncio
+async def test_redis_manager_readiness_uses_a_live_ping() -> None:
+    manager = RedisConnectionManager()
+    manager._is_connected = True
+    manager.redis.ping = AsyncMock(side_effect=(True, False, True))
+
+    assert await manager.is_redis_ready() is True
+    assert manager._is_connected is True
+    assert await manager.is_redis_ready() is False
+    assert manager._is_connected is False
+    # A recovered socket alone cannot recreate lost Pub/Sub subscriptions;
+    # readiness remains false until the manager is initialized again.
+    assert await manager.is_redis_ready() is False
+    assert manager.redis.ping.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_redis_listener_suppresses_self_published_broadcasts() -> None:
+    client = WebSocketRedisClient(test_mode=False)
+    client.instance_id = "local-instance"
+    channel = "liminal:broadcast"
+    callback = AsyncMock()
+    client.subscription_callbacks[channel] = callback
+
+    class PubSub:
+        async def listen(self):
+            for sender, source in (
+                ("local-instance", "local"),
+                ("remote-instance", "remote"),
+            ):
+                yield {
+                    "type": "message",
+                    "channel": channel,
+                    "data": json.dumps(
+                        {"sender_id": sender, "data": {"source": source}}
+                    ),
+                }
+
+    client.pubsub = PubSub()
+
+    await client._message_listener()
+
+    callback.assert_awaited_once_with({"source": "remote"})
+
+
+@pytest.mark.asyncio
+async def test_redis_manager_preserves_base_subscription_contract() -> None:
+    assert inspect.signature(RedisConnectionManager.subscribe) == inspect.signature(
+        ConnectionManager.subscribe
+    )
+    assert inspect.signature(RedisConnectionManager.unsubscribe) == inspect.signature(
+        ConnectionManager.unsubscribe
+    )
+    assert inspect.signature(RedisConnectionManager.broadcast) == inspect.signature(
+        ConnectionManager.broadcast
+    )
+    assert inspect.signature(
+        RedisConnectionManager.send_personal_message
+    ) == inspect.signature(ConnectionManager.send_personal_message)
+    assert inspect.signature(
+        RedisConnectionManager.get_connection_stats
+    ) == inspect.signature(ConnectionManager.get_connection_stats)
+
+    manager = RedisConnectionManager()
+    sender = AsyncMock()
+    recipient = AsyncMock()
+    await manager.subscribe("sender", "timeline", sender)
+    await manager.subscribe("recipient", "timeline", recipient)
+
+    sent_count = await manager.broadcast(
+        "timeline", {"type": "message"}, sender_id="sender"
+    )
+
+    assert sent_count == 1
+    sender.send_json.assert_not_awaited()
+    recipient.send_json.assert_awaited_once_with({"type": "message"})
+
+    await manager.send_personal_message({"type": "personal"}, "recipient")
+    recipient.send_json.assert_awaited_with({"type": "personal"})
+
+    await manager.unsubscribe("recipient", "timeline")
+    assert manager.is_user_subscribed("recipient", "timeline") is False
+    assert manager.get_connection_stats()["is_distributed"] is False
+
+
+@pytest.mark.asyncio
+async def test_timeline_does_not_reauthenticate_an_authenticated_socket() -> None:
+    timeline = MemoryTimeline()
+    websocket = AsyncMock()
+    websocket.user_id = "authenticated-user"
+    websocket.headers = {}
+
+    await timeline.subscribe(websocket)
+
+    websocket.close.assert_not_awaited()
+    websocket.send_json.assert_awaited_once()
+    assert websocket in timeline.subscribers
+
+
+def test_release_guard_rejects_research_dependencies() -> None:
+    dockerfile = """\
+ARG PYTHON_IMAGE
+FROM ${PYTHON_IMAGE}
+RUN pip install -r requirements-core.txt -r requirements-research.txt
+CMD ["sh", "-c", "uvicorn backend.main:app --ws-max-size ${WS_MAX_MESSAGE_BYTES:-16384}"]
+"""
+
+    assert release_security.production_dockerfile_errors(
+        dockerfile,
+        "python:3.11-slim@sha256:" + "a" * 64,
+    ) == ["production Dockerfile must not install test/dev/research dependencies"]
+
+
+def test_release_guard_rejects_mutable_python_image_and_unbounded_ws() -> None:
+    dockerfile = """\
+ARG PYTHON_IMAGE
+FROM ${PYTHON_IMAGE}
+RUN pip install -r requirements-core.txt
+"""
+
+    assert release_security.production_dockerfile_errors(
+        dockerfile,
+        "python:3.11-slim",
+    ) == [
+        "PYTHON_IMAGE must be an immutable @sha256 reference",
+        "production ASGI launch must enforce WS_MAX_MESSAGE_BYTES at transport",
+    ]
+
+
+def test_release_guard_ignores_comment_only_ws_markers() -> None:
+    dockerfile = """\
+ARG PYTHON_IMAGE
+FROM ${PYTHON_IMAGE}
+RUN pip install -r requirements-core.txt
+# --ws-max-size ${WS_MAX_MESSAGE_BYTES:-16384}
+CMD ["uvicorn", "backend.main:app"]
+"""
+
+    assert release_security.production_dockerfile_errors(
+        dockerfile,
+        "python:3.11-slim@sha256:" + "a" * 64,
+    ) == ["production ASGI launch must enforce WS_MAX_MESSAGE_BYTES at transport"]
+
+
+def test_artillery_websocket_smoke_uses_in_band_authentication() -> None:
+    load_test = (
+        Path(__file__).resolve().parents[2] / "tests/load/ws-burst.yml"
+    ).read_text(encoding="utf-8")
+    websocket_scenario = load_test.split("scenarios:", 1)[1]
+
+    assert "?token=" not in load_test
+    assert "engine: ws" in websocket_scenario
+    assert websocket_scenario.index("- connect:") < websocket_scenario.index("- send:")
+    assert '"type":"auth","token":"{{ token }}"' in websocket_scenario

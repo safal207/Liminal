@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import AsyncIterator, Awaitable, Callable, Dict
+from typing import Annotated, AsyncIterator, Awaitable, Callable, Dict, cast
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from backend.burnout_guard.api import router as burnout_router
 from backend.config import get_settings
 from backend.health import router as health_router
 from backend.metrics import setup_metrics
@@ -30,9 +30,18 @@ from .dependencies import (
 )
 from .routes import auth, billing, debug, fragments, waves, ws
 
+logger = logging.getLogger(__name__)
+
 try:
-    from backend.personality.router import router as personality_router
-except Exception:  # pragma: no cover - optional GraphQL stack
+    from backend.burnout_guard.api import router as burnout_router
+except ImportError as exc:  # pragma: no cover - optional research stack
+    logger.info("Burnout analytics routes disabled: %s", exc)
+    burnout_router = None
+
+try:
+    from backend.personality import router as personality_router
+except ImportError as exc:  # pragma: no cover - optional GraphQL stack
+    logger.info("Personality routes disabled: %s", exc)
     personality_router = None
 
 
@@ -104,19 +113,16 @@ async def security_headers(
     """Add security headers to all responses."""
     response = await call_next(request)
 
-    # Security headers
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
-    # HSTS header (only in production)
     if settings.environment != "development":
         response.headers["Strict-Transport-Security"] = (
             "max-age=31536000; includeSubDomains; preload"
         )
 
-    # Content Security Policy
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline'; "
@@ -154,12 +160,15 @@ app.include_router(auth.router)
 app.include_router(waves.router)
 app.include_router(fragments.router)
 app.include_router(debug.router)
+app.include_router(debug.ml_metrics_router)
 app.include_router(ws.router)
 app.include_router(billing.router)
-app.include_router(
-    burnout_router,
-    dependencies=[Depends(require_burnout_pro)],
-)
+
+if burnout_router is not None:
+    app.include_router(
+        burnout_router,
+        dependencies=[Depends(require_burnout_pro)],
+    )
 
 if personality_router is not None:
     app.include_router(personality_router)
@@ -187,20 +196,26 @@ async def health_check():
         "ml_enabled": get_ml_service().enabled,
         "redis_connected": hasattr(app.state.connection_manager, "redis")
         and getattr(app.state.connection_manager, "redis", None) is not None,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
     }
 
 
 @app.get("/ready")
-async def readiness_check(manager=Depends(get_connection_manager)):
+async def readiness_check(
+    response: Response,
+    manager: Annotated[object, Depends(get_connection_manager)],
+):
     try:
         asyncio.get_running_loop()
         loop_ok = True
     except RuntimeError:
         loop_ok = False
 
-    redis_cfg = hasattr(manager, "_is_connected")
-    redis_ok = getattr(manager, "_is_connected", True) if redis_cfg else True
+    redis_probe = getattr(manager, "is_redis_ready", None)
+    redis_cfg = callable(redis_probe)
+    redis_ok = (
+        await cast(Callable[[], Awaitable[bool]], redis_probe)() if redis_cfg else True
+    )
 
     checks = {
         "app_loaded": True,
@@ -213,9 +228,11 @@ async def readiness_check(manager=Depends(get_connection_manager)):
     ready = checks["app_loaded"] and checks["event_loop"]
     if redis_cfg:
         ready = ready and redis_ok
+    if not ready:
+        response.status_code = 503
 
     return {
         "ready": ready,
         "checks": checks,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
     }

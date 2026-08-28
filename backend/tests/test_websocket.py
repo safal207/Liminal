@@ -19,11 +19,10 @@ try:
     from backend.websocket.connection_manager import ConnectionManager
     from backend.websocket.redis_connection_manager import RedisConnectionManager
 except ModuleNotFoundError:  # pragma: no cover - support legacy invocation
+    from auth.jwt_utils import create_access_token_for_user, verify_websocket_token
     from main import app
     from websocket.connection_manager import ConnectionManager
     from websocket.redis_connection_manager import RedisConnectionManager
-
-    from auth.jwt_utils import create_access_token_for_user, verify_websocket_token
 
 
 @pytest.fixture
@@ -89,11 +88,24 @@ async def test_redis_integration():
         "backend.websocket.redis_connection_manager.RedisClient"
     ) as mock_redis_client:
         # Настраиваем mock для Redis клиента
-        mock_redis = AsyncMock()
-        mock_pubsub = AsyncMock()
-        mock_redis.pubsub.return_value = mock_pubsub
+        mock_redis = MagicMock()
+        mock_redis.connect = AsyncMock(return_value=True)
+        mock_redis.subscribe = AsyncMock()
+        mock_redis.set = AsyncMock()
+        mock_redis.set_add = AsyncMock()
+        mock_redis.publish = AsyncMock()
+        mock_redis.prefix = "liminal"
+        mock_redis.instance_id = "test-instance"
+        mock_redis.subscription_callbacks = {}
+        mock_redis._message_listener = AsyncMock()
+
+        raw_backend = MagicMock()
+        mock_pubsub = MagicMock()
+        raw_backend.pubsub.return_value = mock_pubsub
         mock_pubsub.subscribe = AsyncMock()
         mock_pubsub.unsubscribe = AsyncMock()
+        raw_backend.script_load = AsyncMock(return_value="rate-limit-sha")
+        mock_redis.redis = raw_backend
         mock_redis_client.return_value = mock_redis
 
         # Первый экземпляр
@@ -106,11 +118,13 @@ async def test_redis_integration():
 
         # Создаем фиктивное соединение для экземпляра 1
         mock_websocket = AsyncMock()
-        await manager1.connect(mock_websocket)
+        mock_websocket.client = MagicMock()
+        mock_websocket.client.host = "127.0.0.1"
+        await manager1.connect(mock_websocket, "test_user")
 
         # Подписываем соединение на канал в экземпляре 1
         channel = "test_channel"
-        await manager1.subscribe(mock_websocket, channel, user_id="test_user")
+        await manager1.subscribe("test_user", channel, mock_websocket)
 
         # Проверяем, что Redis publish был вызван с правильными параметрами
         assert mock_redis.publish.called

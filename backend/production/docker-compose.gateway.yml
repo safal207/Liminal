@@ -1,0 +1,20 @@
+# Add this file explicitly to enable the optional WebSocket gateway. Its image
+# identity is required only when the override is selected.
+services:
+  websocket-gateway:
+    image: ${WEBSOCKET_GATEWAY_IMAGE_REPOSITORY:?Set repository}@${WEBSOCKET_GATEWAY_IMAGE_DIGEST:?Set sha256 digest}
+    expose:
+      - "8002"
+    environment:
+      RGL_CORE_URL: http://rgl-core:8000
+      REDIS_URL: "rediss://redis:6379/0?ssl_cert_reqs=required&ssl_ca_certs=/etc/liminal/tls/redis-ca.crt"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+      MAX_CONNECTIONS: "10000"
+    volumes:
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/redis/ca.crt:/etc/liminal/tls/redis-ca.crt:ro
+    depends_on:
+      - rgl-core
+      - redis
+    networks:
+      - internal
+    restart: unless-stopped

@@ -1,195 +1,154 @@
-version: '3.8'
-
 services:
-  # RGL Core Service
   rgl-core:
     build:
-      context: ..
-      dockerfile: production/Dockerfile.rgl-core
-    ports:
-      - "8000:8000"
+      context: ../..
+      dockerfile: backend/Dockerfile
+      args:
+        PYTHON_IMAGE: ${PYTHON_IMAGE:?Set PYTHON_IMAGE to an immutable python image reference}
+    expose:
+      - "8000"
     environment:
-      - REDIS_URL=redis://redis:6379
-      - NEO4J_URI=bolt://neo4j:7687
-      - NEO4J_USER=neo4j
-      - NEO4J_PASSWORD=rgl_production_password
-      - LOG_LEVEL=INFO
-      - WORKERS=4
+      ENV: production
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY to a strong random value}
+      ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?Set a strong ML metrics service token}
+      LIMINAL_ADMIN_PASS: ${LIMINAL_ADMIN_PASS:?Set LIMINAL_ADMIN_PASS to a strong bootstrap password}
+      REDIS_URL: "rediss://redis:6379/0?ssl_cert_reqs=required&ssl_ca_certs=/etc/liminal/tls/redis-ca.crt"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
+      USE_REDIS: "true"
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?Set NEO4J_PASSWORD}
+      NEO4J_CA_CERT: /etc/liminal/tls/neo4j-ca.crt
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_PRO_MONTHLY: ${STRIPE_PRICE_PRO_MONTHLY:-}
+      STRIPE_SUCCESS_URL: ${STRIPE_SUCCESS_URL:-}
+      STRIPE_CANCEL_URL: ${STRIPE_CANCEL_URL:-}
+      BILLING_STORE_PATH: ${BILLING_STORE_PATH:-/app/data/billing_store.json}
+      LOG_LEVEL: INFO
+      WORKERS: "4"
+      WS_MAX_MESSAGE_BYTES: ${WS_MAX_MESSAGE_BYTES:-16384}
+      # Only the ingress container at this fixed internal address may supply
+      # forwarded client identity to Uvicorn.
+      FORWARDED_ALLOW_IPS: "172.30.0.10"
+    volumes:
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/redis/ca.crt:/etc/liminal/tls/redis-ca.crt:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/neo4j/bolt/ca.crt:/etc/liminal/tls/neo4j-ca.crt:ro
+      - billing-data:/app/data
     depends_on:
-      - redis
-      - neo4j
-      - prometheus
+      redis:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
     networks:
-      - rgl-network
+      internal:
+      # Keep outbound billing traffic on a dedicated network while Redis and
+      # Neo4j remain confined to the internal-only network.
+      egress:
+        gw_priority: 1
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/ready"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 30s
 
-  # Neural Analytics Service
-  neural-analytics:
-    build:
-      context: ..
-      dockerfile: production/Dockerfile.analytics
-    ports:
-      - "8001:8001"
-    environment:
-      - RGL_CORE_URL=http://rgl-core:8000
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      - rgl-core
-      - redis
-    networks:
-      - rgl-network
-    restart: unless-stopped
-
-  # Real-time WebSocket Gateway
-  websocket-gateway:
-    build:
-      context: ..
-      dockerfile: production/Dockerfile.websocket
-    ports:
-      - "8002:8002"
-    environment:
-      - RGL_CORE_URL=http://rgl-core:8000
-      - REDIS_URL=redis://redis:6379
-      - MAX_CONNECTIONS=10000
-    depends_on:
-      - rgl-core
-      - redis
-    networks:
-      - rgl-network
-    restart: unless-stopped
-
-  # Redis Cache & Message Broker
   redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    image: redis@${REDIS_IMAGE_DIGEST:?Set REDIS_IMAGE_DIGEST to sha256 digest}
+    expose:
+      - "6379"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/redis:/etc/liminal/tls:ro
+    command:
+      - sh
+      - -c
+      - >-
+        exec redis-server --appendonly yes --maxmemory 512mb
+        --maxmemory-policy allkeys-lru --requirepass "$${REDIS_PASSWORD}"
+        --port 0 --tls-port 6379
+        --tls-cert-file /etc/liminal/tls/server.crt
+        --tls-key-file /etc/liminal/tls/server.key
+        --tls-ca-cert-file /etc/liminal/tls/ca.crt
+        --tls-auth-clients no
     networks:
-      - rgl-network
+      - internal
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli --tls --cacert /etc/liminal/tls/ca.crt -a \"$${REDIS_PASSWORD}\" ping | grep PONG",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Neo4j Memory Graph Database
   neo4j:
-    image: neo4j:5.15-community
-    ports:
-      - "7474:7474"
-      - "7687:7687"
+    image: neo4j@${NEO4J_IMAGE_DIGEST:?Set NEO4J_IMAGE_DIGEST to sha256 digest}
+    expose:
+      - "7474"
+      - "7687"
     volumes:
       - neo4j-data:/data
       - neo4j-logs:/logs
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/neo4j:/ssl:ro
     environment:
-      - NEO4J_AUTH=neo4j/rgl_production_password
-      - NEO4J_PLUGINS=["apoc"]
-      - NEO4J_db_memory_pagecache_size=512M
-      - NEO4J_db_memory_heap_initial_size=512M
-      - NEO4J_db_memory_heap_max_size=1G
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?Set NEO4J_PASSWORD}
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_db_memory_pagecache_size: 512M
+      NEO4J_db_memory_heap_initial_size: 512M
+      NEO4J_db_memory_heap_max_size: 1G
+      NEO4J_server_bolt_tls__level: REQUIRED
+      NEO4J_dbms_ssl_policy_bolt_enabled: "true"
+      NEO4J_dbms_ssl_policy_bolt_base__directory: /ssl/bolt
+      NEO4J_dbms_ssl_policy_bolt_private__key: private.key
+      NEO4J_dbms_ssl_policy_bolt_public__certificate: public.crt
+      NEO4J_dbms_ssl_policy_bolt_client__auth: NONE
     networks:
-      - rgl-network
+      - internal
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --quiet --tries=1 --spider http://localhost:7474 || exit 1",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
 
-  # Prometheus Monitoring
-  prometheus:
-    image: prom/prometheus:latest
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--web.enable-lifecycle'
-    networks:
-      - rgl-network
-    restart: unless-stopped
-
-  # Grafana Dashboards
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    volumes:
-      - grafana-data:/var/lib/grafana
-      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
-      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=rgl_admin_password
-      - GF_USERS_ALLOW_SIGN_UP=false
-    depends_on:
-      - prometheus
-    networks:
-      - rgl-network
-    restart: unless-stopped
-
-  # Nginx Load Balancer & Reverse Proxy
   nginx:
-    image: nginx:alpine
+    image: nginx@${NGINX_IMAGE_DIGEST:?Set NGINX_IMAGE_DIGEST to sha256 digest}
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
-      - ./nginx/ssl:/etc/nginx/ssl
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/nginx:/etc/nginx/ssl:ro
     depends_on:
       - rgl-core
-      - neural-analytics
-      - websocket-gateway
     networks:
-      - rgl-network
-    restart: unless-stopped
-
-  # ELK Stack for Logging
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    environment:
-      - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-      - xpack.security.enabled=false
-    volumes:
-      - elasticsearch-data:/usr/share/elasticsearch/data
-    networks:
-      - rgl-network
-    restart: unless-stopped
-
-  logstash:
-    image: docker.elastic.co/logstash/logstash:8.11.0
-    volumes:
-      - ./monitoring/logstash/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
-    depends_on:
-      - elasticsearch
-    networks:
-      - rgl-network
-    restart: unless-stopped
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.0
-    ports:
-      - "5601:5601"
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-    depends_on:
-      - elasticsearch
-    networks:
-      - rgl-network
+      edge:
+      internal:
+        ipv4_address: 172.30.0.10
     restart: unless-stopped
 
 volumes:
+  billing-data:
   redis-data:
   neo4j-data:
   neo4j-logs:
-  prometheus-data:
-  grafana-data:
-  elasticsearch-data:
 
 networks:
-  rgl-network:
-    driver: bridge
+  edge:
+  egress:
+    internal: false
+  internal:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24

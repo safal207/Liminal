@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, List, Optional, Set
 
 from fastapi import WebSocket
 
-from loguru import logger
+logger = logging.getLogger("websocket.connection_manager")
 
 try:
     from .redis_client import RedisClient
@@ -72,8 +72,6 @@ except ImportError:
     connection_limits = DummyMetric()
     websocket_broadcast_duration_seconds = DummyMetric()
     websocket_rate_limit_total = DummyMetric()
-
-logger = logging.getLogger("websocket.connection_manager")
 
 
 @dataclass
@@ -266,7 +264,9 @@ class ConnectionManager:
                         f"Ошибка отправки сообщения пользователю {user_id}: {e}"
                     )
 
-    async def broadcast(self, channel: str, message: dict, sender_id: str = None):
+    async def broadcast(
+        self, channel: str, message: dict, sender_id: Optional[str] = None
+    ):
         """
         Отправляет сообщение всем подписчикам канала.
         """

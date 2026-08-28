@@ -1,0 +1,162 @@
+# Add this file explicitly to enable the optional observability services. The
+# base ingress deliberately contains no references to these service hostnames.
+services:
+  nginx:
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ../nginx/observability.conf:/etc/nginx/liminal.d/observability.conf:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/observability/ca.crt:/etc/nginx/tls/observability-ca.crt:ro
+    depends_on:
+      - prometheus
+      - grafana
+      - kibana
+
+  prometheus:
+    image: prom/prometheus@${PROMETHEUS_IMAGE_DIGEST:?Set PROMETHEUS_IMAGE_DIGEST to sha256 digest}
+    expose:
+      - "9090"
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.external-url=${LIMINAL_OBSERVABILITY_BASE_URL:?Set LIMINAL_OBSERVABILITY_BASE_URL}/prometheus/
+      - --web.route-prefix=/
+    networks:
+      - internal
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana@${GRAFANA_IMAGE_DIGEST:?Set GRAFANA_IMAGE_DIGEST to sha256 digest}
+    expose:
+      - "3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ../../grafana/dashboards:/etc/grafana/dashboards:ro
+      - ../../grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../../grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../../grafana/provisioning/alerting:/etc/grafana/provisioning/alerting:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/observability/grafana.crt:/etc/grafana/tls/server.crt:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/observability/grafana.key:/etc/grafana/tls/server.key:ro
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: ${LIMINAL_OBSERVABILITY_BASE_URL:?Set LIMINAL_OBSERVABILITY_BASE_URL}/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      GF_SERVER_PROTOCOL: https
+      GF_SERVER_CERT_FILE: /etc/grafana/tls/server.crt
+      GF_SERVER_CERT_KEY: /etc/grafana/tls/server.key
+    depends_on:
+      - prometheus
+    networks:
+      - internal
+    restart: unless-stopped
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch@${ELASTICSEARCH_IMAGE_DIGEST:?Set ELASTICSEARCH_IMAGE_DIGEST to sha256 digest}
+    expose:
+      - "9200"
+    environment:
+      discovery.type: single-node
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+      xpack.security.enabled: "true"
+      xpack.security.http.ssl.enabled: "true"
+      xpack.security.http.ssl.key: certs/server.key
+      xpack.security.http.ssl.certificate: certs/server.crt
+      xpack.security.http.ssl.certificate_authorities: certs/ca.crt
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD}
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/elasticsearch:/usr/share/elasticsearch/config/certs:ro
+    networks:
+      - internal
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS --cacert /usr/share/elasticsearch/config/certs/ca.crt -u elastic:\"$${ELASTIC_PASSWORD}\" https://localhost:9200/_cluster/health >/dev/null",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  elasticsearch-setup:
+    image: docker.elastic.co/elasticsearch/elasticsearch@${ELASTICSEARCH_IMAGE_DIGEST:?Set ELASTICSEARCH_IMAGE_DIGEST to sha256 digest}
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD}
+      KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?Set KIBANA_SYSTEM_PASSWORD}
+    volumes:
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/elasticsearch/ca.crt:/usr/share/elasticsearch/config/certs/ca.crt:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    command:
+      - bash
+      - -euc
+      - |
+        escaped="$${KIBANA_SYSTEM_PASSWORD//\\/\\\\}"
+        escaped="$${escaped//\"/\\\"}"
+        printf '{"password":"%s"}' "$${escaped}" |
+          curl -fsS --output /dev/null \
+            --user "elastic:$${ELASTIC_PASSWORD}" \
+            --cacert /usr/share/elasticsearch/config/certs/ca.crt \
+            --header 'Content-Type: application/json' \
+            --request POST \
+            --data-binary @- \
+            https://elasticsearch:9200/_security/user/kibana_system/_password
+    networks:
+      - internal
+    restart: "no"
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash@${LOGSTASH_IMAGE_DIGEST:?Set LOGSTASH_IMAGE_DIGEST to sha256 digest}
+    volumes:
+      - ../monitoring/logstash.conf:/usr/share/logstash/pipeline/logstash.conf:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/elasticsearch/ca.crt:/usr/share/logstash/config/certs/ca.crt:ro
+    environment:
+      ELASTIC_PASSWORD: ${ELASTIC_PASSWORD:?Set ELASTIC_PASSWORD}
+      ELASTICSEARCH_HOSTS: https://elasticsearch:9200
+      ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES: /usr/share/logstash/config/certs/ca.crt
+    depends_on:
+      - elasticsearch
+    networks:
+      - internal
+    restart: unless-stopped
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana@${KIBANA_IMAGE_DIGEST:?Set KIBANA_IMAGE_DIGEST to sha256 digest}
+    expose:
+      - "5601"
+    environment:
+      ELASTICSEARCH_HOSTS: https://elasticsearch:9200
+      ELASTICSEARCH_USERNAME: kibana_system
+      ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?Set KIBANA_SYSTEM_PASSWORD}
+      ELASTICSEARCH_SSL_CERTIFICATEAUTHORITIES: /usr/share/kibana/config/certs/ca.crt
+      ELASTICSEARCH_SSL_VERIFICATIONMODE: full
+      SERVER_BASEPATH: /kibana
+      SERVER_REWRITEBASEPATH: "false"
+      SERVER_PUBLICBASEURL: ${LIMINAL_OBSERVABILITY_BASE_URL:?Set LIMINAL_OBSERVABILITY_BASE_URL}/kibana
+      SERVER_SSL_ENABLED: "true"
+      SERVER_SSL_CERTIFICATE: /usr/share/kibana/config/tls/server.crt
+      SERVER_SSL_KEY: /usr/share/kibana/config/tls/server.key
+    volumes:
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/elasticsearch/ca.crt:/usr/share/kibana/config/certs/ca.crt:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/observability/kibana.crt:/usr/share/kibana/config/tls/server.crt:ro
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/observability/kibana.key:/usr/share/kibana/config/tls/server.key:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      elasticsearch-setup:
+        condition: service_completed_successfully
+    networks:
+      - internal
+    restart: unless-stopped
+
+volumes:
+  prometheus-data:
+  grafana-data:
+  elasticsearch-data:

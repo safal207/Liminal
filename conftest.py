@@ -38,15 +38,15 @@ def _live_server_available(host: str = "127.0.0.1", port: int = 8000) -> bool:
         return sock.connect_ex((host, port)) == 0
 
 
-def pytest_ignore_collect(collection_path, config):
-    """Skip root-level backend smoke scripts that are not real pytest modules."""
+def pytest_ignore_collect(collection_path, config) -> bool | None:
+    """Skip manual smoke scripts without overriding pytest's own ignore rules."""
     path = Path(str(collection_path))
 
     if path.suffix == ".txt" and path.name.startswith("test"):
         return True
 
     if path.suffix != ".py":
-        return False
+        return None
 
     is_backend_manual_smoke_test = (
         path.parent == _BACKEND_ROOT and path.name.startswith("test_")
@@ -56,12 +56,12 @@ def pytest_ignore_collect(collection_path, config):
     )
 
     if not (is_backend_manual_smoke_test or is_backend_tests_script):
-        return False
+        return None
 
     try:
         source = path.read_text(encoding="utf-8", errors="ignore")
     except OSError:
-        return False
+        return None
 
     has_manual_entrypoint = (
         'if __name__ == "__main__":' in source

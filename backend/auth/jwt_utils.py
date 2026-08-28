@@ -1,62 +1,70 @@
-"""JWT Authentication utilities for WebSocket and API endpoints."""
+"""JWT authentication utilities for WebSocket and API endpoints."""
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import os
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from typing import Any, Dict, Optional
 
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError
 
-from backend.core.settings import Settings, get_settings
+from backend.core.settings import DEFAULT_SECRET, Settings, get_settings
 
-# Безопасный импорт CryptContext с обработкой ошибок
+logger = logging.getLogger("auth.jwt_utils")
+
 try:
     from passlib.context import CryptContext
 
-    # Проверка, что bcrypt работает корректно
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     CRYPTO_ENABLED = True
-except (ImportError, AttributeError) as e:
-    logger = logging.getLogger("auth.jwt_utils")
-    logger.warning(f"Ошибка при импорте passlib/bcrypt: {e}")
-    logger.warning(
-        "JWT аутентификация будет работать в тестовом режиме без проверки паролей"
-    )
+except (ImportError, AttributeError) as exc:
+    logger.warning("passlib/bcrypt is unavailable: %s", exc)
     CRYPTO_ENABLED = False
 
-    # Fail closed: never silently accept all passwords when crypto is unavailable.
     class _UnavailableCryptContext:
         def __init__(self, error: Exception) -> None:
             self._error = error
 
         def verify(self, plain_password: str, hashed_password: str) -> bool:
             raise RuntimeError(
-                "passlib/bcrypt failed to import; password verification is unavailable. "
-                f"Original error: {self._error}. Install with: pip install 'passlib[bcrypt]'"
+                "passlib/bcrypt failed to import; password verification is unavailable"
             ) from self._error
 
         def hash(self, password: str) -> str:
             raise RuntimeError(
-                "passlib/bcrypt failed to import; password hashing is unavailable. "
-                f"Original error: {self._error}. Install with: pip install 'passlib[bcrypt]'"
+                "passlib/bcrypt failed to import; password hashing is unavailable"
             ) from self._error
 
-    pwd_context = _UnavailableCryptContext(e)
+    pwd_context = _UnavailableCryptContext(exc)
 
-logger = logging.getLogger("auth.jwt_utils")
 
-# pwd_context уже определен выше в блоке импорта
+VALID_TOKEN_TYPES = frozenset({"access", "refresh"})
+MIN_PRODUCTION_SECRET_LENGTH = 32
+MIN_PRODUCTION_PASSWORD_LENGTH = 12
 
 
 class JWTManager:
-    """Менеджер для работы с JWT токенами."""
+    """Create and validate purpose-bound JWT tokens."""
 
     def __init__(self, config: Settings):
         self._config = config
+        self._validate_configuration()
+
+    def _validate_configuration(self) -> None:
+        environment = os.getenv("ENV", "development").strip().lower()
+        secret = self.secret_key.strip()
+        if environment == "production" and (
+            not secret
+            or secret == DEFAULT_SECRET
+            or len(secret) < MIN_PRODUCTION_SECRET_LENGTH
+        ):
+            raise RuntimeError(
+                "JWT_SECRET_KEY must be a non-default secret of at least 32 characters "
+                "when ENV=production"
+            )
 
     @property
     def secret_key(self) -> str:
@@ -70,124 +78,112 @@ class JWTManager:
     def access_token_expire_minutes(self) -> int:
         return self._config.jwt.access_token_expire_minutes
 
-    def _strip_bearer_prefix(self, token: str) -> str:
-        """Remove a Bearer prefix if present."""
-
+    @staticmethod
+    def _strip_bearer_prefix(token: str) -> str:
         if token.lower().startswith("bearer "):
             return token.split(" ", 1)[1].strip()
         return token
 
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Проверяет пароль против хеша."""
+        """Verify a password without accepting legacy weak hashes."""
         if hashed_password.startswith("sha256$"):
-            expected = hashed_password.split("$", 1)[1]
-            actual = hashlib.sha256(plain_password.encode("utf-8")).hexdigest()
-            return actual == expected
-
-        return pwd_context.verify(plain_password, hashed_password)
+            logger.warning("Rejected legacy SHA-256 password hash")
+            return False
+        try:
+            return pwd_context.verify(plain_password, hashed_password)
+        except ValueError:
+            logger.warning("Rejected malformed password hash")
+            return False
 
     def get_password_hash(self, password: str) -> str:
-        """Создает хеш пароля."""
-        try:
-            return pwd_context.hash(password)
-        except ValueError as exc:
-            logger.warning(
-                "Ошибка при хешировании пароля через bcrypt: %s."
-                " Переключаемся на sha256 для тестового режима.",
-                exc,
-            )
-            return f"sha256${hashlib.sha256(password.encode('utf-8')).hexdigest()}"
+        """Hash a password; cryptographic failures are propagated fail-closed."""
+        return pwd_context.hash(password)
 
     def create_access_token(
         self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None
     ) -> str:
-        """
-        Создает JWT токен.
-
-        Args:
-            data: Данные для включения в токен
-            expires_delta: Время жизни токена
-
-        Returns:
-            str: JWT токен
-        """
+        """Create a signed token with an explicit access or refresh purpose."""
         to_encode = data.copy()
-        if expires_delta:
-            expire = datetime.utcnow() + expires_delta
-        else:
-            expire = datetime.utcnow() + timedelta(
-                minutes=self.access_token_expire_minutes
-            )
+        token_type = str(to_encode.setdefault("token_type", "access"))
+        if token_type not in VALID_TOKEN_TYPES:
+            raise ValueError(f"Unsupported token_type: {token_type}")
 
-        to_encode.update({"exp": expire})
+        expire = datetime.now(UTC) + (
+            expires_delta
+            if expires_delta is not None
+            else timedelta(minutes=self.access_token_expire_minutes)
+        )
+        to_encode["exp"] = expire
         encoded_jwt = jwt.encode(to_encode, self.secret_key, algorithm=self.algorithm)
-
-        logger.info(f"JWT токен создан для пользователя: {data.get('sub', 'unknown')}")
+        logger.debug("JWT token created type=%s", token_type)
         return encoded_jwt
 
-    def verify_token(self, token: str) -> Optional[Dict[str, Any]]:
-        """
-        Проверяет JWT токен.
-
-        Args:
-            token: JWT токен для проверки
-
-        Returns:
-            Dict[str, Any]: Payload токена или None если токен недействителен
-        """
-        try:
-            if not token:
-                logger.warning("Попытка проверить пустой JWT токен")
-                return None
-
-            normalized_token = self._strip_bearer_prefix(token)
-            payload = jwt.decode(
-                normalized_token, self.secret_key, algorithms=[self.algorithm]
-            )
-            user_id: str = payload.get("sub")
-            if user_id is None:
-                logger.warning("JWT токен не содержит user_id")
-                return None
-
-            logger.debug(f"JWT токен успешно проверен для пользователя: {user_id}")
-            return payload
-        except JWTError as e:
-            logger.warning(f"Ошибка проверки JWT токена: {e}")
+    def verify_token(
+        self, token: str, expected_type: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Validate signature, expiry, subject and token purpose."""
+        if expected_type is not None and expected_type not in VALID_TOKEN_TYPES:
+            raise ValueError(f"Unsupported expected token type: {expected_type}")
+        if not token:
             return None
 
-    def extract_user_id_from_token(self, token: str) -> Optional[str]:
-        """
-        Извлекает user_id из JWT токена.
+        try:
+            payload = jwt.decode(
+                self._strip_bearer_prefix(token),
+                self.secret_key,
+                algorithms=[self.algorithm],
+                options={"require": ["exp", "sub", "token_type"]},
+            )
+        except InvalidTokenError as exc:
+            logger.warning("JWT validation failed: %s", exc)
+            return None
 
-        Args:
-            token: JWT токен
+        token_type = payload.get("token_type")
+        if token_type not in VALID_TOKEN_TYPES:
+            logger.warning("JWT token has unsupported token_type")
+            return None
+        if expected_type is not None and token_type != expected_type:
+            logger.warning(
+                "JWT token purpose mismatch: expected=%s actual=%s",
+                expected_type,
+                token_type,
+            )
+            return None
+        return payload
 
-        Returns:
-            str: user_id или None если токен недействителен
-        """
-        payload = self.verify_token(token)
-        if payload:
-            return payload.get("sub")
-        return None
-
-
-# Глобальный провайдер JWT менеджера
+    def extract_user_id_from_token(
+        self, token: str, expected_type: str = "access"
+    ) -> Optional[str]:
+        payload = self.verify_token(token, expected_type=expected_type)
+        return str(payload["sub"]) if payload else None
 
 
 @lru_cache()
 def get_jwt_manager() -> JWTManager:
-    """Return a cached JWT manager configured from application settings."""
-
     return JWTManager(get_settings())
 
 
 jwt_manager = get_jwt_manager()
 
 # In-memory user store populated from environment variables.
-# Replace with a real database backend before production use.
-# Configure users by setting LIMINAL_TEST_USER_PASS and/or LIMINAL_ADMIN_PASS env vars.
+# Replace with a durable user database before production use.
 _test_user_pass = os.getenv("LIMINAL_TEST_USER_PASS", "")
 _admin_pass = os.getenv("LIMINAL_ADMIN_PASS", "")
+
+
+def _require_production_auth_source(environment: str, admin_password: str) -> None:
+    """Fail closed until production has a durable store or bootstrap admin."""
+    if (
+        environment.strip().lower() == "production"
+        and len(admin_password.strip()) < MIN_PRODUCTION_PASSWORD_LENGTH
+    ):
+        raise RuntimeError(
+            "LIMINAL_ADMIN_PASS must contain at least 12 non-padding characters "
+            "when ENV=production until a durable authentication backend is configured"
+        )
+
+
+_require_production_auth_source(os.getenv("ENV", "development"), _admin_pass)
 
 fake_users_db: Dict[str, Any] = {}
 if _test_user_pass:
@@ -208,97 +204,58 @@ if _admin_pass:
     }
 if not fake_users_db:
     logger.warning(
-        "No users configured. Set LIMINAL_TEST_USER_PASS / LIMINAL_ADMIN_PASS env vars "
-        "or replace fake_users_db with a real database backend."
+        "No users configured. Set LIMINAL_TEST_USER_PASS / LIMINAL_ADMIN_PASS "
+        "or replace fake_users_db with a durable database backend."
     )
 
 
 def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
-    """
-    Аутентифицирует пользователя по логину и паролю.
-
-    Args:
-        username: Имя пользователя
-        password: Пароль
-
-    Returns:
-        Dict[str, Any]: Данные пользователя или None если аутентификация неудачна
-    """
     user = fake_users_db.get(username)
     if not user:
-        logger.warning(f"Пользователь {username} не найден")
+        logger.warning("Authentication failed")
         return None
-
     if not jwt_manager.verify_password(password, user["hashed_password"]):
-        logger.warning(f"Неверный пароль для пользователя {username}")
+        logger.warning("Authentication failed")
         return None
-
-    logger.info(f"Пользователь {username} успешно аутентифицирован")
     return user
 
 
 def create_access_token_for_user(user_data: Dict[str, Any]) -> str:
-    """
-    Создает access token для пользователя.
-
-    Args:
-        user_data: Данные пользователя
-
-    Returns:
-        str: JWT токен
-    """
-    access_token_expires = timedelta(minutes=jwt_manager.access_token_expire_minutes)
-    access_token = jwt_manager.create_access_token(
-        data={"sub": user_data["user_id"], "username": user_data["username"]},
-        expires_delta=access_token_expires,
+    return jwt_manager.create_access_token(
+        data={
+            "sub": user_data["user_id"],
+            "username": user_data["username"],
+            "token_type": "access",
+        },
+        expires_delta=timedelta(minutes=jwt_manager.access_token_expire_minutes),
     )
-    return access_token
 
 
 def verify_websocket_token(token: str) -> Optional[str]:
-    """
-    Проверяет токен для WebSocket соединения.
-
-    Args:
-        token: JWT токен
-
-    Returns:
-        str: user_id или None если токен недействителен
-    """
     if not token:
         return None
+    return jwt_manager.extract_user_id_from_token(token, expected_type="access")
 
-    return jwt_manager.extract_user_id_from_token(token)
 
-
-# Совместимость с auth_router: access + refresh пары
 ACCESS_TOKEN_EXPIRE_MINUTES = jwt_manager.access_token_expire_minutes
 
 
 def create_tokens_for_user(user_data: Dict[str, Any]) -> Dict[str, str]:
-    """Access и refresh JWT для пользователя (используется auth_router)."""
     access_token = create_access_token_for_user(user_data)
-    refresh_expires = timedelta(days=7)
-    refresh = jwt_manager.create_access_token(
+    refresh_token = jwt_manager.create_access_token(
         data={
             "sub": user_data["user_id"],
             "username": user_data["username"],
             "token_type": "refresh",
         },
-        expires_delta=refresh_expires,
+        expires_delta=timedelta(days=7),
     )
-    return {"access_token": access_token, "refresh_token": refresh}
+    return {"access_token": access_token, "refresh_token": refresh_token}
 
 
 def refresh_access_token(refresh_token: str) -> Optional[Dict[str, str]]:
-    """Выдаёт новую пару токенов по действительному refresh JWT."""
-    payload = jwt_manager.verify_token(refresh_token)
-    if not payload or payload.get("token_type") != "refresh":
+    payload = jwt_manager.verify_token(refresh_token, expected_type="refresh")
+    if not payload:
         return None
-    user_id = payload.get("sub")
-    if not user_id:
-        return None
-    user = fake_users_db.get(str(user_id))
-    if not user:
-        return None
-    return create_tokens_for_user(user)
+    user = fake_users_db.get(str(payload["sub"]))
+    return create_tokens_for_user(user) if user else None

@@ -8,15 +8,15 @@ import json
 import os
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Optional, Set, Union
+from typing import Any, Callable, List, Optional, Set
+
+import redis.asyncio as redis
+from redis.asyncio.client import Redis
+from redis.exceptions import RedisError
 
 from backend.logging_config import get_logger
 
 logger = get_logger(__name__)
-
-import redis.asyncio as redis
-from redis.asyncio.client import Redis
-from redis.exceptions import ConnectionError, RedisError
 
 # Условный импорт метрик Prometheus
 try:
@@ -96,9 +96,10 @@ class RedisClient:
             url: URL для подключения к Redis (redis://host:port/db).
                  Если не указан, берется из переменной окружения REDIS_URL.
             prefix: Префикс для ключей в Redis, чтобы избежать конфликтов.
-            test_mode: Режим тестирования, если True - получает сообщения от того же инстанса.
+            test_mode: Сохранен для обратной совместимости тестовых вызовов.
         """
         self.url = url or os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+        self.password = os.environ.get("REDIS_PASSWORD") or None
         self.prefix = prefix
         self.redis: Optional[Redis] = None
         self.pubsub = None
@@ -116,7 +117,11 @@ class RedisClient:
             bool: True если соединение успешно, иначе False.
         """
         try:
-            self.redis = redis.from_url(self.url, decode_responses=True)
+            self.redis = redis.from_url(
+                self.url,
+                decode_responses=True,
+                password=self.password,
+            )
             # Проверка соединения
             await self.redis.ping()
             self.pubsub = self.redis.pubsub()
@@ -165,6 +170,22 @@ class RedisClient:
                 )
 
             logger.info("Соединение с Redis закрыто")
+
+    async def ping(self) -> bool:
+        """Probe the live Redis connection without relying on startup state."""
+        if self.redis is None:
+            return False
+        try:
+            await self.redis.ping()
+            if METRICS_ENABLED:
+                redis_connection_status.labels(instance_id=self.instance_id).set(1)
+            return True
+        except RedisError as e:
+            if METRICS_ENABLED:
+                redis_connection_status.labels(instance_id=self.instance_id).set(0)
+                redis_errors_total.labels(type="connection").inc()
+            logger.error(f"Redis readiness probe failed: {str(e)}")
+            return False
 
     def _make_key(self, key: str) -> str:
         """
@@ -319,7 +340,7 @@ class RedisClient:
         try:
             full_channel = self._full_channel(channel)
             payload = {"data": message, "sender_id": self.instance_id}
-            result = await self.redis.publish(full_channel, json.dumps(payload))
+            await self.redis.publish(full_channel, json.dumps(payload))
 
             # Обновляем метрики - успешная публикация сообщения
             if METRICS_ENABLED:
@@ -446,10 +467,11 @@ class RedisClient:
                         payload = json.loads(message["data"])
                         sender_id = payload.get("sender_id")
 
-                        # В тестовом режиме игнорируем сообщения от того же инстанса
-                        if self.test_mode and sender_id == self.instance_id:
+                        # Локальная доставка выполняется до публикации в Redis.
+                        # Повторное получение собственного события удвоило бы ее.
+                        if sender_id == self.instance_id:
                             logger.debug(
-                                f"Игнорируем сообщение от того же инстанса в тестовом режиме: {channel}"
+                                f"Игнорируем сообщение от того же инстанса: {channel}"
                             )
                             continue
 

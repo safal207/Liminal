@@ -1,7 +1,7 @@
 import importlib
 import os
 import sys
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -46,13 +46,16 @@ def test_readiness_probe_when_redis_is_on_and_connected():
     manager = get_connection_manager()
 
     with TestClient(app_with_redis) as client:
-        with patch.object(manager, "_is_connected", True):
+        with patch.object(
+            manager, "is_redis_ready", AsyncMock(return_value=True)
+        ) as probe:
             response = client.get("/ready")
             json_data = response.json()
             assert response.status_code == 200
             assert json_data["ready"] is True
             assert json_data["checks"]["redis_configured"] is True
             assert json_data["checks"]["redis_connected"] is True
+            probe.assert_awaited_once_with()
 
 
 def test_readiness_probe_when_redis_is_on_and_disconnected():
@@ -62,10 +65,13 @@ def test_readiness_probe_when_redis_is_on_and_disconnected():
     manager = get_connection_manager()
 
     with TestClient(app_with_redis) as client:
-        with patch.object(manager, "_is_connected", False):
+        with patch.object(
+            manager, "is_redis_ready", AsyncMock(return_value=False)
+        ) as probe:
             response = client.get("/ready")
             json_data = response.json()
-            assert response.status_code == 200
+            assert response.status_code == 503
             assert json_data["ready"] is False
             assert json_data["checks"]["redis_configured"] is True
             assert json_data["checks"]["redis_connected"] is False
+            probe.assert_awaited_once_with()

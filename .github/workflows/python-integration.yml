@@ -6,61 +6,73 @@ on:
     branches: [main]
   workflow_dispatch:
   schedule:
-    - cron: '0 3 * * *'  # daily at 03:00 UTC
+    - cron: "0 3 * * *"
+
+permissions:
+  contents: read
 
 jobs:
   integration:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       ENV: test
+      JWT_SECRET_KEY: integration-ci-secret-0123456789abcdef
+      LIMINAL_TEST_USER_PASS: testpass
       USE_REDIS: "false"
       USE_REDIS_CLIENT: "false"
       ML_ENABLED: "false"
+      RUN_INTEGRATION_TESTS: "1"
 
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements-core.txt
+            requirements-dev.txt
 
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip wheel setuptools
-        pip install -r requirements.txt
-        pip install -r requirements-dev.txt
-        # optional client libs for ws tests
-        pip install websockets requests
+      - name: Install core integration dependencies
+        run: |
+          python -m pip install --upgrade pip wheel "setuptools>=83.0.0"
+          python -m pip install -r requirements-core.txt
+          python -m pip install -r requirements-dev.txt
+          python -m pip check
+          python -m pip freeze --all
 
-    - name: Start backend (uvicorn on 8080) and wait readiness
-      run: |
-        set -euo pipefail
-        export PYTHONPATH="${PWD}:${PYTHONPATH:-}"
-        uvicorn backend.main:app --host 127.0.0.1 --port 8080 > uvicorn.log 2>&1 &
-        echo $! > uvicorn.pid
-        if ! bash scripts/check-health.sh --url http://127.0.0.1:8080 --retries 60 --delay 1 --fail-on-not-ready; then
-          echo
-          echo "— uvicorn.log —"
-          cat uvicorn.log || true
-          exit 1
-        fi
+      - name: Start backend and wait for readiness
+        run: |
+          set -euo pipefail
+          export PYTHONPATH="${PWD}:${PYTHONPATH:-}"
+          uvicorn backend.main:app --host 127.0.0.1 --port 8080 > uvicorn.log 2>&1 &
+          echo $! > uvicorn.pid
+          if ! bash scripts/check-health.sh --url http://127.0.0.1:8080 --retries 60 --delay 1 --fail-on-not-ready; then
+            echo
+            echo "— uvicorn.log —"
+            cat uvicorn.log || true
+            exit 1
+          fi
 
-    - name: Run WebSocket integration tests
-      env:
-        WS_API_URL: http://localhost:8080
-        WS_URL: ws://localhost:8080/ws
-      run: |
-        export PYTHONPATH="${PWD}:${PYTHONPATH:-}"
-        # These tests are smoke-level and skip themselves if server is down
-        python -m pytest -v -m integration --maxfail=1 --durations=10
+      - name: Run WebSocket integration tests
+        env:
+          WS_API_URL: http://localhost:8080
+          WS_URL: ws://localhost:8080/ws/timeline
+        run: |
+          export PYTHONPATH="${PWD}:${PYTHONPATH:-}"
+          python -m pytest -v tests/test_websocket_integration.py --maxfail=1 --durations=10
 
-    - name: Stop backend
-      if: always()
-      run: |
-        if [ -f uvicorn.pid ]; then kill $(cat uvicorn.pid) || true; fi
-        if [ -f uvicorn.log ]; then
-          echo
-          echo "— final uvicorn.log —"
-          cat uvicorn.log || true
-        fi
+      - name: Stop backend
+        if: always()
+        run: |
+          if [ -f uvicorn.pid ]; then kill $(cat uvicorn.pid) || true; fi
+          if [ -f uvicorn.log ]; then
+            echo
+            echo "— final uvicorn.log —"
+            cat uvicorn.log || true
+          fi

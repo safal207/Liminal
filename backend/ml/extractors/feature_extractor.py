@@ -6,19 +6,16 @@
 """
 
 import argparse
-import datetime
 import json
 import logging
 import os
 import sys
 import time
-from typing import Any, Dict, List, Optional
-
-import numpy as np
-import pandas as pd
-import requests
+from typing import Any, Dict
+from urllib.parse import urlsplit
 
 import redis
+import requests
 
 # Настройка логгирования
 logging.basicConfig(
@@ -29,9 +26,26 @@ logger = logging.getLogger(__name__)
 # Константы
 REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
-BACKEND_URL = os.environ.get("BACKEND_URL", "http://localhost:8000")
+BACKEND_URL = os.environ.get("BACKEND_URL") or os.environ.get(
+    "RGL_CORE_URL", "http://localhost:8000"
+)
+ML_METRICS_SERVICE_TOKEN = os.environ.get("ML_METRICS_SERVICE_TOKEN", "").strip()
 KENNING_URL = os.environ.get("KENNING_URL", "http://kenning-ml:5000")
 EXTRACT_INTERVAL = int(os.environ.get("EXTRACT_INTERVAL", "30"))  # секунд
+
+
+def _metrics_endpoint_url(base_url: str) -> str:
+    """Keep the service token on HTTPS or the fixed private core hop."""
+    parsed = urlsplit(base_url)
+    trusted_plaintext_hosts = {"localhost", "127.0.0.1", "::1", "rgl-core"}
+    if parsed.scheme != "https" and not (
+        parsed.scheme == "http" and parsed.hostname in trusted_plaintext_hosts
+    ):
+        raise ValueError(
+            "ML metrics backend must use HTTPS outside the private core hop"
+        )
+    return f"{base_url.rstrip('/')}/ml_metrics"
+
 
 # Подключение к Redis
 try:
@@ -60,7 +74,17 @@ class FeatureExtractor:
         """
         try:
             # Запрос к API бэкенда для получения ML-метрик
-            response = requests.get(f"{BACKEND_URL}/ml_metrics")
+            headers = (
+                {"X-Liminal-ML-Token": ML_METRICS_SERVICE_TOKEN}
+                if ML_METRICS_SERVICE_TOKEN
+                else {}
+            )
+            response = requests.get(
+                _metrics_endpoint_url(BACKEND_URL),
+                headers=headers,
+                timeout=10,
+                allow_redirects=False,
+            )
 
             if response.status_code == 200:
                 data = response.json()
@@ -221,6 +245,8 @@ class FeatureExtractor:
 
 def main():
     """Точка входа для запуска экстрактора фичей"""
+    global EXTRACT_INTERVAL
+
     parser = argparse.ArgumentParser(
         description="ML Feature Extractor for Kenning integration"
     )
@@ -236,7 +262,6 @@ def main():
 
     args = parser.parse_args()
 
-    global EXTRACT_INTERVAL
     EXTRACT_INTERVAL = args.interval
 
     extractor = FeatureExtractor()
