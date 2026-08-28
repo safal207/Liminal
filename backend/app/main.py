@@ -7,7 +7,7 @@ import logging
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, AsyncIterator, Awaitable, Callable, Dict
+from typing import Annotated, AsyncIterator, Awaitable, Callable, Dict, cast
 
 from fastapi import Depends, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -213,7 +213,9 @@ async def readiness_check(
 
     redis_probe = getattr(manager, "is_redis_ready", None)
     redis_cfg = callable(redis_probe)
-    redis_ok = await redis_probe() if redis_cfg else True
+    redis_ok = (
+        await cast(Callable[[], Awaitable[bool]], redis_probe)() if redis_cfg else True
+    )
 
     checks = {
         "app_loaded": True,
