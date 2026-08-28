@@ -65,9 +65,7 @@ def test_production_requires_a_bootstrap_auth_source() -> None:
 
 def test_production_compose_passes_bootstrap_and_legacy_redis_secrets() -> None:
     production = Path(__file__).resolve().parents[2] / "backend" / "production"
-    compose = (production / "docker-compose.production.yml").read_text(
-        encoding="utf-8"
-    )
+    compose = (production / "docker-compose.production.yml").read_text(encoding="utf-8")
     core_service = compose.split("  redis:", 1)[0]
 
     assert "LIMINAL_ADMIN_PASS: ${LIMINAL_ADMIN_PASS:?" in core_service
@@ -103,12 +101,8 @@ def test_production_nginx_mount_resolves_and_targets_core_service() -> None:
 def test_optional_services_require_explicit_compose_overrides() -> None:
     production = Path(__file__).resolve().parents[2] / "backend" / "production"
     base = (production / "docker-compose.production.yml").read_text(encoding="utf-8")
-    research = (production / "docker-compose.research.yml").read_text(
-        encoding="utf-8"
-    )
-    gateway = (production / "docker-compose.gateway.yml").read_text(
-        encoding="utf-8"
-    )
+    research = (production / "docker-compose.research.yml").read_text(encoding="utf-8")
+    gateway = (production / "docker-compose.gateway.yml").read_text(encoding="utf-8")
     observability = (production / "docker-compose.observability.yml").read_text(
         encoding="utf-8"
     )
@@ -119,7 +113,10 @@ def test_optional_services_require_explicit_compose_overrides() -> None:
     assert "WEBSOCKET_GATEWAY_IMAGE_DIGEST:?" in gateway
     assert "PROMETHEUS_IMAGE_DIGEST:?" in observability
     assert "GRAFANA_ADMIN_PASSWORD:?" in observability
-    assert "../nginx/observability.conf:/etc/nginx/liminal.d/observability.conf:ro" in observability
+    assert (
+        "../nginx/observability.conf:/etc/nginx/liminal.d/observability.conf:ro"
+        in observability
+    )
 
 
 def test_production_proxy_trust_is_bound_to_the_nginx_container() -> None:

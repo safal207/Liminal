@@ -85,7 +85,7 @@ REQUIRED_COMPOSE_SNIPPETS = {
         "JWT_SECRET_KEY: ${JWT_SECRET_KEY:?",
         "ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?",
         "NEO4J_PASSWORD: ${NEO4J_PASSWORD:?",
-        "FORWARDED_ALLOW_IPS: \"172.30.0.10\"",
+        'FORWARDED_ALLOW_IPS: "172.30.0.10"',
         "ipv4_address: 172.30.0.10",
         "subnet: 172.30.0.0/24",
         "internal: true",
@@ -221,23 +221,17 @@ def main() -> int:
         compose_documents[compose_path] = compose
         for pattern, description in BANNED_COMPOSE_PATTERNS.items():
             if re.search(pattern, compose, flags=re.IGNORECASE):
-                errors.append(
-                    f"{compose_path.name} contains {description}"
-                )
+                errors.append(f"{compose_path.name} contains {description}")
         for snippet in required_snippets:
             if snippet not in compose:
-                errors.append(
-                    f"{compose_path.name} missing guard: {snippet}"
-                )
+                errors.append(f"{compose_path.name} missing guard: {snippet}")
 
         for line in compose.splitlines():
             stripped = line.strip()
             if stripped.startswith("image:") and (
                 "@${" not in stripped or "_IMAGE_DIGEST" not in stripped
             ):
-                errors.append(
-                    f"mutable image in {compose_path.name}: {stripped}"
-                )
+                errors.append(f"mutable image in {compose_path.name}: {stripped}")
 
     base_compose = compose_documents.get(PRODUCTION_COMPOSE, "")
     for marker in PROFILE_ONLY_BASE_MARKERS:
@@ -254,8 +248,13 @@ def main() -> int:
             errors.append("production nginx must target the rgl-core service")
         if "server liminal-backend:8000" in nginx_config:
             errors.append("production nginx targets an undefined legacy service")
-        if "http://prometheus:9090" in nginx_config or "http://grafana:3000" in nginx_config:
-            errors.append("base production nginx resolves optional observability services")
+        if (
+            "http://prometheus:9090" in nginx_config
+            or "http://grafana:3000" in nginx_config
+        ):
+            errors.append(
+                "base production nginx resolves optional observability services"
+            )
         for snippet in (
             "location /ws/",
             "proxy_http_version 1.1",
