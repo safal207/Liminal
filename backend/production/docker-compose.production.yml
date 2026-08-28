@@ -12,7 +12,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY to a strong random value}
       ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?Set a strong ML metrics service token}
       LIMINAL_ADMIN_PASS: ${LIMINAL_ADMIN_PASS:?Set LIMINAL_ADMIN_PASS to a strong bootstrap password}
-      REDIS_URL: redis://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0
+      REDIS_URL: "rediss://:${REDIS_PASSWORD:?Set REDIS_PASSWORD}@redis:6379/0?ssl_cert_reqs=required&ssl_ca_certs=/etc/liminal/tls/redis-ca.crt"
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
       USE_REDIS: "true"
       NEO4J_URI: bolt://neo4j:7687
@@ -20,9 +20,12 @@ services:
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:?Set NEO4J_PASSWORD}
       LOG_LEVEL: INFO
       WORKERS: "4"
+      WS_MAX_MESSAGE_BYTES: ${WS_MAX_MESSAGE_BYTES:-16384}
       # Only the ingress container at this fixed internal address may supply
       # forwarded client identity to Uvicorn.
       FORWARDED_ALLOW_IPS: "172.30.0.10"
+    volumes:
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/redis/ca.crt:/etc/liminal/tls/redis-ca.crt:ro
     depends_on:
       redis:
         condition: service_healthy
@@ -46,17 +49,27 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD}
     volumes:
       - redis-data:/data
+      - ${LIMINAL_TLS_CERT_DIR:?Set LIMINAL_TLS_CERT_DIR}/redis:/etc/liminal/tls:ro
     command:
       - sh
       - -c
       - >-
         exec redis-server --appendonly yes --maxmemory 512mb
         --maxmemory-policy allkeys-lru --requirepass "$${REDIS_PASSWORD}"
+        --port 0 --tls-port 6379
+        --tls-cert-file /etc/liminal/tls/server.crt
+        --tls-key-file /etc/liminal/tls/server.key
+        --tls-ca-cert-file /etc/liminal/tls/ca.crt
+        --tls-auth-clients no
     networks:
       - internal
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli --tls --cacert /etc/liminal/tls/ca.crt -a \"$${REDIS_PASSWORD}\" ping | grep PONG",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5

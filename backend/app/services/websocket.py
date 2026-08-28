@@ -168,6 +168,10 @@ class ConnectionManagerService:
             self._manager = self._create_manager()
         return self._manager
 
+    def set_manager(self, manager: ConnectionManager) -> None:
+        """Bind a pre-existing manager so every route observes one pool."""
+        self._manager = manager
+
     def get_connection_stats(self) -> dict:
         return self.get_manager().get_connection_stats()
 

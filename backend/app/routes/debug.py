@@ -42,7 +42,7 @@ def require_ml_metrics_access(
     """Authenticate the internal metrics consumer without enabling debug routes."""
     settings = get_settings()
     configured = os.getenv("ML_METRICS_SERVICE_TOKEN", "").strip()
-    if settings.environment != "production" and not configured:
+    if settings.environment == "development" and not configured:
         return
     if len(configured) < 32:
         raise HTTPException(

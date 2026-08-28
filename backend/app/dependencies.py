@@ -117,6 +117,11 @@ def get_connection_manager_service() -> ConnectionManagerService:
     return _connection_manager_service
 
 
+def set_connection_manager(manager) -> None:
+    """Bind legacy and dependency-injected routes to one manager instance."""
+    _connection_manager_service.set_manager(manager)
+
+
 def get_websocket_service() -> TimelineWebSocketService:
     """Return the orchestrator for timeline WebSocket connections."""
     return _websocket_service

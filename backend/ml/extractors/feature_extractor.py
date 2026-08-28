@@ -6,16 +6,14 @@
 """
 
 import argparse
-import datetime
 import json
 import logging
 import os
 import sys
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
+from urllib.parse import urlsplit
 
-import numpy as np
-import pandas as pd
 import redis
 import requests
 
@@ -34,6 +32,20 @@ BACKEND_URL = os.environ.get("BACKEND_URL") or os.environ.get(
 ML_METRICS_SERVICE_TOKEN = os.environ.get("ML_METRICS_SERVICE_TOKEN", "").strip()
 KENNING_URL = os.environ.get("KENNING_URL", "http://kenning-ml:5000")
 EXTRACT_INTERVAL = int(os.environ.get("EXTRACT_INTERVAL", "30"))  # секунд
+
+
+def _metrics_endpoint_url(base_url: str) -> str:
+    """Keep the service token on HTTPS or the fixed private core hop."""
+    parsed = urlsplit(base_url)
+    trusted_plaintext_hosts = {"localhost", "127.0.0.1", "::1", "rgl-core"}
+    if parsed.scheme != "https" and not (
+        parsed.scheme == "http" and parsed.hostname in trusted_plaintext_hosts
+    ):
+        raise ValueError(
+            "ML metrics backend must use HTTPS outside the private core hop"
+        )
+    return f"{base_url.rstrip('/')}/ml_metrics"
+
 
 # Подключение к Redis
 try:
@@ -68,9 +80,10 @@ class FeatureExtractor:
                 else {}
             )
             response = requests.get(
-                f"{BACKEND_URL}/ml_metrics",
+                _metrics_endpoint_url(BACKEND_URL),
                 headers=headers,
                 timeout=10,
+                allow_redirects=False,
             )
 
             if response.status_code == 200:

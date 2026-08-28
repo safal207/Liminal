@@ -76,6 +76,15 @@ def test_production_compose_passes_bootstrap_and_legacy_redis_secrets() -> None:
     )
     assert "ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?" in neural_service
 
+    gateway = (production / "docker-compose.gateway.yml").read_text(encoding="utf-8")
+    for document in (compose, neural_service, gateway):
+        assert 'REDIS_URL: "rediss://:' in document
+        assert "ssl_cert_reqs=required" in document
+        assert "ssl_ca_certs=/etc/liminal/tls/redis-ca.crt" in document
+    assert "--tls-port 6379" in compose
+    assert "--port 0" in compose
+    assert "--tls-ca-cert-file /etc/liminal/tls/ca.crt" in compose
+
 
 def test_production_nginx_mount_resolves_and_targets_core_service() -> None:
     root = Path(__file__).resolve().parents[2]
@@ -121,6 +130,15 @@ def test_optional_services_require_explicit_compose_overrides() -> None:
         "../nginx/observability.conf:/etc/nginx/liminal.d/observability.conf:ro"
         in observability
     )
+    assert "--web.route-prefix=/" in observability
+    assert 'GF_SERVER_SERVE_FROM_SUB_PATH: "true"' in observability
+    assert "SERVER_BASEPATH: /kibana" in observability
+
+    observability_nginx = (
+        Path(__file__).resolve().parents[2] / "backend" / "nginx" / "observability.conf"
+    ).read_text(encoding="utf-8")
+    assert "location /kibana/" in observability_nginx
+    assert "http://kibana:5601/" in observability_nginx
 
 
 def test_production_proxy_trust_is_bound_to_the_nginx_container() -> None:
@@ -151,12 +169,18 @@ def test_production_compose_provisions_kibana_system_before_kibana() -> None:
     kibana = compose.split("  kibana:", 1)[1].split("\nvolumes:", 1)[0]
 
     assert 'xpack.security.enabled: "true"' in elasticsearch
-    assert 'xpack.security.http.ssl.enabled: "false"' in elasticsearch
+    assert 'xpack.security.http.ssl.enabled: "true"' in elasticsearch
+    assert (
+        "xpack.security.http.ssl.certificate_authorities: certs/ca.crt" in elasticsearch
+    )
     assert "condition: service_healthy" in setup
     assert "KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?" in setup
     assert "/_security/user/kibana_system/_password" in setup
     assert "--data-binary @-" in setup
-    assert "ELASTICSEARCH_HOSTS: http://elasticsearch:9200" in kibana
+    assert "--cacert /usr/share/elasticsearch/config/certs/ca.crt" in setup
+    assert "https://elasticsearch:9200" in setup
+    assert "ELASTICSEARCH_HOSTS: https://elasticsearch:9200" in kibana
+    assert "ELASTICSEARCH_SSL_VERIFICATIONMODE: full" in kibana
     assert "condition: service_completed_successfully" in kibana
 
 
@@ -244,6 +268,19 @@ def test_production_ml_metrics_requires_service_token(
     assert debug_routes.require_ml_metrics_access(service_token) is None
 
 
+def test_staging_ml_metrics_requires_service_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = type("Settings", (), {"environment": "staging"})()
+    monkeypatch.setattr(debug_routes, "get_settings", lambda: settings)
+    monkeypatch.delenv("ML_METRICS_SERVICE_TOKEN", raising=False)
+
+    with pytest.raises(HTTPException) as missing_config:
+        debug_routes.require_ml_metrics_access(None)
+
+    assert missing_config.value.status_code == 503
+
+
 def test_feature_extractor_sends_ml_metrics_service_token(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -278,6 +315,11 @@ def test_feature_extractor_sends_ml_metrics_service_token(
         },
     ):
         spec.loader.exec_module(module)
+        assert module._metrics_endpoint_url("https://metrics.example") == (
+            "https://metrics.example/ml_metrics"
+        )
+        with pytest.raises(ValueError, match="must use HTTPS"):
+            module._metrics_endpoint_url("http://metrics.example")
         assert module.FeatureExtractor().extract_features_from_backend() == {
             "metric": 1
         }
@@ -286,6 +328,7 @@ def test_feature_extractor_sends_ml_metrics_service_token(
         "http://rgl-core:8000/ml_metrics",
         headers={"X-Liminal-ML-Token": service_token},
         timeout=10,
+        allow_redirects=False,
     )
 
 
@@ -468,6 +511,7 @@ def test_legacy_backend_route_delegates_without_query_token() -> None:
         isinstance(node, ast.Attribute) and node.attr == "handle_connection"
         for node in ast.walk(endpoint)
     )
+    assert "set_connection_manager(connection_manager)" in source
 
 
 @pytest.mark.asyncio
@@ -515,6 +559,15 @@ def test_redis_factory_wires_shared_rate_limit_configuration(
     assert manager.redis_client is manager.redis
     assert manager.rate_limit_messages_per_second == 7
     assert manager.rate_limit_burst == 11
+
+
+def test_connection_manager_service_can_bind_a_shared_manager() -> None:
+    manager = ConnectionManager()
+    service = ConnectionManagerService()
+
+    service.set_manager(manager)
+
+    assert service.get_manager() is manager
 
 
 @pytest.mark.asyncio
@@ -621,10 +674,28 @@ def test_release_guard_rejects_research_dependencies() -> None:
 ARG PYTHON_IMAGE
 FROM ${PYTHON_IMAGE}
 RUN pip install -r requirements-core.txt -r requirements-research.txt
+CMD ["sh", "-c", "uvicorn backend.main:app --ws-max-size ${WS_MAX_MESSAGE_BYTES:-16384}"]
 """
 
-    assert release_security.production_dockerfile_errors(dockerfile) == [
-        "production Dockerfile must not install test/dev/research dependencies"
+    assert release_security.production_dockerfile_errors(
+        dockerfile,
+        "python:3.11-slim@sha256:" + "a" * 64,
+    ) == ["production Dockerfile must not install test/dev/research dependencies"]
+
+
+def test_release_guard_rejects_mutable_python_image_and_unbounded_ws() -> None:
+    dockerfile = """\
+ARG PYTHON_IMAGE
+FROM ${PYTHON_IMAGE}
+RUN pip install -r requirements-core.txt
+"""
+
+    assert release_security.production_dockerfile_errors(
+        dockerfile,
+        "python:3.11-slim",
+    ) == [
+        "PYTHON_IMAGE must be an immutable @sha256 reference",
+        "production ASGI launch must enforce WS_MAX_MESSAGE_BYTES at transport",
     ]
 
 

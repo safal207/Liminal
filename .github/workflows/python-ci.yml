@@ -42,6 +42,8 @@ jobs:
           python -m pip freeze --all
 
       - name: Release configuration guard
+        env:
+          PYTHON_IMAGE: python:3.11-slim@sha256:0000000000000000000000000000000000000000000000000000000000000000
         run: python scripts/check_release_security.py
 
       - name: Pre-commit on release-critical files

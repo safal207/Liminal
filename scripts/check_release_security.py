@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -24,6 +25,8 @@ REQUIRED_ENV_KEYS = {
     "ML_METRICS_SERVICE_TOKEN",
     "NEO4J_PASSWORD",
     "REDIS_PASSWORD",
+    "LIMINAL_TLS_CERT_DIR",
+    "LIMINAL_OBSERVABILITY_BASE_URL",
     "GRAFANA_ADMIN_PASSWORD",
     "ELASTIC_PASSWORD",
     "KIBANA_SYSTEM_PASSWORD",
@@ -67,6 +70,11 @@ BANNED_COMPOSE_PATTERNS = {
     r"rgl_admin_password": "fixed Grafana password",
     r"image:\s*[^\n]*:latest": "mutable latest image",
     r"xpack\.security\.enabled\s*[:=]\s*[\"']?false": "disabled Elasticsearch security",
+    r"xpack\.security\.http\.ssl\.enabled\s*[:=]\s*[\"']?false": (
+        "disabled Elasticsearch HTTP TLS"
+    ),
+    r"\bhttp://elasticsearch:9200": "cleartext Elasticsearch credentials",
+    r"\bredis://": "cleartext Redis credentials",
     r"\"6379:6379\"": "public Redis port",
     r"\"7474:7474\"": "public Neo4j HTTP port",
     r"\"7687:7687\"": "public Neo4j Bolt port",
@@ -87,6 +95,10 @@ REQUIRED_COMPOSE_SNIPPETS = {
         "PYTHON_IMAGE: ${PYTHON_IMAGE:?",
         "JWT_SECRET_KEY: ${JWT_SECRET_KEY:?",
         "ML_METRICS_SERVICE_TOKEN: ${ML_METRICS_SERVICE_TOKEN:?",
+        'REDIS_URL: "rediss://:',
+        "--tls-port 6379",
+        "--tls-ca-cert-file /etc/liminal/tls/ca.crt",
+        "WS_MAX_MESSAGE_BYTES: ${WS_MAX_MESSAGE_BYTES:-16384}",
         "NEO4J_PASSWORD: ${NEO4J_PASSWORD:?",
         'FORWARDED_ALLOW_IPS: "172.30.0.10"',
         "ipv4_address: 172.30.0.10",
@@ -100,9 +112,13 @@ REQUIRED_COMPOSE_SNIPPETS = {
     },
     RESEARCH_COMPOSE: {
         "@${NEURAL_ANALYTICS_IMAGE_DIGEST:?",
+        'REDIS_URL: "rediss://:',
+        "ssl_cert_reqs=required",
     },
     GATEWAY_COMPOSE: {
         "@${WEBSOCKET_GATEWAY_IMAGE_DIGEST:?",
+        'REDIS_URL: "rediss://:',
+        "ssl_cert_reqs=required",
     },
     OBSERVABILITY_COMPOSE: {
         '"127.0.0.1:8080:8080"',
@@ -111,8 +127,16 @@ REQUIRED_COMPOSE_SNIPPETS = {
         "ELASTICSEARCH_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?",
         "KIBANA_SYSTEM_PASSWORD: ${KIBANA_SYSTEM_PASSWORD:?",
         'xpack.security.enabled: "true"',
-        'xpack.security.http.ssl.enabled: "false"',
-        "http://elasticsearch:9200/_security/user/kibana_system/_password",
+        'xpack.security.http.ssl.enabled: "true"',
+        "xpack.security.http.ssl.certificate_authorities: certs/ca.crt",
+        "https://elasticsearch:9200/_security/user/kibana_system/_password",
+        "--cacert /usr/share/elasticsearch/config/certs/ca.crt",
+        "ELASTICSEARCH_HOSTS: https://elasticsearch:9200",
+        "ELASTICSEARCH_SSL_VERIFICATIONMODE: full",
+        "--web.route-prefix=/",
+        'GF_SERVER_SERVE_FROM_SUB_PATH: "true"',
+        "SERVER_BASEPATH: /kibana",
+        "SERVER_PUBLICBASEURL: ${LIMINAL_OBSERVABILITY_BASE_URL:?",
         "condition: service_completed_successfully",
         "../nginx/observability.conf:/etc/nginx/liminal.d/observability.conf:ro",
         "prom/prometheus@${PROMETHEUS_IMAGE_DIGEST:?",
@@ -134,7 +158,10 @@ PROFILE_ONLY_BASE_MARKERS = {
     "GRAFANA_ADMIN_PASSWORD",
     "ELASTIC_PASSWORD",
     "KIBANA_SYSTEM_PASSWORD",
+    "LIMINAL_OBSERVABILITY_BASE_URL",
 }
+
+PYTHON_IMAGE_PATTERN = re.compile(r"^[^\s@]+@sha256:[0-9A-Fa-f]{64}$")
 
 
 def parse_env_keys(path: Path) -> set[str]:
@@ -158,7 +185,10 @@ def parse_requirement_names(path: Path) -> set[str]:
     return names
 
 
-def production_dockerfile_errors(dockerfile: str) -> list[str]:
+def production_dockerfile_errors(
+    dockerfile: str,
+    python_image: str | None = None,
+) -> list[str]:
     """Return release-boundary violations in the production API image."""
     errors: list[str] = []
     if "-r requirements-core.txt" not in dockerfile:
@@ -181,6 +211,18 @@ def production_dockerfile_errors(dockerfile: str) -> list[str]:
     if "ARG PYTHON_IMAGE" not in dockerfile or "FROM ${PYTHON_IMAGE}" not in dockerfile:
         errors.append(
             "production Dockerfile must require an external immutable base image"
+        )
+    supplied_image = (
+        os.getenv("PYTHON_IMAGE", "") if python_image is None else python_image
+    ).strip()
+    if PYTHON_IMAGE_PATTERN.fullmatch(supplied_image) is None:
+        errors.append("PYTHON_IMAGE must be an immutable @sha256 reference")
+    if (
+        "--ws-max-size" not in dockerfile
+        or "${WS_MAX_MESSAGE_BYTES:-16384}" not in dockerfile
+    ):
+        errors.append(
+            "production ASGI launch must enforce WS_MAX_MESSAGE_BYTES at transport"
         )
     return errors
 
@@ -272,7 +314,11 @@ def main() -> int:
         errors.append("optional observability nginx config is missing")
     else:
         observability_nginx = OBSERVABILITY_NGINX_CONFIG.read_text(encoding="utf-8")
-        for upstream in ("http://prometheus:9090", "http://grafana:3000"):
+        for upstream in (
+            "http://prometheus:9090",
+            "http://grafana:3000",
+            "http://kibana:5601",
+        ):
             if upstream not in observability_nginx:
                 errors.append(
                     f"observability nginx config missing upstream: {upstream}"

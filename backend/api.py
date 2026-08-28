@@ -20,6 +20,7 @@ from backend.app.dependencies import (
     get_websocket_service,
 )
 from backend.app.dependencies import init_services as init_app_services
+from backend.app.dependencies import set_connection_manager
 from backend.app.dependencies import shutdown_services as shutdown_app_services
 from backend.auth.dependencies import token_verifier
 from backend.core.settings import get_settings
@@ -138,6 +139,8 @@ except ImportError:
     logger.exception("Failed to import connection manager")
     raise
 
+set_connection_manager(connection_manager)
+
 # Импорты для аутентификации
 try:
     from backend.auth.jwt_utils import (
@@ -165,14 +168,6 @@ async def startup_event():
     # поэтому здесь только логируем это
     logger.info("Prometheus metrics already initialized")
 
-    # Инициализация менеджера соединений (Redis или стандартного)
-    if hasattr(connection_manager, "initialize"):
-        initialized = await connection_manager.initialize()
-        # Логируем в зависимости от типа менеджера для ясности
-        if "redis" in connection_manager.__class__.__name__.lower():
-            logger.info(f"Redis connection manager initialized: {initialized}")
-        else:
-            logger.info(f"Standard connection manager initialized: {initialized}")
     await init_app_services()
 
 
@@ -181,11 +176,6 @@ async def shutdown_event():
     """Корректное завершение работы при остановке приложения"""
     logger.info("Shutting down application")
 
-    # Закрытие Redis соединения, если оно было открыто
-    if settings.integrations.use_redis:
-        if hasattr(connection_manager, "shutdown"):
-            await connection_manager.shutdown()
-            logger.info("Redis connection closed")
     await shutdown_app_services()
 
 
