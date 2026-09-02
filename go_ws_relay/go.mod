@@ -3,7 +3,7 @@ module github.com/resonance-liminal/go_ws_relay
 go 1.21
 
 require (
-	github.com/gorilla/websocket v1.5.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/graphql-go/graphql v0.8.1
 	github.com/neo4j/neo4j-go-driver/v4 v4.4.8
 	github.com/redis/go-redis/v9 v9.0.0
